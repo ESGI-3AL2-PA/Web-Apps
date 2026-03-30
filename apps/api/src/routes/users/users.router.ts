@@ -1,8 +1,6 @@
 import { initServer } from "@ts-rest/express";
 import { usersContract } from "@repo/contracts";
-
-import { InMemoryUserRepository } from "../../repositories/user.repository.in-memory";
-
+import { resolve } from "../../repositories/container";
 import { getUsersUseCase } from "../../use-cases/users/get-users.use-case";
 import { getUserByIdUseCase } from "../../use-cases/users/get-user-by-id.use-case";
 import { createUserUseCase } from "../../use-cases/users/create-user.use-case";
@@ -10,8 +8,7 @@ import { updateUserUseCase } from "../../use-cases/users/update-user.use-case";
 import { deleteUserUseCase } from "../../use-cases/users/delete-user.use-case";
 
 const s = initServer();
-
-const userRepository = new InMemoryUserRepository();
+const userRepository = resolve("user");
 
 export const usersRouter = s.router(usersContract, {
   getUsers: async ({ query: { page, limit, search } }) => {

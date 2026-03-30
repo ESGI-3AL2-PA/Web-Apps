@@ -6,11 +6,6 @@ export const updateUserUseCase = (userRepository: UserRepository) => {
     id: string,
     data: Partial<Omit<User, "id" | "createdAt" | "updatedAt">>,
   ): Promise<User | null> => {
-    const updatedData = {
-      ...data,
-      updatedAt: new Date().toISOString(),
-    };
-
-    return await userRepository.updateUser(id, updatedData);
+    return await userRepository.updateUser(id, data);
   };
 };
