@@ -1,14 +1,25 @@
-import express from "express";
+import express, { type Application } from "express";
 import { createExpressEndpoints } from "@ts-rest/express";
 import { usersContract } from "@repo/contracts";
 import { usersRouter } from "./routes/users/users.router";
+import { errorHandler, AppError } from "./middleware/error-handler";
 
-const app = express();
+const app: Application = express();
 const port = 3000;
 
 app.use(express.json());
 
+app.get("/health", (_req, res) => {
+  res.json({ status: "ok", timestamp: new Date().toISOString() });
+});
+
 createExpressEndpoints(usersContract, usersRouter, app);
+
+app.use((_req, _res, next) => {
+  next(new AppError(404, "Not found"));
+});
+
+app.use(errorHandler);
 
 app.listen(port, () => {
   const localUrl = `http://localhost:${port}`;
