@@ -1,0 +1,10 @@
+{
+  "extends": ["config:recommended"],
+  "schedule": ["before 5am on Monday"],
+  "packageRules": [
+    {
+      "matchUpdateTypes": ["major", "minor", "patch"],
+      "automerge": false
+    }
+  ]
+}
