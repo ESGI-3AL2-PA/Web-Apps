@@ -1,10 +1,14 @@
 import express from "express";
+import { createExpressEndpoints } from "@ts-rest/express";
+import { usersContract } from "@repo/contracts";
+import { usersRouter } from "./routes/users/users.router";
+
 const app = express();
 const port = 3000;
 
-app.get("/", (req, res) => {
-  res.send("Hello World!");
-});
+app.use(express.json());
+
+createExpressEndpoints(usersContract, usersRouter, app);
 
 app.listen(port, () => {
   const localUrl = `http://localhost:${port}`;

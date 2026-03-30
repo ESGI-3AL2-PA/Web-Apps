@@ -3,6 +3,6 @@
   "include": ["src"],
   "compilerOptions": {
     "jsx": "react-jsx",
-    "strictNullChecks": true
-  }
+    "strictNullChecks": true,
+  },
 }
