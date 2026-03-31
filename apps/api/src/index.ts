@@ -9,7 +9,10 @@ import { apiReference } from "@scalar/express-api-reference";
 const app: Application = express();
 const port = 3000;
 
-const openApiDocument = generateOpenApi(usersContract, {
+const contracts = { ...usersContract };
+const routers = { ...usersRouter };
+
+const openApiDocument = generateOpenApi(contracts, {
   info: {
     title: "API",
     version: "0.0.0",
@@ -33,7 +36,7 @@ app.use(
   }) as unknown as RequestHandler, // Ugly as hell but it works ¯\_(ツ)_/¯
 );
 
-createExpressEndpoints(usersContract, usersRouter, app);
+createExpressEndpoints(contracts, routers, app);
 
 app.use((_req, _res, next) => {
   next(new AppError(404, "Not found"));
