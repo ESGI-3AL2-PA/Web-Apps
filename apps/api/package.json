@@ -19,7 +19,9 @@
   },
   "dependencies": {
     "@repo/contracts": "*",
+    "@scalar/express-api-reference": "^0.9.5",
     "@ts-rest/express": "^3.52.1",
+    "@ts-rest/open-api": "^3.52.1",
     "express": "4.22.1",
     "zod": "3.25.76"
   }

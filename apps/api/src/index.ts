@@ -1,17 +1,37 @@
-import express, { type Application } from "express";
+import express, { type Application, type RequestHandler } from "express";
 import { createExpressEndpoints } from "@ts-rest/express";
 import { usersContract } from "@repo/contracts";
 import { usersRouter } from "./routes/users/users.router";
 import { errorHandler, AppError } from "./middleware/error-handler";
+import { generateOpenApi } from "@ts-rest/open-api";
+import { apiReference } from "@scalar/express-api-reference";
 
 const app: Application = express();
 const port = 3000;
+
+const openApiDocument = generateOpenApi(usersContract, {
+  info: {
+    title: "API",
+    version: "0.0.0",
+  },
+});
 
 app.use(express.json());
 
 app.get("/health", (_req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
+
+app.get("/openapi.json", (req, res) => {
+  res.json(openApiDocument);
+});
+app.use(
+  "/docs",
+  apiReference({
+    url: "/openapi.json",
+    theme: "moon",
+  }) as unknown as RequestHandler, // Ugly as hell but it works ¯\_(ツ)_/¯
+);
 
 createExpressEndpoints(usersContract, usersRouter, app);
 
