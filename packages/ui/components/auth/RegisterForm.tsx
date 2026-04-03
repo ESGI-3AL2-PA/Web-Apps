@@ -29,8 +29,8 @@ const RegisterForm = () => {
 
 
   return (
-    <div className="regsiterForm">
-      <h1>RegisterForm</h1>
+    <div className="flex justify-center items-center h-screen">
+      <h1 className="text-red-500" >RegisterForm</h1>
       <form action="submit" onSubmit={hanldeSubmit}>
         <label>FirstName : </label>
         <input type="text" name="firstName" value={data.firstName} onChange={handleChange} placeholder="FirstName" required/>
