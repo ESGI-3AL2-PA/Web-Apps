@@ -1,17 +1,8 @@
-import { useState, useEffect } from "react";
-
-interface LoginFormI {
-    firstName: string,
-    lastName: string,
-    email: string,
-    password: string,
-    //quartier: string, Utiliser un select pour les quartier
-}
+import { useState } from "react";
+import { LoginFormI } from '../../../types/authType';
 
 const LoginForm = () => {
   const [data, setData] = useState<LoginFormI>({
-    firstName: "",
-    lastName: "",
     email: "",
     password: ""
   });
@@ -22,10 +13,10 @@ const LoginForm = () => {
     console.log(data);
     setMessage("Login succès");
 
-    data.firstName = "";
-    data.lastName = "";
-    data.email = "";
-    data.password = "";
+    setData({
+      email: "",
+      password: "",
+    })
   };
 
 
@@ -33,22 +24,6 @@ const LoginForm = () => {
     <div className="loginForm">
       <h1>Login</h1>
       <form onSubmit={handleSubmit}>
-        <input
-          type="text"
-          name="firstName"
-          value={data.firstName}
-          onChange={e => setData({ ...data, firstName: e.target.value })}
-          placeholder="Prénom"
-          required
-        />
-        <input
-          type="text"
-          name="lastName"
-          value={data.lastName}
-          onChange={e => setData({ ...data, lastName: e.target.value })}
-          placeholder="Nom"
-          required
-        />
         <input
           type="email"
           name="email"
