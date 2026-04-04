@@ -1,11 +1,11 @@
 import { initServer } from "@ts-rest/express";
 import { usersContract } from "@repo/contracts";
-import { resolve } from "../../repositories/container";
-import { getUsersUseCase } from "../../use-cases/users/get-users.use-case";
-import { getUserByIdUseCase } from "../../use-cases/users/get-user-by-id.use-case";
-import { createUserUseCase } from "../../use-cases/users/create-user.use-case";
-import { updateUserUseCase } from "../../use-cases/users/update-user.use-case";
-import { deleteUserUseCase } from "../../use-cases/users/delete-user.use-case";
+import { resolve } from "../../repositories/container.js";
+import { getUsersUseCase } from "../../use-cases/users/get-users.use-case.js";
+import { getUserByIdUseCase } from "../../use-cases/users/get-user-by-id.use-case.js";
+import { createUserUseCase } from "../../use-cases/users/create-user.use-case.js";
+import { updateUserUseCase } from "../../use-cases/users/update-user.use-case.js";
+import { deleteUserUseCase } from "../../use-cases/users/delete-user.use-case.js";
 
 const s = initServer();
 const userRepository = resolve("user");

@@ -1,0 +1,8 @@
+.git
+node_modules
+**/node_modules
+**/.turbo
+**/dist
+**/.cache
+*.log
+.env*

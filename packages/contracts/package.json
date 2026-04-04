@@ -2,18 +2,24 @@
   "name": "@repo/contracts",
   "version": "0.0.0",
   "private": true,
-  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./index.ts",
   "exports": {
-    ".": "./index.ts"
+    ".": {
+      "types": "./index.ts",
+      "default": "./dist/index.js"
+    }
   },
   "license": "MIT",
   "scripts": {
-    "lint": "eslint \"**/*.ts\""
+    "build": "tsc",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix"
   },
   "devDependencies": {
     "@repo/eslint-config": "*",
     "@repo/typescript-config": "*",
-    "eslint": "^8.57.0",
+    "eslint": "^9.39.4",
     "typescript": "6.0.2"
   },
   "dependencies": {

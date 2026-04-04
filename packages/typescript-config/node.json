@@ -3,15 +3,26 @@
   "extends": "./base.json",
   "compilerOptions": {
     "target": "ESNext",
-    "useDefineForClassFields": true,
-    "module": "ESNext",
-    "lib": ["ESNext", "DOM"],
-    "sourceMap": true,
-    "resolveJsonModule": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "lib": ["ESNext"],
+    "types": ["node"],
+
+    "sourceMap": false,
+    "declaration": false,
+    "declarationMap": false,
+
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": false,
     "strictNullChecks": true,
+    "strict": true,
+    "isolatedModules": true,
+
     "noImplicitReturns": true,
-    "strict": true
+    "noImplicitOverride": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+
+    "resolveJsonModule": true
   }
 }

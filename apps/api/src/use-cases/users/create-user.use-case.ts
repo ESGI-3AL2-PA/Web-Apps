@@ -1,5 +1,5 @@
-import type { UserRepository } from "../../repositories/user.repository";
-import type { User } from "../../entities/user.entity";
+import type { UserRepository } from "../../repositories/user.repository.js";
+import type { User } from "../../entities/user.entity.js";
 
 export const createUserUseCase = (userRepository: UserRepository) => {
   return async (
