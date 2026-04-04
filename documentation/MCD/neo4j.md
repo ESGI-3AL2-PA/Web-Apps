@@ -1,93 +1,93 @@
-# Neo4j — Nœuds & Relations
+# Neo4j — Nodes & Relationships
 
-### Nœuds
+### Nodes
 
 ```mermaid
 erDiagram
 
   User {
     string userId PK
-    string nom
+    string name
     string email
     string role
   }
 
-  Quartier {
-    string quartierId PK
-    string nom
+  District {
+    string districtId PK
+    string name
   }
 
-  Evenement {
+  Event {
     string eventId PK
-    string titre
-    string categorie
+    string title
+    string category
     timestamp date
   }
 
-  Annonce {
-    string annonceId PK
+  Listing {
+    string listingId PK
     string type
-    string categorie
+    string category
   }
 
   Service {
     string serviceId PK
-    string statut
-    int montantPoints
+    string status
+    int pointsAmount
   }
 
   Vote {
     string voteId PK
     string question
-    timestamp dateFin
+    timestamp endDate
   }
 
   Incident {
     string incidentId PK
-    string categorie
-    string statut
+    string category
+    string status
   }
 
   Tag {
-    string nom PK
-    string categorie
+    string name PK
+    string category
   }
 ```
 
-### Relations (Cypher)
+### Relationships (Cypher)
 
 ```cypher
-// ── Résidence ──────────────────────────────────────────────────────────────
-(:User)-[:HABITE {depuis: date, adresse: string}]->(:Quartier)
+// ── Residence ──────────────────────────────────────────────────────────────
+(:User)-[:LIVES_IN {since: date, address: string}]->(:District)
 
-// ── Réseau social ──────────────────────────────────────────────────────────
-(:User)-[:CONNAIT {depuis: date, type: "voisin|ami"}]->(:User)
-(:User)-[:SUIT]->(:User)
+// ── Social network ─────────────────────────────────────────────────────────
+(:User)-[:KNOWS {since: date, type: "neighbor|friend"}]->(:User)
+(:User)-[:FOLLOWS]->(:User)
 
-// ── Événements ─────────────────────────────────────────────────────────────
-(:User)-[:A_CREE]->(:Evenement)
-(:User)-[:INSCRIT_A {dateInscription: date, statut: string}]->(:Evenement)
-(:User)-[:A_PARTICIPE {note: int}]->(:Evenement)
-(:Quartier)-[:CONTIENT]->(:Evenement)
-(:Evenement)-[:TAGUE]->(:Tag)
+// ── Events ─────────────────────────────────────────────────────────────────
+(:User)-[:CREATED]->(:Event)
+(:User)-[:REGISTERED_FOR {registrationDate: date, status: string}]->(:Event)
+(:User)-[:ATTENDED {rating: int}]->(:Event)
+(:District)-[:CONTAINS]->(:Event)
+(:Event)-[:TAGGED]->(:Tag)
 
-// ── Annonces & Services ────────────────────────────────────────────────────
-(:User)-[:A_PUBLIE]->(:Annonce)
-(:User)-[:REPOND_A {dateReponse: date}]->(:Annonce)
-(:Annonce)-[:GENERE]->(:Service)
-(:User)-[:PROPOSE {dateService: date}]->(:Service)
-(:User)-[:BENEFICIE_DE {dateService: date, statut: string}]->(:Service)
-(:Annonce)-[:TAGUE]->(:Tag)
+// ── Listings & Services ────────────────────────────────────────────────────
+(:User)-[:PUBLISHED]->(:Listing)
+(:User)-[:REPLIED_TO {replyDate: date}]->(:Listing)
+(:Listing)-[:GENERATES]->(:Service)
+(:User)-[:OFFERS {serviceDate: date}]->(:Service)
+(:User)-[:BENEFITS_FROM {serviceDate: date, status: string}]->(:Service)
+(:Listing)-[:TAGGED]->(:Tag)
 
 // ── Votes ───────────────────────────────────────────────────────────────────
-(:User)-[:A_VOTE {option: string, dateVote: date}]->(:Vote)
-(:Quartier)-[:CONCERNE]->(:Vote)
+(:User)-[:VOTED {option: string, voteDate: date}]->(:Vote)
+(:District)-[:CONCERNS]->(:Vote)
 
 // ── Incidents ──────────────────────────────────────────────────────────────
-(:User)-[:A_SIGNALE]->(:Incident)
-(:Quartier)-[:CONTIENT]->(:Incident)
+(:User)-[:REPORTED]->(:Incident)
+(:District)-[:CONTAINS]->(:Incident)
 
-// ── Recommandation (moteur Neo4j) ──────────────────────────────────────────
-(:User)-[:INTERESSE_PAR {score: float, updatedAt: date}]->(:Tag)
-(:User)-[:RECOMMANDE]->(:Evenement)
+// ── Recommendation (Neo4j engine) ──────────────────────────────────────────
+(:User)-[:INTERESTED_IN {score: float, updatedAt: date}]->(:Tag)
+(:User)-[:RECOMMENDED]->(:Event)
 ```
