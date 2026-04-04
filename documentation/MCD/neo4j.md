@@ -61,8 +61,7 @@ erDiagram
 (:User)-[:LIVES_IN {since: date, address: string}]->(:District)
 
 // ── Social network ─────────────────────────────────────────────────────────
-(:User)-[:KNOWS {since: date, type: "neighbor|friend"}]->(:User)
-(:User)-[:FOLLOWS]->(:User)
+(:User)-[:KNOWS]->(:User)
 
 // ── Events ─────────────────────────────────────────────────────────────────
 (:User)-[:CREATED]->(:Event)
