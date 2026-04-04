@@ -1,6 +1,6 @@
 import type { User } from "../entities/user.entity.js";
 
-export interface UserRepository {
+export interface IUserRepository {
   getUsers(params: { search?: string; page?: number; limit?: number }): Promise<{
     data: User[];
     total: number;

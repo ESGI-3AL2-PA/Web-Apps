@@ -12,108 +12,98 @@ erDiagram
     string phone
     string role
     string status
-    ObjectId quartierId FK
-    int pointsBalance
-    object mfa
-    object preferences
+    ObjectId districtId FK
+    int balance
     timestamp createdAt
     timestamp updatedAt
   }
 
-  QUARTIERS {
+  DISTRICTS {
     ObjectId _id PK
-    string nom
+    string name
     object geoJson
-    int nombreHabitants
     timestamp createdAt
   }
 
-  ANNONCES {
+  LISTINGS {
     ObjectId _id PK
-    ObjectId auteurId FK
-    ObjectId quartierId FK
-    string titre
+    ObjectId authorId FK
+    ObjectId districtId FK
+    string title
     string description
     string type
-    string categorie
-    boolean gratuit
-    int prixPoints
-    string statut
-    array tags
+    string category
+    int price
+    string status
+    array TAGS
     timestamp createdAt
     timestamp expiresAt
   }
 
-  CONTRATS {
+  TAGS {
     ObjectId _id PK
-    ObjectId annonceId FK
-    ObjectId prestataireId FK
-    ObjectId beneficiaireId FK
-    string statut
-    int montantPoints
-    array signatures
-    boolean litigieux
-    timestamp createdAt
-    timestamp signedAt
-  }
-
-  DOCUMENTS {
-    ObjectId _id PK
-    ObjectId uploadeurId FK
-    string titre
-    string fileUrl
-    array zonesSignature
-    array signataires
-    string statut
-    timestamp createdAt
-  }
-
-  EVENEMENTS {
-    ObjectId _id PK
-    ObjectId createurId FK
-    ObjectId quartierId FK
-    string titre
+    string name
     string description
-    string lieu
-    int placesTotal
-    int placesRestantes
-    string statut
-    array inscrits
-    timestamp dateEvenement
+  }
+
+  CONTRACTS {
+    ObjectId _id PK
+    ObjectId bidId FK
+    ObjectId providerId FK
+    ObjectId beneficiaryId FK
+    int price
+    string openSignDocumentId
+    string openSignStatus
+    boolean disputed
+    timestamp createdAt
+  }
+
+  EVENTS {
+    ObjectId _id PK
+    ObjectId creatorId FK
+    ObjectId districtId FK
+    string title
+    string description
+    string location
+    int totalSeats
+    int remainingSeats
+    string status
+    array registrants
+    timestamp eventDate
     timestamp createdAt
   }
 
   VOTES {
     ObjectId _id PK
-    ObjectId createurId FK
-    array quartierIds FK
+    ObjectId creatorId FK
+    array districtIds FK
     string question
     array options
-    string typeVote
-    string statut
-    array resultats
-    timestamp dateDebut
-    timestamp dateFin
+    string voteType
+    string status
+    array results
+    timestamp startDate
+    timestamp endDate
   }
 
-  VOTES_REPONSES {
+  VOTE_RESPONSES {
     ObjectId _id PK
     ObjectId voteId FK
     ObjectId userId FK
-    string optionChoisie
+    string chosenOption
     timestamp votedAt
   }
 
   INCIDENTS {
     ObjectId _id PK
-    ObjectId reporteurId FK
-    ObjectId quartierId FK
-    string categorie
+    ObjectId reporterId FK
+    ObjectId districtId FK
+    string category
     string description
     string photoUrl
-    string statut
-    array historique
-    ObjectId assigneA FK
+    string status
+    array history
+    ObjectId assignedTo FK
     timestamp createdAt
     timestamp updatedAt
   }
@@ -122,61 +112,69 @@ erDiagram
     ObjectId _id PK
     array participants FK
     string type
-    string nom
+    string name
     timestamp lastMessageAt
     timestamp createdAt
   }
 
   MESSAGES {
     ObjectId _id PK
-    ObjectId expediteurId FK
+    ObjectId senderId FK
     ObjectId conversationId FK
     string type
-    string contenu
+    string content
     string mediaUrl
-    boolean lu
+    boolean read
     timestamp createdAt
   }
 
   NOTIFICATIONS {
     ObjectId _id PK
-    ObjectId destinataireId FK
+    ObjectId recipientId FK
     string type
-    string titre
+    string title
     string message
     ObjectId refId
     string refType
-    boolean lue
+    boolean read
     timestamp createdAt
   }
 
-  POINTS_TRANSACTIONS {
+  REFRESH_TOKENS {
+    ObjectId _id PK
+    ObjectId userId FK
+    string tokenHash
+    timestamp expiresAt
+    timestamp revokedAt
+    timestamp createdAt
+  }
+
+  TRANSACTIONS {
     ObjectId _id PK
     ObjectId userId FK
     string type
-    int montant
-    int soldeApres
+    int amount
     ObjectId refId
     string refType
     timestamp createdAt
   }
 
-  USERS                 }o--||  QUARTIERS           : "appartient à"
-  ANNONCES              }o--||  USERS               : "publiée par"
-  ANNONCES              }o--||  QUARTIERS           : "dans"
-  CONTRATS              ||--||  ANNONCES            : "généré pour"
-  CONTRATS              }o--||  USERS               : "prestataire"
-  CONTRATS              }o--||  USERS               : "bénéficiaire"
-  DOCUMENTS             }o--||  USERS               : "uploadé par"
-  EVENEMENTS            }o--||  USERS               : "créé par"
-  EVENEMENTS            }o--||  QUARTIERS           : "dans"
-  VOTES                 }o--||  USERS               : "créé par"
-  VOTES_REPONSES        }o--||  VOTES               : "pour"
-  VOTES_REPONSES        }o--||  USERS               : "par"
-  INCIDENTS             }o--||  USERS               : "signalé par"
-  INCIDENTS             }o--||  QUARTIERS           : "dans"
-  MESSAGES              }o--||  USERS               : "envoyé par"
-  MESSAGES              }o--||  CONVERSATIONS       : "dans"
-  NOTIFICATIONS         }o--||  USERS               : "destinataire"
-  POINTS_TRANSACTIONS   }o--|| USERS                : "appartient à"
+  USERS               }o--||  DISTRICTS           : "belongs to"
+  LISTINGS            }o--||  USERS               : "published by"
+  LISTINGS            }o--||  DISTRICTS           : "in"
+  CONTRACTS           ||--||  LISTINGS            : "generated for"
+  CONTRACTS           }o--||  USERS               : "provider"
+  CONTRACTS           }o--||  USERS               : "beneficiary"
+  EVENTS              }o--||  USERS               : "created by"
+  EVENTS              }o--||  DISTRICTS           : "in"
+  VOTES               }o--||  USERS               : "created by"
+  VOTE_RESPONSES      }o--||  VOTES               : "for"
+  VOTE_RESPONSES      }o--||  USERS               : "by"
+  INCIDENTS           }o--||  USERS               : "reported by"
+  INCIDENTS           }o--||  DISTRICTS           : "in"
+  MESSAGES            }o--||  USERS               : "sent by"
+  MESSAGES            }o--||  CONVERSATIONS       : "in"
+  NOTIFICATIONS       }o--||  USERS               : "recipient"
+  TRANSACTIONS        }o--||  USERS               : "belongs to"
+  REFRESH_TOKENS      }o--||  USERS               : "belongs to"
 ```

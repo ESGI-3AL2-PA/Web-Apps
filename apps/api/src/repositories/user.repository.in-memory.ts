@@ -1,37 +1,24 @@
 import { randomUUID } from "crypto";
 import type { User } from "../entities/user.entity.js";
-import type { UserRepository } from "./user.repository.js";
+import type { IUserRepository } from "./user.repository.js";
 
-// !!! AI GENERATED !!!
+// This is a stub repository, IT DOES NOTHING !
 
-export class InMemoryUserRepository implements UserRepository {
-  private users: User[] = [];
-
+export class InMemoryUserRepository implements IUserRepository {
   async getUsers(params: { search?: string; page?: number; limit?: number }): Promise<{
     data: User[];
     total: number;
     page: number;
     limit: number;
   }> {
-    const { search, page = 1, limit = 10 } = params;
-    let filtered = [...this.users];
-
-    if (search) {
-      const lowerSearch = search.toLowerCase();
-      filtered = filtered.filter(
-        (user) => user.name.toLowerCase().includes(lowerSearch) || user.email.toLowerCase().includes(lowerSearch),
-      );
-    }
-
-    const total = filtered.length;
-    const start = (page - 1) * limit;
-    const data = filtered.slice(start, start + limit);
-
+    const { page = 1, limit = 10 } = params;
+    const total = 0;
+    const data: User[] = [];
     return { data, total, page, limit };
   }
 
   async getUserById(id: string): Promise<User | null> {
-    return this.users.find((user) => user.id === id) ?? null;
+    return null;
   }
 
   async createUser(data: Omit<User, "id" | "createdAt" | "updatedAt">): Promise<User> {
@@ -42,27 +29,14 @@ export class InMemoryUserRepository implements UserRepository {
       createdAt: now,
       updatedAt: now,
     };
-    this.users.push(user);
     return user;
   }
 
   async updateUser(id: string, data: Partial<Omit<User, "id" | "createdAt" | "updatedAt">>): Promise<User | null> {
-    const index = this.users.findIndex((user) => user.id === id);
-    if (index === -1) return null;
-
-    const updated: User = {
-      ...this.users[index]!,
-      ...data,
-      updatedAt: new Date().toISOString(),
-    };
-    this.users[index] = updated;
-    return updated;
+    return null;
   }
 
   async deleteUser(id: string): Promise<boolean> {
-    const index = this.users.findIndex((user) => user.id === id);
-    if (index === -1) return false;
-    this.users.splice(index, 1);
     return true;
   }
 }
