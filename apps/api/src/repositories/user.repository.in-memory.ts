@@ -1,6 +1,6 @@
 import { randomUUID } from "crypto";
-import type { User } from "../entities/user.entity";
-import type { UserRepository } from "./user.repository";
+import type { User } from "../entities/user.entity.js";
+import type { UserRepository } from "./user.repository.js";
 
 // !!! AI GENERATED !!!
 
@@ -62,7 +62,7 @@ export class InMemoryUserRepository implements UserRepository {
     if (index === -1) return null;
 
     const updated: User = {
-      ...this.users[index],
+      ...this.users[index]!,
       ...data,
       updatedAt: new Date().toISOString(),
     };

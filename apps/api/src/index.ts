@@ -1,8 +1,11 @@
 import express, { type Application, type RequestHandler } from "express";
+import cors from "cors";
+
 import { createExpressEndpoints } from "@ts-rest/express";
 import { usersContract } from "@repo/contracts";
-import { usersRouter } from "./routes/users/users.router";
-import { errorHandler, AppError } from "./middleware/error-handler";
+
+import { usersRouter } from "./routes/users/users.router.js";
+import { errorHandler, AppError } from "./middleware/error-handler.js";
 import { generateOpenApi } from "@ts-rest/open-api";
 import { apiReference } from "@scalar/express-api-reference";
 
@@ -19,6 +22,14 @@ const openApiDocument = generateOpenApi(contracts, {
   },
 });
 
+app.use(
+  cors({
+    // We should get ports from env probably
+    origin: ["http://localhost:4000", "http://localhost:5000"],
+    methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  }),
+);
 app.use(express.json());
 
 app.get("/health", (_req, res) => {

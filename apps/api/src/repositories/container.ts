@@ -1,4 +1,4 @@
-import { InMemoryUserRepository } from "./user.repository.in-memory";
+import { InMemoryUserRepository } from "./user.repository.in-memory.js";
 
 const repositories = {
   user: new InMemoryUserRepository(),
