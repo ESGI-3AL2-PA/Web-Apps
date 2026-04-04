@@ -7,12 +7,15 @@
       "outputs": ["dist/**"]
     },
     "lint": {},
+    "lint:fix": {},
     "dev": {
       "cache": false,
       "persistent": true
     },
     "start": {
       "cache": true
-    }
+    },
+    "format": {},
+    "format:check": {}
   }
 }

@@ -16,7 +16,6 @@
     "exactOptionalPropertyTypes": false,
     "strictNullChecks": true,
     "strict": true,
-    "noUncheckedSideEffectImports": true,
     "isolatedModules": true,
 
     "noImplicitReturns": true,

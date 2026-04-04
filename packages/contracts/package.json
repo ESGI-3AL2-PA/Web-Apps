@@ -13,12 +13,13 @@
   "license": "MIT",
   "scripts": {
     "build": "tsc",
-    "lint": "eslint \"**/*.ts\""
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix"
   },
   "devDependencies": {
     "@repo/eslint-config": "*",
     "@repo/typescript-config": "*",
-    "eslint": "^8.57.0",
+    "eslint": "^9.24.0",
     "typescript": "6.0.2"
   },
   "dependencies": {

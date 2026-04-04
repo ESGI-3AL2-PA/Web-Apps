@@ -7,7 +7,8 @@
     "dev": "vite --clearScreen false --port 5000",
     "build": "tsc && vite build",
     "start": "vite preview",
-    "lint": "eslint \"src/**/*.ts\""
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix"
   },
   "dependencies": {
     "@repo/ui": "*",
@@ -20,7 +21,7 @@
     "@types/react": "^19.0.1",
     "@types/react-dom": "^19.0.2",
     "@vitejs/plugin-react": "^6.0.1",
-    "eslint": "^8.57.0",
+    "eslint": "^9.24.0",
     "typescript": "6.0.2",
     "vite": "^8.0.3"
   }

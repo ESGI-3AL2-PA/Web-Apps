@@ -7,11 +7,7 @@ import type { UserRepository } from "./user.repository.js";
 export class InMemoryUserRepository implements UserRepository {
   private users: User[] = [];
 
-  async getUsers(params: {
-    search?: string;
-    page?: number;
-    limit?: number;
-  }): Promise<{
+  async getUsers(params: { search?: string; page?: number; limit?: number }): Promise<{
     data: User[];
     total: number;
     page: number;
@@ -23,9 +19,7 @@ export class InMemoryUserRepository implements UserRepository {
     if (search) {
       const lowerSearch = search.toLowerCase();
       filtered = filtered.filter(
-        (user) =>
-          user.name.toLowerCase().includes(lowerSearch) ||
-          user.email.toLowerCase().includes(lowerSearch),
+        (user) => user.name.toLowerCase().includes(lowerSearch) || user.email.toLowerCase().includes(lowerSearch),
       );
     }
 
@@ -40,9 +34,7 @@ export class InMemoryUserRepository implements UserRepository {
     return this.users.find((user) => user.id === id) ?? null;
   }
 
-  async createUser(
-    data: Omit<User, "id" | "createdAt" | "updatedAt">,
-  ): Promise<User> {
+  async createUser(data: Omit<User, "id" | "createdAt" | "updatedAt">): Promise<User> {
     const now = new Date().toISOString();
     const user: User = {
       ...data,
@@ -54,10 +46,7 @@ export class InMemoryUserRepository implements UserRepository {
     return user;
   }
 
-  async updateUser(
-    id: string,
-    data: Partial<Omit<User, "id" | "createdAt" | "updatedAt">>,
-  ): Promise<User | null> {
+  async updateUser(id: string, data: Partial<Omit<User, "id" | "createdAt" | "updatedAt">>): Promise<User | null> {
     const index = this.users.findIndex((user) => user.id === id);
     if (index === -1) return null;
 

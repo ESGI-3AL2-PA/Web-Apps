@@ -10,6 +10,12 @@ export class AppError extends Error {
   }
 }
 
+export class NotFoundError extends AppError {
+  constructor() {
+    super(404, "Ressource not found");
+  }
+}
+
 export const errorHandler = (
   err: Error,
   _req: Request,

@@ -5,7 +5,7 @@ import { createExpressEndpoints } from "@ts-rest/express";
 import { usersContract } from "@repo/contracts";
 
 import { usersRouter } from "./routes/users/users.router.js";
-import { errorHandler, AppError } from "./middleware/error-handler.js";
+import { errorHandler, NotFoundError } from "./middleware/error-handler.js";
 import { generateOpenApi } from "@ts-rest/open-api";
 import { apiReference } from "@scalar/express-api-reference";
 
@@ -50,7 +50,7 @@ app.use(
 createExpressEndpoints(contracts, routers, app);
 
 app.use((_req, _res, next) => {
-  next(new AppError(404, "Not found"));
+  next(new NotFoundError());
 });
 
 app.use(errorHandler);

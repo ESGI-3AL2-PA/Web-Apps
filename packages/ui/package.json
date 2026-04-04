@@ -9,7 +9,8 @@
   },
   "license": "MIT",
   "scripts": {
-    "lint": "eslint \"**/*.ts\""
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix"
   },
   "dependencies": {
     "react": "^19.2.4",
@@ -20,7 +21,7 @@
     "@types/react-dom": "^19.0.2",
     "@repo/eslint-config": "*",
     "@repo/typescript-config": "*",
-    "eslint": "^8.57.0",
+    "eslint": "^9.24.0",
     "typescript": "6.0.2"
   }
 }
