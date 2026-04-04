@@ -21,7 +21,7 @@
     "@types/react-dom": "^19.0.2",
     "@repo/eslint-config": "*",
     "@repo/typescript-config": "*",
-    "eslint": "^9.24.0",
+    "eslint": "^9.39.4",
     "typescript": "6.0.2"
   }
 }
