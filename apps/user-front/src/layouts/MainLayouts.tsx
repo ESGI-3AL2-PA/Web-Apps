@@ -1,16 +1,15 @@
-interface MainLayoutProps {
-  children: React.ReactNode
-}
+import { Outlet } from 'react-router-dom'
+import Header from '../component/Header'
 
-const MainLayouts = ({ children }: MainLayoutProps) => {
+const MainLayout = () => {
   return (
     <>
-      <div className="header">
-        {children}
-      </div>
-
+      <Header />
+      <main>
+        <Outlet />
+      </main>
     </>
   )
 }
 
-export default MainLayouts
+export default MainLayout

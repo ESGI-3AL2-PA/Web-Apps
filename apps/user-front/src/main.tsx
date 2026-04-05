@@ -1,10 +1,11 @@
-import { createRoot } from "react-dom/client";
-import HomePage from './app/HomePage'
+import React from 'react'
+import ReactDOM from 'react-dom/client'
+import { RouterProvider } from 'react-router-dom'
+import { router } from './app/router'
 
-const App = () => (
-  <div>
-    <HomePage />
-  </div>
-);
 
-createRoot(document.getElementById("app")!).render(<App />);
+ReactDOM.createRoot(document.getElementById('app')!).render(
+  <React.StrictMode>
+    <RouterProvider router={router} />
+  </React.StrictMode>
+)

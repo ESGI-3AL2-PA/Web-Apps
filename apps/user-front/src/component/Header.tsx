@@ -1,5 +1,6 @@
 import logo from '../../public/Logo-connectedNeighbours.png';
 import { useState } from "react";
+import { NavLink } from 'react-router-dom';
 
 const Header = () => {
     const [lang, setLang] = useState("FR");
@@ -17,11 +18,36 @@ const Header = () => {
 
             <div className="navbar-center">
                 <ul className="menu menu-horizontal gap-1">
-                    <li><a className="font-medium">Service</a></li>
-                    <li><a className="font-medium">Evenement</a></li>
-                    <li><a className="font-medium">Messagerie</a></li>
-                    <li><a className="font-medium">Documents</a></li>
-                    <li><a className="font-medium">Votes</a></li>
+                    <li>
+                        <NavLink to="/service"
+                            className={({ isActive }) => isActive ? 'active font-medium' : 'font-medium'}>
+                            Service
+                        </NavLink>
+                    </li>
+                    <li>
+                        <NavLink to="/evenement"
+                            className={({ isActive }) => isActive ? 'active font-medium' : 'font-medium'}>
+                            Evenement
+                        </NavLink>
+                    </li>
+                    <li>
+                        <NavLink to="/messagerie"
+                            className={({ isActive }) => isActive ? 'active font-medium' : 'font-medium'}>
+                            Messagerie
+                        </NavLink>
+                    </li>
+                    <li>
+                        <NavLink to="/documents"
+                            className={({ isActive }) => isActive ? 'active font-medium' : 'font-medium'}>
+                            Documents
+                        </NavLink>
+                    </li>
+                    <li>
+                        <NavLink to="/votes"
+                            className={({ isActive }) => isActive ? 'active font-medium' : 'font-medium'}>
+                            Votes
+                        </NavLink>
+                    </li>
                 </ul>
             </div>
 
