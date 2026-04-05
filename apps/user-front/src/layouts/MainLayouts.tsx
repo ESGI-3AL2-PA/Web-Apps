@@ -5,7 +5,7 @@ const MainLayout = () => {
   return (
     <>
       <Header />
-      <main>
+      <main className='px-50'>
         <Outlet />
       </main>
     </>

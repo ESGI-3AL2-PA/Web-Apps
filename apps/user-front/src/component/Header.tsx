@@ -6,7 +6,7 @@ const Header = () => {
     const [lang, setLang] = useState("FR");
 
     return (
-        <div className="navbar border-b border-base-300 px-50 bg-[#f8f7f2]">
+        <div className="navbar border-b border-black/10 px-50 bg-[#f8f7f2]">
 
             <div className="navbar-start gap-3">
                 <img src={logo} alt="logo" className="size-10" />
@@ -17,7 +17,7 @@ const Header = () => {
             </div>
 
             <div className="navbar-center">
-                <ul className="menu menu-horizontal gap-1">
+                <ul className="menu menu-horizontal gap-1 text-[20px]">
                     <li>
                         <NavLink to="/service"
                             className={({ isActive }) => isActive ? 'active font-medium' : 'font-medium'}>
