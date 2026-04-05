@@ -1,0 +1,20 @@
+{
+  "name": "playwright_testbook",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "playwright test",
+    "test:ui": "playwright test --ui"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@repo/contracts": "*"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.59.1",
+    "typescript": "^6.0.2"
+  }
+}
