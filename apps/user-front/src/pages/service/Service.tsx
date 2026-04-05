@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { NavLink, Outlet } from 'react-router-dom'
 
 const Service = () => {
     const [typeAnnonce, setTypeAnnonce] = useState("tout");
@@ -72,10 +73,9 @@ const Service = () => {
                         onChange={(e) => setPoints(Number(e.target.value))}
                         className="range range-primary range-sm"
                     />
-                    <div className="flex justify-between text-xs text-base-content/50">
-                        {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => (
-                            <span key={n}>{n}</span>
-                        ))}
+                    <div className="flex justify-between text-xs text-base-content/50 px-1">
+                        <span>0</span>
+                        <span>10</span>
                     </div>
                     <p className="text-sm text-base-content">
                         Max : <span className="font-bold text-primary">{points} pts</span>
@@ -85,7 +85,53 @@ const Service = () => {
             </div>
 
             {/* Main */}
-            <div className="flex-1 p-6">MAIN</div>
+            <div className="flex-1 p-6">
+                <div className="title flex flex-row pb-10">
+                    <div className="flex flex-col mr-37.5">
+                        <h2 className="text-[25px] font-bold">Services entre voisins</h2>
+                        <span className="underline">45 annonces actives</span>
+                    </div>
+                    <div className="flex flex-col h-25 gap-5">
+                        <div className="flex items-center gap-2">
+                            <NavLink
+                                to="annonces"
+                                className={({ isActive }) =>
+                                    `btn btn-sm ${isActive
+                                        ? "bg-gray-300 border-gray-300 text-base-content hover:bg-gray-300"
+                                        : "bg-transparent border-transparent text-base-content hover:bg-gray-100"
+                                    }`
+                                }>
+                                Annonces
+                            </NavLink>
+                            <NavLink
+                                to="mes-annonces"
+                                className={({ isActive }) =>
+                                    `btn btn-sm ${isActive
+                                        ? "bg-gray-300 border-gray-300 text-base-content hover:bg-gray-300"
+                                        : "bg-transparent border-transparent text-base-content hover:bg-gray-100"
+                                    }`
+                                }>
+                                Mes annonces
+                            </NavLink>
+                            <NavLink
+                                to="mes-contrats"
+                                className={({ isActive }) =>
+                                    `btn btn-sm ${isActive
+                                        ? "bg-gray-300 border-gray-300 text-base-content hover:bg-gray-300"
+                                        : "bg-transparent border-transparent text-base-content hover:bg-gray-100"
+                                    }`
+                                }>
+                                Mes contrats
+                            </NavLink>
+                        </div>
+
+                        <button className="btn bg-secondary w-45 text-[14px] border-0">+ Créer une annonce</button>
+                    </div>
+                </div>
+                <div className="content">
+                    <Outlet />
+                </div>
+            </div>
 
         </div>
     );
