@@ -1,9 +1,12 @@
-import Register from '../pages/auth/Register'
+import MainLayouts from '../layouts/MainLayouts'
+import Header from '../component/Header'
 
 const HomePage = () => {
     return (
         <>
-            <Register/>
+            <MainLayouts>
+                <Header />
+            </MainLayouts>
         </>
     )
 }

@@ -1,7 +1,15 @@
+interface MainLayoutProps {
+  children: React.ReactNode
+}
 
-const MainLayouts = () => {
+const MainLayouts = ({ children }: MainLayoutProps) => {
   return (
-    <div>MainLayouts</div>
+    <>
+      <div className="header">
+        {children}
+      </div>
+
+    </>
   )
 }
 
