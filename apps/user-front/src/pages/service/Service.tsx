@@ -88,7 +88,7 @@ const Service = () => {
             <div className="flex-1 p-6">
                 <div className="title flex flex-row pb-10">
                     <div className="flex flex-col mr-37.5">
-                        <h2 className="text-[25px] font-bold">Services entre voisins</h2>
+                        <h2 className="text-[30px] font-bold">Services entre voisins</h2>
                         <span className="underline">45 annonces actives</span>
                     </div>
                     <div className="flex flex-col h-25 gap-5">
