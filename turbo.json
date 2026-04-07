@@ -9,10 +9,12 @@
     "lint": {},
     "lint:fix": {},
     "dev": {
+      "dependsOn": ["^build"],
       "cache": false,
       "persistent": true
     },
     "start": {
+      "dependsOn": ["build"],
       "cache": true
     },
     "format": {},

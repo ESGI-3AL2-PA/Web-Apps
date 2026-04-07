@@ -7,7 +7,8 @@
     "lint:fix": "turbo run lint:fix",
     "start": "turbo run start",
     "format": "prettier --write \"**/*.{ts,tsx,js,cjs,mjs,json,md}\"",
-    "format:check": "prettier --check \"**/*.{ts,tsx,js,cjs,mjs,json,md}\""
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,cjs,mjs,json,md}\"",
+    "clean": "find . -name dist -not -path '*/node_modules/*' -type d -exec rm -rf {} +"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",
