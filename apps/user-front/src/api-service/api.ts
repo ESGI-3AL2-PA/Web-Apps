@@ -8,14 +8,17 @@ const api = axios.create({
 
 export async function getAllAnnonces(): Promise<ListingResponseDto[]> {
     try {
-        const res = await api.get<ListingResponseDto[]>("/listings");
+        const res = await api.get<{ data: ListingResponseDto[] }>("/listings");
 
-        if (!res) {
+        const annonceResponse = res.data;
+
+        if (!annonceResponse || !annonceResponse.data || !Array.isArray(annonceResponse.data)) {
             throw Error();
         }
 
-        return res.data;
+        return annonceResponse.data;
     } catch (error) {
+        console.error("Erreur API:", error);
         throw new Error("Erreur lors de du get all annonces")
     }
 
