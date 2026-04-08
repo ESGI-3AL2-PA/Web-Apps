@@ -1,11 +1,13 @@
 import type { Db } from "mongodb";
 import { MongoUserRepository } from "./User/user.repository.mongo.js";
+import { MongoListingRepository } from "./Listing/listing.repository.mongo.js";
 
-let repositories: { user: MongoUserRepository } | null = null;
+let repositories: { user: MongoUserRepository; listing: MongoListingRepository } | null = null;
 
 export const initContainer = (db: Db) => {
   repositories = {
     user: new MongoUserRepository(db),
+    listing: new MongoListingRepository(db),
   };
 };
 

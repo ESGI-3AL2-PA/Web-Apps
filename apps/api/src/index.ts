@@ -5,6 +5,7 @@ import { createExpressEndpoints } from "@ts-rest/express";
 import { usersContract, districtsContract, listingsContract } from "@repo/contracts";
 
 import { usersRouter } from "./routes/users/users.router.js";
+import { listingsRouter } from "./routes/listings/listings.router.js";
 import { errorHandler, NotFoundError } from "./middleware/error-handler.js";
 import { connectDB } from "./repositories/mongodb.connector.js";
 import { initContainer } from "./repositories/container.js";
@@ -55,6 +56,7 @@ app.use(
 );
 
 createExpressEndpoints({ ...usersContract }, { ...usersRouter }, app);
+createExpressEndpoints({ ...listingsContract }, { ...listingsRouter }, app);
 
 app.use((_req, _res, next) => {
   next(new NotFoundError());
