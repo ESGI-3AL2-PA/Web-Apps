@@ -45,15 +45,6 @@ The API enforces the following rules before persisting any boundary:
 - The ring must contain at least three distinct points.
 - District names must be unique — attempting to create a duplicate name returns a conflict error.
 
-### Backend Structure
-
-The district feature mirrors the existing user feature in structure:
-
-- **Entity** — Zod schema defining the district shape and validating incoming GeoJSON.
-- **Repository** — Interface with an in-memory implementation for development; swappable for MongoDB via the container without touching use-cases.
-- **Use-Cases** — One file per operation. The create and update use-cases contain the GeoJSON validation logic.
-- **Router** — Thin ts-rest handler that delegates to use-cases and returns typed responses.
-
 ---
 
 ## Admin Frontend
@@ -61,43 +52,3 @@ The district feature mirrors the existing user feature in structure:
 ### Libraries
 
 The map is powered by **Leaflet** with **react-leaflet** for React integration, and **leaflet-geoman** for the draw and edit tools. OpenStreetMap provides the base tile layer — no API key is required for any of these.
-
-### Page Layout
-
-The districts page is split into two panels: a sidebar on the left and the map on the right filling the remaining viewport height.
-
-**Sidebar** — Lists all districts by name. Clicking a district selects it, centers the map on its bounds, and reveals inline controls to rename or delete it. A "New District" button initiates draw mode on the map.
-
-**Map** — Renders all saved district polygons as filled regions with label tooltips. Saved districts use a muted color; the district being actively drawn or edited is visually distinct. When draw mode is active, the user clicks on the map to place vertices and double-clicks to close the polygon. When edit mode is active, the polygon vertices become draggable.
-
-### Data Handling
-
-A custom hook (`useDistricts`) manages all API interactions. It wraps the typed ts-rest client generated from `@repo/contracts` and exposes the district list alongside create, update, and delete operations. After any mutation, the list is refreshed so the map stays in sync.
-
----
-
-## Data Flow
-
-```
-Sidebar                             Map
-  │                                  │
-  │  "New District" clicked          │
-  │ ───────────────────────────────► │  draw mode activated
-  │                                  │
-  │                                  │  admin traces polygon
-  │                                  │  polygon closed
-  │  boundary received  ◄─────────── │
-  │                                  │
-  │  admin enters name + saves       │
-  │                                  │
-  │  POST /districts                 │
-  │       │                          │
-  │       ▼  success                 │
-  │  list refreshed ────────────────►│  new polygon rendered
-```
-
----
-
-## Geospatial Index
-
-A `2dsphere` index must be created on the `geoJson` field when the MongoDB repository is wired up. This is a prerequisite for geospatial queries used in other parts of the platform — for example, determining which district a user's registered address falls within, or filtering incidents by geographic area.
