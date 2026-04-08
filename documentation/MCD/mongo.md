@@ -9,9 +9,9 @@ erDiagram
     string passwordHash
     string firstName
     string lastName
+    string address
     string phone
     string role
-    string status
     ObjectId districtId FK
     int balance
     timestamp createdAt
@@ -22,7 +22,6 @@ erDiagram
     ObjectId _id PK
     string name
     object geoJson
-    timestamp createdAt
   }
 
   LISTINGS {
@@ -48,7 +47,7 @@ erDiagram
 
   CONTRACTS {
     ObjectId _id PK
-    ObjectId bidId FK
+    ObjectId listingId FK
     ObjectId providerId FK
     ObjectId beneficiaryId FK
     int price

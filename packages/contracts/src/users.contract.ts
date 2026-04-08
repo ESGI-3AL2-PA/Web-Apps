@@ -8,6 +8,7 @@ import {
   UserParamsDtoSchema,
   UserQueryDtoSchema,
   UserResponseDtoSchema,
+  PaginatedResponseDtoSchema,
 } from "./DTO";
 
 const c = initContract();
@@ -18,12 +19,7 @@ export const usersContract = c.router({
     path: "/users",
     query: UserQueryDtoSchema,
     responses: {
-      200: z.object({
-        data: z.array(UserResponseDtoSchema),
-        total: z.number(),
-        page: z.number(),
-        limit: z.number(),
-      }),
+      200: PaginatedResponseDtoSchema(UserResponseDtoSchema),
     },
     summary: "Get a paginated list of users",
   },

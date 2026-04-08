@@ -1,4 +1,4 @@
-import type { User } from "../entities/user.entity.js";
+import type { User } from "../../entities/user.entity.js";
 
 export interface IUserRepository {
   getUsers(params: { search?: string; page?: number; limit?: number }): Promise<{

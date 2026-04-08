@@ -1,0 +1,9 @@
+- Admin account creation process
+- App loging
+- Rate limits
+- Authorization
+- Address lookup, address autocomplete, and district infered from address coordinates (https://cartes.gouv.fr/aide/fr/guides-utilisateur/utiliser-les-services-de-la-geoplateforme/geocodage/)
+- CI / CD (Github workflows)
+- Emails Notifications
+- Sensitive informations discovery. We probably don't want to expose our users sensitive informations like address, phone, email to anyone. We need a process for our users to choose who can see their sensitive informations
+- GDPR compliance (Les utilisateurs ont le droit d’accéder à leurs données, de les modifier, de les supprimer et de s’opposer à leur traitement. La politique de confidentialité doit détailler comment et pourquoi les données sont collectées, stockées et partagées.)

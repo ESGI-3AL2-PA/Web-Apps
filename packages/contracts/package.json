@@ -18,6 +18,7 @@
     "typescript": "6.0.2"
   },
   "dependencies": {
+    "@anatine/zod-openapi": "^1.14.2",
     "@ts-rest/core": "^3.52.1",
     "zod": "^3.22.0"
   }
