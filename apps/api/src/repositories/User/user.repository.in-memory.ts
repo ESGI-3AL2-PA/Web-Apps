@@ -1,5 +1,5 @@
 import { randomUUID } from "crypto";
-import type { User } from "../entities/user.entity.js";
+import type { User } from "../../entities/user.entity.js";
 import type { IUserRepository } from "./user.repository.js";
 
 export class InMemoryUserRepository implements IUserRepository {

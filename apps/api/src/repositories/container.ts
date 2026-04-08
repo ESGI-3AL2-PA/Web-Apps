@@ -1,15 +1,18 @@
-import { InMemoryUserRepository } from "./user.repository.in-memory.js";
+import type { Db } from "mongodb";
+import { MongoUserRepository } from "./User/user.repository.mongo.js";
 
-const repositories = {
-  user: new InMemoryUserRepository(),
-} as const;
+let repositories: { user: MongoUserRepository } | null = null;
 
-type Container = typeof repositories;
+export const initContainer = (db: Db) => {
+  repositories = {
+    user: new MongoUserRepository(db),
+  };
+};
 
-export const container: Container = repositories;
-
+type Container = NonNullable<typeof repositories>;
 export type ContainerKeys = keyof Container;
 
 export const resolve = <K extends ContainerKeys>(key: K): Container[K] => {
-  return container[key];
+  if (!repositories) throw new Error("Container not initialized — call initContainer(db) first");
+  return (repositories as Container)[key];
 };

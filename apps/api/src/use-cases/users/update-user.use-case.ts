@@ -1,4 +1,4 @@
-import type { IUserRepository } from "../../repositories/user.repository.js";
+import type { IUserRepository } from "../../repositories/User/user.repository.js";
 import type { User } from "../../entities/user.entity.js";
 
 export const updateUserUseCase = (userRepository: IUserRepository) => {
