@@ -6,12 +6,13 @@ import MessageriePage from '../pages/Messagerie'
 import Annonces from '../pages/service/Annonces'
 import AnnoncesUser from '../pages/service/AnnoncesUser'
 import Contrat from '../pages/service/Contrat'
+import DashBoard from '../pages/dashboard/DashBoard'
 
 export const router = createBrowserRouter([
   {
     element: <MainLayout />,
     children: [
-      { path: '/', element: <Navigate to="/service" replace /> },
+      { path: '/', element: <DashBoard /> },
       {
         path: '/service',
         element: <ServicePage />,

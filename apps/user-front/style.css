@@ -3,6 +3,10 @@
 @import "tailwindcss";
 @plugin "flyonui";
 
+@theme {
+    --color-blc: #f8f7f2;
+}
+
 /* thème DaisyUI/Flyonui */
 [data-theme="light"] {
     --color-primary: #6366f1;
