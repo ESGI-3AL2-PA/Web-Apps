@@ -1,5 +1,9 @@
 # SATAN QL — Custom Query Language for MongoDB
 
+## Definition
+
+### SATAN = **S**ananes **A**byssal **T**orment **A**nalysis **N**etwork
+
 ## Overview
 
 `@repo/satan` is a monorepo package that introduces a custom SQL-like query language (SATAN QL) compiled to MongoDB queries at runtime. A Python lex/yacc parser (PLY) handles parsing. The two communicate over stdin/stdout: Node spawns a single Python process at startup, keeps it alive, and sends newline-delimited JSON requests.
