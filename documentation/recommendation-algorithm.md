@@ -37,53 +37,6 @@ All else equal, a listing posted today outranks one posted last week. The recenc
 
 ---
 
-## Scoring Algorithm
-
-```
-FUNCTION score(listing, user):
-
-  // --- Tag affinity (50%) ---
-  tagScore ← 0
-  FOR EACH tag IN listing.tags:
-    FOR EACH event IN user.INTERESTED_IN events for tag:   // one entry per past interaction
-      ageInDays ← days since event.createdAt
-      tagScore  ← tagScore + event.delta × exp(-ageInDays / 30)   // decay each event independently
-  tagScore ← min(tagScore / 5, 1)   // normalise: cap at 5 accumulated points → score of 1
-
-  // --- Social signal (30%) ---
-  IF listing.author is CONNECTED_TO user:
-    socialScore ← 1
-  ELSE:
-    socialScore ← 0
-
-  // --- Recency (20%) ---
-  ageInDays   ← days since listing.createdAt
-  recencyScore ← exp(-ageInDays / 7)   // 7-day half-life decay
-
-  // --- Composite ---
-  RETURN 0.5 × tagScore + 0.3 × socialScore + 0.2 × recencyScore
-
-FUNCTION rankFeed(listings, user):
-  FOR EACH listing IN listings:
-    listing.score ← score(listing, user)
-  RETURN listings SORTED BY score DESCENDING
-```
-
----
-
-## Request Flow
-
-When a client calls `GET /listings/feed`:
-
-1. The API reads the authenticated user's identity from the JWT.
-2. MongoDB returns a pool of candidate listings — active, non-expired, and strictly limited to that district.
-3. A single Neo4j query retrieves all scoring context for those candidates: the user's interest profile, the tags on each listing, and which listings were published by social connections.
-4. Each candidate is scored in application code and the results are sorted.
-5. The full listing for the current page window are fetched from MongoDB in sorted order.
-6. The paginated result is returned to the client.
-
----
-
 ## Interest Tracking
 
 Interest tracking is a fire-and-forget side-effect triggered by user actions. It does not block the response. The relevant triggers are:

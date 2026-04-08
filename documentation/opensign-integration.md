@@ -93,30 +93,3 @@ A dedicated route that presents the contract in two steps:
 | Contract business logic (listing → parties → price) | Our API |
 | Authorization (who can access/sign) | Our API |
 | Disputed/litigation flag | Our API |
-
----
-
-## Environment Configuration
-
-Four environment variables are required:
-
-| Variable | Where | Purpose |
-|----------|-------|---------|
-| `OPENSIGN_API_URL` | `apps/api/.env` | Base URL for the OpenSign REST API |
-| `OPENSIGN_API_TOKEN` | `apps/api/.env` | Authentication token for OpenSign API calls |
-| `OPENSIGN_WEBHOOK_KEY` | `apps/api/.env` | Secret used to verify incoming webhook signatures |
-| `OPENSIGN_MASTER_KEY` | Root `.env` | 12-character master key for the OpenSign Docker service |
-
-The webhook URL also needs to be registered manually in the OpenSign admin panel under **Settings → Webhook**.
-
----
-
-## Verification Checklist
-
-1. OpenSign Docker service starts and is accessible on its configured port
-2. Creating a contract stores the PDF URL and signing URLs in the DB
-3. The documents list page shows all contracts for the authenticated user without any OpenSign calls
-4. The contract detail page renders the PDF inline via `react-pdf`
-5. Clicking to sign redirects to the correct OpenSign URL for that user
-6. Completing signing triggers the webhook and updates the contract status in the DB
-7. The updated status is reflected on both the list and detail pages

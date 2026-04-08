@@ -8,8 +8,7 @@ const newUser = (overrides: Partial<CreateUserDto> = {}): CreateUserDto => ({
   lastName: "User",
   email: `test-email@example.com`,
   password: "password123",
-  role: "user",
-  status: "active",
+  address: "21 rue louise michel 93170",
   ...overrides,
 });
 
@@ -37,13 +36,12 @@ test.describe("POST /users", () => {
     expect(user.firstName).toBe("Test");
     expect(user.lastName).toBe("User");
     expect(user.role).toBe("user");
-    expect(user.status).toBe("active");
     expect(user).not.toHaveProperty("passwordHash");
   });
 
   test("returns created user via GET /users/:id", async ({ request }) => {
     const createRes = await request.post(`${BASE}/users`, {
-      data: newUser({ firstName: "Lookup", lastName: "User", role: "admin" }),
+      data: newUser({ firstName: "Lookup", lastName: "User" }),
     });
     const created: UserResponseDto = await createRes.json();
 
