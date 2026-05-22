@@ -2,10 +2,20 @@ import express, { type Application, type RequestHandler } from "express";
 import cors from "cors";
 
 import { createExpressEndpoints } from "@ts-rest/express";
-import { usersContract, districtsContract, listingsContract } from "@repo/contracts";
+import {
+  usersContract,
+  districtsContract,
+  listingsContract,
+  eventsContract,
+  contractsContract,
+  incidentsContract,
+} from "@repo/contracts";
 
 import { usersRouter } from "./routes/users/users.router.js";
 import { listingsRouter } from "./routes/listings/listings.router.js";
+import { eventsRouter } from "./routes/events/events.router.js";
+import { contractsRouter } from "./routes/contracts/contracts.router.js";
+import { incidentsRouter } from "./routes/incidents/incidents.router.js";
 import { errorHandler, NotFoundError } from "./middleware/error-handler.js";
 import { connectDB } from "./repositories/mongodb.connector.js";
 import { initContainer } from "./repositories/container.js";
@@ -20,13 +30,23 @@ const openApiDocument = generateOpenApi(
     Users: usersContract,
     Districts: districtsContract,
     Listings: listingsContract,
+    Events: eventsContract,
+    Contracts: contractsContract,
+    Incidents: incidentsContract,
   },
   {
     info: {
       title: "API",
       version: "0.0.0",
     },
-    tags: [{ name: "Users" }, { name: "Districts" }, { name: "Listings" }],
+    tags: [
+      { name: "Users" },
+      { name: "Districts" },
+      { name: "Listings" },
+      { name: "Events" },
+      { name: "Contracts" },
+      { name: "Incidents" },
+    ],
   },
 );
 
@@ -57,6 +77,9 @@ app.use(
 
 createExpressEndpoints({ ...usersContract }, { ...usersRouter }, app);
 createExpressEndpoints({ ...listingsContract }, { ...listingsRouter }, app);
+createExpressEndpoints({ ...eventsContract }, { ...eventsRouter }, app);
+createExpressEndpoints({ ...contractsContract }, { ...contractsRouter }, app);
+createExpressEndpoints({ ...incidentsContract }, { ...incidentsRouter }, app);
 
 app.use((_req, _res, next) => {
   next(new NotFoundError());
