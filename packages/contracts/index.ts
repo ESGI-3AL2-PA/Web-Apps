@@ -6,3 +6,8 @@ export * from "./src/listings.contract";
 export * from "./src/events.contract";
 export * from "./src/contracts.contract";
 export * from "./src/incidents.contract";
+export * from "./src/tags.contract";
+export * from "./src/votes.contract";
+export * from "./src/conversations.contract";
+export * from "./src/notifications.contract";
+export * from "./src/transactions.contract";
