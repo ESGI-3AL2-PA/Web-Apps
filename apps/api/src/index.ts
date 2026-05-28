@@ -9,6 +9,11 @@ import {
   eventsContract,
   contractsContract,
   incidentsContract,
+  tagsContract,
+  votesContract,
+  conversationsContract,
+  notificationsContract,
+  transactionsContract,
 } from "@repo/contracts";
 
 import { usersRouter } from "./routes/users/users.router.js";
@@ -16,6 +21,12 @@ import { listingsRouter } from "./routes/listings/listings.router.js";
 import { eventsRouter } from "./routes/events/events.router.js";
 import { contractsRouter } from "./routes/contracts/contracts.router.js";
 import { incidentsRouter } from "./routes/incidents/incidents.router.js";
+import { districtsRouter } from "./routes/districts/districts.router.js";
+import { tagsRouter } from "./routes/tags/tags.router.js";
+import { votesRouter } from "./routes/votes/votes.router.js";
+import { conversationsRouter } from "./routes/conversations/conversations.router.js";
+import { notificationsRouter } from "./routes/notifications/notifications.router.js";
+import { transactionsRouter } from "./routes/transactions/transactions.router.js";
 import { errorHandler, NotFoundError } from "./middleware/error-handler.js";
 import { connectDB } from "./repositories/mongodb.connector.js";
 import { initContainer } from "./repositories/container.js";
@@ -33,6 +44,11 @@ const openApiDocument = generateOpenApi(
     Events: eventsContract,
     Contracts: contractsContract,
     Incidents: incidentsContract,
+    Tags: tagsContract,
+    Votes: votesContract,
+    Conversations: conversationsContract,
+    Notifications: notificationsContract,
+    Transactions: transactionsContract,
   },
   {
     info: {
@@ -46,6 +62,11 @@ const openApiDocument = generateOpenApi(
       { name: "Events" },
       { name: "Contracts" },
       { name: "Incidents" },
+      { name: "Tags" },
+      { name: "Votes" },
+      { name: "Conversations" },
+      { name: "Notifications" },
+      { name: "Transactions" },
     ],
   },
 );
@@ -80,6 +101,12 @@ createExpressEndpoints({ ...listingsContract }, { ...listingsRouter }, app);
 createExpressEndpoints({ ...eventsContract }, { ...eventsRouter }, app);
 createExpressEndpoints({ ...contractsContract }, { ...contractsRouter }, app);
 createExpressEndpoints({ ...incidentsContract }, { ...incidentsRouter }, app);
+createExpressEndpoints({ ...districtsContract }, { ...districtsRouter }, app);
+createExpressEndpoints({ ...tagsContract }, { ...tagsRouter }, app);
+createExpressEndpoints({ ...votesContract }, { ...votesRouter }, app);
+createExpressEndpoints({ ...conversationsContract }, { ...conversationsRouter }, app);
+createExpressEndpoints({ ...notificationsContract }, { ...notificationsRouter }, app);
+createExpressEndpoints({ ...transactionsContract }, { ...transactionsRouter }, app);
 
 app.use((_req, _res, next) => {
   next(new NotFoundError());
