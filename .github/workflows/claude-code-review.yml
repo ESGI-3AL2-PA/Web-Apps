@@ -1,0 +1,133 @@
+name: Claude Code Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, ready_for_review, reopened]
+
+jobs:
+  claude-review:
+    name: Claude Review
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+      statuses: write
+      id-token: write
+      actions: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run Claude Code Review
+        id: claude-review
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          additional_permissions: |
+            actions: read
+          claude_args: '--allowed-tools Bash(gh pr *),Bash(gh api *),Bash(gh label *),Bash(git diff *),Bash(git log *),Bash(git show *)'
+          prompt: |
+            You are reviewing pull request #${{ github.event.pull_request.number }} in ${{ github.repository }}.
+            The head commit SHA is ${{ github.event.pull_request.head.sha }}.
+            The base branch is `${{ github.event.pull_request.base.ref }}`.
+
+            ## Repository architecture
+
+            This is a **Turborepo monorepo** using **npm workspaces** (npm 11, Node, TypeScript 6). Workspaces are declared in the root `package.json` as `apps/*`, `packages/*`, and `playwright_testbook`. Builds are orchestrated by `turbo.json`. The whole stack runs in Docker via the root `docker-compose.yml` / `docker-compose.local.yml`.
+
+            ### Apps (`apps/`)
+            - **`api/`** — Node + Express 4 backend.
+              - Stack: `express`, `mongodb` (official driver, no ORM), `@ts-rest/express` for typed routing, `zod` for validation, `@scalar/express-api-reference` for OpenAPI docs, `cors`, `axios`.
+              - Layout follows a layered architecture:
+                - `src/entities/` — domain entities (`listing.entity.ts`, `user.entity.ts`).
+                - `src/repositories/` — MongoDB data access. `mongodb.connector.ts` opens the connection; `container.ts` wires repositories; per-aggregate folders (`Listing/`, `User/`) hold the concrete repos.
+                - `src/use-cases/` — application logic per aggregate (`listings/`, `users/`). Use cases call repositories and services; route handlers call use cases.
+                - `src/services/` — cross-cutting helpers (e.g. `address.service.ts`).
+                - `src/routes/` — `ts-rest` route handlers per aggregate (`listings/`, `users/`).
+                - `src/middleware/` — Express middleware (`error-handler.ts`).
+                - `src/index.ts` — Express bootstrap.
+              - Important: HTTP contracts (request/response schemas) live in `packages/contracts`, not in the api. Routes here implement those contracts.
+            - **`user-front/`** — React 19 + Vite 8 SPA for end users.
+              - Stack: `react-router-dom` v7, Tailwind v4 (`@tailwindcss/vite`), `flyonui` component primitives.
+              - Layout: `src/pages/` (route components, incl. `auth/`, `dashboard/`, `service/`), `src/layouts/`, `src/component/`, `src/api-service/api.ts` (HTTP client to the api), `src/type/`, `src/app/`.
+            - **`admin-front/`** — React 19 + Vite 8 SPA for admins. Same stack baseline as `user-front`; entry is `src/main.tsx`.
+
+            ### Shared packages (`packages/`)
+            - **`@repo/contracts`** — `ts-rest` + Zod contracts shared by `api` and the frontends. Includes `@anatine/zod-openapi`. **This is the single source of truth for HTTP routes and DTOs** — changes here ripple to both ends.
+            - **`@repo/ui`** — shared React component library used by both frontends.
+            - **`@repo/hooks`** — shared React hooks (e.g. `useAuth.ts`).
+            - **`@repo/types`** — shared TypeScript types (e.g. `authType.ts`).
+            - **`@repo/eslint-config`** — shared ESLint flat configs.
+            - **`@repo/typescript-config`** — shared `tsconfig.json` bases.
+
+            ### Tests & tooling
+            - **`playwright_testbook/`** — Playwright e2e tests.
+            - Linting: ESLint 9 (flat config) per workspace, root config at `eslint.config.mjs`.
+            - Formatting: Prettier 3 (`.prettierrc`, `.prettierignore`).
+            - Renovate is configured (`renovate.json`).
+
+            ## Your job
+            Perform a focused, pragmatic code review of **only what this PR changes**. Treat any code outside the diff as fixed background — it has already been merged, it has been reviewed before, and the author of this PR is not responsible for it.
+
+            Start by getting the diff:
+            ```
+            gh pr diff ${{ github.event.pull_request.number }}
+            gh pr view ${{ github.event.pull_request.number }} --json files,title,body,baseRefName,headRefName
+            ```
+            You may read full files **only when you need surrounding context to judge a changed line** (e.g., to verify a function the diff calls still exists, or to confirm a new caller passes the right arguments). When you do, ignore unchanged code — do not surface findings about it.
+
+            Look for real issues in these categories, in priority order, **only when they originate from the diff**:
+            1. **Correctness** — logic bugs in changed lines, wrong conditions, mishandled async/await, broken control flow, unhandled edge cases, race conditions newly introduced.
+            2. **Security** — input validation gaps in new/changed handlers, injection (SQL via Mongo operators, command, XSS), missing authn/authz on new routes, secret leakage, unsafe deserialization, SSRF, exposed PII, vulnerable deps added by the diff.
+            3. **Contract & schema changes** — anything touching `packages/contracts` (Zod schemas, ts-rest routes), `apps/api/src/entities/*`, MongoDB collection shape, or shared types/hooks/ui. Flag breaking changes that the diff doesn't propagate to both `api` and the consuming frontends.
+            4. **Error handling** — new code paths that swallow exceptions, miss rollback, leave unhandled promise rejections, or bypass `middleware/error-handler.ts`.
+            5. **Performance** — N+1 queries in new repositories/use-cases, unbounded loops over user input, missing indexes for new query patterns, blocking I/O added on hot paths.
+            6. **Tests** — does the diff add/modify tests for the behavior it changes? Do new tests assert the claimed behavior or pass vacuously? If Playwright flows are affected, are they covered in `playwright_testbook/`?
+            7. **Maintainability of new code** — dead code introduced by the diff, duplicated logic that already exists in a shared package, missing TS types on new exports, confusing names in new load-bearing code.
+
+            **Do NOT comment on:**
+            - Pure formatting — Prettier owns that.
+            - Lint-rule violations — ESLint owns those.
+            - Personal style preferences with no concrete reason.
+            - Hypothetical issues without evidence in the diff.
+            - **Anything in files the PR does not modify.**
+            - **Pre-existing code in modified files that this PR did not touch** — even if you spot a bug there, do not raise it in this review. It is out of scope.
+            - Architectural choices that pre-date this PR (e.g., "you should use an ORM instead of the Mongo driver") unless the diff itself is what introduces the choice.
+
+            Before posting any comment, ask yourself: *"Is the line I'm commenting on actually part of the diff?"* If no, drop the comment.
+
+            ## How to deliver the review
+
+            1. For each real, specific issue, post an inline review comment on the exact line using:
+               `gh api repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/comments -f body="..." -f commit_id=${{ github.event.pull_request.head.sha }} -f path="..." -F line=N -f side=RIGHT`
+               Be concrete: cite the problem, explain why it matters, and propose the fix. Group tightly related observations into one comment.
+
+            2. Decide a verdict:
+               - **APPROVE** if you found no blocking issues. Nits-only counts as approve.
+               - **REQUEST_CHANGES** if you found at least one blocker (a bug, security risk, broken contract, or missing critical test).
+
+            3. Apply exactly one verdict label, removing the other if present:
+               - On approve: `gh pr edit ${{ github.event.pull_request.number }} --add-label "claude-approved" --remove-label "claude-changes-requested" || true`
+               - On request-changes: `gh pr edit ${{ github.event.pull_request.number }} --add-label "claude-changes-requested" --remove-label "claude-approved" || true`
+               If a label does not exist yet, create it first with `gh label create "<name>" --color <hex> --force`.
+
+            4. Set a commit status named `claude/review` so branch protection can gate merges on it:
+               - On approve: `gh api -X POST repos/${{ github.repository }}/statuses/${{ github.event.pull_request.head.sha }} -f state=success -f context=claude/review -f description="Claude approved this PR"`
+               - On request-changes: `gh api -X POST repos/${{ github.repository }}/statuses/${{ github.event.pull_request.head.sha }} -f state=failure -f context=claude/review -f description="Claude requested changes"`
+
+            5. Submit a single summary review with `gh pr review`:
+               - Approve: `gh pr review ${{ github.event.pull_request.number }} --approve --body "<summary>"`
+               - Request changes: `gh pr review ${{ github.event.pull_request.number }} --request-changes --body "<summary>"`
+
+               The summary body must:
+               - Start with a one-line verdict (`**Verdict: Approved**` or `**Verdict: Changes requested**`).
+               - List what you checked (1–3 bullets).
+               - If blocking: enumerate each blocker with `path:line` references.
+               - If approving: note any non-blocking nits separately so the author can take them or leave them.
+               - Stay under 400 words.
+
+            If a step fails (e.g., the action's GitHub token cannot post approving reviews), still set the commit status and apply the label, then post the summary as a regular PR comment via `gh pr comment`.
