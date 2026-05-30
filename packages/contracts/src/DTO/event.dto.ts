@@ -47,6 +47,22 @@ export const EventQueryDtoSchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).optional().default(20),
   search: z.string().optional(),
   districtId: z.string().optional(),
+  creatorId: z.string().optional(),
   status: EventStatusSchema.optional(),
 }).openapi("EventQuery");
 export type EventQueryDto = z.infer<typeof EventQueryDtoSchema>;
+
+export const RegisterEventDtoSchema = z
+  .object({
+    userId: z.string().openapi({ description: "ID of the user registering for the event" }),
+  })
+  .openapi({ title: "RegisterEvent" });
+export type RegisterEventDto = z.infer<typeof RegisterEventDtoSchema>;
+
+export const AttendEventDtoSchema = z
+  .object({
+    userId: z.string().openapi({ description: "ID of the user who attended" }),
+    rating: z.number().int().min(1).max(5).optional().openapi({ description: "Optional rating left by the attendee" }),
+  })
+  .openapi({ title: "AttendEvent" });
+export type AttendEventDto = z.infer<typeof AttendEventDtoSchema>;
