@@ -9,7 +9,7 @@
     "format": "prettier --write \"**/*.{ts,tsx,js,cjs,mjs,json,md}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,cjs,mjs,json,md}\"",
     "clean:dist": "npx rimraf dist packages/*/dist apps/*/dist",
-    "clean:node": "npx rimraf node_modules packages/*/node_modules apps/*/node_module",
+    "clean:node": "npx rimraf --glob node_modules packages/*/node_modules apps/*/node_modules",
     "clean": "npm run clean:dist && npm run clean:node && npm ci"
   },
   "devDependencies": {

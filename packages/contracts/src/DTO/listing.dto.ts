@@ -1,6 +1,14 @@
 import { z } from "../zod";
 
-export const ListingTypeSchema = z.enum(["offer", "request"]);
+export const ListingTypeSchema = z.enum([
+  "Jardinage",
+  "Bricolage",
+  "Garde d'enfants",
+  "Cuisine",
+  "Transport",
+  "Animaux",
+  "Informatique",
+]);
 export type ListingType = z.infer<typeof ListingTypeSchema>;
 
 export const ListingStatusSchema = z.enum(["active", "closed", "expired"]);
@@ -13,10 +21,9 @@ export const ListingResponseDtoSchema = z
     districtId: z.string().openapi({ description: "ID of the district this listing belongs to" }),
     title: z.string().openapi({ description: "Listing title", example: "Plumber available for small repairs" }),
     description: z.string().openapi({ description: "Detailed description of the listing" }),
-    type: ListingTypeSchema.openapi({ description: "Whether this is an offer or a request" }),
+    type: ListingTypeSchema.openapi({ description: "Category of the listing" }),
     price: z.number().int().openapi({ description: "Price in tokens", example: 10 }),
     status: ListingStatusSchema.openapi({ description: "Current status of the listing" }),
-    tags: z.array(z.string()).openapi({ description: "Tags for categorisation", example: ["plumbing"] }),
     createdAt: z.string().datetime().openapi({ description: "Creation timestamp" }),
     expiresAt: z.string().datetime().optional().openapi({ description: "Expiry timestamp" }),
   })
@@ -31,9 +38,8 @@ export const CreateListingDtoSchema = z
       .max(300)
       .openapi({ description: "Listing title", example: "Plumber available for small repairs" }),
     description: z.string().min(1).openapi({ description: "Detailed description" }),
-    type: ListingTypeSchema.openapi({ description: "offer or request" }),
+    type: ListingTypeSchema.openapi({ description: "Category of the listing" }),
     price: z.number().int().min(0).openapi({ description: "Price in tokens", example: 10 }),
-    tags: z.array(z.string()).optional().default([]),
     expiresAt: z.string().datetime().optional(),
   })
   .openapi({ title: "CreateListing" });
@@ -46,7 +52,6 @@ export const UpdateListingDtoSchema = z
     type: ListingTypeSchema.optional(),
     price: z.number().int().min(0).optional(),
     status: ListingStatusSchema.optional(),
-    tags: z.array(z.string()).optional(),
     expiresAt: z.string().datetime().optional(),
   })
   .openapi({ title: "UpdateListing" });

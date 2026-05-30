@@ -1,6 +1,14 @@
 import { z } from "zod";
 
-export const ListingTypeSchema = z.enum(["offer", "request"]);
+export const ListingTypeSchema = z.enum([
+  "Jardinage",
+  "Bricolage",
+  "Garde d'enfants",
+  "Cuisine",
+  "Transport",
+  "Animaux",
+  "Informatique",
+]);
 export type ListingType = z.infer<typeof ListingTypeSchema>;
 
 export const ListingStatusSchema = z.enum(["active", "closed", "expired"]);

@@ -2,7 +2,7 @@ import { z } from "zod";
 
 export const GeoJsonSchema = z.object({
   type: z.string(),
-  coordinates: z.array(z.unknown()),
+  coordinates: z.array(z.number()),
 });
 export type GeoJson = z.infer<typeof GeoJsonSchema>;
 

@@ -1,16 +1,15 @@
 import { useState } from "react";
 import { NavLink, Outlet } from 'react-router-dom'
+import FilterBar from "../../component/FilterBar";
+import type { ListingType } from "../../api-service/api";
+
+export type ServiceOutletContext = {
+    selectedType: ListingType | "";
+};
 
 const Service = () => {
-    const [typeAnnonce, setTypeAnnonce] = useState("tout");
-    const [categories, setCategories] = useState<string[]>([]);
     const [points, setPoints] = useState(0);
-
-    const toggleCategorie = (cat: string) => {
-        setCategories(prev =>
-            prev.includes(cat) ? prev.filter(c => c !== cat) : [...prev, cat]
-        );
-    };
+    const [selectedType, setSelectedType] = useState<ListingType | "">("");
 
     return (
         <div className="flex">
@@ -18,46 +17,8 @@ const Service = () => {
             {/* Left Barre */}
             <div className="w-64 min-h-screen bg-base-100 p-4 flex flex-col gap-6">
 
-                {/* Type d'annonce */}
-                <div className="flex flex-col gap-2 shadow-md rounded-lg p-4 bg-[#f8f7f2]">
-                    <h3 className="font-bold text-base-content text-sm uppercase tracking-wide">
-                        Type d'annonce
-                    </h3>
-                    <div className="flex flex-col gap-2">
-                        {["tout", "demande", "offre"].map((type) => (
-                            <label key={type} className="flex items-center gap-2 cursor-pointer">
-                                <input
-                                    type="radio"
-                                    name="typeAnnonce"
-                                    className="radio radio-primary radio-sm"
-                                    checked={typeAnnonce === type}
-                                    onChange={() => setTypeAnnonce(type)}
-                                />
-                                <span className="text-base-content capitalize">{type}</span>
-                            </label>
-                        ))}
-                    </div>
-                </div>
-
                 {/* Catégorie */}
-                <div className="flex flex-col gap-2 shadow-md rounded-lg p-4 bg-[#f8f7f2]">
-                    <h3 className="font-bold text-base-content text-sm uppercase tracking-wide">
-                        Catégorie
-                    </h3>
-                    <div className="flex flex-col gap-2">
-                        {["Jardinage", "Bricolage", "Garde d'enfants", "Cuisine", "Transport", "Animaux", "Informatique"].map((cat) => (
-                            <label key={cat} className="flex items-center gap-2 cursor-pointer">
-                                <input
-                                    type="checkbox"
-                                    className="checkbox checkbox-primary checkbox-sm"
-                                    checked={categories.includes(cat)}
-                                    onChange={() => toggleCategorie(cat)}
-                                />
-                                <span className="text-base-content">{cat}</span>
-                            </label>
-                        ))}
-                    </div>
-                </div>
+                <FilterBar selectedType={selectedType} onChange={setSelectedType} />
 
                 {/* Points */}
                 <div className="flex flex-col gap-3 shadow-md rounded-lg p-4 bg-[#f8f7f2]">
@@ -129,7 +90,7 @@ const Service = () => {
                     </div>
                 </div>
                 <div className="content">
-                    <Outlet />
+                    <Outlet context={{ selectedType } satisfies ServiceOutletContext} />
                 </div>
             </div>
 
