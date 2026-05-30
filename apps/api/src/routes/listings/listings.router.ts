@@ -48,4 +48,10 @@ export const listingsRouter = s.router(listingsContract, {
     }
     return { status: 204, body: undefined };
   },
+
+  getActiveListingsCount: async () => {
+    const listingRepo = resolve("listing") as any;
+    const count = await listingRepo.countActiveListings();
+    return { status: 200, body: { count } };
+  },
 });

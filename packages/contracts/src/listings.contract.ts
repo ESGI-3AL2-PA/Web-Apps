@@ -68,4 +68,13 @@ export const listingsContract = c.router({
     },
     summary: "Delete a listing",
   },
+
+  getActiveListingsCount: {
+    method: "GET",
+    path: "/listings/count/active",
+    responses: {
+      200: z.object({ count: z.number().int() }),
+    },
+    summary: "Get the number of active listings",
+  },
 });

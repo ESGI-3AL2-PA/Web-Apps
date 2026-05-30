@@ -23,4 +23,6 @@ export interface IListingRepository {
   updateListing(id: string, data: Partial<Omit<Listing, "id" | "createdAt">>): Promise<Listing | null>;
 
   deleteListing(id: string): Promise<boolean>;
+
+  countActiveListings(): Promise<number>;
 }

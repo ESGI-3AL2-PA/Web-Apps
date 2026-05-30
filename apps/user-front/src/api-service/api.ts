@@ -30,6 +30,11 @@ const api = axios.create({
   timeout: 10000,
 });
 
+export async function getActiveListingsCount(): Promise<number> {
+  const res = await api.get<{ count: number }>("/listings/count/active");
+  return res.data.count;
+}
+
 export async function getAllAnnonces(filters: ListingFilters = {}): Promise<ListingResponseDto[]> {
   try {
     const res = await api.get<PaginatedListingsResponse>("/listings", { params: filters });

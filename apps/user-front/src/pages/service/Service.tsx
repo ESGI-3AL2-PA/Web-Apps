@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { NavLink, Outlet } from 'react-router-dom'
 import FilterBar from "../../component/FilterBar";
-import type { ListingType } from "../../api-service/api";
+import { getActiveListingsCount, type ListingType } from "../../api-service/api";
 
 export type ServiceOutletContext = {
     selectedType: ListingType | "";
@@ -10,6 +10,11 @@ export type ServiceOutletContext = {
 const Service = () => {
     const [points, setPoints] = useState(0);
     const [selectedType, setSelectedType] = useState<ListingType | "">("");
+    const [activeCount, setActiveCount] = useState<number | null>(null);
+
+    useEffect(() => {
+        getActiveListingsCount().then(setActiveCount).catch(() => setActiveCount(null));
+    }, []);
 
     return (
         <div className="flex">
@@ -50,7 +55,9 @@ const Service = () => {
                 <div className="title flex flex-row pb-10">
                     <div className="flex flex-col mr-37.5">
                         <h2 className="text-[30px] font-bold">Services entre voisins</h2>
-                        <span className="underline">45 annonces actives</span>
+                        <span className="underline">
+                            {activeCount !== null ? `${activeCount} annonces actives` : "Chargement..."}
+                        </span>
                     </div>
                     <div className="flex flex-col h-25 gap-5">
                         <div className="flex items-center gap-2">
