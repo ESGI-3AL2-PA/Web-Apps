@@ -1,5 +1,6 @@
 import express, { type Application, type RequestHandler } from "express";
 import cors from "cors";
+import helmet from "helmet";
 
 import { createExpressEndpoints } from "@ts-rest/express";
 import {
@@ -28,6 +29,20 @@ import { conversationsRouter } from "./routes/conversations/conversations.router
 import { notificationsRouter } from "./routes/notifications/notifications.router.js";
 import { transactionsRouter } from "./routes/transactions/transactions.router.js";
 import { errorHandler, NotFoundError } from "./middleware/error-handler.js";
+import {
+  requireAuth,
+  usersAccessControl,
+  listingsAccessControl,
+  districtsAccessControl,
+  tagsAccessControl,
+  eventsAccessControl,
+  votesAccessControl,
+  incidentsAccessControl,
+  conversationsAccessControl,
+  notificationsAccessControl,
+  transactionsAccessControl,
+  contractsAccessControl,
+} from "./middleware/auth.middleware.js";
 import { connectDB } from "./repositories/mongodb.connector.js";
 import { initContainer } from "./repositories/container.js";
 import { generateOpenApi } from "@ts-rest/open-api";
@@ -35,6 +50,17 @@ import { apiReference } from "@scalar/express-api-reference";
 
 const app: Application = express();
 const port = 3000;
+
+// Behind a reverse proxy/LB, set TRUST_PROXY (e.g. "1") so req.ip reflects the
+// real client. Unset by default to avoid trusting spoofed X-Forwarded-For.
+const trustProxy = process.env.TRUST_PROXY;
+if (trustProxy) {
+  app.set("trust proxy", /^\d+$/.test(trustProxy) ? Number(trustProxy) : trustProxy === "true" ? true : trustProxy);
+}
+
+// Security headers. CSP is disabled because the Scalar /docs UI loads its own
+// assets; the rest (X-Frame-Options, HSTS, X-Content-Type-Options, …) still apply.
+app.use(helmet({ contentSecurityPolicy: false }));
 
 const openApiDocument = generateOpenApi(
   {
@@ -71,12 +97,17 @@ const openApiDocument = generateOpenApi(
   },
 );
 
+const allowedOrigins = (process.env.CORS_ORIGINS ?? "http://localhost:4000,http://localhost:5000")
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
+
 app.use(
   cors({
-    // We should get ports from env probably
-    origin: ["http://localhost:4000", "http://localhost:5000"],
+    origin: allowedOrigins,
     methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
+    credentials: true,
   }),
 );
 app.use(express.json());
@@ -95,6 +126,25 @@ app.use(
     theme: "moon",
   }) as unknown as RequestHandler, // Ugly but it works ¯\_(ツ)_/¯
 );
+
+// Everything below /health, /openapi.json and /docs requires a valid access token.
+// requireAuth verifies the JWT (iss/aud) and sets req.user.
+app.use(requireAuth);
+
+// Per-resource authorization policies. requireAuth has already run; these gate by
+// role/audience, while per-record ownership is enforced inside the handlers.
+app.use("/users", usersAccessControl);
+app.use("/listings", listingsAccessControl);
+app.use("/districts", districtsAccessControl);
+app.use("/tags", tagsAccessControl);
+app.use("/events", eventsAccessControl);
+app.use("/votes", votesAccessControl);
+app.use("/incidents", incidentsAccessControl);
+app.use("/conversations", conversationsAccessControl);
+app.use("/messages", conversationsAccessControl);
+app.use("/notifications", notificationsAccessControl);
+app.use("/transactions", transactionsAccessControl);
+app.use("/contracts", contractsAccessControl);
 
 createExpressEndpoints({ ...usersContract }, { ...usersRouter }, app);
 createExpressEndpoints({ ...listingsContract }, { ...listingsRouter }, app);

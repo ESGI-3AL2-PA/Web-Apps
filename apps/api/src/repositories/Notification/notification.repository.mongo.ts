@@ -49,9 +49,7 @@ export class MongoNotificationRepository implements INotificationRepository {
     return doc ? this.toNotification(doc) : null;
   }
 
-  async createNotification(
-    data: Omit<Notification, "id" | "createdAt" | "read">,
-  ): Promise<Notification> {
+  async createNotification(data: Omit<Notification, "id" | "createdAt" | "read">): Promise<Notification> {
     const now = new Date().toISOString();
     const doc: NotificationDoc = { ...data, _id: randomUUID(), createdAt: now, read: false };
     await this.collection.insertOne(doc);
@@ -68,10 +66,7 @@ export class MongoNotificationRepository implements INotificationRepository {
   }
 
   async markAllRead(recipientId: string): Promise<number> {
-    const result = await this.collection.updateMany(
-      { recipientId, read: false },
-      { $set: { read: true } },
-    );
+    const result = await this.collection.updateMany({ recipientId, read: false }, { $set: { read: true } });
     return result.modifiedCount;
   }
 

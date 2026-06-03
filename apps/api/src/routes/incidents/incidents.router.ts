@@ -29,25 +29,37 @@ export const incidentsRouter = s.router(incidentsContract, {
     return { status: 200, body: incident };
   },
 
-  createIncident: async ({ body }) => {
-    // TODO: get reporterId from authenticated user
+  createIncident: async ({ body, req }) => {
     const newIncident = await createIncidentUseCase(resolve("incident"))({
       ...body,
-      reporterId: "",
+      reporterId: req.user!.sub,
     });
     return { status: 201, body: newIncident };
   },
 
-  updateIncident: async ({ params: { id }, body }) => {
-    // TODO: get actorId from authenticated user
-    const incident = await updateIncidentUseCase(resolve("incident"))(id, body, "");
+  updateIncident: async ({ params: { id }, body, req }) => {
+    const existing = await getIncidentByIdUseCase(resolve("incident"))({ id });
+    if (!existing) {
+      return { status: 404, body: { message: "Incident not found" } };
+    }
+    if (existing.reporterId !== req.user!.sub && req.user!.role !== "admin") {
+      return { status: 403, body: { message: "Reporter or admin only" } };
+    }
+    const incident = await updateIncidentUseCase(resolve("incident"))(id, body, req.user!.sub);
     if (!incident) {
       return { status: 404, body: { message: "Incident not found" } };
     }
     return { status: 200, body: incident };
   },
 
-  deleteIncident: async ({ params: { id } }) => {
+  deleteIncident: async ({ params: { id }, req }) => {
+    const existing = await getIncidentByIdUseCase(resolve("incident"))({ id });
+    if (!existing) {
+      return { status: 404, body: { message: "Incident not found" } };
+    }
+    if (existing.reporterId !== req.user!.sub && req.user!.role !== "admin") {
+      return { status: 403, body: { message: "Reporter or admin only" } };
+    }
     const deleted = await deleteIncidentUseCase(resolve("incident"))({ id });
     if (!deleted) {
       return { status: 404, body: { message: "Incident not found" } };

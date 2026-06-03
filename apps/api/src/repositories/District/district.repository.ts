@@ -1,11 +1,13 @@
-import type { District } from "../../entities/district.entity.js";
+import type { District, GeoJson } from "../../entities/district.entity.js";
 
 export interface IDistrictRepository {
-  getDistricts(params: {
-    search?: string;
-    page?: number;
-    limit?: number;
-  }): Promise<{
+  // Creates the 2dsphere index backing findDistrictContaining (idempotent).
+  ensureIndexes(): Promise<void>;
+
+  // Returns the district whose geometry contains the given point, or null.
+  findDistrictContaining(point: GeoJson): Promise<District | null>;
+
+  getDistricts(params: { search?: string; page?: number; limit?: number }): Promise<{
     data: District[];
     total: number;
     page: number;

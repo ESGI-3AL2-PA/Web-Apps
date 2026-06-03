@@ -18,5 +18,10 @@ export interface ITransactionRepository {
 
   adjustBalance(userId: string, delta: number): Promise<number | null>;
 
+  // Atomically debit `amount` only if the balance covers it. Returns true on
+  // success, false if the user is missing or has insufficient funds. Closes the
+  // check-then-write race a getBalance + adjustBalance pair would leave open.
+  tryDebit(userId: string, amount: number): Promise<boolean>;
+
   getBalance(userId: string): Promise<number | null>;
 }

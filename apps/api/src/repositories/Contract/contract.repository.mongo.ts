@@ -16,6 +16,7 @@ export class MongoContractRepository implements IContractRepository {
     listingId?: string;
     providerId?: string;
     beneficiaryId?: string;
+    partyId?: string;
     openSignStatus?: string;
     disputed?: boolean;
     page?: number;
@@ -26,13 +27,14 @@ export class MongoContractRepository implements IContractRepository {
     page: number;
     limit: number;
   }> {
-    const { listingId, providerId, beneficiaryId, openSignStatus, disputed, page = 1, limit = 20 } = params;
+    const { listingId, providerId, beneficiaryId, partyId, openSignStatus, disputed, page = 1, limit = 20 } = params;
 
     const filter: Filter<ContractDoc> = {};
 
     if (listingId) filter.listingId = listingId;
     if (providerId) filter.providerId = providerId;
     if (beneficiaryId) filter.beneficiaryId = beneficiaryId;
+    if (partyId) filter.$or = [{ providerId: partyId }, { beneficiaryId: partyId }];
     if (openSignStatus) filter.openSignStatus = openSignStatus as OpenSignStatus;
     if (disputed !== undefined) filter.disputed = disputed;
 
@@ -60,10 +62,7 @@ export class MongoContractRepository implements IContractRepository {
     return this.toContract(doc);
   }
 
-  async updateContract(
-    id: string,
-    data: Partial<Omit<Contract, "id" | "createdAt">>,
-  ): Promise<Contract | null> {
+  async updateContract(id: string, data: Partial<Omit<Contract, "id" | "createdAt">>): Promise<Contract | null> {
     const result = await this.collection.findOneAndUpdate(
       { _id: id },
       { $set: { ...data } },

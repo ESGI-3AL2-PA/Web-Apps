@@ -25,16 +25,22 @@ export const votesRouter = s.router(votesContract, {
     return { status: 200, body: vote };
   },
 
-  createVote: async ({ body }) => {
-    // TODO: get creatorId from authenticated user
+  createVote: async ({ body, req }) => {
     const newVote = await createVoteUseCase(resolve("vote"))({
       ...body,
-      creatorId: "",
+      creatorId: req.user!.sub,
     });
     return { status: 201, body: newVote };
   },
 
-  updateVote: async ({ params: { id }, body }) => {
+  updateVote: async ({ params: { id }, body, req }) => {
+    const existing = await getVoteByIdUseCase(resolve("vote"))({ id });
+    if (!existing) {
+      return { status: 404, body: { message: "Vote not found" } };
+    }
+    if (existing.creatorId !== req.user!.sub && req.user!.role !== "admin") {
+      return { status: 403, body: { message: "Creator or admin only" } };
+    }
     const vote = await updateVoteUseCase(resolve("vote"))(id, body);
     if (!vote) {
       return { status: 404, body: { message: "Vote not found" } };
@@ -42,7 +48,14 @@ export const votesRouter = s.router(votesContract, {
     return { status: 200, body: vote };
   },
 
-  deleteVote: async ({ params: { id } }) => {
+  deleteVote: async ({ params: { id }, req }) => {
+    const existing = await getVoteByIdUseCase(resolve("vote"))({ id });
+    if (!existing) {
+      return { status: 404, body: { message: "Vote not found" } };
+    }
+    if (existing.creatorId !== req.user!.sub && req.user!.role !== "admin") {
+      return { status: 403, body: { message: "Creator or admin only" } };
+    }
     const deleted = await deleteVoteUseCase(resolve("vote"))({ id });
     if (!deleted) {
       return { status: 404, body: { message: "Vote not found" } };
@@ -50,8 +63,8 @@ export const votesRouter = s.router(votesContract, {
     return { status: 204, body: undefined };
   },
 
-  submitVoteResponse: async ({ params: { id }, body }) => {
-    const { vote, alreadyVoted } = await submitVoteResponseUseCase(resolve("vote"))(id, body);
+  submitVoteResponse: async ({ params: { id }, body, req }) => {
+    const { vote, alreadyVoted } = await submitVoteResponseUseCase(resolve("vote"))(id, req.user!.sub, body);
     if (!vote) {
       return { status: 404, body: { message: "Vote not found" } };
     }

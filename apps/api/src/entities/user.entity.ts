@@ -14,6 +14,9 @@ export const UserSchema = z.object({
   role: UserRoleSchema,
   districtId: z.string(),
   balance: z.number().int().default(0),
+  emailVerified: z.boolean().default(false),
+  totpSecret: z.string().nullable().default(null),
+  totpEnabled: z.boolean().default(false),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
 });

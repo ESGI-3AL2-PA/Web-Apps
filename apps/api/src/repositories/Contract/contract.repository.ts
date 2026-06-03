@@ -5,6 +5,8 @@ export interface IContractRepository {
     listingId?: string;
     providerId?: string;
     beneficiaryId?: string;
+    // Restrict to contracts where this user is provider OR beneficiary.
+    partyId?: string;
     openSignStatus?: string;
     disputed?: boolean;
     page?: number;

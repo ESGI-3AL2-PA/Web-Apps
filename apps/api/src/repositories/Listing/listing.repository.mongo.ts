@@ -31,10 +31,7 @@ export class MongoListingRepository implements IListingRepository {
     const filter: Filter<ListingDoc> = {};
 
     if (search) {
-      filter.$or = [
-        { title: { $regex: search, $options: "i" } },
-        { description: { $regex: search, $options: "i" } },
-      ];
+      filter.$or = [{ title: { $regex: search, $options: "i" } }, { description: { $regex: search, $options: "i" } }];
     }
     if (type) filter.type = type as ListingType;
     if (status) filter.status = status as ListingStatus;

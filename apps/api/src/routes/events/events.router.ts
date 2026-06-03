@@ -33,16 +33,22 @@ export const eventsRouter = s.router(eventsContract, {
     return { status: 200, body: event };
   },
 
-  createEvent: async ({ body }) => {
-    // TODO: get creatorId from authenticated user
+  createEvent: async ({ body, req }) => {
     const newEvent = await createEventUseCase(resolve("event"))({
       ...body,
-      creatorId: "",
+      creatorId: req.user!.sub,
     });
     return { status: 201, body: newEvent };
   },
 
-  updateEvent: async ({ params: { id }, body }) => {
+  updateEvent: async ({ params: { id }, body, req }) => {
+    const existing = await getEventByIdUseCase(resolve("event"))({ id });
+    if (!existing) {
+      return { status: 404, body: { message: "Event not found" } };
+    }
+    if (existing.creatorId !== req.user!.sub && req.user!.role !== "admin") {
+      return { status: 403, body: { message: "Creator or admin only" } };
+    }
     const event = await updateEventUseCase(resolve("event"))(id, body);
     if (!event) {
       return { status: 404, body: { message: "Event not found" } };
@@ -50,7 +56,14 @@ export const eventsRouter = s.router(eventsContract, {
     return { status: 200, body: event };
   },
 
-  deleteEvent: async ({ params: { id } }) => {
+  deleteEvent: async ({ params: { id }, req }) => {
+    const existing = await getEventByIdUseCase(resolve("event"))({ id });
+    if (!existing) {
+      return { status: 404, body: { message: "Event not found" } };
+    }
+    if (existing.creatorId !== req.user!.sub && req.user!.role !== "admin") {
+      return { status: 403, body: { message: "Creator or admin only" } };
+    }
     const deleted = await deleteEventUseCase(resolve("event"))({ id });
     if (!deleted) {
       return { status: 404, body: { message: "Event not found" } };
@@ -58,24 +71,24 @@ export const eventsRouter = s.router(eventsContract, {
     return { status: 204, body: undefined };
   },
 
-  registerToEvent: async ({ params: { id }, body: { userId } }) => {
-    const event = await registerToEventUseCase(resolve("event"))(id, userId);
+  registerToEvent: async ({ params: { id }, req }) => {
+    const event = await registerToEventUseCase(resolve("event"))(id, req.user!.sub);
     if (!event) {
       return { status: 404, body: { message: "Event not found or no seats available" } };
     }
     return { status: 200, body: event };
   },
 
-  unregisterFromEvent: async ({ params: { id }, body: { userId } }) => {
-    const event = await unregisterFromEventUseCase(resolve("event"))(id, userId);
+  unregisterFromEvent: async ({ params: { id }, req }) => {
+    const event = await unregisterFromEventUseCase(resolve("event"))(id, req.user!.sub);
     if (!event) {
       return { status: 404, body: { message: "Event not found or user was not registered" } };
     }
     return { status: 200, body: event };
   },
 
-  attendEvent: async ({ params: { id }, body: { userId, rating } }) => {
-    const event = await attendEventUseCase(resolve("event"))(id, userId, rating);
+  attendEvent: async ({ params: { id }, body: { rating }, req }) => {
+    const event = await attendEventUseCase(resolve("event"))(id, req.user!.sub, rating);
     if (!event) {
       return { status: 404, body: { message: "Event not found" } };
     }
