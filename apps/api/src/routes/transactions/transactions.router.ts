@@ -40,20 +40,14 @@ export const transactionsRouter = s.router(transactionsContract, {
     };
   },
 
-  getUserTransactions: async ({ params: { id }, query, req }) => {
-    // Non-admins may only read their own ledger.
-    if (req.user!.role !== "admin" && req.user!.sub !== id) {
-      return { status: 403, body: { message: "Forbidden" } };
-    }
+  getUserTransactions: async ({ params: { id }, query }) => {
+    // Self/admin authorization is enforced by the contract-metadata middleware.
     const result = await getTransactionsUseCase(resolve("transaction"))({ ...query, userId: id });
     return { status: 200, body: result };
   },
 
-  getUserBalance: async ({ params: { id }, req }) => {
-    // Non-admins may only read their own balance.
-    if (req.user!.role !== "admin" && req.user!.sub !== id) {
-      return { status: 403, body: { message: "Forbidden" } };
-    }
+  getUserBalance: async ({ params: { id } }) => {
+    // Self/admin authorization is enforced by the contract-metadata middleware.
     const balance = await getUserBalanceUseCase(resolve("transaction"))(id);
     if (balance === null) {
       return { status: 404, body: { message: "User not found" } };
