@@ -74,6 +74,7 @@ export const authRouter = s.router(authContract, {
     const result = await loginUseCase(
       resolve("userReader"),
       resolve("refreshToken"),
+      resolve("districtAdmin"),
     )({
       email: body.email,
       password: body.password,
@@ -100,7 +101,11 @@ export const authRouter = s.router(authContract, {
   },
 
   loginMfa: async ({ body, res }) => {
-    const result = await loginMfaUseCase(resolve("userReader"), resolve("refreshToken"))(body.mfa_token, body.code);
+    const result = await loginMfaUseCase(
+      resolve("userReader"),
+      resolve("refreshToken"),
+      resolve("districtAdmin"),
+    )(body.mfa_token, body.code);
     if (result.kind !== "ok") {
       return { status: 401 as const, body: { message: "MFA verification failed" } };
     }
@@ -125,7 +130,11 @@ export const authRouter = s.router(authContract, {
       return { status: 401 as const, body: { message: "No refresh token" } };
     }
 
-    const result = await refreshUseCase(resolve("refreshToken"), resolve("userReader"))(rawToken);
+    const result = await refreshUseCase(
+      resolve("refreshToken"),
+      resolve("userReader"),
+      resolve("districtAdmin"),
+    )(rawToken);
 
     if (!result) {
       res.clearCookie(REFRESH_COOKIE, { path: "/auth" });

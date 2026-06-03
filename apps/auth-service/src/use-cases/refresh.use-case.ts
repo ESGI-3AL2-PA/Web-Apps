@@ -1,15 +1,19 @@
 import { randomBytes, createHash } from "crypto";
-import { SignJWT } from "jose";
 import type { IRefreshTokenRepository } from "../repositories/RefreshToken/refresh-token.repository.js";
 import type { IUserReaderRepository } from "../repositories/User/user-reader.repository.js";
-import { getPrivateKey } from "../keys.js";
+import type { IDistrictAdminReaderRepository } from "../repositories/DistrictAdmin/district-admin-reader.repository.js";
+import { lookupAdminDistrictId, signAccessToken } from "./issue-tokens.js";
 
 interface RefreshResult {
   accessToken: string;
   refreshToken: string;
 }
 
-export const refreshUseCase = (refreshTokenRepo: IRefreshTokenRepository, userReader: IUserReaderRepository) => {
+export const refreshUseCase = (
+  refreshTokenRepo: IRefreshTokenRepository,
+  userReader: IUserReaderRepository,
+  districtAdminReader: IDistrictAdminReaderRepository,
+) => {
   return async (rawRefreshToken: string): Promise<RefreshResult | null> => {
     const tokenHash = createHash("sha256").update(rawRefreshToken).digest("hex");
 
@@ -31,24 +35,13 @@ export const refreshUseCase = (refreshTokenRepo: IRefreshTokenRepository, userRe
     // Revoke old token (rotation)
     await refreshTokenRepo.revokeByTokenHash(tokenHash);
 
-    // Look up user for fresh claims
+    // Look up user for fresh claims — incl. a re-read of the district-admin
+    // relationship, so promotion/demotion takes effect on the next refresh.
     const user = await userReader.findById(stored.userId);
     if (!user) return null;
 
-    // Issue new access token
-    const accessToken = await new SignJWT({
-      email: user.email,
-      role: user.role,
-      firstName: user.firstName,
-      lastName: user.lastName,
-    })
-      .setProtectedHeader({ alg: "RS256", kid: "auth-1" })
-      .setSubject(user.id)
-      .setIssuer("auth-service")
-      .setAudience("api")
-      .setIssuedAt()
-      .setExpirationTime("15m")
-      .sign(getPrivateKey());
+    const adminDistrictId = await lookupAdminDistrictId(user, districtAdminReader);
+    const accessToken = await signAccessToken(user, adminDistrictId);
 
     // Issue new refresh token
     const newRawRefreshToken = randomBytes(64).toString("hex");

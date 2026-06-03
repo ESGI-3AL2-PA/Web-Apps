@@ -1,6 +1,7 @@
 import { jwtVerify } from "jose";
 import type { IUserReaderRepository } from "../repositories/User/user-reader.repository.js";
 import type { IRefreshTokenRepository } from "../repositories/RefreshToken/refresh-token.repository.js";
+import type { IDistrictAdminReaderRepository } from "../repositories/DistrictAdmin/district-admin-reader.repository.js";
 import { getPublicKey } from "../keys.js";
 import { verifyTotpStep } from "../services/totp.js";
 import { issueTokensForUser, type IssuedTokens } from "./issue-tokens.js";
@@ -12,7 +13,11 @@ export type LoginMfaResult =
   | { kind: "user-not-found" }
   | { kind: "totp-not-enabled" };
 
-export const loginMfaUseCase = (userReader: IUserReaderRepository, refreshTokenRepo: IRefreshTokenRepository) => {
+export const loginMfaUseCase = (
+  userReader: IUserReaderRepository,
+  refreshTokenRepo: IRefreshTokenRepository,
+  districtAdminReader: IDistrictAdminReaderRepository,
+) => {
   return async (mfaToken: string, code: string): Promise<LoginMfaResult> => {
     let userId: string;
     try {
@@ -36,7 +41,7 @@ export const loginMfaUseCase = (userReader: IUserReaderRepository, refreshTokenR
     // Reject a code already consumed within its window (replay).
     if (!(await userReader.consumeTotpStep(userId, step))) return { kind: "invalid-code" };
 
-    const tokens = await issueTokensForUser(user, refreshTokenRepo);
+    const tokens = await issueTokensForUser(user, refreshTokenRepo, districtAdminReader);
     return { kind: "ok", ...tokens };
   };
 };

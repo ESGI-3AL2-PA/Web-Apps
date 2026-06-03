@@ -2,6 +2,7 @@ import argon2 from "argon2";
 import { SignJWT } from "jose";
 import type { IUserReaderRepository } from "../repositories/User/user-reader.repository.js";
 import type { IRefreshTokenRepository } from "../repositories/RefreshToken/refresh-token.repository.js";
+import type { IDistrictAdminReaderRepository } from "../repositories/DistrictAdmin/district-admin-reader.repository.js";
 import { getPrivateKey } from "../keys.js";
 import { issueTokensForUser, type IssuedTokens } from "./issue-tokens.js";
 
@@ -17,7 +18,11 @@ export type LoginResult =
 let dummyHash: string | null = null;
 const getDummyHash = async () => (dummyHash ??= await argon2.hash("timing-equalizer"));
 
-export const loginUseCase = (userReader: IUserReaderRepository, refreshTokenRepo: IRefreshTokenRepository) => {
+export const loginUseCase = (
+  userReader: IUserReaderRepository,
+  refreshTokenRepo: IRefreshTokenRepository,
+  districtAdminReader: IDistrictAdminReaderRepository,
+) => {
   return async (data: { email: string; password: string }): Promise<LoginResult> => {
     const user = await userReader.findByEmail(data.email);
     if (!user) {
@@ -43,7 +48,7 @@ export const loginUseCase = (userReader: IUserReaderRepository, refreshTokenRepo
       return { kind: "mfa-required", mfaToken };
     }
 
-    const tokens = await issueTokensForUser(user, refreshTokenRepo);
+    const tokens = await issueTokensForUser(user, refreshTokenRepo, districtAdminReader);
     return { kind: "ok", ...tokens };
   };
 };

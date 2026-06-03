@@ -2,11 +2,13 @@ import type { Db } from "mongodb";
 import { MongoRefreshTokenRepository } from "./RefreshToken/refresh-token.repository.mongo.js";
 import { MongoUserReaderRepository } from "./User/user-reader.repository.mongo.js";
 import { MongoAuthTokenRepository } from "./AuthToken/auth-token.repository.mongo.js";
+import { MongoDistrictAdminReaderRepository } from "./DistrictAdmin/district-admin-reader.repository.mongo.js";
 
 let repositories: {
   refreshToken: MongoRefreshTokenRepository;
   userReader: MongoUserReaderRepository;
   authToken: MongoAuthTokenRepository;
+  districtAdmin: MongoDistrictAdminReaderRepository;
 } | null = null;
 
 export const initContainer = (db: Db) => {
@@ -14,6 +16,7 @@ export const initContainer = (db: Db) => {
     refreshToken: new MongoRefreshTokenRepository(db),
     userReader: new MongoUserReaderRepository(db),
     authToken: new MongoAuthTokenRepository(db),
+    districtAdmin: new MongoDistrictAdminReaderRepository(db),
   };
 };
 
