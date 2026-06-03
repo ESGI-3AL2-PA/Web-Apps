@@ -1,8 +1,9 @@
 import { useEffect, type ReactNode } from "react";
 import { AuthProvider, useAuth } from "@repo/hooks";
+import { config } from "@repo/config";
 import { setupInterceptors } from "../api-service/api";
 
-const AUTH_SERVICE_URL = import.meta.env.VITE_AUTH_SERVICE_URL ?? "http://localhost:6000";
+const AUTH_SERVICE_URL = config.authServiceUrl;
 
 function InterceptorSetup({ children }: { children: ReactNode }) {
   const { getAccessToken, refresh } = useAuth();
@@ -17,9 +18,7 @@ function InterceptorSetup({ children }: { children: ReactNode }) {
 export default function Providers({ children }: { children: ReactNode }) {
   return (
     <AuthProvider authServiceUrl={AUTH_SERVICE_URL}>
-      <InterceptorSetup>
-        {children}
-      </InterceptorSetup>
+      <InterceptorSetup>{children}</InterceptorSetup>
     </AuthProvider>
   );
 }

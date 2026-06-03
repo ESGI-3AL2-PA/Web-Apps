@@ -11,6 +11,7 @@
     "lint:fix": "eslint . --fix"
   },
   "dependencies": {
+    "@repo/config": "*",
     "@repo/hooks": "*",
     "@repo/ui": "*",
     "@tailwindcss/postcss": "^4.2.2",

@@ -11,6 +11,7 @@
     "lint:fix": "eslint . --fix"
   },
   "dependencies": {
+    "@repo/config": "*",
     "@repo/hooks": "*",
     "@repo/ui": "*",
     "flyonui": "^2.4.1",

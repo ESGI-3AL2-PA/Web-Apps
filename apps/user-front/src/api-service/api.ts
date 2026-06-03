@@ -1,5 +1,6 @@
 import axios from "axios";
 import { isTokenExpiringSoon } from "@repo/hooks";
+import { config } from "@repo/config";
 import { type ListingResponseDto } from "../type/annonce";
 
 type PaginatedListingsResponse = {
@@ -9,8 +10,8 @@ type PaginatedListingsResponse = {
   limit: number;
 };
 
-const AUTH_SERVICE_URL = import.meta.env.VITE_AUTH_SERVICE_URL ?? "http://localhost:6000";
-const API_BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3000";
+const AUTH_SERVICE_URL = config.authServiceUrl;
+const API_BASE_URL = config.apiUrl;
 
 const api = axios.create({
   baseURL: API_BASE_URL,

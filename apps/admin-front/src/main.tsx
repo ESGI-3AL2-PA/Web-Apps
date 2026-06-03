@@ -1,10 +1,11 @@
 import { createRoot } from "react-dom/client";
 import { AuthProvider, ProtectedRoute } from "@repo/hooks";
+import { config } from "@repo/config";
 import "./style.css";
 import typescriptLogo from "/typescript.svg";
 import { Header, Counter } from "@repo/ui";
 
-const AUTH_SERVICE_URL = import.meta.env.VITE_AUTH_SERVICE_URL ?? "http://localhost:6000";
+const AUTH_SERVICE_URL = config.authServiceUrl;
 
 const App = () => (
   <AuthProvider authServiceUrl={AUTH_SERVICE_URL}>
