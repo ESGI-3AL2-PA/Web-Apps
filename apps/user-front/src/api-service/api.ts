@@ -1,4 +1,5 @@
 import axios from "axios";
+import { isTokenExpiringSoon } from "@repo/hooks";
 import { type ListingResponseDto } from "../type/annonce";
 
 type PaginatedListingsResponse = {
@@ -8,10 +9,62 @@ type PaginatedListingsResponse = {
   limit: number;
 };
 
+const AUTH_SERVICE_URL = import.meta.env.VITE_AUTH_SERVICE_URL ?? "http://localhost:6000";
+const API_BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:3000";
+
 const api = axios.create({
-  baseURL: "http://localhost:3000",
+  baseURL: API_BASE_URL,
   timeout: 10000,
 });
+
+let getAccessToken: (() => string | null) | null = null;
+let refreshFn: (() => Promise<string | null>) | null = null;
+
+export function setupInterceptors(tokenGetter: () => string | null, refresher: () => Promise<string | null>) {
+  getAccessToken = tokenGetter;
+  refreshFn = refresher;
+}
+
+// Proactively refresh token before it expires, then attach Bearer header
+let refreshPromise: Promise<string | null> | null = null;
+
+api.interceptors.request.use(async (config) => {
+  const token = getAccessToken?.();
+
+  if (token && isTokenExpiringSoon(token, 60) && refreshFn) {
+    if (!refreshPromise) {
+      refreshPromise = refreshFn().finally(() => {
+        refreshPromise = null;
+      });
+    }
+    await refreshPromise;
+  }
+
+  const currentToken = getAccessToken?.();
+  if (currentToken) {
+    config.headers.Authorization = `Bearer ${currentToken}`;
+  }
+  return config;
+});
+
+// On 401, attempt refresh and retry once
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const original = error.config;
+    if (error.response?.status === 401 && !original._retry && refreshFn) {
+      original._retry = true;
+      const newToken = await refreshFn();
+      if (newToken) {
+        original.headers.Authorization = `Bearer ${newToken}`;
+        return api(original);
+      }
+      // Refresh failed — redirect to login
+      window.location.href = `${AUTH_SERVICE_URL}/login?redirect_uri=${encodeURIComponent(window.location.href)}`;
+    }
+    return Promise.reject(error);
+  },
+);
 
 export async function getAllAnnonces(): Promise<ListingResponseDto[]> {
   try {
@@ -26,3 +79,5 @@ export async function getAllAnnonces(): Promise<ListingResponseDto[]> {
     throw new Error("Erreur lors de du get all annonces");
   }
 }
+
+export default api;
