@@ -11,6 +11,7 @@ import {
   ForbiddenErrorSchema,
   PaginatedResponseDtoSchema,
 } from "./DTO";
+import { auth } from "./auth-meta";
 
 const c = initContract();
 
@@ -23,6 +24,7 @@ export const listingsContract = c.router({
       200: PaginatedResponseDtoSchema(ListingResponseDtoSchema),
     },
     summary: "Get a paginated list of listings",
+    metadata: auth({ audience: "api" }),
   },
 
   getListingById: {
@@ -34,6 +36,7 @@ export const listingsContract = c.router({
       404: NotFoundErrorSchema,
     },
     summary: "Get a single listing by ID",
+    metadata: auth({ audience: "api" }),
   },
 
   createListing: {
@@ -45,6 +48,7 @@ export const listingsContract = c.router({
       404: NotFoundErrorSchema,
     },
     summary: "Create a new listing",
+    metadata: auth({ audience: "api" }),
   },
 
   updateListing: {
@@ -58,6 +62,15 @@ export const listingsContract = c.router({
       404: NotFoundErrorSchema,
     },
     summary: "Partially update a listing (owner or admin)",
+    metadata: auth({
+      audience: "api",
+      scope: {
+        resource: "listing",
+        ownerField: "authorId",
+        districtField: "districtId",
+        bypassRoles: ["superAdmin"],
+      },
+    }),
   },
 
   deleteListing: {
@@ -71,5 +84,14 @@ export const listingsContract = c.router({
       404: NotFoundErrorSchema,
     },
     summary: "Delete a listing (owner or admin)",
+    metadata: auth({
+      audience: "api",
+      scope: {
+        resource: "listing",
+        ownerField: "authorId",
+        districtField: "districtId",
+        bypassRoles: ["superAdmin"],
+      },
+    }),
   },
 });

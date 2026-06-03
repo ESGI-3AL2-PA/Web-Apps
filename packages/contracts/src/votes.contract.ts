@@ -13,6 +13,7 @@ import {
   ForbiddenErrorSchema,
   PaginatedResponseDtoSchema,
 } from "./DTO";
+import { auth } from "./auth-meta";
 
 const c = initContract();
 
@@ -25,6 +26,7 @@ export const votesContract = c.router({
       200: PaginatedResponseDtoSchema(VoteResponseDtoSchema),
     },
     summary: "Get a paginated list of votes",
+    metadata: auth({ audience: "api" }),
   },
 
   getVoteById: {
@@ -36,6 +38,7 @@ export const votesContract = c.router({
       404: NotFoundErrorSchema,
     },
     summary: "Get a single vote by ID",
+    metadata: auth({ audience: "api" }),
   },
 
   createVote: {
@@ -46,6 +49,7 @@ export const votesContract = c.router({
       201: VoteResponseDtoSchema,
     },
     summary: "Create a new vote",
+    metadata: auth({ audience: "api" }),
   },
 
   updateVote: {
@@ -59,6 +63,15 @@ export const votesContract = c.router({
       404: NotFoundErrorSchema,
     },
     summary: "Partially update a vote (creator or admin only)",
+    metadata: auth({
+      audience: "api",
+      scope: {
+        resource: "vote",
+        ownerField: "creatorId",
+        districtArrayField: "districtIds",
+        bypassRoles: ["superAdmin"],
+      },
+    }),
   },
 
   deleteVote: {
@@ -72,6 +85,15 @@ export const votesContract = c.router({
       404: NotFoundErrorSchema,
     },
     summary: "Delete a vote (creator or admin only)",
+    metadata: auth({
+      audience: "api",
+      scope: {
+        resource: "vote",
+        ownerField: "creatorId",
+        districtArrayField: "districtIds",
+        bypassRoles: ["superAdmin"],
+      },
+    }),
   },
 
   submitVoteResponse: {
@@ -84,6 +106,7 @@ export const votesContract = c.router({
       404: NotFoundErrorSchema,
     },
     summary: "Cast a vote response",
+    metadata: auth({ audience: "api" }),
   },
 
   getVoteResults: {
@@ -95,5 +118,6 @@ export const votesContract = c.router({
       404: NotFoundErrorSchema,
     },
     summary: "Get aggregated results for a vote",
+    metadata: auth({ audience: "api" }),
   },
 });

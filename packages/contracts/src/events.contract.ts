@@ -12,6 +12,7 @@ import {
   ForbiddenErrorSchema,
   PaginatedResponseDtoSchema,
 } from "./DTO";
+import { auth } from "./auth-meta";
 
 const c = initContract();
 
@@ -24,6 +25,7 @@ export const eventsContract = c.router({
       200: PaginatedResponseDtoSchema(EventResponseDtoSchema),
     },
     summary: "Get a paginated list of events",
+    metadata: auth({ audience: "api" }),
   },
 
   getEventById: {
@@ -35,6 +37,7 @@ export const eventsContract = c.router({
       404: NotFoundErrorSchema,
     },
     summary: "Get a single event by ID",
+    metadata: auth({ audience: "api" }),
   },
 
   createEvent: {
@@ -45,6 +48,7 @@ export const eventsContract = c.router({
       201: EventResponseDtoSchema,
     },
     summary: "Create a new event",
+    metadata: auth({ audience: "api" }),
   },
 
   updateEvent: {
@@ -58,6 +62,15 @@ export const eventsContract = c.router({
       404: NotFoundErrorSchema,
     },
     summary: "Partially update an event (creator or admin only)",
+    metadata: auth({
+      audience: "api",
+      scope: {
+        resource: "event",
+        ownerField: "creatorId",
+        districtField: "districtId",
+        bypassRoles: ["superAdmin"],
+      },
+    }),
   },
 
   deleteEvent: {
@@ -71,6 +84,15 @@ export const eventsContract = c.router({
       404: NotFoundErrorSchema,
     },
     summary: "Delete an event (creator or admin only)",
+    metadata: auth({
+      audience: "api",
+      scope: {
+        resource: "event",
+        ownerField: "creatorId",
+        districtField: "districtId",
+        bypassRoles: ["superAdmin"],
+      },
+    }),
   },
 
   registerToEvent: {
@@ -83,6 +105,7 @@ export const eventsContract = c.router({
       404: NotFoundErrorSchema,
     },
     summary: "Register the authenticated user to an event",
+    metadata: auth({ audience: "api" }),
   },
 
   unregisterFromEvent: {
@@ -95,6 +118,7 @@ export const eventsContract = c.router({
       404: NotFoundErrorSchema,
     },
     summary: "Cancel the authenticated user's registration to an event",
+    metadata: auth({ audience: "api" }),
   },
 
   attendEvent: {
@@ -107,5 +131,6 @@ export const eventsContract = c.router({
       404: NotFoundErrorSchema,
     },
     summary: "Mark that a user attended the event (and optionally rate it)",
+    metadata: auth({ audience: "api" }),
   },
 });

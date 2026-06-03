@@ -10,6 +10,7 @@ import {
   NotFoundErrorSchema,
   PaginatedResponseDtoSchema,
 } from "./DTO";
+import { auth } from "./auth-meta";
 
 const c = initContract();
 
@@ -22,6 +23,7 @@ export const tagsContract = c.router({
       200: PaginatedResponseDtoSchema(TagResponseDtoSchema),
     },
     summary: "Get a paginated list of tags",
+    metadata: auth({ audience: "api" }),
   },
 
   getTagById: {
@@ -33,6 +35,7 @@ export const tagsContract = c.router({
       404: NotFoundErrorSchema,
     },
     summary: "Get a single tag by ID",
+    metadata: auth({ audience: "api" }),
   },
 
   createTag: {
@@ -42,7 +45,8 @@ export const tagsContract = c.router({
     responses: {
       201: TagResponseDtoSchema,
     },
-    summary: "Create a new tag",
+    summary: "Create a new tag (admin only)",
+    metadata: auth({ audience: "api", roles: ["admin", "superAdmin"] }),
   },
 
   updateTag: {
@@ -54,7 +58,8 @@ export const tagsContract = c.router({
       200: TagResponseDtoSchema,
       404: NotFoundErrorSchema,
     },
-    summary: "Partially update a tag",
+    summary: "Partially update a tag (admin only)",
+    metadata: auth({ audience: "api", roles: ["admin", "superAdmin"] }),
   },
 
   deleteTag: {
@@ -66,6 +71,7 @@ export const tagsContract = c.router({
       204: z.undefined(),
       404: NotFoundErrorSchema,
     },
-    summary: "Delete a tag",
+    summary: "Delete a tag (admin only)",
+    metadata: auth({ audience: "api", roles: ["admin", "superAdmin"] }),
   },
 });

@@ -12,6 +12,7 @@ import {
   ForbiddenErrorSchema,
   PaginatedResponseDtoSchema,
 } from "./DTO";
+import { auth } from "./auth-meta";
 
 const c = initContract();
 
@@ -24,6 +25,7 @@ export const incidentsContract = c.router({
       200: PaginatedResponseDtoSchema(IncidentResponseDtoSchema),
     },
     summary: "Get a paginated list of incidents",
+    metadata: auth({ audience: "api" }),
   },
 
   getIncidentStats: {
@@ -33,6 +35,7 @@ export const incidentsContract = c.router({
       200: IncidentStatsDtoSchema,
     },
     summary: "Get aggregated incident statistics",
+    metadata: auth({ audience: "api" }),
   },
 
   getIncidentById: {
@@ -44,6 +47,7 @@ export const incidentsContract = c.router({
       404: NotFoundErrorSchema,
     },
     summary: "Get a single incident by ID",
+    metadata: auth({ audience: "api" }),
   },
 
   createIncident: {
@@ -54,6 +58,7 @@ export const incidentsContract = c.router({
       201: IncidentResponseDtoSchema,
     },
     summary: "Report a new incident",
+    metadata: auth({ audience: "api" }),
   },
 
   updateIncident: {
@@ -67,6 +72,15 @@ export const incidentsContract = c.router({
       404: NotFoundErrorSchema,
     },
     summary: "Partially update an incident (reporter or admin only)",
+    metadata: auth({
+      audience: "api",
+      scope: {
+        resource: "incident",
+        ownerField: "reporterId",
+        districtField: "districtId",
+        bypassRoles: ["superAdmin"],
+      },
+    }),
   },
 
   deleteIncident: {
@@ -80,5 +94,14 @@ export const incidentsContract = c.router({
       404: NotFoundErrorSchema,
     },
     summary: "Delete an incident (reporter or admin only)",
+    metadata: auth({
+      audience: "api",
+      scope: {
+        resource: "incident",
+        ownerField: "reporterId",
+        districtField: "districtId",
+        bypassRoles: ["superAdmin"],
+      },
+    }),
   },
 });

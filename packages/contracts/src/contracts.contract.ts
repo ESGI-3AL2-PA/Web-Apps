@@ -12,6 +12,7 @@ import {
   ForbiddenErrorSchema,
   PaginatedResponseDtoSchema,
 } from "./DTO";
+import { auth } from "./auth-meta";
 
 const c = initContract();
 
@@ -24,6 +25,7 @@ export const contractsContract = c.router({
       200: PaginatedResponseDtoSchema(ContractResponseDtoSchema),
     },
     summary: "Get a paginated list of contracts",
+    metadata: auth({ audience: "api" }),
   },
 
   getContractById: {
@@ -34,7 +36,16 @@ export const contractsContract = c.router({
       200: ContractResponseDtoSchema,
       404: NotFoundErrorSchema,
     },
-    summary: "Get a single contract by ID",
+    summary: "Get a single contract by ID (party or admin)",
+    metadata: auth({
+      audience: "api",
+      scope: {
+        resource: "contract",
+        ownerFields: ["providerId", "beneficiaryId"],
+        bypassRoles: ["superAdmin"],
+        notFoundOnDeny: true,
+      },
+    }),
   },
 
   createContract: {
@@ -45,6 +56,7 @@ export const contractsContract = c.router({
       201: ContractResponseDtoSchema,
     },
     summary: "Create a new contract (the authenticated caller is the provider)",
+    metadata: auth({ audience: "api" }),
   },
 
   signContract: {
@@ -58,6 +70,10 @@ export const contractsContract = c.router({
       404: NotFoundErrorSchema,
     },
     summary: "Update contract signature status (party only)",
+    metadata: auth({
+      audience: "api",
+      scope: { resource: "contract", ownerFields: ["providerId", "beneficiaryId"] },
+    }),
   },
 
   disputeContract: {
@@ -71,6 +87,10 @@ export const contractsContract = c.router({
       404: NotFoundErrorSchema,
     },
     summary: "Mark a contract as disputed (party only)",
+    metadata: auth({
+      audience: "api",
+      scope: { resource: "contract", ownerFields: ["providerId", "beneficiaryId"] },
+    }),
   },
 
   deleteContract: {
@@ -84,5 +104,13 @@ export const contractsContract = c.router({
       404: NotFoundErrorSchema,
     },
     summary: "Delete a contract (party or admin only)",
+    metadata: auth({
+      audience: "api",
+      scope: {
+        resource: "contract",
+        ownerFields: ["providerId", "beneficiaryId"],
+        bypassRoles: ["superAdmin"],
+      },
+    }),
   },
 });

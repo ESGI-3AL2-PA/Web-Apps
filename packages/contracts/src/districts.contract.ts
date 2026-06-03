@@ -10,6 +10,7 @@ import {
   NotFoundErrorSchema,
   PaginatedResponseDtoSchema,
 } from "./DTO";
+import { auth } from "./auth-meta";
 
 const c = initContract();
 
@@ -22,6 +23,7 @@ export const districtsContract = c.router({
       200: PaginatedResponseDtoSchema(DistrictResponseDtoSchema),
     },
     summary: "Get a paginated list of districts",
+    metadata: auth({ audience: "api" }),
   },
 
   getDistrictById: {
@@ -33,6 +35,7 @@ export const districtsContract = c.router({
       404: NotFoundErrorSchema,
     },
     summary: "Get a single district by ID",
+    metadata: auth({ audience: "api" }),
   },
 
   createDistrict: {
@@ -42,7 +45,8 @@ export const districtsContract = c.router({
     responses: {
       201: DistrictResponseDtoSchema,
     },
-    summary: "Create a new district",
+    summary: "Create a new district (admin only)",
+    metadata: auth({ audience: "api", roles: ["admin", "superAdmin"] }),
   },
 
   updateDistrict: {
@@ -54,7 +58,8 @@ export const districtsContract = c.router({
       200: DistrictResponseDtoSchema,
       404: NotFoundErrorSchema,
     },
-    summary: "Partially update a district",
+    summary: "Partially update a district (admin only)",
+    metadata: auth({ audience: "api", roles: ["admin", "superAdmin"] }),
   },
 
   deleteDistrict: {
@@ -66,6 +71,7 @@ export const districtsContract = c.router({
       204: z.undefined(),
       404: NotFoundErrorSchema,
     },
-    summary: "Delete a district",
+    summary: "Delete a district (admin only)",
+    metadata: auth({ audience: "api", roles: ["admin", "superAdmin"] }),
   },
 });
