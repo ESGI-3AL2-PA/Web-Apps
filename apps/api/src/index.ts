@@ -49,7 +49,7 @@ import { generateOpenApi } from "@ts-rest/open-api";
 import { apiReference } from "@scalar/express-api-reference";
 
 const app: Application = express();
-const port = 3000;
+const port = Number(process.env.PORT) || 3000;
 
 // Behind a reverse proxy/LB, set TRUST_PROXY (e.g. "1") so req.ip reflects the
 // real client. Unset by default to avoid trusting spoofed X-Forwarded-For.
