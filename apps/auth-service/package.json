@@ -7,6 +7,7 @@
     "build": "tsc",
     "dev": "tsx --watch src/index.ts",
     "start": "node ./dist/index.js",
+    "seed:superadmin": "tsx src/seed-superadmin.ts",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix"
   },
