@@ -4,6 +4,7 @@ import type { IUserReaderRepository } from "../repositories/User/user-reader.rep
 import type { IRefreshTokenRepository } from "../repositories/RefreshToken/refresh-token.repository.js";
 import type { IDistrictAdminReaderRepository } from "../repositories/DistrictAdmin/district-admin-reader.repository.js";
 import { getPrivateKey } from "../keys.js";
+import { skipEmailVerification, skipTotp } from "../dev-auth.js";
 import { issueTokensForUser, type IssuedTokens } from "./issue-tokens.js";
 
 export type LoginResult =
@@ -33,9 +34,9 @@ export const loginUseCase = (
     const valid = await argon2.verify(user.passwordHash, data.password);
     if (!valid) return { kind: "invalid-credentials" };
 
-    if (!user.emailVerified) return { kind: "email-not-verified" };
+    if (!user.emailVerified && !skipEmailVerification()) return { kind: "email-not-verified" };
 
-    if (user.totpEnabled) {
+    if (user.totpEnabled && !skipTotp()) {
       // Issue a short-lived MFA token; client must POST it + a TOTP code to /auth/login/mfa.
       const mfaToken = await new SignJWT({})
         .setProtectedHeader({ alg: "RS256", kid: "auth-1" })

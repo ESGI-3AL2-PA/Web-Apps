@@ -1,3 +1,4 @@
+import "./load-env.js"; // must be first: loads .env before any module reads process.env
 import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
