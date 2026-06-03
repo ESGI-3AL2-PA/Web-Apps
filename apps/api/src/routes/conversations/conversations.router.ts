@@ -1,7 +1,6 @@
 import { initServer } from "@ts-rest/express";
 import { conversationsContract } from "@repo/contracts";
 import { resolve } from "../../repositories/container.js";
-import type { IConversationRepository } from "../../repositories/Conversation/conversation.repository.js";
 import { getConversationsUseCase } from "../../use-cases/conversations/get-conversations.use-case.js";
 import { getConversationByIdUseCase } from "../../use-cases/conversations/get-conversation-by-id.use-case.js";
 import { createConversationUseCase } from "../../use-cases/conversations/create-conversation.use-case.js";
@@ -12,6 +11,8 @@ import { attachMediaUseCase } from "../../use-cases/conversations/attach-media.u
 
 const s = initServer();
 
+// Participant/sender authorization for the record-level routes below is enforced by
+// the contract-metadata middleware (404-on-deny).
 export const conversationsRouter = s.router(conversationsContract, {
   getConversations: async ({ query, req }) => {
     // Users only see their own conversations; admins may filter freely.
@@ -21,10 +22,9 @@ export const conversationsRouter = s.router(conversationsContract, {
     return { status: 200, body: result };
   },
 
-  getConversationById: async ({ params: { id }, req }) => {
+  getConversationById: async ({ params: { id } }) => {
     const conversation = await getConversationByIdUseCase(resolve("conversation"))({ id });
-    // Non-members are told it doesn't exist (don't leak conversation existence).
-    if (!conversation || !conversation.participants.includes(req.user!.sub)) {
+    if (!conversation) {
       return { status: 404, body: { message: "Conversation not found" } };
     }
     return { status: 200, body: conversation };
@@ -37,20 +37,12 @@ export const conversationsRouter = s.router(conversationsContract, {
     return { status: 201, body: conversation };
   },
 
-  getMessages: async ({ params: { id }, query: { page, limit }, req }) => {
-    const conversation = await getConversationByIdUseCase(resolve("conversation"))({ id });
-    if (!conversation || !conversation.participants.includes(req.user!.sub)) {
-      return { status: 404, body: { message: "Conversation not found" } };
-    }
+  getMessages: async ({ params: { id }, query: { page, limit } }) => {
     const result = await getMessagesUseCase(resolve("conversation"))(id, { page, limit });
     return { status: 200, body: result };
   },
 
   sendMessage: async ({ params: { id }, body, req }) => {
-    const conversation = await getConversationByIdUseCase(resolve("conversation"))({ id });
-    if (!conversation || !conversation.participants.includes(req.user!.sub)) {
-      return { status: 404, body: { message: "Conversation not found" } };
-    }
     const message = await sendMessageUseCase(resolve("conversation"))(id, req.user!.sub, body);
     if (!message) {
       return { status: 404, body: { message: "Conversation not found" } };
@@ -58,31 +50,16 @@ export const conversationsRouter = s.router(conversationsContract, {
     return { status: 201, body: message };
   },
 
-  markMessageRead: async ({ params: { id }, req }) => {
-    const repo: IConversationRepository = resolve("conversation");
-    const existing = await repo.getMessageById(id);
-    if (!existing) {
-      return { status: 404, body: { message: "Message not found" } };
-    }
-    const conversation = await repo.getConversationById(existing.conversationId);
-    if (!conversation || !conversation.participants.includes(req.user!.sub)) {
-      return { status: 404, body: { message: "Message not found" } };
-    }
-    const message = await markMessageReadUseCase(repo)(id);
+  markMessageRead: async ({ params: { id } }) => {
+    const message = await markMessageReadUseCase(resolve("conversation"))(id);
     if (!message) {
       return { status: 404, body: { message: "Message not found" } };
     }
     return { status: 200, body: message };
   },
 
-  attachMedia: async ({ params: { id }, body, req }) => {
-    const repo: IConversationRepository = resolve("conversation");
-    const existing = await repo.getMessageById(id);
-    // Only the message's own sender may attach media to it.
-    if (!existing || existing.senderId !== req.user!.sub) {
-      return { status: 404, body: { message: "Message not found" } };
-    }
-    const message = await attachMediaUseCase(repo)(id, body);
+  attachMedia: async ({ params: { id }, body }) => {
+    const message = await attachMediaUseCase(resolve("conversation"))(id, body);
     if (!message) {
       return { status: 404, body: { message: "Message not found" } };
     }

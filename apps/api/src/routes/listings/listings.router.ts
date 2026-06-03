@@ -49,14 +49,8 @@ export const listingsRouter = s.router(listingsContract, {
     return { status: 201, body: newListing };
   },
 
-  updateListing: async ({ params: { id }, body, req }) => {
-    const existing = await getListingByIdUseCase(resolve("listing"))({ id });
-    if (!existing) {
-      return { status: 404, body: { message: "Listing not found" } };
-    }
-    if (existing.authorId !== req.user!.sub && req.user!.role !== "admin") {
-      return { status: 403, body: { message: "Owner or admin only" } };
-    }
+  updateListing: async ({ params: { id }, body }) => {
+    // Ownership/admin authorization is enforced by the contract-metadata middleware.
     const listing = await updateListingUseCase(resolve("listing"))(id, body);
     if (!listing) {
       return { status: 404, body: { message: "Listing not found" } };
@@ -64,14 +58,7 @@ export const listingsRouter = s.router(listingsContract, {
     return { status: 200, body: listing };
   },
 
-  deleteListing: async ({ params: { id }, req }) => {
-    const existing = await getListingByIdUseCase(resolve("listing"))({ id });
-    if (!existing) {
-      return { status: 404, body: { message: "Listing not found" } };
-    }
-    if (existing.authorId !== req.user!.sub && req.user!.role !== "admin") {
-      return { status: 403, body: { message: "Owner or admin only" } };
-    }
+  deleteListing: async ({ params: { id } }) => {
     const deleted = await deleteListingUseCase(resolve("listing"))({ id });
     if (!deleted) {
       return { status: 404, body: { message: "Listing not found" } };

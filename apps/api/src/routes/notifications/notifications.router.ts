@@ -1,7 +1,6 @@
 import { initServer } from "@ts-rest/express";
 import { notificationsContract } from "@repo/contracts";
 import { resolve } from "../../repositories/container.js";
-import type { INotificationRepository } from "../../repositories/Notification/notification.repository.js";
 import { getNotificationsUseCase } from "../../use-cases/notifications/get-notifications.use-case.js";
 import { createNotificationUseCase } from "../../use-cases/notifications/create-notification.use-case.js";
 import { markNotificationReadUseCase } from "../../use-cases/notifications/mark-notification-read.use-case.js";
@@ -19,22 +18,15 @@ export const notificationsRouter = s.router(notificationsContract, {
     return { status: 200, body: result };
   },
 
-  createNotification: async ({ body, req }) => {
-    // Users must not be able to push notifications to other users.
-    if (req.user!.role !== "admin") {
-      return { status: 403, body: { message: "Admin only" } };
-    }
+  createNotification: async ({ body }) => {
+    // Admin-only authorization is enforced by the contract-metadata middleware.
     const notification = await createNotificationUseCase(resolve("notification"))(body);
     return { status: 201, body: notification };
   },
 
-  markNotificationRead: async ({ params: { id }, req }) => {
-    const repo: INotificationRepository = resolve("notification");
-    const existing = await repo.getNotificationById(id);
-    if (!existing || (existing.recipientId !== req.user!.sub && req.user!.role !== "admin")) {
-      return { status: 404, body: { message: "Notification not found" } };
-    }
-    const notification = await markNotificationReadUseCase(repo)(id);
+  markNotificationRead: async ({ params: { id } }) => {
+    // Recipient/admin authorization (404-on-deny) is enforced by the contract-metadata middleware.
+    const notification = await markNotificationReadUseCase(resolve("notification"))(id);
     if (!notification) {
       return { status: 404, body: { message: "Notification not found" } };
     }
@@ -46,13 +38,9 @@ export const notificationsRouter = s.router(notificationsContract, {
     return { status: 200, body: { updated } };
   },
 
-  deleteNotification: async ({ params: { id }, req }) => {
-    const repo: INotificationRepository = resolve("notification");
-    const existing = await repo.getNotificationById(id);
-    if (!existing || (existing.recipientId !== req.user!.sub && req.user!.role !== "admin")) {
-      return { status: 404, body: { message: "Notification not found" } };
-    }
-    const deleted = await deleteNotificationUseCase(repo)({ id });
+  deleteNotification: async ({ params: { id } }) => {
+    // Recipient/admin authorization (404-on-deny) is enforced by the contract-metadata middleware.
+    const deleted = await deleteNotificationUseCase(resolve("notification"))({ id });
     if (!deleted) {
       return { status: 404, body: { message: "Notification not found" } };
     }

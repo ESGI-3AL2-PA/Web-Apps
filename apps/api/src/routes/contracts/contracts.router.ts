@@ -7,10 +7,6 @@ import { createContractUseCase } from "../../use-cases/contracts/create-contract
 import { signContractUseCase } from "../../use-cases/contracts/sign-contract.use-case.js";
 import { disputeContractUseCase } from "../../use-cases/contracts/dispute-contract.use-case.js";
 import { deleteContractUseCase } from "../../use-cases/contracts/delete-contract.use-case.js";
-import type { AuthUser } from "../../middleware/auth.middleware.js";
-
-const isParty = (contract: { providerId: string; beneficiaryId: string }, user: AuthUser): boolean =>
-  contract.providerId === user.sub || contract.beneficiaryId === user.sub;
 
 const s = initServer();
 
@@ -34,10 +30,10 @@ export const contractsRouter = s.router(contractsContract, {
     return { status: 200, body: result };
   },
 
-  getContractById: async ({ params: { id }, req }) => {
+  getContractById: async ({ params: { id } }) => {
+    // Party/admin authorization (404-on-deny) is enforced by the contract-metadata middleware.
     const contract = await getContractByIdUseCase(resolve("contract"))({ id });
-    // Only the two parties (or an admin) may view a contract.
-    if (!contract || (!isParty(contract, req.user!) && req.user!.role !== "admin")) {
+    if (!contract) {
       return { status: 404, body: { message: "Contract not found" } };
     }
     return { status: 200, body: contract };
@@ -52,14 +48,8 @@ export const contractsRouter = s.router(contractsContract, {
     return { status: 201, body: newContract };
   },
 
-  signContract: async ({ params: { id }, body, req }) => {
-    const existing = await getContractByIdUseCase(resolve("contract"))({ id });
-    if (!existing) {
-      return { status: 404, body: { message: "Contract not found" } };
-    }
-    if (!isParty(existing, req.user!)) {
-      return { status: 403, body: { message: "Only a party to the contract may sign it" } };
-    }
+  signContract: async ({ params: { id }, body }) => {
+    // Party-only authorization is enforced by the contract-metadata middleware.
     const contract = await signContractUseCase(resolve("contract"))(id, body);
     if (!contract) {
       return { status: 404, body: { message: "Contract not found" } };
@@ -67,14 +57,7 @@ export const contractsRouter = s.router(contractsContract, {
     return { status: 200, body: contract };
   },
 
-  disputeContract: async ({ params: { id }, body, req }) => {
-    const existing = await getContractByIdUseCase(resolve("contract"))({ id });
-    if (!existing) {
-      return { status: 404, body: { message: "Contract not found" } };
-    }
-    if (!isParty(existing, req.user!)) {
-      return { status: 403, body: { message: "Only a party to the contract may dispute it" } };
-    }
+  disputeContract: async ({ params: { id }, body }) => {
     const contract = await disputeContractUseCase(resolve("contract"))(id, body);
     if (!contract) {
       return { status: 404, body: { message: "Contract not found" } };
@@ -82,14 +65,7 @@ export const contractsRouter = s.router(contractsContract, {
     return { status: 200, body: contract };
   },
 
-  deleteContract: async ({ params: { id }, req }) => {
-    const existing = await getContractByIdUseCase(resolve("contract"))({ id });
-    if (!existing) {
-      return { status: 404, body: { message: "Contract not found" } };
-    }
-    if (!isParty(existing, req.user!) && req.user!.role !== "admin") {
-      return { status: 403, body: { message: "Party or admin only" } };
-    }
+  deleteContract: async ({ params: { id } }) => {
     const deleted = await deleteContractUseCase(resolve("contract"))({ id });
     if (!deleted) {
       return { status: 404, body: { message: "Contract not found" } };

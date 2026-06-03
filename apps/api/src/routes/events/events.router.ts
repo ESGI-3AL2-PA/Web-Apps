@@ -41,14 +41,8 @@ export const eventsRouter = s.router(eventsContract, {
     return { status: 201, body: newEvent };
   },
 
-  updateEvent: async ({ params: { id }, body, req }) => {
-    const existing = await getEventByIdUseCase(resolve("event"))({ id });
-    if (!existing) {
-      return { status: 404, body: { message: "Event not found" } };
-    }
-    if (existing.creatorId !== req.user!.sub && req.user!.role !== "admin") {
-      return { status: 403, body: { message: "Creator or admin only" } };
-    }
+  updateEvent: async ({ params: { id }, body }) => {
+    // Ownership/admin authorization is enforced by the contract-metadata middleware.
     const event = await updateEventUseCase(resolve("event"))(id, body);
     if (!event) {
       return { status: 404, body: { message: "Event not found" } };
@@ -56,14 +50,7 @@ export const eventsRouter = s.router(eventsContract, {
     return { status: 200, body: event };
   },
 
-  deleteEvent: async ({ params: { id }, req }) => {
-    const existing = await getEventByIdUseCase(resolve("event"))({ id });
-    if (!existing) {
-      return { status: 404, body: { message: "Event not found" } };
-    }
-    if (existing.creatorId !== req.user!.sub && req.user!.role !== "admin") {
-      return { status: 403, body: { message: "Creator or admin only" } };
-    }
+  deleteEvent: async ({ params: { id } }) => {
     const deleted = await deleteEventUseCase(resolve("event"))({ id });
     if (!deleted) {
       return { status: 404, body: { message: "Event not found" } };

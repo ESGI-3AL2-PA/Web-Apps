@@ -38,13 +38,7 @@ export const incidentsRouter = s.router(incidentsContract, {
   },
 
   updateIncident: async ({ params: { id }, body, req }) => {
-    const existing = await getIncidentByIdUseCase(resolve("incident"))({ id });
-    if (!existing) {
-      return { status: 404, body: { message: "Incident not found" } };
-    }
-    if (existing.reporterId !== req.user!.sub && req.user!.role !== "admin") {
-      return { status: 403, body: { message: "Reporter or admin only" } };
-    }
+    // Reporter/admin authorization is enforced by the contract-metadata middleware.
     const incident = await updateIncidentUseCase(resolve("incident"))(id, body, req.user!.sub);
     if (!incident) {
       return { status: 404, body: { message: "Incident not found" } };
@@ -52,14 +46,7 @@ export const incidentsRouter = s.router(incidentsContract, {
     return { status: 200, body: incident };
   },
 
-  deleteIncident: async ({ params: { id }, req }) => {
-    const existing = await getIncidentByIdUseCase(resolve("incident"))({ id });
-    if (!existing) {
-      return { status: 404, body: { message: "Incident not found" } };
-    }
-    if (existing.reporterId !== req.user!.sub && req.user!.role !== "admin") {
-      return { status: 403, body: { message: "Reporter or admin only" } };
-    }
+  deleteIncident: async ({ params: { id } }) => {
     const deleted = await deleteIncidentUseCase(resolve("incident"))({ id });
     if (!deleted) {
       return { status: 404, body: { message: "Incident not found" } };

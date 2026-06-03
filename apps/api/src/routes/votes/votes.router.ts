@@ -33,14 +33,8 @@ export const votesRouter = s.router(votesContract, {
     return { status: 201, body: newVote };
   },
 
-  updateVote: async ({ params: { id }, body, req }) => {
-    const existing = await getVoteByIdUseCase(resolve("vote"))({ id });
-    if (!existing) {
-      return { status: 404, body: { message: "Vote not found" } };
-    }
-    if (existing.creatorId !== req.user!.sub && req.user!.role !== "admin") {
-      return { status: 403, body: { message: "Creator or admin only" } };
-    }
+  updateVote: async ({ params: { id }, body }) => {
+    // Ownership/admin authorization is enforced by the contract-metadata middleware.
     const vote = await updateVoteUseCase(resolve("vote"))(id, body);
     if (!vote) {
       return { status: 404, body: { message: "Vote not found" } };
@@ -48,14 +42,7 @@ export const votesRouter = s.router(votesContract, {
     return { status: 200, body: vote };
   },
 
-  deleteVote: async ({ params: { id }, req }) => {
-    const existing = await getVoteByIdUseCase(resolve("vote"))({ id });
-    if (!existing) {
-      return { status: 404, body: { message: "Vote not found" } };
-    }
-    if (existing.creatorId !== req.user!.sub && req.user!.role !== "admin") {
-      return { status: 403, body: { message: "Creator or admin only" } };
-    }
+  deleteVote: async ({ params: { id } }) => {
     const deleted = await deleteVoteUseCase(resolve("vote"))({ id });
     if (!deleted) {
       return { status: 404, body: { message: "Vote not found" } };

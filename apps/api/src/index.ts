@@ -4,6 +4,7 @@ import helmet from "helmet";
 
 import { createExpressEndpoints } from "@ts-rest/express";
 import {
+  getAuthPolicy,
   usersContract,
   districtsContract,
   listingsContract,
@@ -29,20 +30,8 @@ import { conversationsRouter } from "./routes/conversations/conversations.router
 import { notificationsRouter } from "./routes/notifications/notifications.router.js";
 import { transactionsRouter } from "./routes/transactions/transactions.router.js";
 import { errorHandler, NotFoundError } from "./middleware/error-handler.js";
-import {
-  requireAuth,
-  usersAccessControl,
-  listingsAccessControl,
-  districtsAccessControl,
-  tagsAccessControl,
-  eventsAccessControl,
-  votesAccessControl,
-  incidentsAccessControl,
-  conversationsAccessControl,
-  notificationsAccessControl,
-  transactionsAccessControl,
-  contractsAccessControl,
-} from "./middleware/auth.middleware.js";
+import { requireAuth } from "./middleware/auth.middleware.js";
+import { authorize } from "./middleware/authorize.middleware.js";
 import { connectDB } from "./repositories/mongodb.connector.js";
 import { initContainer } from "./repositories/container.js";
 import { generateOpenApi } from "@ts-rest/open-api";
@@ -81,6 +70,11 @@ const openApiDocument = generateOpenApi(
       title: "API",
       version: "0.0.0",
     },
+    components: {
+      securitySchemes: {
+        bearerAuth: { type: "http", scheme: "bearer", bearerFormat: "JWT" },
+      },
+    },
     tags: [
       { name: "Users" },
       { name: "Districts" },
@@ -94,6 +88,24 @@ const openApiDocument = generateOpenApi(
       { name: "Notifications" },
       { name: "Transactions" },
     ],
+  },
+  {
+    // Reflect each route's contract `metadata.auth` policy in the generated docs.
+    operationMapper: (operation, appRoute) => {
+      const policy = getAuthPolicy(appRoute);
+      if (!policy || policy.public) return operation;
+      const bits: string[] = [];
+      if (policy.audience) bits.push(`audience ${policy.audience}`);
+      if (policy.roles?.length) bits.push(`roles ${policy.roles.join(", ")}`);
+      if (policy.scope?.selfParam) bits.push("self or admin");
+      else if (policy.scope) bits.push("owner or district-admin");
+      const base = operation.description ? `${operation.description}\n\n` : "";
+      return {
+        ...operation,
+        security: [{ bearerAuth: [] }],
+        description: bits.length ? `${base}**Access:** ${bits.join("; ")}` : operation.description,
+      };
+    },
   },
 );
 
@@ -131,32 +143,26 @@ app.use(
 // requireAuth verifies the JWT (iss/aud) and sets req.user.
 app.use(requireAuth);
 
-// Per-resource authorization policies. requireAuth has already run; these gate by
-// role/audience, while per-record ownership is enforced inside the handlers.
-app.use("/users", usersAccessControl);
-app.use("/listings", listingsAccessControl);
-app.use("/districts", districtsAccessControl);
-app.use("/tags", tagsAccessControl);
-app.use("/events", eventsAccessControl);
-app.use("/votes", votesAccessControl);
-app.use("/incidents", incidentsAccessControl);
-app.use("/conversations", conversationsAccessControl);
-app.use("/messages", conversationsAccessControl);
-app.use("/notifications", notificationsAccessControl);
-app.use("/transactions", transactionsAccessControl);
-app.use("/contracts", contractsAccessControl);
+// Authorization is declared per-route in the contract `metadata.auth` and enforced
+// by this single global middleware (reads req.tsRestRoute, loads records for
+// ownership/district checks). No per-resource path mounting needed.
+// Register every contract with the same metadata-driven global authorization
+// middleware. Typed `any` so it doesn't perturb each call's TRouter inference
+// (the contract's generic flows from args 1-2); `authorize` is a valid Express handler.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const endpointOptions: any = { globalMiddleware: [authorize] };
 
-createExpressEndpoints({ ...usersContract }, { ...usersRouter }, app);
-createExpressEndpoints({ ...listingsContract }, { ...listingsRouter }, app);
-createExpressEndpoints({ ...eventsContract }, { ...eventsRouter }, app);
-createExpressEndpoints({ ...contractsContract }, { ...contractsRouter }, app);
-createExpressEndpoints({ ...incidentsContract }, { ...incidentsRouter }, app);
-createExpressEndpoints({ ...districtsContract }, { ...districtsRouter }, app);
-createExpressEndpoints({ ...tagsContract }, { ...tagsRouter }, app);
-createExpressEndpoints({ ...votesContract }, { ...votesRouter }, app);
-createExpressEndpoints({ ...conversationsContract }, { ...conversationsRouter }, app);
-createExpressEndpoints({ ...notificationsContract }, { ...notificationsRouter }, app);
-createExpressEndpoints({ ...transactionsContract }, { ...transactionsRouter }, app);
+createExpressEndpoints(usersContract, usersRouter, app, endpointOptions);
+createExpressEndpoints(listingsContract, listingsRouter, app, endpointOptions);
+createExpressEndpoints(eventsContract, eventsRouter, app, endpointOptions);
+createExpressEndpoints(contractsContract, contractsRouter, app, endpointOptions);
+createExpressEndpoints(incidentsContract, incidentsRouter, app, endpointOptions);
+createExpressEndpoints(districtsContract, districtsRouter, app, endpointOptions);
+createExpressEndpoints(tagsContract, tagsRouter, app, endpointOptions);
+createExpressEndpoints(votesContract, votesRouter, app, endpointOptions);
+createExpressEndpoints(conversationsContract, conversationsRouter, app, endpointOptions);
+createExpressEndpoints(notificationsContract, notificationsRouter, app, endpointOptions);
+createExpressEndpoints(transactionsContract, transactionsRouter, app, endpointOptions);
 
 app.use((_req, _res, next) => {
   next(new NotFoundError());
