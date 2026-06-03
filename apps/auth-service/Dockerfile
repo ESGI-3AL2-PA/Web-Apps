@@ -15,7 +15,7 @@ FROM deps AS dev
 ENV NODE_ENV=development
 COPY packages/ ./packages/
 COPY apps/auth-service/src/ ./apps/auth-service/src/
-EXPOSE 7000
+EXPOSE 3001
 CMD ["npx", "tsx", "--watch", "apps/auth-service/src/index.ts"]
 
 # PROD
@@ -24,5 +24,5 @@ ENV NODE_ENV=production
 COPY packages/ ./packages/
 COPY apps/auth-service/ ./apps/auth-service/
 RUN npx turbo run build --filter=auth-service
-EXPOSE 7000
+EXPOSE 3001
 CMD ["node", "apps/auth-service/dist/index.js"]

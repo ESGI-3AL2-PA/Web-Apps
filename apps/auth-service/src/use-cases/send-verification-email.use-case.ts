@@ -2,7 +2,7 @@ import { randomBytes, createHash } from "crypto";
 import type { IAuthTokenRepository } from "../repositories/AuthToken/auth-token.repository.js";
 import { sendVerificationEmail } from "../services/email.service.js";
 
-const AUTH_PUBLIC_URL = process.env.AUTH_PUBLIC_URL ?? "http://localhost:6000";
+const AUTH_PUBLIC_URL = process.env.AUTH_PUBLIC_URL ?? "http://localhost:3001";
 const VERIFY_TTL_MS = 24 * 60 * 60 * 1000; // 24h
 
 // Issues a verification token for the given user, persists its sha256 hash,

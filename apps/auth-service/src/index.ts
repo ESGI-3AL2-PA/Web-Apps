@@ -24,7 +24,7 @@ const allowedOrigins = (process.env.CORS_ORIGINS ?? "http://localhost:3000,http:
   .filter(Boolean);
 
 const app: Application = express();
-const port = Number(process.env.PORT) || 6000;
+const port = Number(process.env.PORT) || 3001;
 
 // Behind a reverse proxy/LB, set TRUST_PROXY (e.g. "1" for one hop) so
 // express-rate-limit keys on the real client IP. Left unset by default so a

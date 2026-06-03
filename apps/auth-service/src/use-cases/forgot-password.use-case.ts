@@ -3,7 +3,7 @@ import type { IAuthTokenRepository } from "../repositories/AuthToken/auth-token.
 import type { IUserReaderRepository } from "../repositories/User/user-reader.repository.js";
 import { sendPasswordResetEmail } from "../services/email.service.js";
 
-const AUTH_PUBLIC_URL = process.env.AUTH_PUBLIC_URL ?? "http://localhost:6000";
+const AUTH_PUBLIC_URL = process.env.AUTH_PUBLIC_URL ?? "http://localhost:3001";
 const RESET_TTL_MS = 60 * 60 * 1000; // 1h
 
 // Always silent (no user enumeration). If the email maps to a verified user,
