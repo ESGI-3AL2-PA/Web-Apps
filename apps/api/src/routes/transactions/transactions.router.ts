@@ -10,14 +10,14 @@ const s = initServer();
 export const transactionsRouter = s.router(transactionsContract, {
   getTransactions: async ({ query, req }) => {
     // Non-admins may only read their own ledger.
-    const isAdmin = req.user!.role === "admin";
+    const isAdmin = req.user!.role === "admin" || req.user!.role === "superAdmin";
     const scopedQuery = isAdmin ? query : { ...query, userId: req.user!.sub };
     const result = await getTransactionsUseCase(resolve("transaction"))(scopedQuery);
     return { status: 200, body: result };
   },
 
   createTransaction: async ({ body, req }) => {
-    const isAdmin = req.user!.role === "admin";
+    const isAdmin = req.user!.role === "admin" || req.user!.role === "superAdmin";
     // Non-admins can only move their own tokens (no spoofed source, no system minting).
     const data = isAdmin ? body : { ...body, fromUserId: req.user!.sub };
 
