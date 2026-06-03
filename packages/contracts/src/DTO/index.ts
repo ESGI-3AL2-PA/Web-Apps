@@ -1,5 +1,7 @@
+export * from "./query.dto";
 export * from "./geoJson.dto";
 export * from "./user.dto";
+export * from "./auth.dto";
 export * from "./errors.dto";
 export * from "./district.dto";
 export * from "./contract.dto";

@@ -30,9 +30,7 @@ export const CreateTransactionDtoSchema = z
   .openapi({ title: "CreateTransaction" });
 export type CreateTransactionDto = z.infer<typeof CreateTransactionDtoSchema>;
 
-export const TransactionParamsDtoSchema = z
-  .object({ id: z.string() })
-  .openapi({ title: "TransactionParams" });
+export const TransactionParamsDtoSchema = z.object({ id: z.string() }).openapi({ title: "TransactionParams" });
 export type TransactionParamsDto = z.infer<typeof TransactionParamsDtoSchema>;
 
 export const TransactionQueryDtoSchema = z

@@ -9,6 +9,7 @@ import {
   DisputeContractDtoSchema,
   SignContractDtoSchema,
   NotFoundErrorSchema,
+  ForbiddenErrorSchema,
   PaginatedResponseDtoSchema,
 } from "./DTO";
 
@@ -43,7 +44,7 @@ export const contractsContract = c.router({
     responses: {
       201: ContractResponseDtoSchema,
     },
-    summary: "Create a new contract (typically when a paid listing is accepted)",
+    summary: "Create a new contract (the authenticated caller is the provider)",
   },
 
   signContract: {
@@ -53,9 +54,10 @@ export const contractsContract = c.router({
     body: SignContractDtoSchema,
     responses: {
       200: ContractResponseDtoSchema,
+      403: ForbiddenErrorSchema,
       404: NotFoundErrorSchema,
     },
-    summary: "Update contract signature status (OpenSign callback)",
+    summary: "Update contract signature status (party only)",
   },
 
   disputeContract: {
@@ -65,9 +67,10 @@ export const contractsContract = c.router({
     body: DisputeContractDtoSchema,
     responses: {
       200: ContractResponseDtoSchema,
+      403: ForbiddenErrorSchema,
       404: NotFoundErrorSchema,
     },
-    summary: "Mark a contract as disputed",
+    summary: "Mark a contract as disputed (party only)",
   },
 
   deleteContract: {
@@ -77,8 +80,9 @@ export const contractsContract = c.router({
     body: c.noBody(),
     responses: {
       204: z.undefined(),
+      403: ForbiddenErrorSchema,
       404: NotFoundErrorSchema,
     },
-    summary: "Delete a contract",
+    summary: "Delete a contract (party or admin only)",
   },
 });

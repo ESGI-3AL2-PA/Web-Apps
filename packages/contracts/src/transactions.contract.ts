@@ -7,6 +7,8 @@ import {
   UserBalanceResponseDtoSchema,
   UserTransactionsParamsDtoSchema,
   NotFoundErrorSchema,
+  BadRequestErrorSchema,
+  ForbiddenErrorSchema,
   PaginatedResponseDtoSchema,
 } from "./DTO";
 
@@ -29,8 +31,10 @@ export const transactionsContract = c.router({
     body: CreateTransactionDtoSchema,
     responses: {
       201: PaginatedResponseDtoSchema(TransactionResponseDtoSchema),
+      400: BadRequestErrorSchema,
     },
-    summary: "Create a transaction (transfer between users or system credit/debit). Returns the resulting transaction entries.",
+    summary:
+      "Create a transaction (transfer between users or system credit/debit). Returns the resulting transaction entries.",
   },
 
   getUserTransactions: {
@@ -40,6 +44,7 @@ export const transactionsContract = c.router({
     query: TransactionQueryDtoSchema,
     responses: {
       200: PaginatedResponseDtoSchema(TransactionResponseDtoSchema),
+      403: ForbiddenErrorSchema,
     },
     summary: "Get a paginated list of transactions for a specific user",
   },
@@ -50,6 +55,7 @@ export const transactionsContract = c.router({
     pathParams: UserTransactionsParamsDtoSchema,
     responses: {
       200: UserBalanceResponseDtoSchema,
+      403: ForbiddenErrorSchema,
       404: NotFoundErrorSchema,
     },
     summary: "Get the current points balance of a user",

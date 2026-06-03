@@ -10,6 +10,7 @@ import {
   VoteResponseDtoSchema,
   VoteResultsResponseDtoSchema,
   NotFoundErrorSchema,
+  ForbiddenErrorSchema,
   PaginatedResponseDtoSchema,
 } from "./DTO";
 
@@ -54,9 +55,10 @@ export const votesContract = c.router({
     body: UpdateVoteDtoSchema,
     responses: {
       200: VoteResponseDtoSchema,
+      403: ForbiddenErrorSchema,
       404: NotFoundErrorSchema,
     },
-    summary: "Partially update a vote",
+    summary: "Partially update a vote (creator or admin only)",
   },
 
   deleteVote: {
@@ -66,9 +68,10 @@ export const votesContract = c.router({
     body: c.noBody(),
     responses: {
       204: z.undefined(),
+      403: ForbiddenErrorSchema,
       404: NotFoundErrorSchema,
     },
-    summary: "Delete a vote",
+    summary: "Delete a vote (creator or admin only)",
   },
 
   submitVoteResponse: {

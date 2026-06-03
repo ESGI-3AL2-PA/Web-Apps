@@ -8,6 +8,7 @@ import {
   ListingResponseDtoSchema,
   UpdateListingDtoSchema,
   NotFoundErrorSchema,
+  ForbiddenErrorSchema,
   PaginatedResponseDtoSchema,
 } from "./DTO";
 
@@ -41,6 +42,7 @@ export const listingsContract = c.router({
     body: CreateListingDtoSchema,
     responses: {
       201: ListingResponseDtoSchema,
+      404: NotFoundErrorSchema,
     },
     summary: "Create a new listing",
   },
@@ -52,9 +54,10 @@ export const listingsContract = c.router({
     body: UpdateListingDtoSchema,
     responses: {
       200: ListingResponseDtoSchema,
+      403: ForbiddenErrorSchema,
       404: NotFoundErrorSchema,
     },
-    summary: "Partially update a listing",
+    summary: "Partially update a listing (owner or admin)",
   },
 
   deleteListing: {
@@ -64,8 +67,9 @@ export const listingsContract = c.router({
     body: c.noBody(),
     responses: {
       204: z.undefined(),
+      403: ForbiddenErrorSchema,
       404: NotFoundErrorSchema,
     },
-    summary: "Delete a listing",
+    summary: "Delete a listing (owner or admin)",
   },
 });

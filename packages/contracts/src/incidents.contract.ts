@@ -9,6 +9,7 @@ import {
   IncidentStatsDtoSchema,
   UpdateIncidentDtoSchema,
   NotFoundErrorSchema,
+  ForbiddenErrorSchema,
   PaginatedResponseDtoSchema,
 } from "./DTO";
 
@@ -62,9 +63,10 @@ export const incidentsContract = c.router({
     body: UpdateIncidentDtoSchema,
     responses: {
       200: IncidentResponseDtoSchema,
+      403: ForbiddenErrorSchema,
       404: NotFoundErrorSchema,
     },
-    summary: "Partially update an incident (status, assignee, history)",
+    summary: "Partially update an incident (reporter or admin only)",
   },
 
   deleteIncident: {
@@ -74,8 +76,9 @@ export const incidentsContract = c.router({
     body: c.noBody(),
     responses: {
       204: z.undefined(),
+      403: ForbiddenErrorSchema,
       404: NotFoundErrorSchema,
     },
-    summary: "Delete an incident",
+    summary: "Delete an incident (reporter or admin only)",
   },
 });

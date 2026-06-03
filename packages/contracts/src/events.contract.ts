@@ -7,9 +7,9 @@ import {
   EventParamsDtoSchema,
   EventQueryDtoSchema,
   EventResponseDtoSchema,
-  RegisterEventDtoSchema,
   UpdateEventDtoSchema,
   NotFoundErrorSchema,
+  ForbiddenErrorSchema,
   PaginatedResponseDtoSchema,
 } from "./DTO";
 
@@ -54,9 +54,10 @@ export const eventsContract = c.router({
     body: UpdateEventDtoSchema,
     responses: {
       200: EventResponseDtoSchema,
+      403: ForbiddenErrorSchema,
       404: NotFoundErrorSchema,
     },
-    summary: "Partially update an event",
+    summary: "Partially update an event (creator or admin only)",
   },
 
   deleteEvent: {
@@ -66,33 +67,34 @@ export const eventsContract = c.router({
     body: c.noBody(),
     responses: {
       204: z.undefined(),
+      403: ForbiddenErrorSchema,
       404: NotFoundErrorSchema,
     },
-    summary: "Delete an event",
+    summary: "Delete an event (creator or admin only)",
   },
 
   registerToEvent: {
     method: "POST",
     path: "/events/:id/register",
     pathParams: EventParamsDtoSchema,
-    body: RegisterEventDtoSchema,
+    body: c.noBody(),
     responses: {
       200: EventResponseDtoSchema,
       404: NotFoundErrorSchema,
     },
-    summary: "Register a user to an event",
+    summary: "Register the authenticated user to an event",
   },
 
   unregisterFromEvent: {
     method: "DELETE",
     path: "/events/:id/register",
     pathParams: EventParamsDtoSchema,
-    body: RegisterEventDtoSchema,
+    body: c.noBody(),
     responses: {
       200: EventResponseDtoSchema,
       404: NotFoundErrorSchema,
     },
-    summary: "Cancel a user's registration to an event",
+    summary: "Cancel the authenticated user's registration to an event",
   },
 
   attendEvent: {

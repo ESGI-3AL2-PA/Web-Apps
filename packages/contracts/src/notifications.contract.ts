@@ -3,12 +3,12 @@ import { z } from "zod";
 
 import {
   CreateNotificationDtoSchema,
-  MarkAllReadDtoSchema,
   MarkAllReadResponseDtoSchema,
   NotificationParamsDtoSchema,
   NotificationQueryDtoSchema,
   NotificationResponseDtoSchema,
   NotFoundErrorSchema,
+  ForbiddenErrorSchema,
   PaginatedResponseDtoSchema,
 } from "./DTO";
 
@@ -31,8 +31,9 @@ export const notificationsContract = c.router({
     body: CreateNotificationDtoSchema,
     responses: {
       201: NotificationResponseDtoSchema,
+      403: ForbiddenErrorSchema,
     },
-    summary: "Create a notification (typically triggered server-side)",
+    summary: "Create a notification (admin only; normally triggered server-side)",
   },
 
   markNotificationRead: {
@@ -50,11 +51,11 @@ export const notificationsContract = c.router({
   markAllNotificationsRead: {
     method: "PATCH",
     path: "/notifications/read-all",
-    body: MarkAllReadDtoSchema,
+    body: c.noBody(),
     responses: {
       200: MarkAllReadResponseDtoSchema,
     },
-    summary: "Mark all notifications of a recipient as read",
+    summary: "Mark all of the authenticated user's notifications as read",
   },
 
   deleteNotification: {

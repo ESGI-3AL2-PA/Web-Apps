@@ -4,6 +4,7 @@ import { z } from "zod";
 import {
   CreateUserDtoSchema,
   NotFoundErrorSchema,
+  UnauthorizedErrorSchema,
   UpdateUserDtoSchema,
   UserParamsDtoSchema,
   UserQueryDtoSchema,
@@ -52,6 +53,7 @@ export const usersContract = c.router({
     body: UpdateUserDtoSchema,
     responses: {
       200: UserResponseDtoSchema,
+      401: UnauthorizedErrorSchema,
       404: NotFoundErrorSchema,
     },
     summary: "Partially update a user",

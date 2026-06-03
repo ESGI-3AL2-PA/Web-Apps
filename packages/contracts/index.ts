@@ -11,3 +11,4 @@ export * from "./src/votes.contract";
 export * from "./src/conversations.contract";
 export * from "./src/notifications.contract";
 export * from "./src/transactions.contract";
+export * from "./src/auth.contract";
