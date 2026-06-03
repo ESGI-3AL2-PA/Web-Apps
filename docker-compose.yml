@@ -12,9 +12,30 @@ services:
       - /app/apps/api/node_modules
     environment:
       NODE_ENV: development
+      AUTH_JWKS_URL: http://auth-service:6000/.well-known/jwks.json
     depends_on:
       - mongodb
       - neo4j
+      - auth-service
+
+  auth-service:
+    build:
+      context: .
+      dockerfile: apps/auth-service/Dockerfile
+      target: dev
+    ports:
+      - "6000:6000"
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/apps/auth-service/node_modules
+    environment:
+      NODE_ENV: development
+      MONGODB_URL: mongodb://root:root@mongodb:27017
+      MONGODB_DB: db
+      API_URL: http://api:3000
+    depends_on:
+      - mongodb
 
   mongodb:
     image: mongo:8
