@@ -14,7 +14,7 @@ The project is a **Turborepo monorepo** built entirely in TypeScript, following 
 │   ├── api/           # Express REST API : port 3000
 │   ├── admin-front/   # React 19 + Vite : port 4000
 │   ├── user-front/    # React 19 + Vite : port 5000
-│   └── auth-service/  # Express REST API : port 6000
+│   └── auth-service/  # Express REST API : port 3001
 ├── packages/
 │   ├── contracts/     # ts-rest + Zod contracts (the source of truth)
 │   ├── ui/            # Shared React component library
@@ -33,13 +33,13 @@ The project is a **Turborepo monorepo** built entirely in TypeScript, following 
 
 Turborepo orchestrates all tasks across workspaces. Key properties:
 
-| Task | Cache | Persistent | Notes |
-|---|---|---|---|
-| `build` | yes | no | Depends on `^build` (dependencies built first) |
-| `dev` | no | yes | Hot-reload for all apps in parallel |
-| `lint` / `lint:fix` | yes | no | Per-workspace ESLint |
-| `start` | yes | no | Runs compiled output |
-| `format` | yes | no | Prettier over all workspaces |
+| Task                | Cache | Persistent | Notes                                          |
+| ------------------- | ----- | ---------- | ---------------------------------------------- |
+| `build`             | yes   | no         | Depends on `^build` (dependencies built first) |
+| `dev`               | no    | yes        | Hot-reload for all apps in parallel            |
+| `lint` / `lint:fix` | yes   | no         | Per-workspace ESLint                           |
+| `start`             | yes   | no         | Runs compiled output                           |
+| `format`            | yes   | no         | Prettier over all workspaces                   |
 
 ---
 
@@ -74,20 +74,22 @@ The API follows **Clean Architecture** with three concentric layers: routes → 
 - Registers the global error handler middleware
 
 ### Layers
+
 - Layer 1 — Routes (thin controllers)
 - Layer 2 — Use Cases (business logic)
 - Layer 3 — Repositories (data access)
-- 
+-
+
 ---
 
 ## Frontend Apps
 
 Both frontend apps are structurally identical.
 
-| App | Port | Stack |
-|---|---|---|
+| App           | Port | Stack                        |
+| ------------- | ---- | ---------------------------- |
 | `admin-front` | 4000 | React 19, Vite 8, TypeScript |
-| `user-front` | 5000 | React 19, Vite 8, TypeScript |
+| `user-front`  | 5000 | React 19, Vite 8, TypeScript |
 
 Each app currently renders shared components from `@repo/ui`. TypeScript is configured via `@repo/typescript-config/vite.json` (targets ESNext + DOM, source maps enabled).
 
@@ -105,21 +107,21 @@ Shared React component library consumed by both frontends.
 
 Three tsconfig bases:
 
-| File | Used by | Notable settings |
-|---|---|---|
-| `base.json` | All | Strict mode, ESNext, `isolatedModules`, declarations |
-| `node.json` | `api` | NodeNext module resolution, no implicit returns/override |
-| `vite.json` | Frontends | ESNext module, DOM lib, `useDefineForClassFields`, source maps |
-| `react-library.json` | `ui` | Extends base, JSX `react-jsx` |
+| File                 | Used by   | Notable settings                                               |
+| -------------------- | --------- | -------------------------------------------------------------- |
+| `base.json`          | All       | Strict mode, ESNext, `isolatedModules`, declarations           |
+| `node.json`          | `api`     | NodeNext module resolution, no implicit returns/override       |
+| `vite.json`          | Frontends | ESNext module, DOM lib, `useDefineForClassFields`, source maps |
+| `react-library.json` | `ui`      | Extends base, JSX `react-jsx`                                  |
 
 ### `@repo/eslint-config`
 
 ESLint 9 flat-config rules, composed per environment:
 
-| Config | Used by | Key rules |
-|---|---|---|
-| `base.js` | All | Consistent type imports, `_`-prefixed unused vars, no console except warn/error |
-| `node.js` | `api` | Extends base + no floating promises (error) |
+| Config     | Used by   | Key rules                                                                          |
+| ---------- | --------- | ---------------------------------------------------------------------------------- |
+| `base.js`  | All       | Consistent type imports, `_`-prefixed unused vars, no console except warn/error    |
+| `node.js`  | `api`     | Extends base + no floating promises (error)                                        |
 | `react.js` | Frontends | Extends base + hooks rules-of-hooks (error), exhaustive-deps (warn), react-refresh |
 
 ---

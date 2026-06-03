@@ -6,13 +6,13 @@ Dev defaults are fine for `npm run dev` / `docker compose up`. Set these before 
 
 | Var                | Required            | Default                                | Notes                                                                                 |
 | ------------------ | ------------------- | -------------------------------------- | ------------------------------------------------------------------------------------- |
-| `PORT`             | no                  | `6000`                                 | Listen port.                                                                          |
+| `PORT`             | no                  | `3001`                                 | Listen port.                                                                          |
 | `MONGODB_URL`      | yes (non-local)     | `mongodb://root:root@localhost:27017`  | Shared with the api.                                                                  |
 | `MONGODB_DB`       | yes (non-local)     | `db`                                   |                                                                                       |
 | `API_URL`          | yes (in docker)     | `http://localhost:3000`                | Where register POSTs the new user. In docker compose set to `http://api:3000`.        |
 | `AUTH_PRIVATE_KEY` | **yes (prod)**      | ephemeral generated at boot            | RS256 PEM. Without these, every restart invalidates outstanding tokens.               |
 | `AUTH_PUBLIC_KEY`  | **yes (prod)**      | ephemeral generated at boot            | Must match the private key.                                                           |
-| `AUTH_PUBLIC_URL`  | **yes (prod)**      | `http://localhost:6000`                | Public URL the auth-service serves on. Used to build verification + reset links.      |
+| `AUTH_PUBLIC_URL`  | **yes (prod)**      | `http://localhost:3001`                | Public URL the auth-service serves on. Used to build verification + reset links.      |
 | `CORS_ORIGINS`     | **yes (non-local)** | `http://localhost:3000,4000,5000`      | Comma-separated. Also serves as the `redirect_uri` allowlist on login/register pages. |
 | `RESEND_API_KEY`   | **yes (prod)**      | _(none — falls back to `console.log`)_ | Without it, verification and reset emails are only printed to stdout.                 |
 | `FROM_EMAIL`       | **yes (prod)**      | `no-reply@example.com`                 | Must be on a domain you've verified in Resend.                                        |
@@ -26,7 +26,7 @@ Dev defaults are fine for `npm run dev` / `docker compose up`. Set these before 
 | --------------- | ------------------- | --------------------------------------------- | --------------------------------------------------------------------------------- |
 | `MONGODB_URL`   | yes (non-local)     | `mongodb://root:root@localhost:27017`         |                                                                                   |
 | `MONGODB_DB`    | yes (non-local)     | `db`                                          |                                                                                   |
-| `AUTH_JWKS_URL` | **yes (non-local)** | `http://localhost:6000/.well-known/jwks.json` | Must point at the auth-service's JWKS. In docker: `http://auth-service:6000/...`. |
+| `AUTH_JWKS_URL` | **yes (non-local)** | `http://localhost:3001/.well-known/jwks.json` | Must point at the auth-service's JWKS. In docker: `http://auth-service:3001/...`. |
 | `CORS_ORIGINS`  | **yes (non-local)** | `http://localhost:4000,5000`                  | Comma-separated frontend origins.                                                 |
 
 ## user-front (`apps/user-front`)
@@ -35,14 +35,14 @@ Vite env vars — must be prefixed `VITE_` to be exposed to the browser.
 
 | Var                     | Required        | Default                 | Notes                       |
 | ----------------------- | --------------- | ----------------------- | --------------------------- |
-| `VITE_AUTH_SERVICE_URL` | yes (non-local) | `http://localhost:6000` | Public URL of auth-service. |
+| `VITE_AUTH_SERVICE_URL` | yes (non-local) | `http://localhost:3001` | Public URL of auth-service. |
 | `VITE_API_URL`          | yes (non-local) | `http://localhost:3000` | Public URL of api.          |
 
 ## admin-front (`apps/admin-front`)
 
 | Var                     | Required        | Default                 | Notes |
 | ----------------------- | --------------- | ----------------------- | ----- |
-| `VITE_AUTH_SERVICE_URL` | yes (non-local) | `http://localhost:6000` |       |
+| `VITE_AUTH_SERVICE_URL` | yes (non-local) | `http://localhost:3001` |       |
 
 ## Generating RS256 keys for prod
 

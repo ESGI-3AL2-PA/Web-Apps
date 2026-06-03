@@ -11,7 +11,7 @@ User browser
 admin-front / user-front
   │  redirect to auth-service login page
   ▼
-auth-service:6000/login?redirect_uri=<app-url>
+auth-service:3001/login?redirect_uri=<app-url>
   │  POST credentials → validate → set session cookie → redirect back with tokens
   ▼
 app receives access_token + refresh_token
@@ -98,7 +98,7 @@ Both frontends import from `@repo/contracts` for type-safe API calls — same pa
 
 `auth.middleware`:
 
-- Fetches JWKS from `auth-service:6000/.well-known/jwks.json` (cached, refreshed on key rotation)
+- Fetches JWKS from `auth-service:3001/.well-known/jwks.json` (cached, refreshed on key rotation)
 - Validates Bearer token on every protected route
 - Attaches `req.user` with claims (`role`, `adminDistrictId`)
 - Returns `401` if missing/invalid, `403` if insufficient role **or district mismatch** (an `admin` acting outside their `adminDistrictId`); `superAdmin` bypasses district checks
@@ -121,7 +121,7 @@ No custom auth code needed. Configure the OIDC resource server to validate JWTs:
 `com.auth0:java-jwt`:
 
 ```java
-JwkProvider provider = new UrlJwkProvider("http://auth-service:6000/.well-known/jwks.json");
+JwkProvider provider = new UrlJwkProvider("http://auth-service:3001/.well-known/jwks.json");
 DecodedJWT jwt = JWT.decode(token);
 Jwk jwk = provider.get(jwt.getKeyId());
 Algorithm algorithm = Algorithm.RSA256((RSAPublicKey) jwk.getPublicKey(), null);
