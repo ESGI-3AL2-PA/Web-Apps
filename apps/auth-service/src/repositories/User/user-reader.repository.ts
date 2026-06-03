@@ -5,7 +5,7 @@ export interface UserRecord {
   firstName: string;
   lastName: string;
   phone?: string;
-  role: "admin" | "user";
+  role: "user" | "admin" | "superAdmin";
   address: string;
   districtId: string;
   balance: number;

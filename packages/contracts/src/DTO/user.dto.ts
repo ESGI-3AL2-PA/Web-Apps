@@ -1,7 +1,7 @@
 import { z } from "../zod";
 import { StrongPasswordSchema } from "./password.schema";
 
-export const UserRoleSchema = z.enum(["admin", "user"]);
+export const UserRoleSchema = z.enum(["user", "admin", "superAdmin"]);
 export type UserRole = z.infer<typeof UserRoleSchema>;
 
 export const UserResponseDtoSchema = z
