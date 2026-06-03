@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { LoginFormI } from '../../../types/authType';
+import type { LoginFormI } from "./types";
 
 const LoginForm = () => {
   const [data, setData] = useState<LoginFormI>({
     email: "",
-    password: ""
+    password: "",
   });
   const [message, setMessage] = useState("");
 
@@ -16,9 +16,8 @@ const LoginForm = () => {
     setData({
       email: "",
       password: "",
-    })
+    });
   };
-
 
   return (
     <div className="loginForm">
@@ -28,7 +27,7 @@ const LoginForm = () => {
           type="email"
           name="email"
           value={data.email}
-          onChange={e => setData({ ...data, email: e.target.value })}
+          onChange={(e) => setData({ ...data, email: e.target.value })}
           placeholder="Email"
           required
         />
@@ -36,7 +35,7 @@ const LoginForm = () => {
           type="password"
           name="password"
           value={data.password}
-          onChange={e => setData({ ...data, password: e.target.value })}
+          onChange={(e) => setData({ ...data, password: e.target.value })}
           placeholder="Mot de passe"
           required
         />
@@ -45,6 +44,6 @@ const LoginForm = () => {
       {message && <p>{message}</p>}
     </div>
   );
-}
+};
 
-export default LoginForm
+export default LoginForm;
