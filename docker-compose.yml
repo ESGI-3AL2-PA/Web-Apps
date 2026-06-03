@@ -39,6 +39,42 @@ services:
     depends_on:
       - mongodb
 
+  admin-front:
+    build:
+      context: .
+      dockerfile: apps/admin-front/Dockerfile
+      target: dev
+    ports:
+      - "4000:4000"
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/apps/admin-front/node_modules
+    environment:
+      NODE_ENV: development
+      VITE_AUTH_SERVICE_URL: http://localhost:3001
+    depends_on:
+      - auth-service
+
+  user-front:
+    build:
+      context: .
+      dockerfile: apps/user-front/Dockerfile
+      target: dev
+    ports:
+      - "5000:5000"
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/apps/user-front/node_modules
+    environment:
+      NODE_ENV: development
+      VITE_AUTH_SERVICE_URL: http://localhost:3001
+      VITE_API_URL: http://localhost:3000
+    depends_on:
+      - api
+      - auth-service
+
   mongodb:
     image: mongo:8
     restart: always
