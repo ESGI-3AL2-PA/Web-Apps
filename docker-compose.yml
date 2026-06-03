@@ -12,6 +12,8 @@ services:
       - /app/apps/api/node_modules
     environment:
       NODE_ENV: development
+      MONGODB_URL: mongodb://root:root@mongodb:27017
+      MONGODB_DB: db
       AUTH_JWKS_URL: http://auth-service:3001/.well-known/jwks.json
     depends_on:
       - mongodb
