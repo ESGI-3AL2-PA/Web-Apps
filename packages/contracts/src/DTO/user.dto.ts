@@ -1,6 +1,7 @@
 import { z } from "../zod";
+import { StrongPasswordSchema } from "./password.schema";
 
-export const UserRoleSchema = z.enum(["admin", "user"]);
+export const UserRoleSchema = z.enum(["user", "admin", "superAdmin"]);
 export type UserRole = z.infer<typeof UserRoleSchema>;
 
 export const UserResponseDtoSchema = z
@@ -14,6 +15,8 @@ export const UserResponseDtoSchema = z
     address: z.string().optional().openapi({ description: "User's address" }),
     districtId: z.string().optional().openapi({ description: "ID of the district the user belongs to" }),
     balance: z.number().int().openapi({ description: "User balance in tokens" }),
+    emailVerified: z.boolean().openapi({ description: "Whether the email has been verified" }),
+    totpEnabled: z.boolean().openapi({ description: "Whether the user has TOTP MFA enabled" }),
     createdAt: z.string().datetime().openapi({ description: "Creation timestamp" }),
     updatedAt: z.string().datetime().openapi({ description: "Last update timestamp" }),
   })
@@ -26,7 +29,9 @@ export const CreateUserDtoSchema = z
     lastName: z.string().min(1).max(100).openapi({ description: "User's last name", example: "Doe" }),
     email: z.string().email().openapi({ description: "User's email address", example: "john.doe@example.com" }),
     phone: z.string().optional().openapi({ description: "User's phone number", example: "0612345678" }),
-    password: z.string().min(8).openapi({ description: "User's password" }),
+    password: StrongPasswordSchema.openapi({
+      description: "Min 12 chars with upper, lower, digit, and symbol",
+    }),
     address: z.string().openapi({ description: "User's address", example: "12 Rue de la Paix, Paris" }),
   })
   .openapi({ title: "CreateUser" });
@@ -42,9 +47,18 @@ export const UpdateUserDtoSchema = z
       .optional()
       .openapi({ description: "User's email address", example: "john.doe@example.com" }),
     phone: z.string().optional().openapi({ description: "User's phone number", example: "0612345678" }),
-    password: z.string().min(8).optional().openapi({ description: "User's password" }),
-    newPassword: z.string().min(8).optional().openapi({ description: "User's new password" }),
+    currentPassword: z
+      .string()
+      .optional()
+      .openapi({ description: "Current password — required only when changing newPassword" }),
+    newPassword: StrongPasswordSchema.optional().openapi({
+      description: "New password — min 12 chars with upper, lower, digit, and symbol",
+    }),
     address: z.string().optional().openapi({ description: "User's address", example: "12 Rue de la Paix, Paris" }),
+  })
+  .refine((data) => !data.newPassword || !!data.currentPassword, {
+    message: "currentPassword is required when setting newPassword",
+    path: ["currentPassword"],
   })
   .openapi({ title: "UpdateUser" });
 export type UpdateUserDto = z.infer<typeof UpdateUserDtoSchema>;
@@ -58,8 +72,8 @@ export type UserParamsDto = z.infer<typeof UserParamsDtoSchema>;
 
 export const UserQueryDtoSchema = z
   .object({
-    page: z.number().int().min(1).optional().default(1),
-    limit: z.number().int().min(1).max(100).optional().default(20),
+    page: z.coerce.number().int().min(1).optional().default(1),
+    limit: z.coerce.number().int().min(1).max(100).optional().default(20),
     search: z.string().optional(),
   })
   .openapi({ title: "UserQuery" });

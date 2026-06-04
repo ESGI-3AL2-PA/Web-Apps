@@ -1,4 +1,5 @@
 import { z } from "../zod";
+import { BooleanQueryParamSchema } from "./query.dto";
 
 export const OpenSignStatusSchema = z.enum(["draft", "sent", "partially_signed", "signed", "expired", "declined"]);
 export type OpenSignStatus = z.infer<typeof OpenSignStatusSchema>;
@@ -21,7 +22,7 @@ export type ContractResponseDto = z.infer<typeof ContractResponseDtoSchema>;
 export const CreateContractDtoSchema = z
   .object({
     listingId: z.string().openapi({ description: "ID of the listing this contract is generated for" }),
-    providerId: z.string().openapi({ description: "ID of the user providing the service" }),
+    // providerId is derived from the authenticated caller (the request author), never sent by the client.
     beneficiaryId: z.string().openapi({ description: "ID of the user benefiting from the service" }),
     price: z.number().int().min(0).openapi({ description: "Price in tokens", example: 10 }),
   })
@@ -63,7 +64,7 @@ export const ContractQueryDtoSchema = z
     providerId: z.string().optional(),
     beneficiaryId: z.string().optional(),
     openSignStatus: OpenSignStatusSchema.optional(),
-    disputed: z.coerce.boolean().optional(),
+    disputed: BooleanQueryParamSchema.optional(),
   })
   .openapi({ title: "ContractQuery" });
 export type ContractQueryDto = z.infer<typeof ContractQueryDtoSchema>;

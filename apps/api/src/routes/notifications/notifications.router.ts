@@ -10,17 +10,22 @@ import { deleteNotificationUseCase } from "../../use-cases/notifications/delete-
 const s = initServer();
 
 export const notificationsRouter = s.router(notificationsContract, {
-  getNotifications: async ({ query }) => {
-    const result = await getNotificationsUseCase(resolve("notification"))(query);
+  getNotifications: async ({ query, req }) => {
+    // Users only see their own notifications; admins may filter freely.
+    const isAdmin = req.user!.role === "admin";
+    const scoped = isAdmin ? query : { ...query, recipientId: req.user!.sub };
+    const result = await getNotificationsUseCase(resolve("notification"))(scoped);
     return { status: 200, body: result };
   },
 
   createNotification: async ({ body }) => {
+    // Admin-only authorization is enforced by the contract-metadata middleware.
     const notification = await createNotificationUseCase(resolve("notification"))(body);
     return { status: 201, body: notification };
   },
 
   markNotificationRead: async ({ params: { id } }) => {
+    // Recipient/admin authorization (404-on-deny) is enforced by the contract-metadata middleware.
     const notification = await markNotificationReadUseCase(resolve("notification"))(id);
     if (!notification) {
       return { status: 404, body: { message: "Notification not found" } };
@@ -28,12 +33,13 @@ export const notificationsRouter = s.router(notificationsContract, {
     return { status: 200, body: notification };
   },
 
-  markAllNotificationsRead: async ({ body: { recipientId } }) => {
-    const updated = await markAllNotificationsReadUseCase(resolve("notification"))(recipientId);
+  markAllNotificationsRead: async ({ req }) => {
+    const updated = await markAllNotificationsReadUseCase(resolve("notification"))(req.user!.sub);
     return { status: 200, body: { updated } };
   },
 
   deleteNotification: async ({ params: { id } }) => {
+    // Recipient/admin authorization (404-on-deny) is enforced by the contract-metadata middleware.
     const deleted = await deleteNotificationUseCase(resolve("notification"))({ id });
     if (!deleted) {
       return { status: 404, body: { message: "Notification not found" } };

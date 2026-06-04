@@ -1,8 +1,10 @@
 import express, { type Application, type RequestHandler } from "express";
 import cors from "cors";
+import helmet from "helmet";
 
 import { createExpressEndpoints } from "@ts-rest/express";
 import {
+  getAuthPolicy,
   usersContract,
   districtsContract,
   listingsContract,
@@ -28,13 +30,26 @@ import { conversationsRouter } from "./routes/conversations/conversations.router
 import { notificationsRouter } from "./routes/notifications/notifications.router.js";
 import { transactionsRouter } from "./routes/transactions/transactions.router.js";
 import { errorHandler, NotFoundError } from "./middleware/error-handler.js";
+import { requireAuth } from "./middleware/auth.middleware.js";
+import { authorize } from "./middleware/authorize.middleware.js";
 import { connectDB } from "./repositories/mongodb.connector.js";
 import { initContainer } from "./repositories/container.js";
 import { generateOpenApi } from "@ts-rest/open-api";
 import { apiReference } from "@scalar/express-api-reference";
 
 const app: Application = express();
-const port = 3000;
+const port = Number(process.env.PORT) || 3000;
+
+// Behind a reverse proxy/LB, set TRUST_PROXY (e.g. "1") so req.ip reflects the
+// real client. Unset by default to avoid trusting spoofed X-Forwarded-For.
+const trustProxy = process.env.TRUST_PROXY;
+if (trustProxy) {
+  app.set("trust proxy", /^\d+$/.test(trustProxy) ? Number(trustProxy) : trustProxy === "true" ? true : trustProxy);
+}
+
+// Security headers. CSP is disabled because the Scalar /docs UI loads its own
+// assets; the rest (X-Frame-Options, HSTS, X-Content-Type-Options, …) still apply.
+app.use(helmet({ contentSecurityPolicy: false }));
 
 const openApiDocument = generateOpenApi(
   {
@@ -55,6 +70,11 @@ const openApiDocument = generateOpenApi(
       title: "API",
       version: "0.0.0",
     },
+    components: {
+      securitySchemes: {
+        bearerAuth: { type: "http", scheme: "bearer", bearerFormat: "JWT" },
+      },
+    },
     tags: [
       { name: "Users" },
       { name: "Districts" },
@@ -69,14 +89,37 @@ const openApiDocument = generateOpenApi(
       { name: "Transactions" },
     ],
   },
+  {
+    // Reflect each route's contract `metadata.auth` policy in the generated docs.
+    operationMapper: (operation, appRoute) => {
+      const policy = getAuthPolicy(appRoute);
+      if (!policy || policy.public) return operation;
+      const bits: string[] = [];
+      if (policy.audience) bits.push(`audience ${policy.audience}`);
+      if (policy.roles?.length) bits.push(`roles ${policy.roles.join(", ")}`);
+      if (policy.scope?.selfParam) bits.push("self or admin");
+      else if (policy.scope) bits.push("owner or district-admin");
+      const base = operation.description ? `${operation.description}\n\n` : "";
+      return {
+        ...operation,
+        security: [{ bearerAuth: [] }],
+        description: bits.length ? `${base}**Access:** ${bits.join("; ")}` : operation.description,
+      };
+    },
+  },
 );
+
+const allowedOrigins = (process.env.CORS_ORIGINS ?? "http://localhost:4000,http://localhost:5000")
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
 
 app.use(
   cors({
-    // We should get ports from env probably
-    origin: ["http://localhost:4000", "http://localhost:5000"],
+    origin: allowedOrigins,
     methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
+    credentials: true,
   }),
 );
 app.use(express.json());
@@ -96,17 +139,30 @@ app.use(
   }) as unknown as RequestHandler, // Ugly but it works ¯\_(ツ)_/¯
 );
 
-createExpressEndpoints({ ...usersContract }, { ...usersRouter }, app);
-createExpressEndpoints({ ...listingsContract }, { ...listingsRouter }, app);
-createExpressEndpoints({ ...eventsContract }, { ...eventsRouter }, app);
-createExpressEndpoints({ ...contractsContract }, { ...contractsRouter }, app);
-createExpressEndpoints({ ...incidentsContract }, { ...incidentsRouter }, app);
-createExpressEndpoints({ ...districtsContract }, { ...districtsRouter }, app);
-createExpressEndpoints({ ...tagsContract }, { ...tagsRouter }, app);
-createExpressEndpoints({ ...votesContract }, { ...votesRouter }, app);
-createExpressEndpoints({ ...conversationsContract }, { ...conversationsRouter }, app);
-createExpressEndpoints({ ...notificationsContract }, { ...notificationsRouter }, app);
-createExpressEndpoints({ ...transactionsContract }, { ...transactionsRouter }, app);
+// Everything below /health, /openapi.json and /docs requires a valid access token.
+// requireAuth verifies the JWT (iss/aud) and sets req.user.
+app.use(requireAuth);
+
+// Authorization is declared per-route in the contract `metadata.auth` and enforced
+// by this single global middleware (reads req.tsRestRoute, loads records for
+// ownership/district checks). No per-resource path mounting needed.
+// Register every contract with the same metadata-driven global authorization
+// middleware. Typed `any` so it doesn't perturb each call's TRouter inference
+// (the contract's generic flows from args 1-2); `authorize` is a valid Express handler.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const endpointOptions: any = { globalMiddleware: [authorize] };
+
+createExpressEndpoints(usersContract, usersRouter, app, endpointOptions);
+createExpressEndpoints(listingsContract, listingsRouter, app, endpointOptions);
+createExpressEndpoints(eventsContract, eventsRouter, app, endpointOptions);
+createExpressEndpoints(contractsContract, contractsRouter, app, endpointOptions);
+createExpressEndpoints(incidentsContract, incidentsRouter, app, endpointOptions);
+createExpressEndpoints(districtsContract, districtsRouter, app, endpointOptions);
+createExpressEndpoints(tagsContract, tagsRouter, app, endpointOptions);
+createExpressEndpoints(votesContract, votesRouter, app, endpointOptions);
+createExpressEndpoints(conversationsContract, conversationsRouter, app, endpointOptions);
+createExpressEndpoints(notificationsContract, notificationsRouter, app, endpointOptions);
+createExpressEndpoints(transactionsContract, transactionsRouter, app, endpointOptions);
 
 app.use((_req, _res, next) => {
   next(new NotFoundError());

@@ -1,0 +1,19 @@
+{
+  "name": "@repo/config",
+  "version": "0.0.0",
+  "exports": {
+    ".": "./index.ts"
+  },
+  "license": "MIT",
+  "scripts": {
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix"
+  },
+  "devDependencies": {
+    "@repo/eslint-config": "*",
+    "@repo/typescript-config": "*",
+    "eslint": "^9.39.4",
+    "typescript": "6.0.2",
+    "vite": "^8.0.7"
+  }
+}

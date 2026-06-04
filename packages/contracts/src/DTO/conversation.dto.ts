@@ -27,9 +27,7 @@ export const CreateConversationDtoSchema = z
   .openapi({ title: "CreateConversation" });
 export type CreateConversationDto = z.infer<typeof CreateConversationDtoSchema>;
 
-export const ConversationParamsDtoSchema = z
-  .object({ id: z.string() })
-  .openapi({ title: "ConversationParams" });
+export const ConversationParamsDtoSchema = z.object({ id: z.string() }).openapi({ title: "ConversationParams" });
 export type ConversationParamsDto = z.infer<typeof ConversationParamsDtoSchema>;
 
 export const ConversationQueryDtoSchema = z
@@ -57,7 +55,6 @@ export type MessageResponseDto = z.infer<typeof MessageResponseDtoSchema>;
 
 export const SendMessageDtoSchema = z
   .object({
-    senderId: z.string().openapi({ description: "Sender user ID" }),
     type: MessageTypeSchema.default("text"),
     content: z.string().min(1),
     mediaUrl: z.string().url().optional(),

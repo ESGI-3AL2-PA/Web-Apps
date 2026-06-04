@@ -19,7 +19,7 @@ The library is consumed by `apps/api` through the existing clean architecture (r
 ```
 FIND users WHERE role = "admin" AND name LIKE "Jo*" LIMIT 10 ORDER BY createdAt DESC
 FIND users WHERE profile.address.city = "Paris" SELECT id, name, email
-FIND users WHERE role IN ("admin", "moderator") AND email EXISTS
+FIND users WHERE role IN ("admin", "superAdmin") AND email EXISTS
 FIND users WHERE age >= 18 AND NOT (role = "user") ORDER BY name ASC, createdAt DESC SKIP 20 LIMIT 50
 ```
 

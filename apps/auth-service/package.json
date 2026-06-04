@@ -1,0 +1,40 @@
+{
+  "name": "auth-service",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx --watch src/index.ts",
+    "start": "node ./dist/index.js",
+    "seed:superadmin": "tsx src/seed-superadmin.ts",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix"
+  },
+  "devDependencies": {
+    "@repo/eslint-config": "*",
+    "@repo/typescript-config": "*",
+    "@types/cookie-parser": "^1.4.8",
+    "@types/cors": "^2.8.19",
+    "@types/express": "4.17.25",
+    "@types/node": "^25.5.0",
+    "eslint": "^9.39.4",
+    "tsx": "^4.21.0",
+    "typescript": "^6.0.2"
+  },
+  "dependencies": {
+    "@repo/contracts": "*",
+    "@ts-rest/express": "^3.52.1",
+    "argon2": "^0.43.0",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.6",
+    "express": "^4.22.2",
+    "express-rate-limit": "^7.5.0",
+    "helmet": "^8.2.0",
+    "jose": "^6.0.11",
+    "mongodb": "^7.1.1",
+    "otplib": "^12.0.1",
+    "resend": "^4.5.1",
+    "zod": "3.25.76"
+  }
+}

@@ -8,6 +8,4 @@ export const PaginatedResponseDtoSchema = <T extends z.ZodTypeAny>(dataSchema: T
     limit: z.number().openapi({ description: "Number of results per page" }),
   });
 
-export type PaginatedResponseDto<T extends z.ZodTypeAny> = z.infer<
-  ReturnType<typeof PaginatedResponseDtoSchema<T>>
->;
+export type PaginatedResponseDto<T extends z.ZodTypeAny> = z.infer<ReturnType<typeof PaginatedResponseDtoSchema<T>>>;

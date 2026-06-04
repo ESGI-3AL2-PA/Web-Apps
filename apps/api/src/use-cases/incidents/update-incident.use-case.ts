@@ -3,11 +3,7 @@ import type { Incident, IncidentHistoryEntry } from "../../entities/incident.ent
 import type { IIncidentRepository } from "../../repositories/Incident/incident.repository.js";
 
 export const updateIncidentUseCase = (incidentRepository: IIncidentRepository) => {
-  return async (
-    id: string,
-    data: UpdateIncidentDto,
-    actorId: string,
-  ): Promise<Incident | null> => {
+  return async (id: string, data: UpdateIncidentDto, actorId: string): Promise<Incident | null> => {
     const existing = await incidentRepository.getIncidentById(id);
     if (!existing) return null;
 

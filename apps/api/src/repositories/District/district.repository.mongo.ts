@@ -1,6 +1,6 @@
 import { randomUUID } from "crypto";
 import type { Collection, Db, Filter } from "mongodb";
-import type { District } from "../../entities/district.entity.js";
+import type { District, GeoJson } from "../../entities/district.entity.js";
 import type { IDistrictRepository } from "./district.repository.js";
 
 type DistrictDoc = Omit<District, "id"> & { _id: string };
@@ -12,11 +12,19 @@ export class MongoDistrictRepository implements IDistrictRepository {
     this.collection = db.collection("districts");
   }
 
-  async getDistricts(params: {
-    search?: string;
-    page?: number;
-    limit?: number;
-  }): Promise<{
+  async ensureIndexes(): Promise<void> {
+    // Backs $geoIntersects lookups; districts must store geoJson as valid GeoJSON geometry.
+    await this.collection.createIndex({ geoJson: "2dsphere" });
+  }
+
+  async findDistrictContaining(point: GeoJson): Promise<District | null> {
+    const doc = await this.collection.findOne({
+      geoJson: { $geoIntersects: { $geometry: point } },
+    } as Filter<DistrictDoc>);
+    return doc ? this.toDistrict(doc) : null;
+  }
+
+  async getDistricts(params: { search?: string; page?: number; limit?: number }): Promise<{
     data: District[];
     total: number;
     page: number;

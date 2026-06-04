@@ -13,6 +13,7 @@ import {
   NotFoundErrorSchema,
   PaginatedResponseDtoSchema,
 } from "./DTO";
+import { auth } from "./auth-meta";
 
 const c = initContract();
 
@@ -25,6 +26,7 @@ export const conversationsContract = c.router({
       200: PaginatedResponseDtoSchema(ConversationResponseDtoSchema),
     },
     summary: "Get a paginated list of conversations",
+    metadata: auth({ audience: "api" }),
   },
 
   getConversationById: {
@@ -35,7 +37,11 @@ export const conversationsContract = c.router({
       200: ConversationResponseDtoSchema,
       404: NotFoundErrorSchema,
     },
-    summary: "Get a single conversation by ID",
+    summary: "Get a single conversation by ID (participant only)",
+    metadata: auth({
+      audience: "api",
+      scope: { resource: "conversation", ownerArrayField: "participants", notFoundOnDeny: true },
+    }),
   },
 
   createConversation: {
@@ -46,6 +52,7 @@ export const conversationsContract = c.router({
       201: ConversationResponseDtoSchema,
     },
     summary: "Create a new conversation",
+    metadata: auth({ audience: "api" }),
   },
 
   getMessages: {
@@ -57,7 +64,11 @@ export const conversationsContract = c.router({
       200: PaginatedResponseDtoSchema(MessageResponseDtoSchema),
       404: NotFoundErrorSchema,
     },
-    summary: "Get messages of a conversation",
+    summary: "Get messages of a conversation (participant only)",
+    metadata: auth({
+      audience: "api",
+      scope: { resource: "conversation", ownerArrayField: "participants", notFoundOnDeny: true },
+    }),
   },
 
   sendMessage: {
@@ -69,7 +80,11 @@ export const conversationsContract = c.router({
       201: MessageResponseDtoSchema,
       404: NotFoundErrorSchema,
     },
-    summary: "Send a message in a conversation",
+    summary: "Send a message in a conversation (participant only)",
+    metadata: auth({
+      audience: "api",
+      scope: { resource: "conversation", ownerArrayField: "participants", notFoundOnDeny: true },
+    }),
   },
 
   markMessageRead: {
@@ -81,7 +96,11 @@ export const conversationsContract = c.router({
       200: MessageResponseDtoSchema,
       404: NotFoundErrorSchema,
     },
-    summary: "Mark a message as read",
+    summary: "Mark a message as read (conversation participant only)",
+    metadata: auth({
+      audience: "api",
+      scope: { resource: "messageParticipants", ownerArrayField: "participants", notFoundOnDeny: true },
+    }),
   },
 
   attachMedia: {
@@ -93,6 +112,10 @@ export const conversationsContract = c.router({
       200: MessageResponseDtoSchema,
       404: NotFoundErrorSchema,
     },
-    summary: "Attach media (photo/audio/file) to an existing message",
+    summary: "Attach media (photo/audio/file) to an existing message (sender only)",
+    metadata: auth({
+      audience: "api",
+      scope: { resource: "message", ownerField: "senderId", notFoundOnDeny: true },
+    }),
   },
 });

@@ -4,12 +4,14 @@ import { z } from "zod";
 import {
   CreateUserDtoSchema,
   NotFoundErrorSchema,
+  UnauthorizedErrorSchema,
   UpdateUserDtoSchema,
   UserParamsDtoSchema,
   UserQueryDtoSchema,
   UserResponseDtoSchema,
   PaginatedResponseDtoSchema,
 } from "./DTO";
+import { auth } from "./auth-meta";
 
 const c = initContract();
 
@@ -22,6 +24,7 @@ export const usersContract = c.router({
       200: PaginatedResponseDtoSchema(UserResponseDtoSchema),
     },
     summary: "Get a paginated list of users",
+    metadata: auth({ audience: "api", roles: ["admin", "superAdmin"] }),
   },
 
   getUserById: {
@@ -32,7 +35,11 @@ export const usersContract = c.router({
       200: UserResponseDtoSchema,
       404: NotFoundErrorSchema,
     },
-    summary: "Get a single user by ID",
+    summary: "Get a single user by ID (self or admin)",
+    metadata: auth({
+      audience: "api",
+      scope: { resource: "user", selfParam: "id", bypassRoles: ["superAdmin"] },
+    }),
   },
 
   createUser: {
@@ -42,7 +49,8 @@ export const usersContract = c.router({
     responses: {
       201: UserResponseDtoSchema,
     },
-    summary: "Create a new user",
+    summary: "Create a new user (internal service token only)",
+    metadata: auth({ audience: "api:internal", roles: ["service"] }),
   },
 
   updateUser: {
@@ -52,9 +60,14 @@ export const usersContract = c.router({
     body: UpdateUserDtoSchema,
     responses: {
       200: UserResponseDtoSchema,
+      401: UnauthorizedErrorSchema,
       404: NotFoundErrorSchema,
     },
-    summary: "Partially update a user",
+    summary: "Partially update a user (self or admin)",
+    metadata: auth({
+      audience: "api",
+      scope: { resource: "user", selfParam: "id", bypassRoles: ["superAdmin"] },
+    }),
   },
 
   deleteUser: {
@@ -66,6 +79,7 @@ export const usersContract = c.router({
       204: z.undefined(),
       404: NotFoundErrorSchema,
     },
-    summary: "Delete a user",
+    summary: "Delete a user (admin only)",
+    metadata: auth({ audience: "api", roles: ["admin", "superAdmin"] }),
   },
 });

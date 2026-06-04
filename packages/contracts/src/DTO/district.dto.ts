@@ -31,8 +31,8 @@ export type DistrictParamsDto = z.infer<typeof DistrictParamsDtoSchema>;
 
 export const DistrictQueryDtoSchema = z
   .object({
-    page: z.number().int().min(1).optional().default(1),
-    limit: z.number().int().min(1).max(100).optional().default(20),
+    page: z.coerce.number().int().min(1).optional().default(1),
+    limit: z.coerce.number().int().min(1).max(100).optional().default(20),
     search: z.string().optional().openapi({ description: "District name", example: "Montmartre" }),
   })
   .openapi({ title: "DistrictQuery" });

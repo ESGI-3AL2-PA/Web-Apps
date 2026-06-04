@@ -1,13 +1,6 @@
 import { z } from "zod";
 
-export const OpenSignStatusSchema = z.enum([
-  "draft",
-  "sent",
-  "partially_signed",
-  "signed",
-  "expired",
-  "declined",
-]);
+export const OpenSignStatusSchema = z.enum(["draft", "sent", "partially_signed", "signed", "expired", "declined"]);
 export type OpenSignStatus = z.infer<typeof OpenSignStatusSchema>;
 
 export const ContractSchema = z.object({

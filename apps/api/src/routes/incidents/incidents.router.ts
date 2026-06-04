@@ -29,18 +29,17 @@ export const incidentsRouter = s.router(incidentsContract, {
     return { status: 200, body: incident };
   },
 
-  createIncident: async ({ body }) => {
-    // TODO: get reporterId from authenticated user
+  createIncident: async ({ body, req }) => {
     const newIncident = await createIncidentUseCase(resolve("incident"))({
       ...body,
-      reporterId: "",
+      reporterId: req.user!.sub,
     });
     return { status: 201, body: newIncident };
   },
 
-  updateIncident: async ({ params: { id }, body }) => {
-    // TODO: get actorId from authenticated user
-    const incident = await updateIncidentUseCase(resolve("incident"))(id, body, "");
+  updateIncident: async ({ params: { id }, body, req }) => {
+    // Reporter/admin authorization is enforced by the contract-metadata middleware.
+    const incident = await updateIncidentUseCase(resolve("incident"))(id, body, req.user!.sub);
     if (!incident) {
       return { status: 404, body: { message: "Incident not found" } };
     }

@@ -21,10 +21,7 @@ export interface IIncidentRepository {
 
   createIncident(data: Omit<Incident, "id" | "createdAt" | "updatedAt">): Promise<Incident>;
 
-  updateIncident(
-    id: string,
-    data: Partial<Omit<Incident, "id" | "createdAt" | "updatedAt">>,
-  ): Promise<Incident | null>;
+  updateIncident(id: string, data: Partial<Omit<Incident, "id" | "createdAt" | "updatedAt">>): Promise<Incident | null>;
 
   deleteIncident(id: string): Promise<boolean>;
 

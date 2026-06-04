@@ -1,4 +1,5 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom'
+import { ProtectedRoute } from '@repo/hooks'
 import MainLayout from '../layouts/MainLayouts'
 import ServicePage from '../pages/service/Service'
 import EvenementPage from '../pages/Evenement'
@@ -10,7 +11,11 @@ import DashBoard from '../pages/dashboard/DashBoard'
 
 export const router = createBrowserRouter([
   {
-    element: <MainLayout />,
+    element: (
+      <ProtectedRoute>
+        <MainLayout />
+      </ProtectedRoute>
+    ),
     children: [
       { path: '/', element: <DashBoard /> },
       {
@@ -30,7 +35,7 @@ export const router = createBrowserRouter([
   {
     path: '/auth',
     children: [
-      // ajout de l'auth
+      // Public auth routes (if needed in future)
     ]
   }
 ])
