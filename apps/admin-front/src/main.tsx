@@ -9,7 +9,7 @@ const AUTH_SERVICE_URL = config.authServiceUrl;
 
 const App = () => (
   <AuthProvider authServiceUrl={AUTH_SERVICE_URL}>
-    <ProtectedRoute roles={["admin"]}>
+    <ProtectedRoute roles={["admin", "superAdmin"]}>
       <div>
         <a href="https://vitejs.dev" target="_blank" rel="noreferrer">
           <img src="/vite.svg" className="logo" alt="Vite logo" />
