@@ -1,10 +1,6 @@
 import { randomUUID } from "crypto";
 import type { Collection, Db, Filter } from "mongodb";
-import type {
-  Transaction,
-  TransactionRefType,
-  TransactionType,
-} from "../../entities/transaction.entity.js";
+import type { Transaction, TransactionRefType, TransactionType } from "../../entities/transaction.entity.js";
 import type { ITransactionRepository } from "./transaction.repository.js";
 
 type TransactionDoc = Omit<Transaction, "id"> & { _id: string };
@@ -51,9 +47,7 @@ export class MongoTransactionRepository implements ITransactionRepository {
     return { data: docs.map(this.toTransaction), total, page, limit };
   }
 
-  async createTransactions(
-    entries: Omit<Transaction, "id" | "createdAt">[],
-  ): Promise<Transaction[]> {
+  async createTransactions(entries: Omit<Transaction, "id" | "createdAt">[]): Promise<Transaction[]> {
     const now = new Date().toISOString();
     const docs: TransactionDoc[] = entries.map((e) => ({
       ...e,
@@ -71,7 +65,17 @@ export class MongoTransactionRepository implements ITransactionRepository {
       { $inc: { balance: delta } },
       { returnDocument: "after" },
     );
-    return result ? result.balance ?? 0 : null;
+    return result ? (result.balance ?? 0) : null;
+  }
+
+  async tryDebit(userId: string, amount: number): Promise<boolean> {
+    // The {$gte} guard and the {$inc} run as a single atomic document update,
+    // so two concurrent debits can't both pass the balance check.
+    const result = await this.users.findOneAndUpdate(
+      { _id: userId, balance: { $gte: amount } },
+      { $inc: { balance: -amount } },
+    );
+    return result !== null;
   }
 
   async getBalance(userId: string): Promise<number | null> {

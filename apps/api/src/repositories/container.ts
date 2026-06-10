@@ -39,6 +39,9 @@ export const initContainer = (db: Db) => {
     notification: new MongoNotificationRepository(db),
     transaction: new MongoTransactionRepository(db),
   };
+
+  // Ensure required indexes exist (idempotent, non-blocking on startup).
+  void repositories.district.ensureIndexes().catch((err) => console.error("Failed to ensure district indexes:", err));
 };
 
 type Container = NonNullable<typeof repositories>;

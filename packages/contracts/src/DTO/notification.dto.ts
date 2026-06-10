@@ -1,14 +1,7 @@
 import { z } from "../zod";
+import { BooleanQueryParamSchema } from "./query.dto";
 
-export const NotificationTypeSchema = z.enum([
-  "listing",
-  "contract",
-  "event",
-  "message",
-  "vote",
-  "incident",
-  "system",
-]);
+export const NotificationTypeSchema = z.enum(["listing", "contract", "event", "message", "vote", "incident", "system"]);
 export type NotificationType = z.infer<typeof NotificationTypeSchema>;
 
 export const NotificationRefTypeSchema = z.enum([
@@ -49,9 +42,7 @@ export const CreateNotificationDtoSchema = z
   .openapi({ title: "CreateNotification" });
 export type CreateNotificationDto = z.infer<typeof CreateNotificationDtoSchema>;
 
-export const NotificationParamsDtoSchema = z
-  .object({ id: z.string() })
-  .openapi({ title: "NotificationParams" });
+export const NotificationParamsDtoSchema = z.object({ id: z.string() }).openapi({ title: "NotificationParams" });
 export type NotificationParamsDto = z.infer<typeof NotificationParamsDtoSchema>;
 
 export const NotificationQueryDtoSchema = z
@@ -60,17 +51,10 @@ export const NotificationQueryDtoSchema = z
     limit: z.coerce.number().int().min(1).max(100).optional().default(20),
     recipientId: z.string().optional(),
     type: NotificationTypeSchema.optional(),
-    read: z.coerce.boolean().optional(),
+    read: BooleanQueryParamSchema.optional(),
   })
   .openapi({ title: "NotificationQuery" });
 export type NotificationQueryDto = z.infer<typeof NotificationQueryDtoSchema>;
-
-export const MarkAllReadDtoSchema = z
-  .object({
-    recipientId: z.string().openapi({ description: "ID of the user marking all notifications as read" }),
-  })
-  .openapi({ title: "MarkAllRead" });
-export type MarkAllReadDto = z.infer<typeof MarkAllReadDtoSchema>;
 
 export const MarkAllReadResponseDtoSchema = z
   .object({

@@ -3,14 +3,15 @@ import { z } from "zod";
 
 import {
   CreateNotificationDtoSchema,
-  MarkAllReadDtoSchema,
   MarkAllReadResponseDtoSchema,
   NotificationParamsDtoSchema,
   NotificationQueryDtoSchema,
   NotificationResponseDtoSchema,
   NotFoundErrorSchema,
+  ForbiddenErrorSchema,
   PaginatedResponseDtoSchema,
 } from "./DTO";
+import { auth } from "./auth-meta";
 
 const c = initContract();
 
@@ -23,6 +24,7 @@ export const notificationsContract = c.router({
       200: PaginatedResponseDtoSchema(NotificationResponseDtoSchema),
     },
     summary: "Get a paginated list of notifications",
+    metadata: auth({ audience: "api" }),
   },
 
   createNotification: {
@@ -31,8 +33,10 @@ export const notificationsContract = c.router({
     body: CreateNotificationDtoSchema,
     responses: {
       201: NotificationResponseDtoSchema,
+      403: ForbiddenErrorSchema,
     },
-    summary: "Create a notification (typically triggered server-side)",
+    summary: "Create a notification (admin only; normally triggered server-side)",
+    metadata: auth({ audience: "api", roles: ["admin", "superAdmin"] }),
   },
 
   markNotificationRead: {
@@ -44,17 +48,27 @@ export const notificationsContract = c.router({
       200: NotificationResponseDtoSchema,
       404: NotFoundErrorSchema,
     },
-    summary: "Mark a single notification as read",
+    summary: "Mark a single notification as read (recipient or admin)",
+    metadata: auth({
+      audience: "api",
+      scope: {
+        resource: "notification",
+        ownerField: "recipientId",
+        bypassRoles: ["superAdmin"],
+        notFoundOnDeny: true,
+      },
+    }),
   },
 
   markAllNotificationsRead: {
     method: "PATCH",
     path: "/notifications/read-all",
-    body: MarkAllReadDtoSchema,
+    body: c.noBody(),
     responses: {
       200: MarkAllReadResponseDtoSchema,
     },
-    summary: "Mark all notifications of a recipient as read",
+    summary: "Mark all of the authenticated user's notifications as read",
+    metadata: auth({ audience: "api" }),
   },
 
   deleteNotification: {
@@ -66,6 +80,15 @@ export const notificationsContract = c.router({
       204: z.undefined(),
       404: NotFoundErrorSchema,
     },
-    summary: "Delete a notification",
+    summary: "Delete a notification (recipient or admin)",
+    metadata: auth({
+      audience: "api",
+      scope: {
+        resource: "notification",
+        ownerField: "recipientId",
+        bypassRoles: ["superAdmin"],
+        notFoundOnDeny: true,
+      },
+    }),
   },
 });

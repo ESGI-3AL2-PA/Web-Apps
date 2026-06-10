@@ -64,11 +64,7 @@ export class MongoVoteRepository implements IVoteRepository {
   }
 
   async updateVote(id: string, data: Partial<Omit<Vote, "id">>): Promise<Vote | null> {
-    const result = await this.votes.findOneAndUpdate(
-      { _id: id },
-      { $set: { ...data } },
-      { returnDocument: "after" },
-    );
+    const result = await this.votes.findOneAndUpdate({ _id: id }, { $set: { ...data } }, { returnDocument: "after" });
     return result ? this.toVote(result) : null;
   }
 
@@ -80,9 +76,7 @@ export class MongoVoteRepository implements IVoteRepository {
     return voteResult.deletedCount === 1;
   }
 
-  async submitResponse(
-    data: Omit<VoteResponseEntity, "id" | "votedAt">,
-  ): Promise<VoteResponseEntity> {
+  async submitResponse(data: Omit<VoteResponseEntity, "id" | "votedAt">): Promise<VoteResponseEntity> {
     const now = new Date().toISOString();
     const doc: VoteResponseDoc = { ...data, _id: randomUUID(), votedAt: now };
     await this.responses.insertOne(doc);
@@ -96,16 +90,14 @@ export class MongoVoteRepository implements IVoteRepository {
     return this.toVoteResponse(doc);
   }
 
-  async getResults(
-    voteId: string,
-  ): Promise<{ totalResponses: number; results: { option: string; count: number }[] }> {
+  async getResults(voteId: string): Promise<{ totalResponses: number; results: { option: string; count: number }[] }> {
     const [totalResponses, agg] = await Promise.all([
       this.responses.countDocuments({ voteId }),
       this.responses
-        .aggregate<{ _id: string; count: number }>([
-          { $match: { voteId } },
-          { $group: { _id: "$chosenOption", count: { $sum: 1 } } },
-        ])
+        .aggregate<{
+          _id: string;
+          count: number;
+        }>([{ $match: { voteId } }, { $group: { _id: "$chosenOption", count: { $sum: 1 } } }])
         .toArray(),
     ]);
     return {

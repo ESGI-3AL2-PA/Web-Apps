@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const UserRoleSchema = z.enum(["admin", "user"]);
+export const UserRoleSchema = z.enum(["user", "admin", "superAdmin"]);
 export type UserRole = z.infer<typeof UserRoleSchema>;
 
 export const UserSchema = z.object({
@@ -14,6 +14,9 @@ export const UserSchema = z.object({
   role: UserRoleSchema,
   districtId: z.string(),
   balance: z.number().int().default(0),
+  emailVerified: z.boolean().default(false),
+  totpSecret: z.string().nullable().default(null),
+  totpEnabled: z.boolean().default(false),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
 });

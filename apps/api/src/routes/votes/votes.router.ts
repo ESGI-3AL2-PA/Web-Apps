@@ -25,16 +25,16 @@ export const votesRouter = s.router(votesContract, {
     return { status: 200, body: vote };
   },
 
-  createVote: async ({ body }) => {
-    // TODO: get creatorId from authenticated user
+  createVote: async ({ body, req }) => {
     const newVote = await createVoteUseCase(resolve("vote"))({
       ...body,
-      creatorId: "",
+      creatorId: req.user!.sub,
     });
     return { status: 201, body: newVote };
   },
 
   updateVote: async ({ params: { id }, body }) => {
+    // Ownership/admin authorization is enforced by the contract-metadata middleware.
     const vote = await updateVoteUseCase(resolve("vote"))(id, body);
     if (!vote) {
       return { status: 404, body: { message: "Vote not found" } };
@@ -50,8 +50,8 @@ export const votesRouter = s.router(votesContract, {
     return { status: 204, body: undefined };
   },
 
-  submitVoteResponse: async ({ params: { id }, body }) => {
-    const { vote, alreadyVoted } = await submitVoteResponseUseCase(resolve("vote"))(id, body);
+  submitVoteResponse: async ({ params: { id }, body, req }) => {
+    const { vote, alreadyVoted } = await submitVoteResponseUseCase(resolve("vote"))(id, req.user!.sub, body);
     if (!vote) {
       return { status: 404, body: { message: "Vote not found" } };
     }

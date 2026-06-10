@@ -13,7 +13,7 @@ sync-gateway is the single known endpoint — Java app instances always initiate
 
 ## Architecture
 
-> **Port TBD** — must be assigned before the service is added to `docker-compose.yml` and `turbo.json`. Other services: api 3000, admin-front 4000, user-front 5000, auth-service 6000.
+> **Port TBD** — must be assigned before the service is added to `docker-compose.yml` and `turbo.json`. Other services: api 3000, admin-front 4000, user-front 5000, auth-service 3001.
 
 ```
 Java instance 1 ──┐  POST /ingest          ┌── GET /changes?since=<cursor>
@@ -29,6 +29,7 @@ Java instance N ──┘                        │                            
 ```
 
 Each Java instance:
+
 1. Reads its local H2 outbox and **pushes** events to sync-gateway (`POST /ingest`)
 2. **Polls** sync-gateway for outbound changes (`GET /changes`) and applies them to H2
 
@@ -90,6 +91,7 @@ Ingest runs first so that if a newer MongoDB version exists, it arrives in step 
 Receives a batch of outbox events and writes them to MongoDB.
 
 **Request body:**
+
 ```json
 [
   { "id": 42, "entity": "user",     "operation": "INSERT", "mongoId": null,                       "data": { ... }, "occurredAt": "..." },
@@ -104,6 +106,7 @@ Receives a batch of outbox events and writes them to MongoDB.
 ```
 
 Processing per event:
+
 - `INSERT`: generate ObjectId, insert document with `_id = mongoId`, return `{ id, mongoId }`
 - `UPDATE`: apply full `$set` where `_id = mongoId` (no response entry)
 - `DELETE`: delete where `_id = mongoId` (no response entry)
@@ -120,12 +123,13 @@ Events with an unknown `entity` are logged and skipped.
 
 Returns MongoDB-originated changes for the Java app to apply to H2.
 
-| Param | Type | Default | Description |
-|---|---|---|---|
-| `since` | integer | `0` | Last index processed by the caller |
-| `limit` | integer | `100` | Max events to return |
+| Param   | Type    | Default | Description                        |
+| ------- | ------- | ------- | ---------------------------------- |
+| `since` | integer | `0`     | Last index processed by the caller |
+| `limit` | integer | `100`   | Max events to return               |
 
 **Response:**
+
 ```json
 [
   { "index": 15, "entity": "user", "operation": "UPDATE", "mongoId": "6610a2f3e4b0c12d3f456789", "data": { ... }, "occurredAt": "..." }
@@ -137,6 +141,7 @@ Returns MongoDB-originated changes for the Java app to apply to H2.
 ## Sync Loop (Internal)
 
 sync-gateway runs a background Change Streams watcher. On each MongoDB change event:
+
 1. Skip if `origin == "sync"` (written by sync-gateway)
 2. Write a new entry to `sync_changes` with an atomically incremented `index`
 
@@ -165,17 +170,17 @@ SYNC_CHANGES {
 - **H2**: every synced table has `mongo_id VARCHAR(24) UNIQUE`, `NULL` until assigned.
 - **MongoDB**: documents use that ObjectId as `_id`.
 
-| Direction | Operation | Behaviour |
-|---|---|---|
-| H2 → Mongo | INSERT | sync-gateway generates ObjectId, inserts doc, returns `mongoId` to Java |
-| H2 → Mongo | INSERT retry (mongoId null) | business key unique index triggers dedup flow (see below) |
-| H2 → Mongo | INSERT retry (mongoId set) | upsert using existing `mongoId` — safe |
-| H2 → Mongo | UPDATE | full `$set` where `_id = mongoId`; if not found, log & skip (deleted remotely) |
-| H2 → Mongo | UPDATE (stale) | last-write-wins — intentional; optimistic concurrency not in scope |
-| H2 → Mongo | DELETE | delete where `_id = mongoId`; if not found, ignore and mark sent |
-| Mongo → H2 | INSERT | Java inserts row with `mongo_id`; if `mongo_id` already exists, treat as already applied |
-| Mongo → H2 | UPDATE | Java updates row by `mongo_id`; if not found, treat as INSERT |
-| Mongo → H2 | DELETE | Java deletes row by `mongo_id`; if not found, ignore |
+| Direction  | Operation                   | Behaviour                                                                                |
+| ---------- | --------------------------- | ---------------------------------------------------------------------------------------- |
+| H2 → Mongo | INSERT                      | sync-gateway generates ObjectId, inserts doc, returns `mongoId` to Java                  |
+| H2 → Mongo | INSERT retry (mongoId null) | business key unique index triggers dedup flow (see below)                                |
+| H2 → Mongo | INSERT retry (mongoId set)  | upsert using existing `mongoId` — safe                                                   |
+| H2 → Mongo | UPDATE                      | full `$set` where `_id = mongoId`; if not found, log & skip (deleted remotely)           |
+| H2 → Mongo | UPDATE (stale)              | last-write-wins — intentional; optimistic concurrency not in scope                       |
+| H2 → Mongo | DELETE                      | delete where `_id = mongoId`; if not found, ignore and mark sent                         |
+| Mongo → H2 | INSERT                      | Java inserts row with `mongo_id`; if `mongo_id` already exists, treat as already applied |
+| Mongo → H2 | UPDATE                      | Java updates row by `mongo_id`; if not found, treat as INSERT                            |
+| Mongo → H2 | DELETE                      | Java deletes row by `mongo_id`; if not found, ignore                                     |
 
 ---
 

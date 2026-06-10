@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Register</title>
+    <style>
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        font-family:
+          system-ui,
+          -apple-system,
+          sans-serif;
+        background: #f5f5f5;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+      }
+      .card {
+        background: #fff;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        padding: 2rem;
+        width: 100%;
+        max-width: 480px;
+      }
+      h1 {
+        font-size: 1.5rem;
+        margin-bottom: 1.5rem;
+        text-align: center;
+      }
+      label {
+        display: block;
+        font-size: 0.875rem;
+        font-weight: 500;
+        margin-bottom: 0.25rem;
+      }
+      input {
+        width: 100%;
+        padding: 0.5rem 0.75rem;
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        font-size: 1rem;
+        margin-bottom: 1rem;
+      }
+      input:focus {
+        outline: none;
+        border-color: #2563eb;
+        box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+      }
+      .row {
+        display: flex;
+        gap: 1rem;
+      }
+      .row > .field {
+        flex: 1;
+      }
+      button {
+        width: 100%;
+        padding: 0.625rem;
+        background: #2563eb;
+        color: #fff;
+        border: none;
+        border-radius: 6px;
+        font-size: 1rem;
+        cursor: pointer;
+      }
+      button:hover {
+        background: #1d4ed8;
+      }
+      button:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+      .error {
+        color: #dc2626;
+        font-size: 0.875rem;
+        margin-bottom: 1rem;
+        display: none;
+      }
+      .link {
+        text-align: center;
+        margin-top: 1rem;
+        font-size: 0.875rem;
+      }
+      .link a {
+        color: #2563eb;
+        text-decoration: none;
+      }
+      .link a:hover {
+        text-decoration: underline;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h1>Create Account</h1>
+      <div id="error" class="error"></div>
+      <form id="registerForm">
+        <div class="row">
+          <div class="field">
+            <label for="firstName">First name</label>
+            <input type="text" id="firstName" name="firstName" required autocomplete="given-name" />
+          </div>
+          <div class="field">
+            <label for="lastName">Last name</label>
+            <input type="text" id="lastName" name="lastName" required autocomplete="family-name" />
+          </div>
+        </div>
+        <label for="email">Email</label>
+        <input type="email" id="email" name="email" required autocomplete="email" />
+        <label for="phone">Phone <span style="color: #9ca3af">(optional)</span></label>
+        <input type="tel" id="phone" name="phone" autocomplete="tel" />
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" required minlength="12" autocomplete="new-password" />
+        <label for="address">Address</label>
+        <input type="text" id="address" name="address" required autocomplete="street-address" />
+        <button type="submit" id="submitBtn">Register</button>
+      </form>
+      <div class="link">Already have an account? <a id="loginLink" href="/login">Sign in</a></div>
+    </div>
+
+    <script>
+      const ALLOWED_REDIRECT_ORIGINS = __ALLOWED_REDIRECT_ORIGINS__;
+
+      function safeRedirect(raw) {
+        if (!raw) return "/";
+        try {
+          const u = new URL(raw, window.location.origin);
+          if (u.origin === window.location.origin) return u.href;
+          if (ALLOWED_REDIRECT_ORIGINS.includes(u.origin)) return u.href;
+        } catch (_) {}
+        return "/";
+      }
+
+      const params = new URLSearchParams(window.location.search);
+      const redirectUri = safeRedirect(params.get("redirect_uri"));
+
+      // Preserve redirect_uri on the login link
+      document.getElementById("loginLink").href = "/login?redirect_uri=" + encodeURIComponent(redirectUri);
+
+      document.getElementById("registerForm").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const errorEl = document.getElementById("error");
+        const btn = document.getElementById("submitBtn");
+        errorEl.style.display = "none";
+        btn.disabled = true;
+
+        const body = {
+          firstName: document.getElementById("firstName").value,
+          lastName: document.getElementById("lastName").value,
+          email: document.getElementById("email").value,
+          password: document.getElementById("password").value,
+          address: document.getElementById("address").value,
+        };
+
+        const phone = document.getElementById("phone").value.trim();
+        if (phone) body.phone = phone;
+
+        try {
+          const res = await fetch("/auth/register", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify(body),
+          });
+
+          if (!res.ok) {
+            const data = await res.json();
+            throw new Error(data.message || "Registration failed");
+          }
+
+          // 202 — server emailed a verification link. Show that and stop.
+          const data = await res.json().catch(() => ({}));
+          document.querySelector(".card").innerHTML =
+            '<h1>Check your inbox</h1><p style="text-align:center">' +
+            (data.message || "We sent you a verification email — click the link to activate your account.") +
+            '</p><p class="link"><a href="/login?redirect_uri=' +
+            encodeURIComponent(redirectUri) +
+            '">Back to sign in</a></p>';
+          return;
+        } catch (err) {
+          errorEl.textContent = err.message;
+          errorEl.style.display = "block";
+          btn.disabled = false;
+        }
+      });
+    </script>
+  </body>
+</html>

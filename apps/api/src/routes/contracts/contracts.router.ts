@@ -11,11 +11,17 @@ import { deleteContractUseCase } from "../../use-cases/contracts/delete-contract
 const s = initServer();
 
 export const contractsRouter = s.router(contractsContract, {
-  getContracts: async ({ query: { page, limit, listingId, providerId, beneficiaryId, openSignStatus, disputed } }) => {
+  getContracts: async ({
+    query: { page, limit, listingId, providerId, beneficiaryId, openSignStatus, disputed },
+    req,
+  }) => {
+    const isAdmin = req.user!.role === "admin";
     const result = await getContractsUseCase(resolve("contract"))({
       listingId,
-      providerId,
-      beneficiaryId,
+      // Non-admins only see contracts they are a party to; admins may filter by either side.
+      providerId: isAdmin ? providerId : undefined,
+      beneficiaryId: isAdmin ? beneficiaryId : undefined,
+      partyId: isAdmin ? undefined : req.user!.sub,
       openSignStatus,
       disputed,
       page,
@@ -25,6 +31,7 @@ export const contractsRouter = s.router(contractsContract, {
   },
 
   getContractById: async ({ params: { id } }) => {
+    // Party/admin authorization (404-on-deny) is enforced by the contract-metadata middleware.
     const contract = await getContractByIdUseCase(resolve("contract"))({ id });
     if (!contract) {
       return { status: 404, body: { message: "Contract not found" } };
@@ -32,12 +39,17 @@ export const contractsRouter = s.router(contractsContract, {
     return { status: 200, body: contract };
   },
 
-  createContract: async ({ body }) => {
-    const newContract = await createContractUseCase(resolve("contract"))(body);
+  createContract: async ({ body, req }) => {
+    // The request author is the provider; the beneficiary comes from the body.
+    const newContract = await createContractUseCase(resolve("contract"))({
+      ...body,
+      providerId: req.user!.sub,
+    });
     return { status: 201, body: newContract };
   },
 
   signContract: async ({ params: { id }, body }) => {
+    // Party-only authorization is enforced by the contract-metadata middleware.
     const contract = await signContractUseCase(resolve("contract"))(id, body);
     if (!contract) {
       return { status: 404, body: { message: "Contract not found" } };

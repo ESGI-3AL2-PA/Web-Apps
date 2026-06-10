@@ -1,11 +1,7 @@
 import type { Conversation, Message } from "../../entities/conversation.entity.js";
 
 export interface IConversationRepository {
-  getConversations(params: {
-    participantId?: string;
-    page?: number;
-    limit?: number;
-  }): Promise<{
+  getConversations(params: { participantId?: string; page?: number; limit?: number }): Promise<{
     data: Conversation[];
     total: number;
     page: number;

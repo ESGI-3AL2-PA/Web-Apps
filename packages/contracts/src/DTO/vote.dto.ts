@@ -71,7 +71,6 @@ export type VoteQueryDto = z.infer<typeof VoteQueryDtoSchema>;
 
 export const SubmitVoteResponseDtoSchema = z
   .object({
-    userId: z.string().openapi({ description: "ID of the user casting the vote" }),
     chosenOption: z.string().openapi({ description: "Option chosen by the user" }),
   })
   .openapi({ title: "SubmitVoteResponse" });

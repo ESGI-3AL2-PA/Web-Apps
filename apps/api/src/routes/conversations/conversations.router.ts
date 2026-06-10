@@ -11,9 +11,14 @@ import { attachMediaUseCase } from "../../use-cases/conversations/attach-media.u
 
 const s = initServer();
 
+// Participant/sender authorization for the record-level routes below is enforced by
+// the contract-metadata middleware (404-on-deny).
 export const conversationsRouter = s.router(conversationsContract, {
-  getConversations: async ({ query }) => {
-    const result = await getConversationsUseCase(resolve("conversation"))(query);
+  getConversations: async ({ query, req }) => {
+    // Users only see their own conversations; admins may filter freely.
+    const isAdmin = req.user!.role === "admin";
+    const scoped = isAdmin ? query : { ...query, participantId: req.user!.sub };
+    const result = await getConversationsUseCase(resolve("conversation"))(scoped);
     return { status: 200, body: result };
   },
 
@@ -25,22 +30,20 @@ export const conversationsRouter = s.router(conversationsContract, {
     return { status: 200, body: conversation };
   },
 
-  createConversation: async ({ body }) => {
-    const conversation = await createConversationUseCase(resolve("conversation"))(body);
+  createConversation: async ({ body, req }) => {
+    // The creator is always a participant; never trust the list alone.
+    const participants = Array.from(new Set([req.user!.sub, ...body.participants]));
+    const conversation = await createConversationUseCase(resolve("conversation"))({ ...body, participants });
     return { status: 201, body: conversation };
   },
 
   getMessages: async ({ params: { id }, query: { page, limit } }) => {
-    const conversation = await getConversationByIdUseCase(resolve("conversation"))({ id });
-    if (!conversation) {
-      return { status: 404, body: { message: "Conversation not found" } };
-    }
     const result = await getMessagesUseCase(resolve("conversation"))(id, { page, limit });
     return { status: 200, body: result };
   },
 
-  sendMessage: async ({ params: { id }, body }) => {
-    const message = await sendMessageUseCase(resolve("conversation"))(id, body);
+  sendMessage: async ({ params: { id }, body, req }) => {
+    const message = await sendMessageUseCase(resolve("conversation"))(id, req.user!.sub, body);
     if (!message) {
       return { status: 404, body: { message: "Conversation not found" } };
     }

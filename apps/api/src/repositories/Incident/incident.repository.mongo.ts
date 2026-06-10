@@ -27,16 +27,7 @@ export class MongoIncidentRepository implements IIncidentRepository {
     page: number;
     limit: number;
   }> {
-    const {
-      search,
-      status,
-      category,
-      districtId,
-      reporterId,
-      assignedTo,
-      page = 1,
-      limit = 20,
-    } = params;
+    const { search, status, category, districtId, reporterId, assignedTo, page = 1, limit = 20 } = params;
 
     const filter: Filter<IncidentDoc> = {};
 
@@ -117,9 +108,7 @@ export class MongoIncidentRepository implements IIncidentRepository {
 
   private async aggregateCount(field: string): Promise<Record<string, number>> {
     const docs = await this.collection
-      .aggregate<{ _id: string; count: number }>([
-        { $group: { _id: field, count: { $sum: 1 } } },
-      ])
+      .aggregate<{ _id: string; count: number }>([{ $group: { _id: field, count: { $sum: 1 } } }])
       .toArray();
     return docs.reduce<Record<string, number>>((acc, { _id, count }) => {
       if (_id !== null && _id !== undefined) acc[_id] = count;

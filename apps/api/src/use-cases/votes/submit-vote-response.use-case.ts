@@ -5,17 +5,18 @@ import type { IVoteRepository } from "../../repositories/Vote/vote.repository.js
 export const submitVoteResponseUseCase = (voteRepository: IVoteRepository) => {
   return async (
     voteId: string,
+    userId: string,
     data: SubmitVoteResponseDto,
   ): Promise<{ vote: Vote | null; alreadyVoted: boolean }> => {
     const vote = await voteRepository.getVoteById(voteId);
     if (!vote) return { vote: null, alreadyVoted: false };
 
-    const already = await voteRepository.hasUserVoted(voteId, data.userId);
+    const already = await voteRepository.hasUserVoted(voteId, userId);
     if (already) return { vote, alreadyVoted: true };
 
     await voteRepository.submitResponse({
       voteId,
-      userId: data.userId,
+      userId,
       chosenOption: data.chosenOption,
     });
 

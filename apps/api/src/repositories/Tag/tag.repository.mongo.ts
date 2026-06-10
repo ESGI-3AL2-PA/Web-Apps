@@ -12,11 +12,7 @@ export class MongoTagRepository implements ITagRepository {
     this.collection = db.collection("tags");
   }
 
-  async getTags(params: {
-    search?: string;
-    page?: number;
-    limit?: number;
-  }): Promise<{
+  async getTags(params: { search?: string; page?: number; limit?: number }): Promise<{
     data: Tag[];
     total: number;
     page: number;
@@ -26,10 +22,7 @@ export class MongoTagRepository implements ITagRepository {
 
     const filter: Filter<TagDoc> = {};
     if (search) {
-      filter.$or = [
-        { name: { $regex: search, $options: "i" } },
-        { description: { $regex: search, $options: "i" } },
-      ];
+      filter.$or = [{ name: { $regex: search, $options: "i" } }, { description: { $regex: search, $options: "i" } }];
     }
 
     const [total, docs] = await Promise.all([

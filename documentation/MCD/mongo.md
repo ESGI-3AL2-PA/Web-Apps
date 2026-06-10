@@ -1,5 +1,7 @@
 # MongoDB — Collections
 
+> **v2 (feature change).** `users.districtId` (single) is replaced by `users.activeDistrictId` + a geocoded `users.location`; districts **may overlap** and their **names are not unique**; district-admin is modeled as the `DISTRICT_ADMINS` relationship (one district per admin, many admins per district). See `ROADMAP.md` §2A.
+
 ```mermaid
 erDiagram
 
@@ -10,9 +12,10 @@ erDiagram
     string firstName
     string lastName
     string address
+    object location
     string phone
     string role
-    ObjectId districtId FK
+    ObjectId activeDistrictId FK
     int balance
     timestamp createdAt
     timestamp updatedAt
@@ -22,6 +25,15 @@ erDiagram
     ObjectId _id PK
     string name
     object geoJson
+    timestamp createdAt
+    timestamp updatedAt
+  }
+
+  DISTRICT_ADMINS {
+    ObjectId _id PK
+    ObjectId districtId FK
+    ObjectId userId FK
+    timestamp createdAt
   }
 
   LISTINGS {
@@ -158,7 +170,9 @@ erDiagram
     timestamp createdAt
   }
 
-  USERS               }o--||  DISTRICTS           : "belongs to"
+  USERS               }o--||  DISTRICTS           : "active in"
+  DISTRICT_ADMINS     }o--||  DISTRICTS           : "administers"
+  DISTRICT_ADMINS     }o--||  USERS               : "is admin"
   LISTINGS            }o--||  USERS               : "published by"
   LISTINGS            }o--||  DISTRICTS           : "in"
   CONTRACTS           ||--||  LISTINGS            : "generated for"
@@ -177,3 +191,10 @@ erDiagram
   TRANSACTIONS        }o--||  USERS               : "belongs to"
   REFRESH_TOKENS      }o--||  USERS               : "belongs to"
 ```
+
+## Notes & indexes (v2)
+
+- `users.location` — GeoJSON `Point` (`[lng, lat]`) geocoded from `address`; drives the eligible-district lookup. `users.role` ∈ `user | admin | superAdmin`.
+- `users.activeDistrictId` — the single district that scopes the user's feed/listings/events/incidents; mutable (switching is server-side, no token change).
+- `districts.geoJson` — GeoJSON `Polygon` with a **2dsphere** index; districts **may overlap** and **names are not unique** (identify by `_id`). The eligible set is computed via point-in-polygon over all boundaries.
+- `district_admins` — unique index on `userId` enforces **one district per admin**; a district may have **many** admins. Read by the auth-service to mint the `adminDistrictId` JWT claim.

@@ -9,8 +9,8 @@ import { createUserUseCase } from "../../use-cases/users/create-user.use-case.js
 import { updateUserUseCase } from "../../use-cases/users/update-user.use-case.js";
 import { deleteUserUseCase } from "../../use-cases/users/delete-user.use-case.js";
 
-// Strip password from user responses
-const toDto = ({ passwordHash: _, ...rest }: User): UserResponseDto => rest;
+// Strip secrets (password hash + TOTP secret) from user responses.
+const toDto = ({ passwordHash: _passwordHash, totpSecret: _totpSecret, ...rest }: User): UserResponseDto => rest;
 
 const s = initServer();
 
@@ -29,16 +29,19 @@ export const usersRouter = s.router(usersContract, {
   },
 
   createUser: async ({ body }) => {
-    const newUser = await createUserUseCase(resolve("user"))({ ...body });
+    const newUser = await createUserUseCase(resolve("user"), resolve("district"))({ ...body });
     return { status: 201, body: toDto(newUser) };
   },
 
   updateUser: async ({ params: { id }, body }) => {
-    const user = await updateUserUseCase(resolve("user"))(id, body);
-    if (!user) {
+    const result = await updateUserUseCase(resolve("user"))(id, body);
+    if (result.kind === "not-found") {
       return { status: 404, body: { message: "User not found" } };
     }
-    return { status: 200, body: toDto(user) };
+    if (result.kind === "wrong-password") {
+      return { status: 401, body: { message: "Current password is incorrect" } };
+    }
+    return { status: 200, body: toDto(result.user) };
   },
 
   deleteUser: async ({ params: { id } }) => {

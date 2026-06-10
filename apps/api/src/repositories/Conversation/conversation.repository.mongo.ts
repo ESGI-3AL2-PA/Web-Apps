@@ -15,11 +15,7 @@ export class MongoConversationRepository implements IConversationRepository {
     this.messages = db.collection("messages");
   }
 
-  async getConversations(params: {
-    participantId?: string;
-    page?: number;
-    limit?: number;
-  }): Promise<{
+  async getConversations(params: { participantId?: string; page?: number; limit?: number }): Promise<{
     data: Conversation[];
     total: number;
     page: number;
@@ -48,9 +44,7 @@ export class MongoConversationRepository implements IConversationRepository {
     return doc ? this.toConversation(doc) : null;
   }
 
-  async createConversation(
-    data: Omit<Conversation, "id" | "createdAt" | "lastMessageAt">,
-  ): Promise<Conversation> {
+  async createConversation(data: Omit<Conversation, "id" | "createdAt" | "lastMessageAt">): Promise<Conversation> {
     const now = new Date().toISOString();
     const doc: ConversationDoc = { ...data, _id: randomUUID(), createdAt: now };
     await this.conversations.insertOne(doc);

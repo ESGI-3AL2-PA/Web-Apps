@@ -12,9 +12,68 @@ services:
       - /app/apps/api/node_modules
     environment:
       NODE_ENV: development
+      MONGODB_URL: mongodb://root:root@mongodb:27017
+      MONGODB_DB: db
+      AUTH_JWKS_URL: http://auth-service:3001/.well-known/jwks.json
     depends_on:
       - mongodb
       - neo4j
+      - auth-service
+
+  auth-service:
+    build:
+      context: .
+      dockerfile: apps/auth-service/Dockerfile
+      target: dev
+    ports:
+      - "3001:3001"
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/apps/auth-service/node_modules
+    environment:
+      NODE_ENV: development
+      MONGODB_URL: mongodb://root:root@mongodb:27017
+      MONGODB_DB: db
+      API_URL: http://api:3000
+    depends_on:
+      - mongodb
+
+  admin-front:
+    build:
+      context: .
+      dockerfile: apps/admin-front/Dockerfile
+      target: dev
+    ports:
+      - "4000:4000"
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/apps/admin-front/node_modules
+    environment:
+      NODE_ENV: development
+      VITE_AUTH_SERVICE_URL: http://localhost:3001
+    depends_on:
+      - auth-service
+
+  user-front:
+    build:
+      context: .
+      dockerfile: apps/user-front/Dockerfile
+      target: dev
+    ports:
+      - "5000:5000"
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/apps/user-front/node_modules
+    environment:
+      NODE_ENV: development
+      VITE_AUTH_SERVICE_URL: http://localhost:3001
+      VITE_API_URL: http://localhost:3000
+    depends_on:
+      - api
+      - auth-service
 
   mongodb:
     image: mongo:8
@@ -31,7 +90,7 @@ services:
     image: mongo-express:latest
     restart: on-failure
     ports:
-      - "8081:8081"
+      - "8082:8081"
     environment:
       ME_CONFIG_MONGODB_ADMINUSERNAME: root
       ME_CONFIG_MONGODB_ADMINPASSWORD: root
