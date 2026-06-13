@@ -1,7 +1,7 @@
 import axios from "axios";
 import { isTokenExpiringSoon } from "@repo/hooks";
 import { config } from "@repo/config";
-import { type ListingResponseDto } from "../type/annonce";
+import { type ListingResponseDto, CreateListingDto } from "../type/annonce";
 
 type PaginatedListingsResponse = {
   data: ListingResponseDto[];
@@ -34,11 +34,6 @@ const api = axios.create({
   baseURL: API_BASE_URL,
   timeout: 10000,
 });
-
-export async function getActiveListingsCount(): Promise<number> {
-  const res = await api.get<{ count: number }>("/listings/count/active");
-  return res.data.count;
-}
 
 let getAccessToken: (() => string | null) | null = null;
 let refreshFn: (() => Promise<string | null>) | null = null;
@@ -89,6 +84,7 @@ api.interceptors.response.use(
   },
 );
 
+// Dsiplay all Services
 export async function getAllAnnonces(filters: ListingFilters = {}): Promise<ListingResponseDto[]> {
   try {
     const res = await api.get<PaginatedListingsResponse>("/listings", { params: filters });
@@ -100,6 +96,27 @@ export async function getAllAnnonces(filters: ListingFilters = {}): Promise<List
     return res.data.data;
   } catch {
     throw new Error("Erreur lors du get all annonces");
+  }
+}
+
+// Display acount of all Services
+export async function getActiveListingsCount(): Promise<number> {
+  const res = await api.get<{ count: number }>("/listings/count/active");
+  return res.data.count;
+}
+
+// Create a service
+export async function createListings(data: CreateListingDto): Promise<ListingResponseDto> {
+  try {
+    const res = await api.post<ListingResponseDto>("/listings", data);
+
+    if (!res.data) {
+      throw Error();
+    }
+
+    return res.data;
+  } catch (error) {
+    throw new Error("Erreur lors de la créatin d'annonce");
   }
 }
 
