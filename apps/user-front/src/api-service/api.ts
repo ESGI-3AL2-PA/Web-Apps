@@ -84,7 +84,7 @@ api.interceptors.response.use(
   },
 );
 
-// Dsiplay all Services
+// get all Services
 export async function getAllAnnonces(filters: ListingFilters = {}): Promise<ListingResponseDto[]> {
   try {
     const res = await api.get<PaginatedListingsResponse>("/listings", { params: filters });
@@ -99,7 +99,22 @@ export async function getAllAnnonces(filters: ListingFilters = {}): Promise<List
   }
 }
 
-// Display acount of all Services
+// get Service By id
+export async function getListingsById(id: string): Promise<ListingResponseDto[]> {
+  try {
+    const res = await api.get<ListingResponseDto[]>(`/listings/author/${id}`);
+
+    if (!res) {
+      throw Error();
+    }
+
+    return res.data;
+  } catch (error) {
+    throw new Error("Aucunes donnée trouvées");
+  }
+}
+
+// get a count of all Services
 export async function getActiveListingsCount(): Promise<number> {
   const res = await api.get<{ count: number }>("/listings/count/active");
   return res.data.count;
