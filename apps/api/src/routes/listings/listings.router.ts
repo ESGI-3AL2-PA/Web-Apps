@@ -47,7 +47,7 @@ export const listingsRouter = s.router(listingsContract, {
     if (!author) {
       return { status: 404, body: { message: "Author not found" } };
     }
-    const newListing = await createListingUseCase(resolve("listing"))({
+    const newListing = await createListingUseCase(resolve("listing"), resolve("graph"))({
       ...body,
       authorId: author.id,
       districtId: author.districtId,
@@ -65,7 +65,7 @@ export const listingsRouter = s.router(listingsContract, {
   },
 
   deleteListing: async ({ params: { id } }) => {
-    const deleted = await deleteListingUseCase(resolve("listing"))({ id });
+    const deleted = await deleteListingUseCase(resolve("listing"), resolve("graph"))({ id });
     if (!deleted) {
       return { status: 404, body: { message: "Listing not found" } };
     }

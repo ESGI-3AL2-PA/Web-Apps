@@ -29,12 +29,12 @@ export const usersRouter = s.router(usersContract, {
   },
 
   createUser: async ({ body }) => {
-    const newUser = await createUserUseCase(resolve("user"), resolve("district"))({ ...body });
+    const newUser = await createUserUseCase(resolve("user"), resolve("district"), resolve("graph"))({ ...body });
     return { status: 201, body: toDto(newUser) };
   },
 
   updateUser: async ({ params: { id }, body }) => {
-    const result = await updateUserUseCase(resolve("user"))(id, body);
+    const result = await updateUserUseCase(resolve("user"), resolve("graph"))(id, body);
     if (result.kind === "not-found") {
       return { status: 404, body: { message: "User not found" } };
     }
@@ -45,7 +45,7 @@ export const usersRouter = s.router(usersContract, {
   },
 
   deleteUser: async ({ params: { id } }) => {
-    const deleted = await deleteUserUseCase(resolve("user"))({ id });
+    const deleted = await deleteUserUseCase(resolve("user"), resolve("graph"))({ id });
     if (!deleted) {
       return { status: 404, body: { message: "User not found" } };
     }

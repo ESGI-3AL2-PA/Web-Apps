@@ -1,12 +1,34 @@
 import argon2 from "argon2";
 import type { IUserRepository } from "../../repositories/User/user.repository.js";
 import type { IDistrictRepository } from "../../repositories/District/district.repository.js";
+import type { IGraphRepository } from "../../repositories/Graph/graph.repository.js";
 import type { User } from "../../entities/user.entity.js";
 import { getCoordinatesFromAddress } from "../../services/address.service.js";
+import { syncGraph } from "../../repositories/Graph/graph.sync.js";
 
 import type { CreateUserDto } from "@repo/contracts";
 
-export const createUserUseCase = (userRepository: IUserRepository, districtRepository: IDistrictRepository) => {
+const mirrorUserToGraph = async (graphRepository: IGraphRepository, user: User): Promise<void> => {
+  await syncGraph(`upsertUser(${user.id})`, () =>
+    graphRepository.upsertUser({
+      id: user.id,
+      name: `${user.firstName} ${user.lastName}`.trim(),
+      email: user.email,
+      role: user.role,
+    }),
+  );
+  if (user.districtId) {
+    await syncGraph(`linkUserLivesIn(${user.id}->${user.districtId})`, () =>
+      graphRepository.linkUserLivesIn(user.id, user.districtId, user.createdAt, user.address),
+    );
+  }
+};
+
+export const createUserUseCase = (
+  userRepository: IUserRepository,
+  districtRepository: IDistrictRepository,
+  graphRepository: IGraphRepository,
+) => {
   return async (data: CreateUserDto): Promise<User> => {
     const { password, ...rest } = data;
 
@@ -21,7 +43,7 @@ export const createUserUseCase = (userRepository: IUserRepository, districtRepos
       console.error("District resolution failed during user creation:", err);
     }
 
-    return await userRepository.createUser({
+    const user = await userRepository.createUser({
       ...rest,
       passwordHash: await argon2.hash(password),
       role: "user",
@@ -31,13 +53,16 @@ export const createUserUseCase = (userRepository: IUserRepository, districtRepos
       totpSecret: null,
       totpEnabled: false,
     });
+
+    await mirrorUserToGraph(graphRepository, user);
+    return user;
   };
 };
 
-export const createAdminUseCase = (userRepository: IUserRepository) => {
+export const createAdminUseCase = (userRepository: IUserRepository, graphRepository: IGraphRepository) => {
   return async (data: CreateUserDto): Promise<User> => {
     const { password, ...rest } = data;
-    return await userRepository.createUser({
+    const user = await userRepository.createUser({
       ...rest,
       passwordHash: await argon2.hash(password),
       role: "admin",
@@ -47,5 +72,8 @@ export const createAdminUseCase = (userRepository: IUserRepository) => {
       totpSecret: null,
       totpEnabled: false,
     });
+
+    await mirrorUserToGraph(graphRepository, user);
+    return user;
   };
 };

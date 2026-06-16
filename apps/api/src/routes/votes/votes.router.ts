@@ -26,7 +26,7 @@ export const votesRouter = s.router(votesContract, {
   },
 
   createVote: async ({ body, req }) => {
-    const newVote = await createVoteUseCase(resolve("vote"))({
+    const newVote = await createVoteUseCase(resolve("vote"), resolve("graph"))({
       ...body,
       creatorId: req.user!.sub,
     });
@@ -43,7 +43,7 @@ export const votesRouter = s.router(votesContract, {
   },
 
   deleteVote: async ({ params: { id } }) => {
-    const deleted = await deleteVoteUseCase(resolve("vote"))({ id });
+    const deleted = await deleteVoteUseCase(resolve("vote"), resolve("graph"))({ id });
     if (!deleted) {
       return { status: 404, body: { message: "Vote not found" } };
     }
@@ -51,7 +51,11 @@ export const votesRouter = s.router(votesContract, {
   },
 
   submitVoteResponse: async ({ params: { id }, body, req }) => {
-    const { vote, alreadyVoted } = await submitVoteResponseUseCase(resolve("vote"))(id, req.user!.sub, body);
+    const { vote, alreadyVoted } = await submitVoteResponseUseCase(resolve("vote"), resolve("graph"))(
+      id,
+      req.user!.sub,
+      body,
+    );
     if (!vote) {
       return { status: 404, body: { message: "Vote not found" } };
     }

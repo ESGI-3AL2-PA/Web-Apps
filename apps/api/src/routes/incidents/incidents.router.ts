@@ -30,7 +30,7 @@ export const incidentsRouter = s.router(incidentsContract, {
   },
 
   createIncident: async ({ body, req }) => {
-    const newIncident = await createIncidentUseCase(resolve("incident"))({
+    const newIncident = await createIncidentUseCase(resolve("incident"), resolve("graph"))({
       ...body,
       reporterId: req.user!.sub,
     });
@@ -39,7 +39,7 @@ export const incidentsRouter = s.router(incidentsContract, {
 
   updateIncident: async ({ params: { id }, body, req }) => {
     // Reporter/admin authorization is enforced by the contract-metadata middleware.
-    const incident = await updateIncidentUseCase(resolve("incident"))(id, body, req.user!.sub);
+    const incident = await updateIncidentUseCase(resolve("incident"), resolve("graph"))(id, body, req.user!.sub);
     if (!incident) {
       return { status: 404, body: { message: "Incident not found" } };
     }
@@ -47,7 +47,7 @@ export const incidentsRouter = s.router(incidentsContract, {
   },
 
   deleteIncident: async ({ params: { id } }) => {
-    const deleted = await deleteIncidentUseCase(resolve("incident"))({ id });
+    const deleted = await deleteIncidentUseCase(resolve("incident"), resolve("graph"))({ id });
     if (!deleted) {
       return { status: 404, body: { message: "Incident not found" } };
     }

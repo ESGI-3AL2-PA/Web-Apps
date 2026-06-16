@@ -34,7 +34,7 @@ export const eventsRouter = s.router(eventsContract, {
   },
 
   createEvent: async ({ body, req }) => {
-    const newEvent = await createEventUseCase(resolve("event"))({
+    const newEvent = await createEventUseCase(resolve("event"), resolve("graph"))({
       ...body,
       creatorId: req.user!.sub,
     });
@@ -51,7 +51,7 @@ export const eventsRouter = s.router(eventsContract, {
   },
 
   deleteEvent: async ({ params: { id } }) => {
-    const deleted = await deleteEventUseCase(resolve("event"))({ id });
+    const deleted = await deleteEventUseCase(resolve("event"), resolve("graph"))({ id });
     if (!deleted) {
       return { status: 404, body: { message: "Event not found" } };
     }
@@ -59,7 +59,7 @@ export const eventsRouter = s.router(eventsContract, {
   },
 
   registerToEvent: async ({ params: { id }, req }) => {
-    const event = await registerToEventUseCase(resolve("event"))(id, req.user!.sub);
+    const event = await registerToEventUseCase(resolve("event"), resolve("graph"))(id, req.user!.sub);
     if (!event) {
       return { status: 404, body: { message: "Event not found or no seats available" } };
     }
@@ -67,7 +67,7 @@ export const eventsRouter = s.router(eventsContract, {
   },
 
   unregisterFromEvent: async ({ params: { id }, req }) => {
-    const event = await unregisterFromEventUseCase(resolve("event"))(id, req.user!.sub);
+    const event = await unregisterFromEventUseCase(resolve("event"), resolve("graph"))(id, req.user!.sub);
     if (!event) {
       return { status: 404, body: { message: "Event not found or user was not registered" } };
     }
@@ -75,7 +75,7 @@ export const eventsRouter = s.router(eventsContract, {
   },
 
   attendEvent: async ({ params: { id }, body: { rating }, req }) => {
-    const event = await attendEventUseCase(resolve("event"))(id, req.user!.sub, rating);
+    const event = await attendEventUseCase(resolve("event"), resolve("graph"))(id, req.user!.sub, rating);
     if (!event) {
       return { status: 404, body: { message: "Event not found" } };
     }

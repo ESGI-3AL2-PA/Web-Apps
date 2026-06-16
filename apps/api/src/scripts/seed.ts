@@ -12,6 +12,8 @@
  */
 
 import { connectDB } from "../repositories/mongodb.connector.js";
+import { connectNeo4j, closeNeo4j } from "../repositories/neo4j.connector.js";
+import { Neo4jGraphRepository } from "../repositories/Graph/graph.repository.neo4j.js";
 
 const now = new Date().toISOString();
 const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
@@ -664,11 +666,93 @@ const seedCollection = async <T extends { _id: string }>(
   console.log(`  ✓ ${collectionName}: ${documents.length} document(s)`);
 };
 
+// ─── Neo4j graph projection ─────────────────────────────────────────────────
+// Mirrors the same seed dataset into Neo4j: nodes (User, District, Tag, Listing,
+// Event, Vote, Incident) and all the relationships described in
+// documentation/MCD/neo4j.md. Idempotent thanks to MERGE.
+
+const seedGraph = async (graph: Neo4jGraphRepository): Promise<void> => {
+  // ── Nodes ───────────────────────────────────────────────────────────────
+  for (const d of districts) {
+    await graph.upsertDistrict({ id: d._id, name: d.name });
+  }
+  for (const u of users) {
+    await graph.upsertUser({
+      id: u._id,
+      name: `${u.firstName} ${u.lastName}`,
+      email: u.email,
+      role: u.role,
+    });
+  }
+  for (const t of tags) {
+    await graph.upsertTag({ name: t.name, category: t.description });
+  }
+  for (const l of listings) {
+    await graph.upsertListing({ id: l._id, type: l.type });
+  }
+  for (const e of events) {
+    await graph.upsertEvent({ id: e._id, title: e.title, date: e.eventDate });
+  }
+  for (const v of votes) {
+    await graph.upsertVote({ id: v._id, question: v.question, endDate: v.endDate });
+  }
+  for (const i of incidents) {
+    await graph.upsertIncident({ id: i._id, category: i.category, status: i.status });
+  }
+
+  // ── Residence ──────────────────────────────────────────────────────────
+  for (const u of users) {
+    if (u.districtId) {
+      await graph.linkUserLivesIn(u._id, u.districtId, u.createdAt, u.address);
+    }
+  }
+
+  // ── Listings ───────────────────────────────────────────────────────────
+  for (const l of listings) {
+    await graph.linkUserPublishedListing(l.authorId, l._id);
+    for (const tag of l.tags ?? []) {
+      await graph.linkListingTagged(l._id, tag);
+    }
+  }
+
+  // ── Events ─────────────────────────────────────────────────────────────
+  for (const e of events) {
+    await graph.linkUserCreatedEvent(e.creatorId, e._id);
+    await graph.linkDistrictContainsEvent(e.districtId, e._id);
+    for (const userId of e.registrants ?? []) {
+      await graph.linkUserRegisteredForEvent(userId, e._id, e.createdAt, "registered");
+    }
+  }
+
+  // ── Votes ──────────────────────────────────────────────────────────────
+  for (const v of votes) {
+    for (const districtId of v.districtIds ?? []) {
+      await graph.linkDistrictConcernsVote(districtId, v._id);
+    }
+  }
+  for (const r of voteResponses) {
+    await graph.linkUserVoted(r.userId, r.voteId, r.chosenOption, r.votedAt);
+  }
+
+  // ── Incidents ──────────────────────────────────────────────────────────
+  for (const i of incidents) {
+    await graph.linkUserReportedIncident(i.reporterId, i._id);
+    await graph.linkDistrictContainsIncident(i.districtId, i._id);
+  }
+};
+
 const main = async () => {
-  console.log("🌱  Seeding database...");
-  const db = await connectDB();
+  console.log("🌱  Seeding databases (Mongo + Neo4j)...");
+
+  let mongoOk = false;
+  let driver: Awaited<ReturnType<typeof connectNeo4j>> | null = null;
 
   try {
+    const db = await connectDB();
+    mongoOk = true;
+
+    // ── Mongo ────────────────────────────────────────────────────────────
+    console.log("\n📄  Mongo");
     await seedCollection(db, "districts", districts);
     await seedCollection(db, "users", users);
     await seedCollection(db, "tags", tags);
@@ -698,16 +782,27 @@ const main = async () => {
       notifications.length +
       transactions.length;
 
-    console.log(`\n✅  Seed complete — ${totalDocs} documents inserted across 13 collections.`);
+    console.log(`  ✅ ${totalDocs} documents across 13 collections.`);
+
+    // ── Neo4j ────────────────────────────────────────────────────────────
+    console.log("\n🕸️  Neo4j");
+    driver = await connectNeo4j();
+    const graph = new Neo4jGraphRepository(driver);
+    await seedGraph(graph);
+    console.log(`  ✅ graph projection synced (nodes + relationships).`);
+
+    console.log("\n✅  Seed complete.");
   } catch (err) {
     console.error("\n❌  Seed failed:", err);
     process.exitCode = 1;
   } finally {
-    // Re-import the underlying client to close it cleanly
-    const { MongoClient } = await import("mongodb");
-    // Best-effort close: connectDB() reuses a singleton client, so closing here
-    // shuts down the process cleanly.
-    void MongoClient;
+    if (driver) {
+      await closeNeo4j().catch(() => undefined);
+    }
+    // Mongo client is a singleton inside mongodb.connector; the process will
+    // exit which closes the socket. Keeping this simple to mirror the previous
+    // shutdown behaviour.
+    void mongoOk;
     process.exit(process.exitCode ?? 0);
   }
 };

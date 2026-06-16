@@ -1,8 +1,19 @@
 import type { District } from "../../entities/district.entity.js";
 import type { IDistrictRepository } from "../../repositories/District/district.repository.js";
+import type { IGraphRepository } from "../../repositories/Graph/graph.repository.js";
+import { syncGraph } from "../../repositories/Graph/graph.sync.js";
 
-export const updateDistrictUseCase = (districtRepository: IDistrictRepository) => {
+export const updateDistrictUseCase = (
+  districtRepository: IDistrictRepository,
+  graphRepository: IGraphRepository,
+) => {
   return async (id: string, data: Partial<Omit<District, "id">>): Promise<District | null> => {
-    return await districtRepository.updateDistrict(id, data);
+    const district = await districtRepository.updateDistrict(id, data);
+    if (district && data.name !== undefined) {
+      await syncGraph(`upsertDistrict(${district.id})`, () =>
+        graphRepository.upsertDistrict({ id: district.id, name: district.name }),
+      );
+    }
+    return district;
   };
 };

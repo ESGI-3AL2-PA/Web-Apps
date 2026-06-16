@@ -24,12 +24,12 @@ export const tagsRouter = s.router(tagsContract, {
   },
 
   createTag: async ({ body }) => {
-    const newTag = await createTagUseCase(resolve("tag"))(body);
+    const newTag = await createTagUseCase(resolve("tag"), resolve("graph"))(body);
     return { status: 201, body: newTag };
   },
 
   updateTag: async ({ params: { id }, body }) => {
-    const tag = await updateTagUseCase(resolve("tag"))(id, body);
+    const tag = await updateTagUseCase(resolve("tag"), resolve("graph"))(id, body);
     if (!tag) {
       return { status: 404, body: { message: "Tag not found" } };
     }
@@ -37,7 +37,7 @@ export const tagsRouter = s.router(tagsContract, {
   },
 
   deleteTag: async ({ params: { id } }) => {
-    const deleted = await deleteTagUseCase(resolve("tag"))({ id });
+    const deleted = await deleteTagUseCase(resolve("tag"), resolve("graph"))({ id });
     if (!deleted) {
       return { status: 404, body: { message: "Tag not found" } };
     }
