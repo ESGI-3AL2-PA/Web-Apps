@@ -1,4 +1,4 @@
-import { ListingResponseDto } from "../type/annonce";
+import type { ListingResponseDto } from "@repo/contracts";
 
 type AnnonceCardProps = {
   annonce: ListingResponseDto;

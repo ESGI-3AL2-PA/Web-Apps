@@ -1,12 +1,12 @@
 import { useEffect, useState, useCallback } from "react";
 import { useOutletContext } from "react-router-dom";
-import { getAllAnnonces, type ListingFilters } from "../../api-service/api";
-import type { ListingResponseDto } from "../../type/annonce";
+import type { ListingQueryDto, ListingResponseDto } from "@repo/contracts";
+import { getListings } from "../../api-service/listings.service";
 import type { ServiceOutletContext } from "./Service";
 import AnnonceList from "../../component/AnnonceList";
 
 const Annonces = () => {
-  const { selectedType } = useOutletContext<ServiceOutletContext>();
+  const { selectedTag } = useOutletContext<ServiceOutletContext>();
 
   const [data, setData] = useState<ListingResponseDto[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -16,17 +16,19 @@ const Annonces = () => {
     setLoading(true);
     setError(null);
     try {
-      const filters: ListingFilters = {};
-      if (selectedType) filters.type = selectedType;
+      // ListingQueryDto accepte désormais `tag` (filtre par nom de tag — match
+      // automatique sur l'array `tags` côté Mongo).
+      const filters: ListingQueryDto = {} as ListingQueryDto;
+      if (selectedTag) filters.tag = selectedTag;
 
-      const result = await getAllAnnonces(filters);
-      setData(result);
+      const result = await getListings(filters);
+      setData(result.data);
     } catch {
       setError("Impossible de charger les annonces");
     } finally {
       setLoading(false);
     }
-  }, [selectedType]);
+  }, [selectedTag]);
 
   useEffect(() => {
     fetchAnnonces();

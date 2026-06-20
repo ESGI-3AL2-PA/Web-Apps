@@ -1,6 +1,4 @@
 import type {
-  CreateNotificationDto,
-  MarkAllReadDto,
   MarkAllReadResponseDto,
   NotificationQueryDto,
   NotificationResponseDto,
@@ -16,22 +14,10 @@ export async function getNotifications(
   throw new Error("Not implemented");
 }
 
-export async function createNotification(
-  _data: CreateNotificationDto,
-): Promise<NotificationResponseDto> {
-  throw new Error("Not implemented");
-}
-
 export async function markNotificationRead(_id: string): Promise<NotificationResponseDto> {
   throw new Error("Not implemented");
 }
 
-export async function markAllNotificationsRead(
-  _data: MarkAllReadDto,
-): Promise<MarkAllReadResponseDto> {
-  throw new Error("Not implemented");
-}
-
-export async function deleteNotification(_id: string): Promise<void> {
+export async function markAllNotificationsRead(): Promise<MarkAllReadResponseDto> {
   throw new Error("Not implemented");
 }

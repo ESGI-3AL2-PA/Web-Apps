@@ -1,14 +1,15 @@
 import { useState, useEffect } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import FilterBar from "../../component/FilterBar";
-import { getActiveListingsCount, type ListingType } from "../../api-service/api";
+import { getActiveListingsCount } from "../../api-service/api";
 
+// Outlet context : on partage le `tag` sélectionné (nom du tag, "" = aucun filtre)
 export type ServiceOutletContext = {
-  selectedType: ListingType | "";
+  selectedTag: string;
 };
 
 const Service = () => {
-  const [selectedType, setSelectedType] = useState<ListingType | "">("");
+  const [selectedTag, setSelectedTag] = useState<string>("");
   const [activeCount, setActiveCount] = useState<number | null>(null);
 
   useEffect(() => {
@@ -22,7 +23,7 @@ const Service = () => {
       {/* Left Barre */}
       <div className="w-64 min-h-screen bg-base-100 p-4 flex flex-col gap-6">
         {/* Catégorie */}
-        <FilterBar selectedType={selectedType} onChange={setSelectedType} />
+        <FilterBar selectedTag={selectedTag} onChange={setSelectedTag} />
       </div>
 
       {/* Main */}
@@ -79,7 +80,7 @@ const Service = () => {
           </div>
         </div>
         <div className="content">
-          <Outlet context={{ selectedType } satisfies ServiceOutletContext} />
+          <Outlet context={{ selectedTag } satisfies ServiceOutletContext} />
         </div>
       </div>
     </div>

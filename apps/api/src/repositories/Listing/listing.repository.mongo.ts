@@ -18,6 +18,7 @@ export class MongoListingRepository implements IListingRepository {
     status?: string;
     districtId?: string;
     authorId?: string;
+    tag?: string;
     page?: number;
     limit?: number;
   }): Promise<{
@@ -26,7 +27,7 @@ export class MongoListingRepository implements IListingRepository {
     page: number;
     limit: number;
   }> {
-    const { search, type, status, districtId, authorId, page = 1, limit = 20 } = params;
+    const { search, type, status, districtId, authorId, tag, page = 1, limit = 20 } = params;
 
     const filter: Filter<ListingDoc> = {};
 
@@ -37,6 +38,8 @@ export class MongoListingRepository implements IListingRepository {
     if (status) filter.status = status as ListingStatus;
     if (districtId) filter.districtId = districtId;
     if (authorId) filter.authorId = authorId;
+    // Mongo array auto-match: `{ tags: "x" }` matches docs where `tags` is an array containing "x".
+    if (tag) filter.tags = tag;
 
     const [total, docs] = await Promise.all([
       this.collection.countDocuments(filter),

@@ -1,43 +1,64 @@
 import type {
-  CreateVoteDto,
   PaginatedResponseDto,
   SubmitVoteResponseDto,
-  UpdateVoteDto,
   VoteQueryDto,
   VoteResponseDto,
   VoteResponseDtoSchema,
   VoteResultsResponseDto,
 } from "@repo/contracts";
+import api from "./api";
 
 type PaginatedVotes = PaginatedResponseDto<typeof VoteResponseDtoSchema>;
 
-export async function getVotes(_filters: VoteQueryDto = {} as VoteQueryDto): Promise<PaginatedVotes> {
-  throw new Error("Not implemented");
+// GET /votes — paginated list with optional filters
+// (search, status, districtId, creatorId, page, limit)
+export async function getVotes(filters: VoteQueryDto = {} as VoteQueryDto): Promise<PaginatedVotes> {
+  try {
+    const res = await api.get<PaginatedVotes>("/votes", { params: filters });
+    if (!res.data) {
+      throw new Error();
+    }
+    return res.data;
+  } catch {
+    throw new Error("Erreur lors du get all votes");
+  }
 }
 
-export async function getVoteById(_id: string): Promise<VoteResponseDto> {
-  throw new Error("Not implemented");
+// GET /votes/:id — single vote (includes cached `results` aggregate)
+export async function getVoteById(id: string): Promise<VoteResponseDto> {
+  try {
+    const res = await api.get<VoteResponseDto>(`/votes/${id}`);
+    if (!res.data) {
+      throw new Error();
+    }
+    return res.data;
+  } catch {
+    throw new Error("Vote introuvable");
+  }
 }
 
-export async function createVote(_data: CreateVoteDto): Promise<VoteResponseDto> {
-  throw new Error("Not implemented");
+// GET /votes/:id/results — fresh aggregation from vote_responses (option → count)
+export async function getVoteResults(id: string): Promise<VoteResultsResponseDto> {
+  try {
+    const res = await api.get<VoteResultsResponseDto>(`/votes/${id}/results`);
+    if (!res.data) {
+      throw new Error();
+    }
+    return res.data;
+  } catch {
+    throw new Error("Erreur lors de la récupération des résultats du vote");
+  }
 }
 
-export async function updateVote(_id: string, _data: UpdateVoteDto): Promise<VoteResponseDto> {
-  throw new Error("Not implemented");
-}
-
-export async function deleteVote(_id: string): Promise<void> {
-  throw new Error("Not implemented");
-}
-
-export async function submitVoteResponse(
-  _id: string,
-  _data: SubmitVoteResponseDto,
-): Promise<VoteResponseDto> {
-  throw new Error("Not implemented");
-}
-
-export async function getVoteResults(_id: string): Promise<VoteResultsResponseDto> {
-  throw new Error("Not implemented");
+// POST /votes/:id/responses — cast a vote (idempotent on the user, alreadyVoted handled server-side)
+export async function submitVoteResponse(id: string, data: SubmitVoteResponseDto): Promise<VoteResponseDto> {
+  try {
+    const res = await api.post<VoteResponseDto>(`/votes/${id}/responses`, data);
+    if (!res.data) {
+      throw new Error();
+    }
+    return res.data;
+  } catch {
+    throw new Error("Erreur lors de l'envoi du vote");
+  }
 }
