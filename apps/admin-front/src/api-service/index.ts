@@ -5,6 +5,7 @@ export { default as api } from "./api";
 
 export * as usersService from "./users.service";
 export * as districtsService from "./districts.service";
+export * as districtAdminsService from "./district-admins.service";
 export * as incidentsService from "./incidents.service";
 export * as listingsService from "./listings.service";
 export * as eventsService from "./events.service";

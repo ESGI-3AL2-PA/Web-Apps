@@ -10,49 +10,120 @@ import type {
   SendMessageDto,
   UploadMediaDto,
 } from "@repo/contracts";
+import api from "./api";
 
 type PaginatedConversations = PaginatedResponseDto<typeof ConversationResponseDtoSchema>;
 type PaginatedMessages = PaginatedResponseDto<typeof MessageResponseDtoSchema>;
 
 // ── Conversations ────────────────────────────────────────────────────────────
 
+// GET /conversations — paginated list of conversations the user participates in
 export async function getConversations(
-  _filters: ConversationQueryDto = {} as ConversationQueryDto,
+  filters: ConversationQueryDto = {} as ConversationQueryDto,
 ): Promise<PaginatedConversations> {
-  throw new Error("Not implemented");
+  try {
+    const res = await api.get<PaginatedConversations>("/conversations", { params: filters });
+    if (!res.data) {
+      throw new Error();
+    }
+    return res.data;
+  } catch {
+    throw new Error("Erreur lors du get all conversations");
+  }
 }
 
-export async function getConversationById(_id: string): Promise<ConversationResponseDto> {
-  throw new Error("Not implemented");
+// GET /conversations/:id — participant only (`authorize` middleware)
+export async function getConversationById(id: string): Promise<ConversationResponseDto> {
+  try {
+    const res = await api.get<ConversationResponseDto>(`/conversations/${id}`);
+    if (!res.data) {
+      throw new Error();
+    }
+    return res.data;
+  } catch {
+    throw new Error("Conversation introuvable");
+  }
 }
 
-export async function createConversation(_data: CreateConversationDto): Promise<ConversationResponseDto> {
-  throw new Error("Not implemented");
+// POST /conversations — démarrer une nouvelle conversation
+export async function createConversation(
+  data: CreateConversationDto,
+): Promise<ConversationResponseDto> {
+  try {
+    const res = await api.post<ConversationResponseDto>("/conversations", data);
+    if (!res.data) {
+      throw new Error();
+    }
+    return res.data;
+  } catch {
+    throw new Error("Erreur lors de la création de la conversation");
+  }
 }
 
 // ── Messages (nested under a conversation, plus standalone actions) ──────────
 
+// GET /conversations/:id/messages — messages of a conversation (participant only)
 export async function getMessages(
-  _conversationId: string,
-  _filters: MessageQueryDto = {} as MessageQueryDto,
+  conversationId: string,
+  filters: MessageQueryDto = {} as MessageQueryDto,
 ): Promise<PaginatedMessages> {
-  throw new Error("Not implemented");
+  try {
+    const res = await api.get<PaginatedMessages>(`/conversations/${conversationId}/messages`, {
+      params: filters,
+    });
+    if (!res.data) {
+      throw new Error();
+    }
+    return res.data;
+  } catch {
+    throw new Error("Erreur lors du chargement des messages");
+  }
 }
 
+// POST /conversations/:id/messages — envoyer un message (participant only)
 export async function sendMessage(
-  _conversationId: string,
-  _data: SendMessageDto,
+  conversationId: string,
+  data: SendMessageDto,
 ): Promise<MessageResponseDto> {
-  throw new Error("Not implemented");
+  try {
+    const res = await api.post<MessageResponseDto>(
+      `/conversations/${conversationId}/messages`,
+      data,
+    );
+    if (!res.data) {
+      throw new Error();
+    }
+    return res.data;
+  } catch {
+    throw new Error("Erreur lors de l'envoi du message");
+  }
 }
 
-export async function markMessageRead(_messageId: string): Promise<MessageResponseDto> {
-  throw new Error("Not implemented");
+// PATCH /messages/:id/read — marquer un message comme lu (no body)
+export async function markMessageRead(messageId: string): Promise<MessageResponseDto> {
+  try {
+    const res = await api.patch<MessageResponseDto>(`/messages/${messageId}/read`);
+    if (!res.data) {
+      throw new Error();
+    }
+    return res.data;
+  } catch {
+    throw new Error("Erreur lors du marquage du message comme lu");
+  }
 }
 
+// POST /messages/:id/media — attacher une photo/audio/fichier (sender only)
 export async function attachMediaToMessage(
-  _messageId: string,
-  _data: UploadMediaDto,
+  messageId: string,
+  data: UploadMediaDto,
 ): Promise<MessageResponseDto> {
-  throw new Error("Not implemented");
+  try {
+    const res = await api.post<MessageResponseDto>(`/messages/${messageId}/media`, data);
+    if (!res.data) {
+      throw new Error();
+    }
+    return res.data;
+  } catch {
+    throw new Error("Erreur lors de l'ajout du média");
+  }
 }

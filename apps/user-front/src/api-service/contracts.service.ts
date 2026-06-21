@@ -83,6 +83,10 @@ export async function disputeContract(
 }
 
 // DELETE /contracts/:id
-export async function deleteContract(_id: string): Promise<void> {
-  throw new Error("Not implemented");
+export async function deleteContract(id: string): Promise<void> {
+  try {
+    await api.delete(`/contracts/${id}`);
+  } catch {
+    throw new Error("Erreur lors de la suppression du contrat");
+  }
 }

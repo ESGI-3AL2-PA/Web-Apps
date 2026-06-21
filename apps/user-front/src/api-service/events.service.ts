@@ -5,7 +5,6 @@ import type {
   EventResponseDto,
   EventResponseDtoSchema,
   PaginatedResponseDto,
-  RegisterEventDto,
   UpdateEventDto,
 } from "@repo/contracts";
 import api from "./api";
@@ -55,12 +54,9 @@ export async function createEvent(data: CreateEventDto): Promise<EventResponseDt
 }
 
 // POST /events/:id/register — current user joins the event
-export async function registerToEvent(
-  id: string,
-  data: RegisterEventDto = {} as RegisterEventDto,
-): Promise<EventResponseDto> {
+export async function registerToEvent(id: string): Promise<EventResponseDto> {
   try {
-    const res = await api.post<EventResponseDto>(`/events/${id}/register`, data);
+    const res = await api.post<EventResponseDto>(`/events/${id}/register`);
     if (!res.data) {
       throw new Error();
     }
@@ -83,20 +79,37 @@ export async function attendEvent(id: string, data: AttendEventDto): Promise<Eve
   }
 }
 
-// PATCH /events/:id
-export async function updateEvent(_id: string, _data: UpdateEventDto): Promise<EventResponseDto> {
-  throw new Error("Not implemented");
+// PATCH /events/:id — partial update (creator or admin)
+export async function updateEvent(id: string, data: UpdateEventDto): Promise<EventResponseDto> {
+  try {
+    const res = await api.patch<EventResponseDto>(`/events/${id}`, data);
+    if (!res.data) {
+      throw new Error();
+    }
+    return res.data;
+  } catch {
+    throw new Error("Erreur lors de la mise à jour de l'événement");
+  }
 }
 
 // DELETE /events/:id
-export async function deleteEvent(_id: string): Promise<void> {
-  throw new Error("Not implemented");
+export async function deleteEvent(id: string): Promise<void> {
+  try {
+    await api.delete(`/events/${id}`);
+  } catch {
+    throw new Error("Erreur lors de la suppression de l'événement");
+  }
 }
 
-// DELETE /events/:id/register
-export async function unregisterFromEvent(
-  _id: string,
-  _data: RegisterEventDto,
-): Promise<EventResponseDto> {
-  throw new Error("Not implemented");
+// DELETE /events/:id/register — current user leaves the event
+export async function unregisterFromEvent(id: string): Promise<EventResponseDto> {
+  try {
+    const res = await api.delete<EventResponseDto>(`/events/${id}/register`);
+    if (!res.data) {
+      throw new Error();
+    }
+    return res.data;
+  } catch {
+    throw new Error("Erreur lors de la désinscription de l'événement");
+  }
 }

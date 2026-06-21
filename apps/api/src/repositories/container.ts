@@ -6,6 +6,7 @@ import { MongoContractRepository } from "./Contract/contract.repository.mongo.js
 import { MongoEventRepository } from "./Event/event.repository.mongo.js";
 import { MongoIncidentRepository } from "./Incident/incident.repository.mongo.js";
 import { MongoDistrictRepository } from "./District/district.repository.mongo.js";
+import { MongoDistrictAdminRepository } from "./DistrictAdmin/district-admin.repository.mongo.js";
 import { MongoTagRepository } from "./Tag/tag.repository.mongo.js";
 import { MongoVoteRepository } from "./Vote/vote.repository.mongo.js";
 import { MongoConversationRepository } from "./Conversation/conversation.repository.mongo.js";
@@ -20,6 +21,7 @@ let repositories: {
   event: MongoEventRepository;
   incident: MongoIncidentRepository;
   district: MongoDistrictRepository;
+  districtAdmin: MongoDistrictAdminRepository;
   tag: MongoTagRepository;
   vote: MongoVoteRepository;
   conversation: MongoConversationRepository;
@@ -36,6 +38,7 @@ export const initContainer = (db: Db, neo4jDriver: Driver) => {
     event: new MongoEventRepository(db),
     incident: new MongoIncidentRepository(db),
     district: new MongoDistrictRepository(db),
+    districtAdmin: new MongoDistrictAdminRepository(db),
     tag: new MongoTagRepository(db),
     vote: new MongoVoteRepository(db),
     conversation: new MongoConversationRepository(db),
@@ -46,6 +49,9 @@ export const initContainer = (db: Db, neo4jDriver: Driver) => {
 
   // Ensure required indexes exist (idempotent, non-blocking on startup).
   void repositories.district.ensureIndexes().catch((err) => console.error("Failed to ensure district indexes:", err));
+  void repositories.districtAdmin
+    .ensureIndexes()
+    .catch((err) => console.error("Failed to ensure district-admin indexes:", err));
 };
 
 type Container = NonNullable<typeof repositories>;

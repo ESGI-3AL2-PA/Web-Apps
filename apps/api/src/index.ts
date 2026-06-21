@@ -7,6 +7,7 @@ import {
   getAuthPolicy,
   usersContract,
   districtsContract,
+  districtAdminsContract,
   listingsContract,
   eventsContract,
   contractsContract,
@@ -24,6 +25,7 @@ import { eventsRouter } from "./routes/events/events.router.js";
 import { contractsRouter } from "./routes/contracts/contracts.router.js";
 import { incidentsRouter } from "./routes/incidents/incidents.router.js";
 import { districtsRouter } from "./routes/districts/districts.router.js";
+import { districtAdminsRouter } from "./routes/district-admins/district-admins.router.js";
 import { tagsRouter } from "./routes/tags/tags.router.js";
 import { votesRouter } from "./routes/votes/votes.router.js";
 import { conversationsRouter } from "./routes/conversations/conversations.router.js";
@@ -56,6 +58,7 @@ const openApiDocument = generateOpenApi(
   {
     Users: usersContract,
     Districts: districtsContract,
+    DistrictAdmins: districtAdminsContract,
     Listings: listingsContract,
     Events: eventsContract,
     Contracts: contractsContract,
@@ -79,6 +82,7 @@ const openApiDocument = generateOpenApi(
     tags: [
       { name: "Users" },
       { name: "Districts" },
+      { name: "DistrictAdmins" },
       { name: "Listings" },
       { name: "Events" },
       { name: "Contracts" },
@@ -159,6 +163,7 @@ createExpressEndpoints(eventsContract, eventsRouter, app, endpointOptions);
 createExpressEndpoints(contractsContract, contractsRouter, app, endpointOptions);
 createExpressEndpoints(incidentsContract, incidentsRouter, app, endpointOptions);
 createExpressEndpoints(districtsContract, districtsRouter, app, endpointOptions);
+createExpressEndpoints(districtAdminsContract, districtAdminsRouter, app, endpointOptions);
 createExpressEndpoints(tagsContract, tagsRouter, app, endpointOptions);
 createExpressEndpoints(votesContract, votesRouter, app, endpointOptions);
 createExpressEndpoints(conversationsContract, conversationsRouter, app, endpointOptions);

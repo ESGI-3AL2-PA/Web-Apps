@@ -1,22 +1,10 @@
-import type {
-  PaginatedResponseDto,
-  TagQueryDto,
-  TagResponseDto,
-  TagResponseDtoSchema,
-} from "@repo/contracts";
+import type { PaginatedResponseDto, TagQueryDto, TagResponseDto, TagResponseDtoSchema } from "@repo/contracts";
 import api from "./api";
 
 type PaginatedTags = PaginatedResponseDto<typeof TagResponseDtoSchema>;
 
-// Consigne USER : lecture seule sur les tags
-//   - getTags() pour alimenter les <select> de filtres (FilterBar, formulaires)
-//   - getTagById() pour une éventuelle page "explorer ce tag"
-// Les écritures (create/update/delete) sont admin-only.
-
 // GET /tags — paginated list, search optionnel
-export async function getTags(
-  filters: TagQueryDto = {} as TagQueryDto,
-): Promise<PaginatedTags> {
+export async function getTags(filters: TagQueryDto = {} as TagQueryDto): Promise<PaginatedTags> {
   try {
     const res = await api.get<PaginatedTags>("/tags", { params: filters });
     if (!res.data) {

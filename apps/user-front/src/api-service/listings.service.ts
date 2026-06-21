@@ -10,7 +10,7 @@ import api from "./api";
 
 type PaginatedListings = PaginatedResponseDto<typeof ListingResponseDtoSchema>;
 
-// GET /listings — paginated list with optional filters (search, type, status, …)
+// GET /listings — paginated list with optional filters (search, type, status, tag, …)
 export async function getListings(
   filters: ListingQueryDto = {} as ListingQueryDto,
 ): Promise<PaginatedListings> {
@@ -26,8 +26,16 @@ export async function getListings(
 }
 
 // GET /listings/:id — fetch a single listing
-export async function getListingById(_id: string): Promise<ListingResponseDto> {
-  throw new Error("Not implemented");
+export async function getListingById(id: string): Promise<ListingResponseDto> {
+  try {
+    const res = await api.get<ListingResponseDto>(`/listings/${id}`);
+    if (!res.data) {
+      throw new Error();
+    }
+    return res.data;
+  } catch {
+    throw new Error("Annonce introuvable");
+  }
 }
 
 // GET /listings/author/:id — every listing published by a given author
@@ -62,12 +70,27 @@ export async function createListing(data: CreateListingDto): Promise<ListingResp
   }
 }
 
-// PATCH /listings/:id — partial update
-export async function updateListing(_id: string, _data: UpdateListingDto): Promise<ListingResponseDto> {
-  throw new Error("Not implemented");
+// PATCH /listings/:id — partial update (owner only, enforced by backend `authorize`)
+export async function updateListing(
+  id: string,
+  data: UpdateListingDto,
+): Promise<ListingResponseDto> {
+  try {
+    const res = await api.patch<ListingResponseDto>(`/listings/${id}`, data);
+    if (!res.data) {
+      throw new Error();
+    }
+    return res.data;
+  } catch {
+    throw new Error("Erreur lors de la mise à jour de l'annonce");
+  }
 }
 
-// DELETE /listings/:id
-export async function deleteListing(_id: string): Promise<void> {
-  throw new Error("Not implemented");
+// DELETE /listings/:id (owner only, enforced by backend `authorize`)
+export async function deleteListing(id: string): Promise<void> {
+  try {
+    await api.delete(`/listings/${id}`);
+  } catch {
+    throw new Error("Erreur lors de la suppression de l'annonce");
+  }
 }
