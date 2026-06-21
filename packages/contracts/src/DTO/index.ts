@@ -15,3 +15,4 @@ export * from "./conversation.dto";
 export * from "./notification.dto";
 export * from "./transaction.dto";
 export * from "./paginatedResponse.dto";
+export * from "./recommendation.dto";

@@ -113,3 +113,13 @@ export async function unregisterFromEvent(id: string): Promise<EventResponseDto>
     throw new Error("Erreur lors de la désinscription de l'événement");
   }
 }
+
+// POST /events/:id/interest — express interest (👍 +1) or disinterest (👎 -1).
+// Alimente le moteur de reco Neo4j via `INTERESTED_IN_EVENT.score`.
+export async function markEventInterest(id: string, rating: number): Promise<void> {
+  try {
+    await api.post(`/events/${id}/interest`, { rating });
+  } catch {
+    throw new Error("Erreur lors de l'enregistrement de votre préférence");
+  }
+}

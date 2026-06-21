@@ -90,6 +90,28 @@ export interface IGraphRepository {
   unlinkUserRegisteredForEvent(userId: string, eventId: string): Promise<void>;
   linkUserAttendedEvent(userId: string, eventId: string, rating?: number): Promise<void>;
   linkEventTagged(eventId: string, tagName: string): Promise<void>;
+  /**
+   * Upsert d'une relation INTERESTED_IN_EVENT (alimente le moteur de reco).
+   * `scoreDelta` est ajouté au score existant (ou initialise si nouvelle relation).
+   * Utiliser pour les clicks 👍/👎 qui doivent s'accumuler.
+   */
+  linkUserInterestedInEvent(userId: string, eventId: string, scoreDelta: number): Promise<void>;
+
+  /**
+   * Variante "set absolu" — écrase le score existant. Utiliser pour le seed
+   * pour rester idempotent (sinon relancer `npm run seed` ferait doubler/tripler
+   * les scores à chaque exécution).
+   */
+  setUserInterestedInEvent(userId: string, eventId: string, score: number): Promise<void>;
+
+  /**
+   * Moteur de recommandation — renvoie les IDs d'events recommandés pour
+   * `userId`, ordonnés par pertinence descendante. Le calcul utilise du
+   * collaborative filtering : on cherche des users avec des goûts similaires
+   * (ayant aimé les mêmes events) puis on remonte ce qu'ils ont aussi aimé.
+   * Exclut les events que l'user a déjà engagés.
+   */
+  getRecommendedEventIds(userId: string, limit: number): Promise<string[]>;
 
   // ─── Listings ─────────────────────────────────────────────────────────────
   linkUserPublishedListing(userId: string, listingId: string): Promise<void>;

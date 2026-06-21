@@ -1,4 +1,4 @@
-import type { Driver } from "neo4j-driver";
+import neo4j, { type Driver } from "neo4j-driver";
 import type {
   DistrictNode,
   EventNode,
@@ -190,6 +190,63 @@ export class Neo4jGraphRepository implements IGraphRepository {
        MERGE (e)-[:TAGGED]->(t)`,
       { eventId, tagName },
     );
+  }
+
+  async linkUserInterestedInEvent(userId: string, eventId: string, scoreDelta: number): Promise<void> {
+    // MERGE sur User & Event au lieu de MATCH : si l'un ou l'autre n'a pas
+    // encore été synchronisé vers Neo4j (user créé via auth UI sans dual-write,
+    // par ex.), on crée un node stub avec juste l'id. Les autres propriétés
+    // (name, email, title…) seront enrichies au prochain upsert.
+    // Sans ça, le MATCH échouait silencieusement et le MERGE de la relation
+    // n'avait aucun effet.
+    await this.run(
+      `MERGE (u:User {userId: $userId})
+       MERGE (e:Event {eventId: $eventId})
+       MERGE (u)-[r:INTERESTED_IN_EVENT]->(e)
+       ON CREATE SET r.score = $scoreDelta, r.updatedAt = $updatedAt
+       ON MATCH  SET r.score = coalesce(r.score, 0) + $scoreDelta, r.updatedAt = $updatedAt`,
+      { userId, eventId, scoreDelta, updatedAt: new Date().toISOString() },
+    );
+  }
+
+  async setUserInterestedInEvent(userId: string, eventId: string, score: number): Promise<void> {
+    // SET absolu (idempotent) — utilisé par le seed. Le score est écrasé,
+    // pas accumulé.
+    await this.run(
+      `MERGE (u:User {userId: $userId})
+       MERGE (e:Event {eventId: $eventId})
+       MERGE (u)-[r:INTERESTED_IN_EVENT]->(e)
+       SET r.score = $score, r.updatedAt = $updatedAt`,
+      { userId, eventId, score, updatedAt: new Date().toISOString() },
+    );
+  }
+
+  async getRecommendedEventIds(userId: string, limit: number): Promise<string[]> {
+    // Collaborative filtering en 3 sauts :
+    //   1. Events que l'user a aimés (score > 0)
+    //   2. Autres users qui ont aimé les mêmes events (= goûts similaires)
+    //   3. Events que ces autres users ont aussi aimés
+    // On exclut ce que l'user a déjà engagé (interest / registered / attended).
+    const session = this.driver.session();
+    try {
+      const result = await session.run(
+        `MATCH (u:User {userId: $userId})-[r1:INTERESTED_IN_EVENT]->(common:Event)
+         WHERE r1.score > 0
+         MATCH (common)<-[r2:INTERESTED_IN_EVENT]-(other:User)
+         WHERE other.userId <> $userId AND r2.score > 0
+         MATCH (other)-[r3:INTERESTED_IN_EVENT]->(reco:Event)
+         WHERE reco.eventId <> common.eventId AND r3.score > 0
+           AND NOT (u)-[:INTERESTED_IN_EVENT|REGISTERED_FOR|ATTENDED]->(reco)
+         WITH reco.eventId AS eventId, sum(r3.score) AS relevance
+         ORDER BY relevance DESC
+         LIMIT $limit
+         RETURN eventId`,
+        { userId, limit: neo4j.int(limit) },
+      );
+      return result.records.map((r) => r.get("eventId") as string);
+    } finally {
+      await session.close();
+    }
   }
 
   // ─── Listings ───────────────────────────────────────────────────────────

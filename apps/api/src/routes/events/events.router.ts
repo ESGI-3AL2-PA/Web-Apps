@@ -9,16 +9,18 @@ import { deleteEventUseCase } from "../../use-cases/events/delete-event.use-case
 import { registerToEventUseCase } from "../../use-cases/events/register-to-event.use-case.js";
 import { unregisterFromEventUseCase } from "../../use-cases/events/unregister-from-event.use-case.js";
 import { attendEventUseCase } from "../../use-cases/events/attend-event.use-case.js";
+import { markInterestUseCase } from "../../use-cases/events/mark-interest.use-case.js";
 
 const s = initServer();
 
 export const eventsRouter = s.router(eventsContract, {
-  getEvents: async ({ query: { page, limit, search, status, districtId, creatorId } }) => {
+  getEvents: async ({ query: { page, limit, search, status, districtId, creatorId, registrantId } }) => {
     const result = await getEventsUseCase(resolve("event"))({
       search,
       status,
       districtId,
       creatorId,
+      registrantId,
       page,
       limit,
     });
@@ -80,5 +82,10 @@ export const eventsRouter = s.router(eventsContract, {
       return { status: 404, body: { message: "Event not found" } };
     }
     return { status: 200, body: event };
+  },
+
+  markInterest: async ({ params: { id }, body: { rating }, req }) => {
+    await markInterestUseCase(resolve("graph"))(req.user!.sub, id, rating);
+    return { status: 200, body: { success: true } };
   },
 });

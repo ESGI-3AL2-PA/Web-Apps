@@ -6,6 +6,7 @@ export interface IEventRepository {
     status?: string;
     districtId?: string;
     creatorId?: string;
+    registrantId?: string;
     page?: number;
     limit?: number;
   }): Promise<{
@@ -16,6 +17,13 @@ export interface IEventRepository {
   }>;
 
   getEventById(id: string): Promise<Event | null>;
+
+  /**
+   * Récupère un lot d'events par leurs IDs. L'ordre du tableau renvoyé n'est
+   * PAS garanti — le caller doit re-trier s'il a besoin d'un ordre spécifique
+   * (typiquement le moteur de reco veut préserver l'ordre de pertinence).
+   */
+  getEventsByIds(ids: string[]): Promise<Event[]>;
 
   createEvent(data: Omit<Event, "id" | "createdAt">): Promise<Event>;
 

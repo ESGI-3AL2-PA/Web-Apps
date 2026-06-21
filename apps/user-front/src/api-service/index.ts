@@ -13,3 +13,4 @@ export * as votesService from "./votes.service";
 export * as conversationsService from "./conversations.service";
 export * as notificationsService from "./notifications.service";
 export * as transactionsService from "./transactions.service";
+export * as recommendationsService from "./recommendations.service";

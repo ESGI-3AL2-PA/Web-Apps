@@ -64,6 +64,10 @@ export const EventQueryDtoSchema = z
     districtId: z.string().optional(),
     creatorId: z.string().optional(),
     status: EventStatusSchema.optional(),
+    registrantId: z
+      .string()
+      .optional()
+      .openapi({ description: "Filter events where this user is registered (member of `registrants[]`)" }),
   })
   .openapi("EventQuery");
 export type EventQueryDto = z.infer<typeof EventQueryDtoSchema>;
@@ -74,3 +78,19 @@ export const AttendEventDtoSchema = z
   })
   .openapi({ title: "AttendEvent" });
 export type AttendEventDto = z.infer<typeof AttendEventDtoSchema>;
+
+// Body d'expression d'intérêt — alimente le moteur de reco Neo4j en créant /
+// incrémentant la relation `(:User)-[:INTERESTED_IN_EVENT {score}]->(:Event)`.
+//   rating > 0 → 👍 (intérêt), rating < 0 → 👎 (désintérêt).
+// On accepte n'importe quel entier non-nul ; le front envoie typiquement +1 / -1.
+export const MarkInterestDtoSchema = z
+  .object({
+    rating: z.number().int().refine((n) => n !== 0, "rating must be non-zero"),
+  })
+  .openapi({ title: "MarkInterest" });
+export type MarkInterestDto = z.infer<typeof MarkInterestDtoSchema>;
+
+export const MarkInterestResponseDtoSchema = z
+  .object({ success: z.boolean() })
+  .openapi({ title: "MarkInterestResponse" });
+export type MarkInterestResponseDto = z.infer<typeof MarkInterestResponseDtoSchema>;

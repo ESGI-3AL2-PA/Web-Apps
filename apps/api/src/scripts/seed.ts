@@ -724,6 +724,55 @@ const seedGraph = async (graph: Neo4jGraphRepository): Promise<void> => {
     }
   }
 
+  // ── Event tags (Neo4j only — le DTO Event n'a pas de champ `tags` côté
+  //    Mongo pour l'instant, mais on enrichit le graphe pour que la reco
+  //    puisse exploiter les similarités cross-tag).
+  const eventTagMap: Record<string, string[]> = {
+    [ids.events.cleanup]: ["gardening", "diy"],
+    [ids.events.barbecue]: ["cooking"],
+    [ids.events.workshop]: ["diy"],
+  };
+  for (const [eventId, tagNames] of Object.entries(eventTagMap)) {
+    for (const tagName of tagNames) {
+      await graph.linkEventTagged(eventId, tagName);
+    }
+  }
+
+  // ── Interest signals (alimente INTERESTED_IN_EVENT pour le moteur de
+  //    reco). Sans ces signaux le graphe est trop pauvre pour proposer des
+  //    suggestions pertinentes. Voici une matrice qui crée des intersections
+  //    suffisantes pour démontrer le collaborative filtering :
+  //
+  //      Alice   ❤️ cleanup(3), workshop(2)
+  //      Bob     ❤️ cleanup(2), barbecue(1)
+  //      Charlie ❤️ barbecue(3), cleanup(1)
+  //      Diana   ❤️ cleanup(1), workshop(4), barbecue(2)
+  //
+  //    Conséquences attendues côté reco :
+  //      • Bob   → workshop recommandé (Alice et Diana, qui aiment cleanup
+  //               comme Bob, aiment aussi workshop)
+  //      • Alice → barbecue recommandé (Bob/Charlie/Diana qui aiment cleanup
+  //               comme Alice aiment aussi barbecue)
+  //      • Charlie → workshop recommandé (Diana qui aime barbecue comme
+  //                  Charlie aime aussi workshop)
+  const interests: { userId: string; eventId: string; score: number }[] = [
+    { userId: ids.users.alice, eventId: ids.events.cleanup, score: 3 },
+    { userId: ids.users.alice, eventId: ids.events.workshop, score: 2 },
+    { userId: ids.users.bob, eventId: ids.events.cleanup, score: 2 },
+    { userId: ids.users.bob, eventId: ids.events.barbecue, score: 1 },
+    { userId: ids.users.charlie, eventId: ids.events.barbecue, score: 3 },
+    { userId: ids.users.charlie, eventId: ids.events.cleanup, score: 1 },
+    { userId: ids.users.diana, eventId: ids.events.cleanup, score: 1 },
+    { userId: ids.users.diana, eventId: ids.events.workshop, score: 4 },
+    { userId: ids.users.diana, eventId: ids.events.barbecue, score: 2 },
+  ];
+  for (const sig of interests) {
+    // setUserInterestedInEvent au lieu de linkUserInterestedInEvent : on
+    // veut un SET absolu (idempotent) pour pouvoir relancer `npm run seed`
+    // sans doubler les scores à chaque exécution.
+    await graph.setUserInterestedInEvent(sig.userId, sig.eventId, sig.score);
+  }
+
   // ── Votes ──────────────────────────────────────────────────────────────
   for (const v of votes) {
     for (const districtId of v.districtIds ?? []) {

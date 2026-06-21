@@ -8,6 +8,8 @@ import {
   EventQueryDtoSchema,
   EventResponseDtoSchema,
   UpdateEventDtoSchema,
+  MarkInterestDtoSchema,
+  MarkInterestResponseDtoSchema,
   NotFoundErrorSchema,
   ForbiddenErrorSchema,
   PaginatedResponseDtoSchema,
@@ -131,6 +133,19 @@ export const eventsContract = c.router({
       404: NotFoundErrorSchema,
     },
     summary: "Mark that a user attended the event (and optionally rate it)",
+    metadata: auth({ audience: "api" }),
+  },
+
+  markInterest: {
+    method: "POST",
+    path: "/events/:id/interest",
+    pathParams: EventParamsDtoSchema,
+    body: MarkInterestDtoSchema,
+    responses: {
+      200: MarkInterestResponseDtoSchema,
+      404: NotFoundErrorSchema,
+    },
+    summary: "Express interest (👍) or disinterest (👎) for an event — feeds Neo4j recommendation engine",
     metadata: auth({ audience: "api" }),
   },
 });
