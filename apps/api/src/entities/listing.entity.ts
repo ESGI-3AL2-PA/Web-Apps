@@ -1,14 +1,8 @@
 import { z } from "zod";
 
-export const ListingTypeSchema = z.enum([
-  "Jardinage",
-  "Bricolage",
-  "Garde d'enfants",
-  "Cuisine",
-  "Transport",
-  "Animaux",
-  "Informatique",
-]);
+// `type` libre (string) — la valeur correspond au nom d'un tag de la
+// collection `tags`. Plus de couplage à un enum fermé.
+export const ListingTypeSchema = z.string().min(1);
 export type ListingType = z.infer<typeof ListingTypeSchema>;
 
 export const ListingStatusSchema = z.enum(["active", "closed", "expired"]);

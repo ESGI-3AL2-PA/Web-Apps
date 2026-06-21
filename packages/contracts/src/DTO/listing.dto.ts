@@ -1,14 +1,9 @@
 import { z } from "../zod";
 
-export const ListingTypeSchema = z.enum([
-  "Jardinage",
-  "Bricolage",
-  "Garde d'enfants",
-  "Cuisine",
-  "Transport",
-  "Animaux",
-  "Informatique",
-]);
+// `type` est désormais un string libre — sa valeur est le nom d'un tag
+// (la liste vient de la collection `tags` côté API). On valide juste qu'il
+// n'est pas vide pour ne pas accepter d'annonce sans catégorie.
+export const ListingTypeSchema = z.string().min(1);
 export type ListingType = z.infer<typeof ListingTypeSchema>;
 
 export const ListingStatusSchema = z.enum(["active", "closed", "expired"]);

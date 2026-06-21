@@ -8,6 +8,7 @@ import AnnonceList from "../../component/AnnonceList";
 
 // "Mes annonces" — filtre les annonces du user connecté, avec possibilité de
 // raffiner via le tag sélectionné dans la sidebar (FilterBar du parent Service).
+// Les cartes sont éditables : modifier / supprimer ouvre une modale.
 const AnnoncesUser = () => {
   const { selectedTag } = useOutletContext<ServiceOutletContext>();
   const { user } = useAuth();
@@ -41,7 +42,14 @@ const AnnoncesUser = () => {
   if (isLoading) return <div>Chargement des annonces...</div>;
   if (error) return <div style={{ color: "red" }}>{error}</div>;
 
-  return <AnnonceList annonces={data} title="Mes annonces" />;
+  return (
+    <AnnonceList
+      annonces={data}
+      title="Mes annonces"
+      editable
+      onChanged={fetchMyAnnonces}
+    />
+  );
 };
 
 export default AnnoncesUser;

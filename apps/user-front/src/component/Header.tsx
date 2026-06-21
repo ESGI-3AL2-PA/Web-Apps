@@ -1,9 +1,33 @@
 import logo from '../../public/Logo-connectedNeighbours.png';
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { NavLink } from 'react-router-dom';
+import { useAuth } from "@repo/hooks";
+import { getUserBalance } from "../api-service/transactions.service";
 
 const Header = () => {
     const [lang, setLang] = useState("FR");
+    const { user } = useAuth();
+    const [points, setPoints] = useState<number | null>(null);
+
+    // Charge le solde de points du user connecté.
+    // Le backend renvoie 403 si l'id ne matche pas → on tombe en silence à null.
+    useEffect(() => {
+        if (!user?.id) {
+            setPoints(null);
+            return;
+        }
+        let cancelled = false;
+        getUserBalance(user.id)
+            .then((res) => {
+                if (!cancelled) setPoints(res.balance);
+            })
+            .catch(() => {
+                if (!cancelled) setPoints(null);
+            });
+        return () => {
+            cancelled = true;
+        };
+    }, [user?.id]);
 
     return (
         <div className="navbar border-b border-black/10 px-50 bg-blc">
@@ -73,9 +97,9 @@ const Header = () => {
                     </div>
                 </button>
 
-                <div className="avatar placeholder">
+                <div className="avatar placeholder" title="Vos points">
                     <div className="bg-primary text-primary-content rounded-full w-9">
-                        <span className="text-sm font-bold">P</span>
+                        <span className="text-xs font-bold">{points !== null ? points : "..."}</span>
                     </div>
                 </div>
             </div>

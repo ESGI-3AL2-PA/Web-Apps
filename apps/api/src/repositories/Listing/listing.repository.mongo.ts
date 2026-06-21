@@ -38,8 +38,13 @@ export class MongoListingRepository implements IListingRepository {
     if (status) filter.status = status as ListingStatus;
     if (districtId) filter.districtId = districtId;
     if (authorId) filter.authorId = authorId;
-    // Mongo array auto-match: `{ tags: "x" }` matches docs where `tags` is an array containing "x".
-    if (tag) filter.tags = tag;
+    // Match case-insensitive sur l'array `tags` : "Babysitting" matche
+    // "babysitting" et inversement. On échappe les caractères regex pour
+    // éviter toute injection (`.`, `*`, `+`, etc. dans un nom de tag).
+    if (tag) {
+      const escaped = tag.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      filter.tags = { $regex: new RegExp(`^${escaped}$`, "i") };
+    }
 
     const [total, docs] = await Promise.all([
       this.collection.countDocuments(filter),
