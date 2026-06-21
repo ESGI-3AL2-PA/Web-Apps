@@ -1,21 +1,37 @@
-import { createListings } from "../../api-service/api";
-import { useEffect, useState } from "react";
-import { CreateListingDto, listingTypes } from "../../type/annonce";
-import { create } from "axios";
+import { useState } from "react";
+import type { CreateListingDto, ListingType } from "@repo/contracts";
+import { createListing } from "../../api-service/listings.service";
+
+// Liste hardcodée pour ne pas dépendre d'un import runtime de `ListingTypeSchema`
+// (qui exigerait que `packages/contracts/dist/` soit rebuild en permanence).
+// Le `satisfies readonly ListingType[]` garantit la synchro avec le contract :
+// si tu ajoutes / renommes un type dans `listing.dto.ts`, TS criera ici.
+const LISTING_TYPES = [
+  "Jardinage",
+  "Bricolage",
+  "Garde d'enfants",
+  "Cuisine",
+  "Transport",
+  "Animaux",
+  "Informatique",
+] as const satisfies readonly ListingType[];
+
+const EMPTY_FORM: CreateListingDto = {
+  title: "",
+  description: "",
+  type: LISTING_TYPES[0],
+  price: 0,
+};
 
 function CreateService() {
-  const [formData, setFormData] = useState<CreateListingDto>({
-    title: "",
-    description: "",
-    type: "offer",
-    price: 0,
-  });
-  const [created, setCreated] = useState("");
+  const [formData, setFormData] = useState<CreateListingDto>(EMPTY_FORM);
+  const [created, setCreated] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>,
+  ) => {
     const { name, value } = e.target;
-
     setFormData((prev) => ({
       ...prev,
       [name]: name === "price" ? Number(value) : value,
@@ -24,20 +40,16 @@ function CreateService() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
+    setError(null);
+    setCreated("");
     try {
-      const res = await createListings(formData);
-
-      setFormData(res);
-      setCreated("Service créer");
-    } catch (error) {
-      setError("Echec de la création du service");
+      await createListing(formData);
+      setCreated("Service créé");
+      setFormData(EMPTY_FORM);
+    } catch {
+      setError("Échec de la création du service");
     }
   };
-
-  {
-    error && <p>{error}</p>;
-  }
 
   return (
     <>
@@ -72,11 +84,9 @@ function CreateService() {
             value={formData.type}
             onChange={handleChange}
           >
-            <option value="">Choisir un type</option>
-
-            {listingTypes.map((type) => (
-              <option key={type} value={type}>
-                {type}
+            {LISTING_TYPES.map((t) => (
+              <option key={t} value={t}>
+                {t}
               </option>
             ))}
           </select>
@@ -86,7 +96,7 @@ function CreateService() {
           <label>Point demandé</label>
           <input
             className="border border-black rounded px-2 py-1"
-            type="text"
+            type="number"
             name="price"
             value={formData.price}
             onChange={handleChange}
@@ -97,7 +107,9 @@ function CreateService() {
           Créer le service
         </button>
       </form>
-      {created != "" && <p className="text-red-500">{created}</p>}
+
+      {created && <p className="text-green-600">{created}</p>}
+      {error && <p className="text-red-500">{error}</p>}
     </>
   );
 }

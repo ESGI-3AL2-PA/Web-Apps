@@ -1,36 +1,43 @@
 import { useEffect, useState, useCallback } from "react";
-import type { ListingResponseDto } from "../../type/annonce";
-import { getListingsById } from "../../api-service/api";
+import { useOutletContext } from "react-router-dom";
 import { useAuth } from "@repo/hooks";
+import type { ListingQueryDto, ListingResponseDto } from "@repo/contracts";
+import { getListings } from "../../api-service/listings.service";
+import type { ServiceOutletContext } from "./Service";
 import AnnonceList from "../../component/AnnonceList";
 
+// "Mes annonces" — filtre les annonces du user connecté, avec possibilité de
+// raffiner via le tag sélectionné dans la sidebar (FilterBar du parent Service).
 const AnnoncesUser = () => {
+  const { selectedTag } = useOutletContext<ServiceOutletContext>();
+  const { user } = useAuth();
+
   const [data, setData] = useState<ListingResponseDto[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>();
-  const userAuth = useAuth();
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchMyAnnonces = useCallback(async () => {
+    if (!user?.id) return;
+    setIsLoading(true);
+    setError(null);
+    try {
+      const filters: ListingQueryDto = { authorId: user.id } as ListingQueryDto;
+      if (selectedTag) filters.tag = selectedTag;
+
+      const res = await getListings(filters);
+      setData(res.data);
+    } catch {
+      setError("Impossible de charger vos annonces");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [user?.id, selectedTag]);
 
   useEffect(() => {
-    const user = userAuth.user;
-
-    if (!user?.id) return;
-
-    const fetchMyAnnonces = async () => {
-      setIsLoading(true);
-      try {
-        const res = await getListingsById(user?.id);
-
-        setData(res);
-      } catch (error) {
-        setError("Impossible de charger les données");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
     fetchMyAnnonces();
-  }, []);
+  }, [fetchMyAnnonces]);
 
+  if (!user?.id) return <div>Connexion requise.</div>;
   if (isLoading) return <div>Chargement des annonces...</div>;
   if (error) return <div style={{ color: "red" }}>{error}</div>;
 

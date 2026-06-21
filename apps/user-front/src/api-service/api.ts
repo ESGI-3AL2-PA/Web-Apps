@@ -1,34 +1,9 @@
 import axios from "axios";
 import { isTokenExpiringSoon } from "@repo/hooks";
 import { config } from "@repo/config";
-import { type ListingResponseDto, CreateListingDto } from "../type/annonce";
 
-type PaginatedListingsResponse = {
-  data: ListingResponseDto[];
-  total: number;
-  page: number;
-  limit: number;
-};
-
-export type ListingType =
-  | "Jardinage"
-  | "Bricolage"
-  | "Garde d'enfants"
-  | "Cuisine"
-  | "Transport"
-  | "Animaux"
-  | "Informatique";
-
-export type ListingFilters = {
-  search?: string;
-  type?: ListingType;
-  status?: "active" | "closed" | "expired";
-  page?: number;
-  limit?: number;
-};
-
-const AUTH_SERVICE_URL = config.authServiceUrl;
 const API_BASE_URL = config.apiUrl;
+const AUTH_SERVICE_URL = config.authServiceUrl;
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -83,56 +58,5 @@ api.interceptors.response.use(
     return Promise.reject(error);
   },
 );
-
-// get all Services
-export async function getAllAnnonces(filters: ListingFilters = {}): Promise<ListingResponseDto[]> {
-  try {
-    const res = await api.get<PaginatedListingsResponse>("/listings", { params: filters });
-
-    if (!res.data) {
-      throw Error();
-    }
-
-    return res.data.data;
-  } catch {
-    throw new Error("Erreur lors du get all annonces");
-  }
-}
-
-// get Service By id
-export async function getListingsById(id: string): Promise<ListingResponseDto[]> {
-  try {
-    const res = await api.get<ListingResponseDto[]>(`/listings/author/${id}`);
-
-    if (!res) {
-      throw Error();
-    }
-
-    return res.data;
-  } catch (error) {
-    throw new Error("Aucunes donnée trouvées");
-  }
-}
-
-// get a count of all Services
-export async function getActiveListingsCount(): Promise<number> {
-  const res = await api.get<{ count: number }>("/listings/count/active");
-  return res.data.count;
-}
-
-// Create a service
-export async function createListings(data: CreateListingDto): Promise<ListingResponseDto> {
-  try {
-    const res = await api.post<ListingResponseDto>("/listings", data);
-
-    if (!res.data) {
-      throw Error();
-    }
-
-    return res.data;
-  } catch (error) {
-    throw new Error("Erreur lors de la créatin d'annonce");
-  }
-}
 
 export default api;

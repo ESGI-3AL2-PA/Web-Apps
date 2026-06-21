@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import FilterBar from "../../component/FilterBar";
-import { getActiveListingsCount } from "../../api-service/api";
+import { getActiveListingsCount } from "../../api-service/listings.service";
 
 // Outlet context : on partage le `tag` sélectionné (nom du tag, "" = aucun filtre)
 export type ServiceOutletContext = {

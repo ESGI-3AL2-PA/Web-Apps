@@ -12,13 +12,14 @@ import { deleteListingUseCase } from "../../use-cases/listings/delete-listing.us
 const s = initServer();
 
 export const listingsRouter = s.router(listingsContract, {
-  getListings: async ({ query: { page, limit, search, type, status, districtId, authorId } }) => {
+  getListings: async ({ query: { page, limit, search, type, status, districtId, authorId, tag } }) => {
     const result = await getListingsUseCase(resolve("listing"))({
       search,
       type,
       status,
       districtId,
       authorId,
+      tag,
       page,
       limit,
     });
