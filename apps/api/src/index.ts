@@ -33,6 +33,7 @@ import { conversationsRouter } from "./routes/conversations/conversations.router
 import { notificationsRouter } from "./routes/notifications/notifications.router.js";
 import { transactionsRouter } from "./routes/transactions/transactions.router.js";
 import { recommendationsRouter } from "./routes/recommendations/recommendations.router.js";
+import { contractsPdfHandler } from "./routes/contracts/contracts-pdf.handler.js";
 import { errorHandler, NotFoundError } from "./middleware/error-handler.js";
 import { requireAuth } from "./middleware/auth.middleware.js";
 import { authorize } from "./middleware/authorize.middleware.js";
@@ -43,19 +44,13 @@ import { generateOpenApi } from "@ts-rest/open-api";
 import { apiReference } from "@scalar/express-api-reference";
 
 const app: Application = express();
-// Use a dedicated env var so we can share the root `.env` with auth-service
-// (which uses `PORT=3001`) without collision.
 const port = Number(process.env.API_PORT) || 3000;
 
-// Behind a reverse proxy/LB, set TRUST_PROXY (e.g. "1") so req.ip reflects the
-// real client. Unset by default to avoid trusting spoofed X-Forwarded-For.
 const trustProxy = process.env.TRUST_PROXY;
 if (trustProxy) {
   app.set("trust proxy", /^\d+$/.test(trustProxy) ? Number(trustProxy) : trustProxy === "true" ? true : trustProxy);
 }
 
-// Security headers. CSP is disabled because the Scalar /docs UI loads its own
-// assets; the rest (X-Frame-Options, HSTS, X-Content-Type-Options, …) still apply.
 app.use(helmet({ contentSecurityPolicy: false }));
 
 const openApiDocument = generateOpenApi(
@@ -101,7 +96,6 @@ const openApiDocument = generateOpenApi(
     ],
   },
   {
-    // Reflect each route's contract `metadata.auth` policy in the generated docs.
     operationMapper: (operation, appRoute) => {
       const policy = getAuthPolicy(appRoute);
       if (!policy || policy.public) return operation;
@@ -147,20 +141,12 @@ app.use(
   apiReference({
     url: "/openapi.json",
     theme: "moon",
-  }) as unknown as RequestHandler, // Ugly but it works ¯\_(ツ)_/¯
+  }) as unknown as RequestHandler,
 );
 
-// Everything below /health, /openapi.json and /docs requires a valid access token.
-// requireAuth verifies the JWT (iss/aud) and sets req.user.
 app.use(requireAuth);
+app.get("/contracts/:id/pdf", contractsPdfHandler);
 
-// Authorization is declared per-route in the contract `metadata.auth` and enforced
-// by this single global middleware (reads req.tsRestRoute, loads records for
-// ownership/district checks). No per-resource path mounting needed.
-// Register every contract with the same metadata-driven global authorization
-// middleware. Typed `any` so it doesn't perturb each call's TRouter inference
-// (the contract's generic flows from args 1-2); `authorize` is a valid Express handler.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const endpointOptions: any = { globalMiddleware: [authorize] };
 
 createExpressEndpoints(usersContract, usersRouter, app, endpointOptions);

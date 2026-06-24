@@ -5,7 +5,6 @@ export interface IContractRepository {
     listingId?: string;
     providerId?: string;
     beneficiaryId?: string;
-    // Restrict to contracts where this user is provider OR beneficiary.
     partyId?: string;
     openSignStatus?: string;
     disputed?: boolean;
@@ -25,4 +24,6 @@ export interface IContractRepository {
   updateContract(id: string, data: Partial<Omit<Contract, "id" | "createdAt">>): Promise<Contract | null>;
 
   deleteContract(id: string): Promise<boolean>;
+
+  findByListingsAndBeneficiary(listingIds: string[], beneficiaryId: string): Promise<Contract[]>;
 }

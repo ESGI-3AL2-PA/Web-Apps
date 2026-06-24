@@ -20,6 +20,8 @@ const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
 const nextWeek = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
 const inOneMonth = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
 const lastWeek = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+const lastMonth = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
 // ─── Deterministic IDs ────────────────────────────────────────────────────────
 // Using readable IDs makes the seed easy to reason about and idempotent.
@@ -69,12 +71,26 @@ const ids = {
   votes: {
     park: "seed-vote-park",
     market: "seed-vote-market",
+    // Nouveaux votes pour tester les 3 nouvelles features
+    toolsMulti: "seed-vote-tools-multi", // multiple_choice, ouvert
+    greenClosed: "seed-vote-green-closed", // single_choice, status=closed
+    eventExpired: "seed-vote-event-expired", // open mais endDate dans le passé → badge "Expiré"
+    libraryDraft: "seed-vote-library-draft", // status=draft, pas encore lancé
   },
   voteResponses: {
     parkAlice: "seed-vote-response-park-alice",
     parkBob: "seed-vote-response-park-bob",
     parkCharlie: "seed-vote-response-park-charlie",
     marketAlice: "seed-vote-response-market-alice",
+    // Multi-choice : Alice et Bob votent plusieurs options chacun
+    toolsAliceHammer: "seed-vote-response-tools-alice-hammer",
+    toolsAliceDrill: "seed-vote-response-tools-alice-drill",
+    toolsBobDrill: "seed-vote-response-tools-bob-drill",
+    toolsBobSaw: "seed-vote-response-tools-bob-saw",
+    toolsCharlieHammer: "seed-vote-response-tools-charlie-hammer",
+    // Vote clos : on garde des réponses historiques pour montrer les résultats
+    greenClosedAlice: "seed-vote-response-green-alice",
+    greenClosedDiana: "seed-vote-response-green-diana",
   },
   conversations: {
     aliceBob: "seed-conversation-alice-bob",
@@ -459,6 +475,83 @@ const votes = [
     startDate: now,
     endDate: inOneMonth,
   },
+
+  // ─── Votes additionnels pour tester les 3 features ──────────────────────
+
+  // 1. Vote multiple_choice ouvert — chaque user peut choisir plusieurs options.
+  //    Les results reflètent les voteResponses ajoutées plus bas.
+  {
+    _id: ids.votes.toolsMulti,
+    creatorId: ids.users.admin,
+    districtIds: [ids.districts.montmartre],
+    question: "Quels outils proposer en libre service au local du quartier ?",
+    options: ["hammer", "drill", "saw", "ladder"],
+    voteType: "multiple_choice",
+    status: "open",
+    results: [
+      { option: "hammer", count: 2 }, // Alice + Charlie
+      { option: "drill", count: 2 }, // Alice + Bob
+      { option: "saw", count: 1 }, // Bob
+      { option: "ladder", count: 0 },
+    ],
+    startDate: lastWeek,
+    endDate: nextWeek,
+  },
+
+  // 2. Vote clos — montre que le formulaire est caché et qu'on ne peut plus voter.
+  {
+    _id: ids.votes.greenClosed,
+    creatorId: ids.users.admin,
+    districtIds: [ids.districts.marais],
+    question: "Quel aménagement vert prioriser dans le quartier ?",
+    options: ["park", "fountain", "playground"],
+    voteType: "single_choice",
+    status: "closed",
+    results: [
+      { option: "park", count: 1 }, // Alice
+      { option: "fountain", count: 1 }, // Diana
+      { option: "playground", count: 0 },
+    ],
+    startDate: lastMonth,
+    endDate: lastWeek,
+  },
+
+  // 3. Vote "expiré" — status encore open mais endDate dépassée.
+  //    Permet de tester le badge orange "Expiré" + désactivation du form.
+  {
+    _id: ids.votes.eventExpired,
+    creatorId: ids.users.admin,
+    districtIds: [ids.districts.montmartre],
+    question: "Test : ce vote est techniquement ouvert mais sa deadline est dépassée",
+    options: ["yes", "no"],
+    voteType: "single_choice",
+    status: "open",
+    results: [
+      { option: "yes", count: 0 },
+      { option: "no", count: 0 },
+    ],
+    startDate: lastMonth,
+    endDate: yesterday, // ← dépassée
+  },
+
+  // 4. Vote draft — pas encore lancé par l'admin (status=draft).
+  //    Le user le voit dans le filtre "Brouillons" mais ne peut pas y répondre.
+  {
+    _id: ids.votes.libraryDraft,
+    creatorId: ids.users.admin,
+    districtIds: [ids.districts.marais],
+    question: "Faut-il ouvrir une bibliothèque participative dans le quartier ?",
+    options: ["yes", "no", "maybe"],
+    voteType: "single_choice",
+    status: "draft",
+    results: [
+      { option: "yes", count: 0 },
+      { option: "no", count: 0 },
+      { option: "maybe", count: 0 },
+    ],
+    startDate: nextWeek,
+    endDate: inOneMonth,
+  },
 ];
 
 const voteResponses = [
@@ -489,6 +582,63 @@ const voteResponses = [
     userId: ids.users.alice,
     chosenOption: "saturday",
     votedAt: now,
+  },
+
+  // ─── Réponses pour le vote multi_choice tools ────────────────────────────
+  // Alice a voté pour `hammer` ET `drill` (2 réponses distinctes).
+  // Permet de tester l'affichage "Vous avez voté pour : hammer, drill".
+  {
+    _id: ids.voteResponses.toolsAliceHammer,
+    voteId: ids.votes.toolsMulti,
+    userId: ids.users.alice,
+    chosenOption: "hammer",
+    votedAt: lastWeek,
+  },
+  {
+    _id: ids.voteResponses.toolsAliceDrill,
+    voteId: ids.votes.toolsMulti,
+    userId: ids.users.alice,
+    chosenOption: "drill",
+    votedAt: lastWeek,
+  },
+  // Bob : drill + saw
+  {
+    _id: ids.voteResponses.toolsBobDrill,
+    voteId: ids.votes.toolsMulti,
+    userId: ids.users.bob,
+    chosenOption: "drill",
+    votedAt: lastWeek,
+  },
+  {
+    _id: ids.voteResponses.toolsBobSaw,
+    voteId: ids.votes.toolsMulti,
+    userId: ids.users.bob,
+    chosenOption: "saw",
+    votedAt: lastWeek,
+  },
+  // Charlie : hammer seul
+  {
+    _id: ids.voteResponses.toolsCharlieHammer,
+    voteId: ids.votes.toolsMulti,
+    userId: ids.users.charlie,
+    chosenOption: "hammer",
+    votedAt: lastWeek,
+  },
+
+  // ─── Réponses sur le vote clos (historique avant fermeture) ──────────────
+  {
+    _id: ids.voteResponses.greenClosedAlice,
+    voteId: ids.votes.greenClosed,
+    userId: ids.users.alice,
+    chosenOption: "park",
+    votedAt: lastMonth,
+  },
+  {
+    _id: ids.voteResponses.greenClosedDiana,
+    voteId: ids.votes.greenClosed,
+    userId: ids.users.diana,
+    chosenOption: "fountain",
+    votedAt: lastMonth,
   },
 ];
 

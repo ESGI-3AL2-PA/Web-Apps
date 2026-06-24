@@ -1,26 +1,42 @@
 import { useState } from "react";
+import { useAuth } from "@repo/hooks";
 import type { CreateListingDto, ListingResponseDto } from "@repo/contracts";
 import { updateListing, deleteListing } from "../api-service/listings.service";
+import { createContract, viewContractPdf } from "../api-service/contracts.service";
 import ListingForm from "./ListingForm";
 
-// Carte interactive : affichage compact identique à `AnnoncesCard`, puis sur
-// click ouvre une modale avec les détails. Si `editable=true`, la modale
-// expose 2 boutons (Modifier / Supprimer).
+// Carte interactive utilisée PARTOUT (Annonces + Mes annonces).
+// Le composant détecte lui-même si l'annonce appartient au user connecté pour
+// décider quels boutons afficher dans la modale :
+//   - Owner → Modifier / Supprimer
+//   - Non-owner et déjà pris → badge "Service pris", bouton désactivé
+//   - Non-owner sinon → Prendre ce service (génère un contract + PDF)
 type CarteServiceProps = {
   annonce: ListingResponseDto;
-  editable?: boolean;
   onChanged?: () => void;
 };
 
-const CarteService = ({ annonce, editable = false, onChanged }: CarteServiceProps) => {
+const CarteService = ({ annonce, onChanged }: CarteServiceProps) => {
+  const { user } = useAuth();
+  const isOwner = !!user?.id && annonce.authorId === user.id;
+  // `userHasContract` est peuplé par le backend (use-case getListings) à partir
+  // de la collection contracts. Si true → le user a déjà pris ce service.
+  const alreadyTaken = annonce.userHasContract === true;
+
   const [isOpen, setIsOpen] = useState<boolean>(false);
   const [isEditing, setIsEditing] = useState<boolean>(false);
   const [actionError, setActionError] = useState<string | null>(null);
+
+  // État du flux "Prendre ce service" (non-owner)
+  const [taking, setTaking] = useState<boolean>(false);
+  const [contractId, setContractId] = useState<string | null>(null);
+  const [viewing, setViewing] = useState<boolean>(false);
 
   const closeModal = () => {
     setIsOpen(false);
     setIsEditing(false);
     setActionError(null);
+    setContractId(null);
   };
 
   const handleDelete = async () => {
@@ -28,7 +44,6 @@ const CarteService = ({ annonce, editable = false, onChanged }: CarteServiceProp
       `Êtes-vous sûr de vouloir supprimer l'annonce "${annonce.title}" ? Cette action est irréversible.`,
     );
     if (!ok) return;
-
     try {
       await deleteListing(annonce.id);
       onChanged?.();
@@ -39,16 +54,48 @@ const CarteService = ({ annonce, editable = false, onChanged }: CarteServiceProp
   };
 
   const handleUpdate = async (data: CreateListingDto) => {
-    // updateListing prend UpdateListingDto, qui accepte les mêmes champs que
-    // CreateListingDto en optional → on peut passer le payload tel quel.
     await updateListing(annonce.id, data);
     onChanged?.();
     closeModal();
   };
 
+  const handleTake = async () => {
+    setTaking(true);
+    setActionError(null);
+    try {
+      const created = await createContract({
+        listingId: annonce.id,
+        price: annonce.price,
+      });
+      setContractId(created.id);
+      // Trigger un refetch côté parent pour que `userHasContract` repasse à true
+      // sur la prochaine card render (autres cards de la même liste peuvent être
+      // affectées si plusieurs listings, mais surtout celui-ci).
+      onChanged?.();
+    } catch {
+      setActionError(
+        "Impossible de créer le contrat (déjà pris, c'est votre annonce, ou annonce introuvable).",
+      );
+    } finally {
+      setTaking(false);
+    }
+  };
+
+  const handleViewPdf = async () => {
+    if (!contractId) return;
+    setViewing(true);
+    setActionError(null);
+    try {
+      await viewContractPdf(contractId);
+    } catch {
+      setActionError("Impossible d'ouvrir le PDF");
+    } finally {
+      setViewing(false);
+    }
+  };
+
   return (
     <>
-      {/* Carte cliquable (le visuel reprend le style d'AnnoncesCard) */}
       <button
         type="button"
         onClick={() => setIsOpen(true)}
@@ -63,6 +110,8 @@ const CarteService = ({ annonce, editable = false, onChanged }: CarteServiceProp
           border: "1px solid #eee",
           textAlign: "left",
           cursor: "pointer",
+          // Léger style "déjà pris" pour la lisibilité dans la liste
+          opacity: alreadyTaken ? 0.78 : 1,
         }}
       >
         <h2 style={{ fontSize: 16, fontWeight: 600, color: "#6366f1", margin: 0 }}>
@@ -82,15 +131,41 @@ const CarteService = ({ annonce, editable = false, onChanged }: CarteServiceProp
         </p>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 4 }}>
           <span style={{ background: "#f3f4f6", borderRadius: 6, padding: "2px 7px", fontSize: 12 }}>
-            <strong>Prix:</strong> {annonce.price} €
+            <strong>Prix:</strong> {annonce.price} pts
           </span>
           <span style={{ background: "#f3f4f6", borderRadius: 6, padding: "2px 7px", fontSize: 12 }}>
             {annonce.type}
           </span>
+          {isOwner && (
+            <span
+              style={{
+                background: "#dbeafe",
+                color: "#1e40af",
+                borderRadius: 6,
+                padding: "2px 7px",
+                fontSize: 12,
+              }}
+            >
+              Mon annonce
+            </span>
+          )}
+          {!isOwner && alreadyTaken && (
+            <span
+              style={{
+                background: "#d1fae5",
+                color: "#065f46",
+                borderRadius: 6,
+                padding: "2px 7px",
+                fontSize: 12,
+                fontWeight: 600,
+              }}
+            >
+              ✓ Service pris
+            </span>
+          )}
         </div>
       </button>
 
-      {/* Modale */}
       {isOpen && (
         <div
           onClick={closeModal}
@@ -116,15 +191,27 @@ const CarteService = ({ annonce, editable = false, onChanged }: CarteServiceProp
               overflowY: "auto",
             }}
           >
-            {/* Header de la modale */}
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: 16,
+              }}
+            >
               <h2 style={{ fontSize: 22, fontWeight: 700, margin: 0 }}>
                 {isEditing ? "Modifier l'annonce" : annonce.title}
               </h2>
               <button
                 type="button"
                 onClick={closeModal}
-                style={{ fontSize: 24, lineHeight: 1, background: "none", border: "none", cursor: "pointer" }}
+                style={{
+                  fontSize: 24,
+                  lineHeight: 1,
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                }}
                 aria-label="Fermer"
               >
                 ×
@@ -132,14 +219,12 @@ const CarteService = ({ annonce, editable = false, onChanged }: CarteServiceProp
             </div>
 
             {isEditing ? (
-              // Vue édition
               <ListingForm
                 initialValues={annonce}
                 onSubmit={handleUpdate}
                 submitLabel="Mettre à jour"
               />
             ) : (
-              // Vue détails
               <>
                 <div style={{ marginBottom: 12 }}>
                   <strong>Description : </strong>
@@ -176,8 +261,8 @@ const CarteService = ({ annonce, editable = false, onChanged }: CarteServiceProp
                   </div>
                 )}
 
-                {/* Boutons d'action (uniquement si editable) */}
-                {editable && (
+                {/* Actions */}
+                {isOwner ? (
                   <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
                     <button
                       type="button"
@@ -207,6 +292,71 @@ const CarteService = ({ annonce, editable = false, onChanged }: CarteServiceProp
                     >
                       Supprimer
                     </button>
+                  </div>
+                ) : alreadyTaken && !contractId ? (
+                  // Déjà pris (sans flow "viens d'être pris dans cette modale")
+                  <div
+                    style={{
+                      background: "#ecfdf5",
+                      border: "1px solid #10b981",
+                      borderRadius: 8,
+                      padding: 12,
+                      marginTop: 16,
+                    }}
+                  >
+                    <p style={{ margin: 0, color: "#065f46", fontSize: 13 }}>
+                      ✓ Vous avez déjà pris ce service. Retrouvez votre contrat dans la page{" "}
+                      <strong>Mes contrats</strong>.
+                    </p>
+                  </div>
+                ) : (
+                  <div style={{ marginTop: 16 }}>
+                    {!contractId ? (
+                      <button
+                        type="button"
+                        onClick={handleTake}
+                        disabled={taking}
+                        style={{
+                          background: "#10b981",
+                          color: "#fff",
+                          border: "none",
+                          borderRadius: 6,
+                          padding: "8px 16px",
+                          cursor: "pointer",
+                          opacity: taking ? 0.5 : 1,
+                        }}
+                      >
+                        {taking ? "Création…" : `Prendre ce service (${annonce.price} pts)`}
+                      </button>
+                    ) : (
+                      <div
+                        style={{
+                          background: "#ecfdf5",
+                          border: "1px solid #10b981",
+                          borderRadius: 8,
+                          padding: 12,
+                        }}
+                      >
+                        <p style={{ margin: "0 0 8px 0", color: "#065f46", fontSize: 13 }}>
+                          ✓ Contrat créé. Tu peux maintenant l'ouvrir pour le consulter et le signer.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={handleViewPdf}
+                          disabled={viewing}
+                          style={{
+                            background: "#6366f1",
+                            color: "#fff",
+                            border: "none",
+                            borderRadius: 6,
+                            padding: "8px 16px",
+                            cursor: "pointer",
+                          }}
+                        >
+                          {viewing ? "Ouverture…" : "Voir le PDF du contrat"}
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )}
 

@@ -43,12 +43,7 @@ const AnnoncesUser = () => {
   if (error) return <div style={{ color: "red" }}>{error}</div>;
 
   return (
-    <AnnonceList
-      annonces={data}
-      title="Mes annonces"
-      editable
-      onChanged={fetchMyAnnonces}
-    />
+    <AnnonceList annonces={data} title="Mes annonces" onChanged={fetchMyAnnonces} />
   );
 };
 

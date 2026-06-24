@@ -76,6 +76,17 @@ export class MongoContractRepository implements IContractRepository {
     return result.deletedCount === 1;
   }
 
+  async findByListingsAndBeneficiary(
+    listingIds: string[],
+    beneficiaryId: string,
+  ): Promise<Contract[]> {
+    if (listingIds.length === 0) return [];
+    const docs = await this.collection
+      .find({ listingId: { $in: listingIds }, beneficiaryId })
+      .toArray();
+    return docs.map(this.toContract);
+  }
+
   private toContract(doc: ContractDoc): Contract {
     const { _id, ...rest } = doc;
     return { id: _id, ...rest };

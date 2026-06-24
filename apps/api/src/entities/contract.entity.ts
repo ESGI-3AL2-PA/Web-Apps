@@ -12,6 +12,10 @@ export const ContractSchema = z.object({
   openSignDocumentId: z.string(),
   openSignStatus: OpenSignStatusSchema,
   disputed: z.boolean().default(false),
+  pdfPath: z.string().optional(),
+  signedPdfPath: z.string().optional(),
+  providerSignedAt: z.string().datetime().optional(),
+  beneficiarySignedAt: z.string().datetime().optional(),
   createdAt: z.string().datetime(),
 });
 

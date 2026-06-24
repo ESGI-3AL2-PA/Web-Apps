@@ -12,14 +12,20 @@ import { deleteListingUseCase } from "../../use-cases/listings/delete-listing.us
 const s = initServer();
 
 export const listingsRouter = s.router(listingsContract, {
-  getListings: async ({ query: { page, limit, search, type, status, districtId, authorId, tag } }) => {
-    const result = await getListingsUseCase(resolve("listing"))({
+  getListings: async ({
+    query: { page, limit, search, type, status, districtId, authorId, tag },
+    req,
+  }) => {
+    // Inject le contract repo pour que le use-case puisse peupler
+    // `userHasContract` sur chaque listing renvoyé.
+    const result = await getListingsUseCase(resolve("listing"), resolve("contract"))({
       search,
       type,
       status,
       districtId,
       authorId,
       tag,
+      currentUserId: req.user?.sub,
       page,
       limit,
     });

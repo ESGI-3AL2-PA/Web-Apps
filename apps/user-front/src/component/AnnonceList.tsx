@@ -1,22 +1,17 @@
 import type { ListingResponseDto } from "@repo/contracts";
-import AnnoncesCard from "./AnnoncesCard";
 import CarteService from "./CarteService";
 
 type AnnonceListProps = {
   annonces: ListingResponseDto[];
   title?: string;
-  /** Si true, les cartes deviennent interactives (modale + Modifier/Supprimer). */
-  editable?: boolean;
-  /** Callback déclenché après une update/delete réussie depuis CarteService. */
+  /** Callback déclenché après une update/delete/take depuis CarteService. */
   onChanged?: () => void;
 };
 
-const AnnonceList = ({
-  annonces,
-  title = "liste des annonces",
-  editable = false,
-  onChanged,
-}: AnnonceListProps) => {
+// Toutes les listes (Annonces du quartier ET Mes annonces) rendent désormais
+// `CarteService`. Le composant détecte lui-même si l'annonce appartient au
+// user connecté pour afficher les bons boutons (Modifier/Supprimer vs Prendre).
+const AnnonceList = ({ annonces, title = "liste des annonces", onChanged }: AnnonceListProps) => {
   return (
     <div>
       <h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: 20 }}>{title}</h1>
@@ -31,18 +26,9 @@ const AnnonceList = ({
             gap: 16,
           }}
         >
-          {annonces.map((annonce) =>
-            editable ? (
-              <CarteService
-                key={annonce.id}
-                annonce={annonce}
-                editable
-                onChanged={onChanged}
-              />
-            ) : (
-              <AnnoncesCard key={annonce.id} annonce={annonce} />
-            ),
-          )}
+          {annonces.map((annonce) => (
+            <CarteService key={annonce.id} annonce={annonce} onChanged={onChanged} />
+          ))}
         </div>
       )}
     </div>

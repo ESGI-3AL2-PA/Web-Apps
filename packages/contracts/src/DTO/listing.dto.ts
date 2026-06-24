@@ -1,8 +1,5 @@
 import { z } from "../zod";
 
-// `type` est désormais un string libre — sa valeur est le nom d'un tag
-// (la liste vient de la collection `tags` côté API). On valide juste qu'il
-// n'est pas vide pour ne pas accepter d'annonce sans catégorie.
 export const ListingTypeSchema = z.string().min(1);
 export type ListingType = z.infer<typeof ListingTypeSchema>;
 
@@ -23,6 +20,10 @@ export const ListingResponseDtoSchema = z
       .array(z.string())
       .optional()
       .openapi({ description: "Tag names attached to this listing", example: ["gardening", "weekend-help"] }),
+    userHasContract: z
+      .boolean()
+      .optional()
+      .openapi({ description: "True si le user authentifié a déjà pris ce service" }),
     createdAt: z.string().datetime().openapi({ description: "Creation timestamp" }),
     expiresAt: z.string().datetime().optional().openapi({ description: "Expiry timestamp" }),
   })
@@ -72,10 +73,7 @@ export const ListingQueryDtoSchema = z
     status: ListingStatusSchema.optional(),
     districtId: z.string().optional(),
     authorId: z.string().optional(),
-    tag: z
-      .string()
-      .optional()
-      .openapi({ description: "Filter listings by a single tag name (Mongo array match)" }),
+    tag: z.string().optional().openapi({ description: "Filter listings by a single tag name (Mongo array match)" }),
   })
   .openapi({ title: "ListingQuery" });
 export type ListingQueryDto = z.infer<typeof ListingQueryDtoSchema>;

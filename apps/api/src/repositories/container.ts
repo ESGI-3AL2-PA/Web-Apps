@@ -54,7 +54,22 @@ export const initContainer = (db: Db, neo4jDriver: Driver) => {
     .catch((err) => console.error("Failed to ensure district-admin indexes:", err));
 };
 
-type Container = NonNullable<typeof repositories>;
+type Container = {
+  user: MongoUserRepository;
+  listing: MongoListingRepository;
+  contract: MongoContractRepository;
+  event: MongoEventRepository;
+  incident: MongoIncidentRepository;
+  district: MongoDistrictRepository;
+  districtAdmin: MongoDistrictAdminRepository;
+  tag: MongoTagRepository;
+  vote: MongoVoteRepository;
+  conversation: MongoConversationRepository;
+  notification: MongoNotificationRepository;
+  transaction: MongoTransactionRepository;
+  graph: Neo4jGraphRepository;
+};
+
 export type ContainerKeys = keyof Container;
 
 export const resolve = <K extends ContainerKeys>(key: K): Container[K] => {

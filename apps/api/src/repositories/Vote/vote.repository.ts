@@ -6,6 +6,7 @@ export interface IVoteRepository {
     status?: string;
     districtId?: string;
     creatorId?: string;
+    currentUserId?: string;
     page?: number;
     limit?: number;
   }): Promise<{
@@ -14,8 +15,7 @@ export interface IVoteRepository {
     page: number;
     limit: number;
   }>;
-
-  getVoteById(id: string): Promise<Vote | null>;
+  getVoteById(id: string, currentUserId?: string): Promise<Vote | null>;
 
   createVote(data: Omit<Vote, "id" | "results">): Promise<Vote>;
 
@@ -24,6 +24,8 @@ export interface IVoteRepository {
   deleteVote(id: string): Promise<boolean>;
 
   submitResponse(data: Omit<VoteResponseEntity, "id" | "votedAt">): Promise<VoteResponseEntity>;
+
+  clearUserResponses(voteId: string, userId: string): Promise<string[]>;
 
   getResults(voteId: string): Promise<{ totalResponses: number; results: { option: string; count: number }[] }>;
 

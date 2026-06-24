@@ -37,7 +37,9 @@ const Annonces = () => {
   if (loading) return <div>Chargement des annonces...</div>;
   if (error) return <div style={{ color: "red" }}>{error}</div>;
 
-  return <AnnonceList annonces={data} title="Listes des annonces" />;
+  return (
+    <AnnonceList annonces={data} title="Listes des annonces" onChanged={fetchAnnonces} />
+  );
 };
 
 export default Annonces;

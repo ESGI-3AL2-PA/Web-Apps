@@ -11,9 +11,16 @@ export const ContractResponseDtoSchema = z
     providerId: z.string().openapi({ description: "ID of the user providing the service" }),
     beneficiaryId: z.string().openapi({ description: "ID of the user benefiting from the service" }),
     price: z.number().int().openapi({ description: "Price in tokens", example: 10 }),
-    openSignDocumentId: z.string().openapi({ description: "OpenSign document identifier" }),
-    openSignStatus: OpenSignStatusSchema.openapi({ description: "Current OpenSign signature status" }),
+    openSignDocumentId: z.string().openapi({ description: "OpenSign document identifier (legacy/future)" }),
+    openSignStatus: OpenSignStatusSchema.openapi({ description: "Current signature status" }),
     disputed: z.boolean().openapi({ description: "Whether the contract is currently disputed" }),
+    pdfPath: z.string().optional().openapi({ description: "Internal path of the original (unsigned) PDF" }),
+    signedPdfPath: z
+      .string()
+      .optional()
+      .openapi({ description: "Internal path of the fully-signed PDF (set quand les 2 parties ont signé)" }),
+    providerSignedAt: z.string().datetime().optional().openapi({ description: "Date de signature du prestataire" }),
+    beneficiarySignedAt: z.string().datetime().optional().openapi({ description: "Date de signature du bénéficiaire" }),
     createdAt: z.string().datetime().openapi({ description: "Creation timestamp" }),
   })
   .openapi({ title: "ContractResponse" });
@@ -22,8 +29,6 @@ export type ContractResponseDto = z.infer<typeof ContractResponseDtoSchema>;
 export const CreateContractDtoSchema = z
   .object({
     listingId: z.string().openapi({ description: "ID of the listing this contract is generated for" }),
-    // providerId is derived from the authenticated caller (the request author), never sent by the client.
-    beneficiaryId: z.string().openapi({ description: "ID of the user benefiting from the service" }),
     price: z.number().int().min(0).openapi({ description: "Price in tokens", example: 10 }),
   })
   .openapi({ title: "CreateContract" });
@@ -40,8 +45,10 @@ export type UpdateContractDto = z.infer<typeof UpdateContractDtoSchema>;
 
 export const SignContractDtoSchema = z
   .object({
-    openSignDocumentId: z.string().openapi({ description: "OpenSign document ID returned by the signature callback" }),
-    openSignStatus: OpenSignStatusSchema.openapi({ description: "New OpenSign status reported by the callback" }),
+    signatureImage: z
+      .string()
+      .min(20)
+      .openapi({ description: "Signature image en data-URL PNG (data:image/png;base64,...)" }),
   })
   .openapi({ title: "SignContract" });
 export type SignContractDto = z.infer<typeof SignContractDtoSchema>;
