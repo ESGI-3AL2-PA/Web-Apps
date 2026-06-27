@@ -14,6 +14,29 @@ export async function getUserById(id: string): Promise<UserResponseDto> {
   }
 }
 
+export type UserPublic = { id: string; firstName: string; lastName: string };
+
+// Cache local pour éviter de re-fetch le même user plusieurs fois (sidebar messagerie).
+const publicCache = new Map<string, Promise<UserPublic>>();
+
+// GET /users/:id/public — infos minimales (nom/prénom), accessibles à tout user authentifié.
+export async function getUserPublic(id: string): Promise<UserPublic> {
+  const cached = publicCache.get(id);
+  if (cached) return cached;
+  const p = (async () => {
+    try {
+      const res = await api.get<UserPublic>(`/users/${id}/public`);
+      if (!res.data) throw new Error();
+      return res.data;
+    } catch (e) {
+      publicCache.delete(id);
+      throw new Error("Profil public introuvable");
+    }
+  })();
+  publicCache.set(id, p);
+  return p;
+}
+
 // PATCH /users/:id — self or admin
 export async function updateUser(id: string, data: UpdateUserDto): Promise<UserResponseDto> {
   try {

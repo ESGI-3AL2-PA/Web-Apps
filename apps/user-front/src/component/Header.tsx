@@ -1,16 +1,17 @@
 import logo from '../../public/Logo-connectedNeighbours.png';
-import { useEffect, useState } from "react";
-import { NavLink } from 'react-router-dom';
+import { useEffect, useRef, useState } from "react";
+import { Link, NavLink } from 'react-router-dom';
 import { useAuth } from "@repo/hooks";
 import { getUserBalance } from "../api-service/transactions.service";
 
 const Header = () => {
     const [lang, setLang] = useState("FR");
-    const { user } = useAuth();
+    const { user, logout } = useAuth();
     const [points, setPoints] = useState<number | null>(null);
+    const [menuOpen, setMenuOpen] = useState(false);
+    const menuRef = useRef<HTMLDivElement>(null);
 
-    // Charge le solde de points du user connecté.
-    // Le backend renvoie 403 si l'id ne matche pas → on tombe en silence à null.
+    // Charge le solde de points du user connecté. 403 silencieux → null.
     useEffect(() => {
         if (!user?.id) {
             setPoints(null);
@@ -28,6 +29,25 @@ const Header = () => {
             cancelled = true;
         };
     }, [user?.id]);
+
+    // Ferme le menu si on clique en dehors.
+    useEffect(() => {
+        if (!menuOpen) return;
+        const handleClickOutside = (e: MouseEvent) => {
+            if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+                setMenuOpen(false);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, [menuOpen]);
+
+    const handleLogout = async () => {
+        await logout();
+        setMenuOpen(false);
+        // ProtectedRoute détecte isAuthenticated=false et redirige vers auth-service /login.
+        window.location.href = "/";
+    };
 
     return (
         <div className="navbar border-b border-black/10 px-50 bg-blc">
@@ -67,12 +87,6 @@ const Header = () => {
                         </NavLink>
                     </li>
                     <li>
-                        <NavLink to="/documents"
-                            className={({ isActive }) => isActive ? 'active font-medium' : 'font-medium'}>
-                            Documents
-                        </NavLink>
-                    </li>
-                    <li>
                         <NavLink to="/votes"
                             className={({ isActive }) => isActive ? 'active font-medium' : 'font-medium'}>
                             Votes
@@ -97,10 +111,36 @@ const Header = () => {
                     </div>
                 </button>
 
-                <div className="avatar placeholder" title="Vos points">
-                    <div className="bg-primary text-primary-content rounded-full w-9">
-                        <span className="text-xs font-bold">{points !== null ? points : "..."}</span>
-                    </div>
+                <div className="relative" ref={menuRef}>
+                    <button
+                        type="button"
+                        onClick={() => setMenuOpen((o) => !o)}
+                        className="avatar placeholder cursor-pointer"
+                        title="Mon profil"
+                    >
+                        <div className="bg-primary text-primary-content rounded-full w-9 flex items-center justify-center">
+                            <span className="text-xs font-bold">{points !== null ? points : "..."}</span>
+                        </div>
+                    </button>
+                    {menuOpen && (
+                        <ul className="absolute right-0 mt-3 z-50 p-2 shadow bg-base-100 rounded-box w-52 border border-black/10 menu menu-sm">
+                            {user && (
+                                <li className="menu-title">
+                                    <span className="text-xs">{user.firstName} {user.lastName}</span>
+                                </li>
+                            )}
+                            <li>
+                                <Link to="/profile" onClick={() => setMenuOpen(false)}>
+                                    👤 Mon profil
+                                </Link>
+                            </li>
+                            <li>
+                                <button onClick={handleLogout} className="text-red-600">
+                                    🚪 Déconnexion
+                                </button>
+                            </li>
+                        </ul>
+                    )}
                 </div>
             </div>
 
