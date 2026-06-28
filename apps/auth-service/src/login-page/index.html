@@ -109,21 +109,72 @@
     <script>
       const ALLOWED_REDIRECT_ORIGINS = __ALLOWED_REDIRECT_ORIGINS__;
 
+      // Loopback (desktop): pass access token in URL.
+      // Web SPA keeps cookie flow.
+      function isLoopback(origin) {
+        try {
+          const u = new URL(origin);
+          return (
+            (u.protocol === "http:" || u.protocol === "https:") &&
+            (u.hostname === "localhost" || u.hostname === "127.0.0.1" || u.hostname === "::1")
+          );
+        } catch (_) {
+          return false;
+        }
+      }
+
       function safeRedirect(raw) {
         if (!raw) return "/";
         try {
           const u = new URL(raw, window.location.origin);
           if (u.origin === window.location.origin) return u.href;
           if (ALLOWED_REDIRECT_ORIGINS.includes(u.origin)) return u.href;
+          // Allow loopback origin for desktop local callback.
+          if (isLoopback(u.origin)) return u.href;
         } catch (_) {}
         return "/";
+      }
+
+      // Redirect to redirect_uri.
+      // For loopback targets, append access token in query.
+      function redirectWithToken(token) {
+        if (!token || !isLoopback(redirectUri)) {
+          window.location.href = redirectUri;
+          return;
+        }
+        const u = new URL(redirectUri);
+        u.searchParams.set("access_token", token);
+        window.location.href = u.href;
       }
 
       const params = new URLSearchParams(window.location.search);
       const redirectUri = safeRedirect(params.get("redirect_uri"));
 
-      // Preserve redirect_uri on the register link
+      // Keep redirect_uri on register link.
       document.getElementById("registerLink").href = "/register?redirect_uri=" + encodeURIComponent(redirectUri);
+
+      // Desktop loopback: try silent refresh on load.
+      // If refresh cookie is valid, return token without login form.
+      if (isLoopback(redirectUri)) {
+        (async () => {
+          try {
+            const csrfRes = await fetch("/auth/csrf", { credentials: "include" });
+            const csrfData = await csrfRes.json().catch(() => ({}));
+            const csrf = csrfData.csrf_token;
+            if (!csrf) return;
+            const r = await fetch("/auth/refresh", {
+              method: "POST",
+              credentials: "include",
+              headers: { "X-CSRF-Token": csrf },
+            });
+            if (!r.ok) return;
+            const d = await r.json().catch(() => ({}));
+            if (d.access_token) redirectWithToken(d.access_token);
+          } catch (_) {
+            // Ignore error and show login form.
+          }
+        })();
+      }
 
       document.getElementById("loginForm").addEventListener("submit", async (e) => {
         e.preventDefault();
@@ -154,7 +205,7 @@
             throw new Error(data.message || "Login failed");
           }
 
-          window.location.href = redirectUri;
+          redirectWithToken(data.access_token);
         } catch (err) {
           errorEl.textContent = err.message;
           errorEl.style.display = "block";
@@ -184,11 +235,11 @@
               credentials: "include",
               body: JSON.stringify({ mfa_token: mfaToken, code: document.getElementById("code").value }),
             });
+            const d = await r.json().catch(() => ({}));
             if (!r.ok) {
-              const d = await r.json().catch(() => ({}));
               throw new Error(d.message || "Invalid code");
             }
-            window.location.href = redirectUri;
+            redirectWithToken(d.access_token);
           } catch (e) {
             errEl.textContent = e.message;
             errEl.style.display = "block";
