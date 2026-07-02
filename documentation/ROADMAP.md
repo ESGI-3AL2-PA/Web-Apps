@@ -242,7 +242,7 @@ _Goal: the documented graph-ranked feed, now that Phase 1 produces real signals.
 
 - Set prod env: `AUTH_PRIVATE_KEY`/`AUTH_PUBLIC_KEY` (else tokens die each restart), `RESEND_API_KEY`/`FROM_EMAIL` (else emails only `console.log`), `NODE_ENV=production` (secure cookies), `CORS_ORIGINS`, `AUTH_JWKS_URL`, `AUTH_PUBLIC_URL`.
 - Run the one-shot `users` migration (`emailVerified`/`totpSecret`/`totpEnabled`) from `TODO.md`, else existing accounts lock out.
-- Author the missing `docker-compose.prod.yml`.
+- ✅ Pipeline authored: `docker-compose.prod.yml` (GHCR images + Caddy), `.github/workflows/deploy.yml` (CI + push + SSH deploy), SOPS-encrypted secrets, and `scripts/` bootstrap. See `documentation/deployment.md`. Remaining: set prod env values above and run the migration.
 
 ---
 

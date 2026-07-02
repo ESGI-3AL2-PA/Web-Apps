@@ -24,8 +24,14 @@ The project is a **Turborepo monorepo** built entirely in TypeScript, following 
 ├── playwright_testbook/   # End-to-end API and Front tests
 ├── docker-compose.yml           # Full stack for dev env
 ├── docker-compose.local.yml     # Databases only
-└── docker-compose.prod.yml      # Full stack for production env
+├── docker-compose.prod.yml      # GHCR images behind Caddy, for the VPS
+├── Caddyfile                    # Reverse proxy + auto-TLS (prod edge)
+├── .sops.yaml                   # SOPS/age rules for secrets/prod.enc.env
+├── scripts/                     # deploy.sh (VPS rollout) + provision.sh (bootstrap)
+└── .github/workflows/deploy.yml # CI (lint/build) + CD (GHCR push → SSH deploy)
 ```
+
+See `documentation/deployment.md` for the full VPS deployment guide.
 
 ---
 
@@ -78,9 +84,7 @@ The API follows **Clean Architecture** with three concentric layers: routes → 
 - Layer 1 — Routes (thin controllers)
 - Layer 2 — Use Cases (business logic)
 - Layer 3 — Repositories (data access)
--
-
----
+- ***
 
 ## Frontend Apps
 
