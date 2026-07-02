@@ -4,6 +4,7 @@ import { resolve } from "../../repositories/container.js";
 import { getDistrictsUseCase } from "../../use-cases/districts/get-districts.use-case.js";
 import { getDistrictByIdUseCase } from "../../use-cases/districts/get-district-by-id.use-case.js";
 import { createDistrictUseCase } from "../../use-cases/districts/create-district.use-case.js";
+import { seedDefaultTagsUseCase } from "../../use-cases/tags/seed-default-tags.use-case.js";
 import { updateDistrictUseCase } from "../../use-cases/districts/update-district.use-case.js";
 import { deleteDistrictUseCase } from "../../use-cases/districts/delete-district.use-case.js";
 
@@ -25,6 +26,7 @@ export const districtsRouter = s.router(districtsContract, {
 
   createDistrict: async ({ body }) => {
     const newDistrict = await createDistrictUseCase(resolve("district"))(body);
+    await seedDefaultTagsUseCase(resolve("tag"))(newDistrict.id);
     return { status: 201, body: newDistrict };
   },
 
