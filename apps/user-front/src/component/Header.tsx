@@ -10,7 +10,6 @@ const navItems = [
   { to: "/", labelKey: "nav.dashboard", end: true },
   { to: "/service", labelKey: "nav.services", end: false },
   { to: "/evenement", labelKey: "nav.events", end: false },
-  { to: "/messagerie", labelKey: "nav.messaging", end: false },
   { to: "/votes", labelKey: "nav.votes", end: false },
 ];
 

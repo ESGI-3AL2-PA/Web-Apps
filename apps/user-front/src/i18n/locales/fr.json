@@ -148,6 +148,10 @@
     }
   },
   "messaging": {
+    "title": "Messages",
+    "open": "Ouvrir la messagerie",
+    "close": "Fermer",
+    "minimize": "Réduire",
     "empty": "Aucune conversation.",
     "select": "Sélectionnez une conversation pour afficher les messages.",
     "conversation": "Conversation",

@@ -3,7 +3,6 @@ import { ProtectedRoute } from "@repo/hooks";
 import MainLayout from "../layouts/MainLayouts";
 import ServicePage from "../pages/service/Service";
 import EvenementPage from "../pages/Evenement";
-import MessageriePage from "../pages/Messagerie";
 import VotesPage from "../pages/Votes";
 import Annonces from "../pages/service/Annonces";
 import AnnoncesUser from "../pages/service/AnnoncesUser";
@@ -32,7 +31,6 @@ export const router = createBrowserRouter([
         ],
       },
       { path: "/evenement", element: <EvenementPage /> },
-      { path: "/messagerie", element: <MessageriePage /> },
       { path: "/votes", element: <VotesPage /> },
       { path: "*", element: <NotFound /> },
     ],

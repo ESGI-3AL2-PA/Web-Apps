@@ -148,6 +148,10 @@
     }
   },
   "messaging": {
+    "title": "Messages",
+    "open": "Open messages",
+    "close": "Close",
+    "minimize": "Minimize",
     "empty": "No conversations.",
     "select": "Select a conversation to view messages.",
     "conversation": "Conversation",
