@@ -16,13 +16,23 @@ export function Pagination({ page, limit, total, onPageChange }: PaginationProps
         {from}–{to} of {total}
       </span>
       <div className="join">
-        <button className="btn btn-sm join-item" disabled={page <= 1} onClick={() => onPageChange(page - 1)}>
+        <button
+          className="btn btn-sm join-item"
+          disabled={page <= 1}
+          onClick={() => onPageChange(page - 1)}
+          aria-label="Previous page"
+        >
           «
         </button>
         <span className="btn btn-sm join-item pointer-events-none">
           Page {page} / {totalPages}
         </span>
-        <button className="btn btn-sm join-item" disabled={page >= totalPages} onClick={() => onPageChange(page + 1)}>
+        <button
+          className="btn btn-sm join-item"
+          disabled={page >= totalPages}
+          onClick={() => onPageChange(page + 1)}
+          aria-label="Next page"
+        >
           »
         </button>
       </div>
