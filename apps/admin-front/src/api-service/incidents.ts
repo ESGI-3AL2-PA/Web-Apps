@@ -7,8 +7,10 @@ export async function listIncidents(params: ListParams): Promise<Paginated<Incid
   return res.data;
 }
 
-export async function getIncidentStats(): Promise<IncidentStatsDto> {
-  const res = await api.get<IncidentStatsDto>("/incidents/stats");
+export async function getIncidentStats(districtId?: string): Promise<IncidentStatsDto> {
+  const res = await api.get<IncidentStatsDto>("/incidents/stats", {
+    params: districtId ? { districtId } : undefined,
+  });
   return res.data;
 }
 

@@ -4,6 +4,7 @@ import type { IncidentStatsDto } from "@repo/contracts";
 import { getIncidentStats } from "../../api-service/incidents";
 import { listUsers } from "../../api-service/users";
 import { listListings } from "../../api-service/listings";
+import { useDistrictScope } from "../../app/DistrictScopeProvider";
 
 interface StatCard {
   label: string;
@@ -14,14 +15,23 @@ interface StatCard {
 }
 
 export default function Dashboard() {
+  const { districtId } = useDistrictScope();
   const [stats, setStats] = useState<IncidentStatsDto | null>(null);
   const [userCount, setUserCount] = useState<number | null>(null);
   const [listingCount, setListingCount] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    Promise.all([getIncidentStats(), listUsers({ page: 1, limit: 1 }), listListings({ page: 1, limit: 1 })])
+    const scoped = districtId ?? undefined;
+    setLoading(true);
+    setError(null);
+    Promise.all([
+      getIncidentStats(scoped),
+      listUsers({ page: 1, limit: 1, ...(scoped && { districtId: scoped }) }),
+      listListings({ page: 1, limit: 1, ...(scoped && { districtId: scoped }) }),
+    ])
       .then(([s, u, l]) => {
         if (cancelled) return;
         setStats(s);
@@ -30,24 +40,27 @@ export default function Dashboard() {
       })
       .catch((err) => {
         if (!cancelled) setError(err?.response?.data?.message ?? err?.message ?? "Failed to load");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
       });
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [districtId]);
 
   const cards: StatCard[] = [
-    { label: "Users", value: userCount ?? "—", icon: "icon-[tabler--users]", to: "/users", accent: "text-primary" },
+    { label: "Users", value: userCount ?? 0, icon: "icon-[tabler--users]", to: "/users", accent: "text-primary" },
     {
       label: "Listings",
-      value: listingCount ?? "—",
+      value: listingCount ?? 0,
       icon: "icon-[tabler--clipboard-list]",
       to: "/listings",
       accent: "text-info",
     },
     {
       label: "Total incidents",
-      value: stats?.total ?? "—",
+      value: stats?.total ?? 0,
       icon: "icon-[tabler--alert-triangle]",
       to: "/incidents",
       accent: "text-warning",
@@ -77,16 +90,19 @@ export default function Dashboard() {
               <span className="text-sm text-base-content/60">{c.label}</span>
               <span className={`${c.icon} size-6 ${c.accent}`} />
             </div>
-            <p className="text-3xl font-semibold mt-2">{c.value}</p>
+            {loading ? (
+              <div className="h-9 w-16 rounded bg-base-200 animate-pulse mt-2" />
+            ) : (
+              <p className="text-3xl font-semibold mt-2">{c.value}</p>
+            )}
           </Link>
         ))}
       </div>
 
       {stats && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <StatsBlock title="Incidents by status" entries={Object.entries(stats.byStatus)} />
           <StatsBlock title="Incidents by category" entries={Object.entries(stats.byCategory)} />
-          <StatsBlock title="Incidents by district" entries={Object.entries(stats.byDistrict)} />
         </div>
       )}
     </div>

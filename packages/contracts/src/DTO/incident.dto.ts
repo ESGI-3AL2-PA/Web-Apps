@@ -72,12 +72,18 @@ export const IncidentQueryDtoSchema = z
   .openapi({ title: "IncidentQuery" });
 export type IncidentQueryDto = z.infer<typeof IncidentQueryDtoSchema>;
 
+export const IncidentStatsQueryDtoSchema = z
+  .object({
+    districtId: z.string().optional().openapi({ description: "Scope the aggregates to a single district" }),
+  })
+  .openapi({ title: "IncidentStatsQuery" });
+export type IncidentStatsQueryDto = z.infer<typeof IncidentStatsQueryDtoSchema>;
+
 export const IncidentStatsDtoSchema = z
   .object({
     total: z.number().int(),
     byStatus: z.record(IncidentStatusSchema, z.number().int()),
     byCategory: z.record(z.string(), z.number().int()),
-    byDistrict: z.record(z.string(), z.number().int()),
   })
   .openapi({ title: "IncidentStats" });
 export type IncidentStatsDto = z.infer<typeof IncidentStatsDtoSchema>;

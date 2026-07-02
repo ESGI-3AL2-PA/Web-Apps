@@ -7,6 +7,11 @@ export async function listDistricts(params: ListParams): Promise<Paginated<Distr
   return res.data;
 }
 
+export async function getDistrict(id: string): Promise<DistrictResponseDto> {
+  const res = await api.get<DistrictResponseDto>(`/districts/${id}`);
+  return res.data;
+}
+
 export async function createDistrict(body: CreateDistrictDto): Promise<DistrictResponseDto> {
   const res = await api.post<DistrictResponseDto>("/districts", body);
   return res.data;

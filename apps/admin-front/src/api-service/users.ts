@@ -1,4 +1,5 @@
 import type { UserResponseDto, UpdateUserDto } from "@repo/contracts";
+import { config } from "@repo/config";
 import api from "./api";
 import type { ListParams, Paginated } from "./types";
 
@@ -17,6 +18,21 @@ export async function updateUser(id: string, body: UpdateUserDto): Promise<UserR
   return res.data;
 }
 
+export async function banUser(id: string, banned: boolean): Promise<UserResponseDto> {
+  const res = await api.patch<UserResponseDto>(`/users/${id}/ban`, { banned });
+  return res.data;
+}
+
 export async function deleteUser(id: string): Promise<void> {
   await api.delete(`/users/${id}`);
+}
+
+// Triggers the auth-service's password-reset email flow for a stuck user. Public endpoint (always
+// 200, no enumeration); the admin already has the email from the users table.
+export async function requestPasswordReset(email: string): Promise<void> {
+  await fetch(`${config.authServiceUrl}/auth/forgot-password`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+  });
 }

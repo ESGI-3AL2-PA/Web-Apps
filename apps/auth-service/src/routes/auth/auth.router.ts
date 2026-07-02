@@ -83,6 +83,9 @@ export const authRouter = s.router(authContract, {
     if (result.kind === "invalid-credentials") {
       return { status: 401 as const, body: { message: "Invalid email or password" } };
     }
+    if (result.kind === "banned") {
+      return { status: 403 as const, body: { message: "This account has been suspended." } };
+    }
     if (result.kind === "email-not-verified") {
       return { status: 403 as const, body: { message: "Email not verified — check your inbox" } };
     }

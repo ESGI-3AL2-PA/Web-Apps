@@ -29,6 +29,8 @@ const COLORS: Record<string, string> = {
   user: "badge-neutral",
   admin: "badge-primary",
   superAdmin: "badge-secondary",
+  // account status
+  banned: "badge-error",
 };
 
 export function StatusBadge({ value }: { value: string }) {

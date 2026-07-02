@@ -1,5 +1,7 @@
 import { createRemoteJWKSet, jwtVerify } from "jose";
 import type { RequestHandler } from "express";
+import { resolve } from "../repositories/container.js";
+import type { IUserRepository } from "../repositories/User/user.repository.js";
 
 const jwksUrl = process.env.AUTH_JWKS_URL ?? "http://localhost:3001/.well-known/jwks.json";
 const JWKS = createRemoteJWKSet(new URL(jwksUrl));
@@ -54,6 +56,18 @@ export const requireAuth: RequestHandler = async (req, res, next) => {
       aud: (Array.isArray(payload.aud) ? payload.aud[0] : payload.aud) as string,
       adminDistrictId: (payload.adminDistrictId as string | null | undefined) ?? null,
     };
+
+    // Immediately reject a still-valid token if the account has since been banned. Only regular
+    // users can be banned, so we only pay the lookup for `role: "user"` requests (admin/service
+    // traffic is untouched). Login + refresh are also blocked in auth-service.
+    if (req.user.role === "user") {
+      const userRepo: IUserRepository = resolve("user");
+      const user = await userRepo.getUserById(req.user.sub);
+      if (user?.banned) {
+        res.status(403).json({ message: "Account suspended" });
+        return;
+      }
+    }
 
     next();
   } catch {

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@repo/hooks";
 import type { VoteResponseDto, VoteResultsResponseDto, VoteStatus } from "@repo/contracts";
-import { useList } from "../../hooks/useList";
+import { useScopedList } from "../../hooks/useScopedList";
 import { deleteVote, getVoteResults, listVotes } from "../../api-service/votes";
 import { DataTable, type Column } from "../../components/DataTable";
 import { Pagination } from "../../components/Pagination";
@@ -9,14 +9,18 @@ import { Toolbar } from "../../components/Toolbar";
 import { StatusBadge } from "../../components/StatusBadge";
 import { FormModal } from "../../components/FormModal";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
-import { formatDate, shortId } from "../../lib/format";
+import { useToast } from "../../components/Toast";
+import { useAsyncAction } from "../../hooks/useAsyncAction";
+import { formatDate } from "../../lib/format";
 
 const STATUSES: VoteStatus[] = ["draft", "open", "closed"];
 
 export default function VotesList() {
   const { user } = useAuth();
   const isSuperAdmin = user?.role === "superAdmin";
-  const list = useList<VoteResponseDto>(listVotes);
+  const list = useScopedList<VoteResponseDto>(listVotes);
+  const toast = useToast();
+  const del = useAsyncAction();
   const [viewing, setViewing] = useState<VoteResponseDto | null>(null);
   const [deleting, setDeleting] = useState<VoteResponseDto | null>(null);
 
@@ -71,13 +75,20 @@ export default function VotesList() {
         open={!!deleting}
         title="Delete vote"
         message={`Delete vote "${deleting?.question}"?`}
-        onCancel={() => setDeleting(null)}
-        onConfirm={async () => {
-          if (!deleting) return;
-          await deleteVote(deleting.id);
+        busy={del.busy}
+        error={del.error}
+        onCancel={() => {
           setDeleting(null);
-          list.refetch();
+          del.reset();
         }}
+        onConfirm={() =>
+          del.run(async () => {
+            await deleteVote(deleting!.id);
+            toast.show("Vote deleted");
+            setDeleting(null);
+            list.refetch();
+          })
+        }
       />
     </div>
   );
@@ -108,7 +119,7 @@ function VoteView({ vote, onClose }: { vote: VoteResponseDto; onClose: () => voi
         </div>
         <Info label="Type" value={vote.voteType} />
         <Info label="Status" value={vote.status} />
-        <Info label="Creator" value={shortId(vote.creatorId)} />
+        <Info label="Creator" value={vote.creatorId} />
         <Info label="Districts" value={String(vote.districtIds.length)} />
         <Info label="Start" value={formatDate(vote.startDate)} />
         <Info label="End" value={formatDate(vote.endDate)} />

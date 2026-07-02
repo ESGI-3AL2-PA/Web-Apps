@@ -1,29 +1,34 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import type { IncidentResponseDto, IncidentStatus, UpdateIncidentDto } from "@repo/contracts";
-import { useList } from "../../hooks/useList";
+import { useScopedList } from "../../hooks/useScopedList";
 import { deleteIncident, listIncidents, updateIncident } from "../../api-service/incidents";
 import { DataTable, type Column } from "../../components/DataTable";
 import { Pagination } from "../../components/Pagination";
 import { Toolbar } from "../../components/Toolbar";
 import { StatusBadge } from "../../components/StatusBadge";
+import { ShortId } from "../../components/ShortId";
 import { FormModal } from "../../components/FormModal";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { Field } from "../../components/Field";
-import { formatDate, shortId } from "../../lib/format";
+import { useToast } from "../../components/Toast";
+import { useAsyncAction } from "../../hooks/useAsyncAction";
+import { formatDate } from "../../lib/format";
 
 const STATUSES: IncidentStatus[] = ["open", "in_progress", "resolved", "closed"];
 
 export default function IncidentsList() {
-  const list = useList<IncidentResponseDto>(listIncidents);
+  const list = useScopedList<IncidentResponseDto>(listIncidents);
+  const toast = useToast();
+  const del = useAsyncAction();
   const [editing, setEditing] = useState<IncidentResponseDto | null>(null);
   const [deleting, setDeleting] = useState<IncidentResponseDto | null>(null);
 
+  // Every row is in the active district (the console is district-scoped), so no district column.
   const columns: Column<IncidentResponseDto>[] = [
     { header: "Category", cell: (i) => i.category },
     { header: "Description", cell: (i) => <span className="line-clamp-1 max-w-xs">{i.description}</span> },
-    { header: "District", cell: (i) => shortId(i.districtId) },
     { header: "Status", cell: (i) => <StatusBadge value={i.status} /> },
-    { header: "Assigned", cell: (i) => (i.assignedTo ? shortId(i.assignedTo) : "—") },
+    { header: "Assigned", cell: (i) => <ShortId value={i.assignedTo} /> },
     { header: "Created", cell: (i) => formatDate(i.createdAt) },
   ];
 
@@ -43,23 +48,8 @@ export default function IncidentsList() {
             onChange: (v) => list.setFilter("status", v),
           },
         ]}
-        actions={
-          <div className="flex gap-2">
-            <input
-              className="input input-sm max-w-[10rem]"
-              placeholder="Category"
-              defaultValue={list.filters.category ?? ""}
-              onBlur={(e) => list.setFilter("category", e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && list.setFilter("category", e.currentTarget.value)}
-            />
-            <input
-              className="input input-sm max-w-[10rem]"
-              placeholder="District ID"
-              defaultValue={list.filters.districtId ?? ""}
-              onBlur={(e) => list.setFilter("districtId", e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && list.setFilter("districtId", e.currentTarget.value)}
-            />
-          </div>
+        extraFilters={
+          <CategoryFilter value={list.filters.category ?? ""} onChange={(v) => list.setFilter("category", v)} />
         }
       />
       <DataTable
@@ -87,6 +77,7 @@ export default function IncidentsList() {
           onClose={() => setEditing(null)}
           onSaved={() => {
             setEditing(null);
+            toast.show("Incident updated");
             list.refetch();
           }}
         />
@@ -95,15 +86,46 @@ export default function IncidentsList() {
         open={!!deleting}
         title="Delete incident"
         message={`Delete incident "${deleting?.category}"?`}
-        onCancel={() => setDeleting(null)}
-        onConfirm={async () => {
-          if (!deleting) return;
-          await deleteIncident(deleting.id);
+        busy={del.busy}
+        error={del.error}
+        onCancel={() => {
           setDeleting(null);
-          list.refetch();
+          del.reset();
         }}
+        onConfirm={() =>
+          del.run(async () => {
+            await deleteIncident(deleting!.id);
+            toast.show("Incident deleted");
+            setDeleting(null);
+            list.refetch();
+          })
+        }
       />
     </div>
+  );
+}
+
+// Free-text category filter, debounced so it commits as you type without a request per keystroke.
+function CategoryFilter({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+  const [text, setText] = useState(value);
+  useEffect(() => {
+    const t = setTimeout(() => {
+      if (text !== value) onChange(text);
+    }, 300);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `value` is the committed value; syncing on it would fight typing
+  }, [text]);
+
+  return (
+    <label className="input input-sm max-w-[12rem]">
+      <span className="icon-[tabler--filter] size-4 text-base-content/60" />
+      <input
+        value={text}
+        placeholder="Category"
+        aria-label="Filter by category"
+        onChange={(e) => setText(e.target.value)}
+      />
+    </label>
   );
 }
 
@@ -159,7 +181,9 @@ function IncidentEdit({
         </div>
         <div>
           <p className="text-xs text-base-content/50">Reporter</p>
-          <p>{shortId(incident.reporterId)}</p>
+          <p>
+            <ShortId value={incident.reporterId} />
+          </p>
         </div>
         <div className="col-span-2">
           <p className="text-xs text-base-content/50">Description</p>
@@ -197,7 +221,9 @@ function IncidentEdit({
                 <span className="text-xs text-base-content/60">{formatDate(h.updatedAt)}</span>
               </div>
               {h.note && <p className="text-sm mt-0.5">{h.note}</p>}
-              <p className="text-xs text-base-content/50">by {shortId(h.updatedBy)}</p>
+              <p className="text-xs text-base-content/50">
+                by <ShortId value={h.updatedBy} />
+              </p>
             </li>
           ))}
         </ol>
