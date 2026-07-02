@@ -55,7 +55,8 @@ export const listingsRouter = s.router(listingsContract, {
     const newListing = await createListingUseCase(resolve("listing"))({
       ...body,
       authorId: author.id,
-      districtId: author.districtId,
+      // Residents always have a district; `null` (superAdmin only) falls back to the "" sentinel.
+      districtId: author.districtId ?? "",
     });
     return { status: 201, body: newListing };
   },

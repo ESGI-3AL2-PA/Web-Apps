@@ -58,7 +58,8 @@ export const conversationsRouter = s.router(conversationsContract, {
     const conversation = await createConversationUseCase(resolve("conversation"))({
       ...body,
       participants,
-      districtId: me.districtId,
+      // Residents always have a district; `null` (superAdmin only) falls back to the "" sentinel.
+      districtId: me.districtId ?? "",
     });
     return { status: 201, body: conversation };
   },

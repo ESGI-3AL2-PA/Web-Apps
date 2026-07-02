@@ -35,7 +35,8 @@ export const notificationsRouter = s.router(notificationsContract, {
     }
     const notification = await createNotificationUseCase(resolve("notification"))({
       ...body,
-      districtId: recipient.districtId,
+      // Residents always have a district; `null` (superAdmin only) falls back to the "" sentinel.
+      districtId: recipient.districtId ?? "",
     });
     return { status: 201, body: notification };
   },

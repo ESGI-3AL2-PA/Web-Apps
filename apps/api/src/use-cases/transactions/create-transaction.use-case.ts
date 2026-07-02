@@ -33,7 +33,7 @@ export const createTransactionUseCase = (
       if (!debited) return { kind: "insufficient-funds" };
       entries.push({
         userId: fromUserId,
-        districtId: fromUser!.districtId,
+        districtId: fromUser!.districtId ?? "",
         type: toUserId ? "transfer_out" : "debit",
         amount: -amount,
         refId,
@@ -50,7 +50,7 @@ export const createTransactionUseCase = (
       }
       entries.push({
         userId: toUserId,
-        districtId: toUser!.districtId,
+        districtId: toUser!.districtId ?? "",
         type: fromUserId ? "transfer_in" : "credit",
         amount,
         refId,

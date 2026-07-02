@@ -25,14 +25,14 @@ const seed = async () => {
         firstName,
         lastName,
         address: "",
-        districtId: "",
         balance: 0,
         totpSecret: null,
         totpEnabled: false,
         createdAt: now,
       },
-      // Always enforced, whether creating or promoting.
-      $set: { role: "superAdmin", emailVerified: true, updatedAt: now },
+      // Always enforced, whether creating or promoting. superAdmin belongs to no district, so
+      // clear districtId even when promoting an existing (district-scoped) user.
+      $set: { role: "superAdmin", districtId: null, emailVerified: true, updatedAt: now },
     },
     { upsert: true },
   );

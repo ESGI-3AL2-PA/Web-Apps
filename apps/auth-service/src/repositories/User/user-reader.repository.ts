@@ -7,7 +7,8 @@ export interface UserRecord {
   phone?: string;
   role: "user" | "admin" | "superAdmin";
   address: string;
-  districtId: string;
+  // null only for superAdmin (belongs to no district); every other role has a district id.
+  districtId: string | null;
   balance: number;
   banned?: boolean;
   emailVerified: boolean;

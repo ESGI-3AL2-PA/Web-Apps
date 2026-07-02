@@ -1,5 +1,6 @@
 import { createBrowserRouter, Navigate } from "react-router-dom";
 import { ProtectedRoute } from "@repo/hooks";
+import RequireResident from "./RequireResident";
 import MainLayout from "../layouts/MainLayouts";
 import ServicePage from "../pages/service/Service";
 import EvenementPage from "../pages/Evenement";
@@ -14,7 +15,9 @@ export const router = createBrowserRouter([
   {
     element: (
       <ProtectedRoute>
-        <MainLayout />
+        <RequireResident>
+          <MainLayout />
+        </RequireResident>
       </ProtectedRoute>
     ),
     errorElement: <NotFound />,

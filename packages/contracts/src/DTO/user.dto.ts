@@ -13,7 +13,11 @@ export const UserResponseDtoSchema = z
     phone: z.string().optional().openapi({ description: "User's phone number", example: "0612345678" }),
     role: UserRoleSchema.openapi({ description: "Role in the system" }),
     address: z.string().optional().openapi({ description: "User's address" }),
-    districtId: z.string().optional().openapi({ description: "ID of the district the user belongs to" }),
+    districtId: z
+      .string()
+      .nullable()
+      .optional()
+      .openapi({ description: "ID of the district the user belongs to; null for superAdmin (no district)" }),
     adminDistrictId: z
       .string()
       .nullable()
