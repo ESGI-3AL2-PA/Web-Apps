@@ -1,5 +1,6 @@
 import { createBrowserRouter } from "react-router-dom";
 import { ProtectedRoute } from "@repo/hooks";
+import { DistrictScopeProvider } from "./DistrictScopeProvider";
 import AdminLayout from "../layouts/AdminLayout";
 import Dashboard from "../pages/dashboard/Dashboard";
 import UsersList from "../pages/users/UsersList";
@@ -17,7 +18,9 @@ export const router = createBrowserRouter([
   {
     element: (
       <ProtectedRoute roles={["admin", "superAdmin"]}>
-        <AdminLayout />
+        <DistrictScopeProvider>
+          <AdminLayout />
+        </DistrictScopeProvider>
       </ProtectedRoute>
     ),
     children: [

@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import type { TransactionResponseDto, UpdateUserDto, UserBalanceResponseDto, UserResponseDto } from "@repo/contracts";
-import { useList } from "../../hooks/useList";
+import { useScopedList } from "../../hooks/useScopedList";
 import { deleteUser, listUsers, updateUser } from "../../api-service/users";
 import { getUserBalance, getUserTransactions } from "../../api-service/transactions";
 import { DataTable, type Column } from "../../components/DataTable";
@@ -13,7 +13,7 @@ import { Field } from "../../components/Field";
 import { formatDate } from "../../lib/format";
 
 export default function UsersList() {
-  const list = useList<UserResponseDto>(listUsers);
+  const list = useScopedList<UserResponseDto>(listUsers);
   const [viewing, setViewing] = useState<UserResponseDto | null>(null);
   const [editing, setEditing] = useState<UserResponseDto | null>(null);
   const [deleting, setDeleting] = useState<UserResponseDto | null>(null);

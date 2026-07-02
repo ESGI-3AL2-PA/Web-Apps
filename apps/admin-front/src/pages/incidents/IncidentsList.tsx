@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import type { IncidentResponseDto, IncidentStatus, UpdateIncidentDto } from "@repo/contracts";
-import { useList } from "../../hooks/useList";
+import { useScopedList } from "../../hooks/useScopedList";
 import { deleteIncident, listIncidents, updateIncident } from "../../api-service/incidents";
 import { DataTable, type Column } from "../../components/DataTable";
 import { Pagination } from "../../components/Pagination";
@@ -14,7 +14,7 @@ import { formatDate, shortId } from "../../lib/format";
 const STATUSES: IncidentStatus[] = ["open", "in_progress", "resolved", "closed"];
 
 export default function IncidentsList() {
-  const list = useList<IncidentResponseDto>(listIncidents);
+  const list = useScopedList<IncidentResponseDto>(listIncidents);
   const [editing, setEditing] = useState<IncidentResponseDto | null>(null);
   const [deleting, setDeleting] = useState<IncidentResponseDto | null>(null);
 
@@ -44,22 +44,13 @@ export default function IncidentsList() {
           },
         ]}
         actions={
-          <div className="flex gap-2">
-            <input
-              className="input input-sm max-w-[10rem]"
-              placeholder="Category"
-              defaultValue={list.filters.category ?? ""}
-              onBlur={(e) => list.setFilter("category", e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && list.setFilter("category", e.currentTarget.value)}
-            />
-            <input
-              className="input input-sm max-w-[10rem]"
-              placeholder="District ID"
-              defaultValue={list.filters.districtId ?? ""}
-              onBlur={(e) => list.setFilter("districtId", e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && list.setFilter("districtId", e.currentTarget.value)}
-            />
-          </div>
+          <input
+            className="input input-sm max-w-[10rem]"
+            placeholder="Category"
+            defaultValue={list.filters.category ?? ""}
+            onBlur={(e) => list.setFilter("category", e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && list.setFilter("category", e.currentTarget.value)}
+          />
         }
       />
       <DataTable

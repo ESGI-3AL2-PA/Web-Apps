@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@repo/hooks";
 import type { VoteResponseDto, VoteResultsResponseDto, VoteStatus } from "@repo/contracts";
-import { useList } from "../../hooks/useList";
+import { useScopedList } from "../../hooks/useScopedList";
 import { deleteVote, getVoteResults, listVotes } from "../../api-service/votes";
 import { DataTable, type Column } from "../../components/DataTable";
 import { Pagination } from "../../components/Pagination";
@@ -16,7 +16,7 @@ const STATUSES: VoteStatus[] = ["draft", "open", "closed"];
 export default function VotesList() {
   const { user } = useAuth();
   const isSuperAdmin = user?.role === "superAdmin";
-  const list = useList<VoteResponseDto>(listVotes);
+  const list = useScopedList<VoteResponseDto>(listVotes);
   const [viewing, setViewing] = useState<VoteResponseDto | null>(null);
   const [deleting, setDeleting] = useState<VoteResponseDto | null>(null);
 
