@@ -1,6 +1,7 @@
 import { initServer } from "@ts-rest/express";
 import { transactionsContract } from "@repo/contracts";
 import { resolve } from "../../repositories/container.js";
+import { resolveListDistrictScope } from "../../middleware/district-scope.js";
 import { getTransactionsUseCase } from "../../use-cases/transactions/get-transactions.use-case.js";
 import { createTransactionUseCase } from "../../use-cases/transactions/create-transaction.use-case.js";
 import { getUserBalanceUseCase } from "../../use-cases/transactions/get-user-balance.use-case.js";
@@ -9,10 +10,18 @@ const s = initServer();
 
 export const transactionsRouter = s.router(transactionsContract, {
   getTransactions: async ({ query, req }) => {
-    // Non-admins may only read their own ledger.
+    // Non-admins may only read their own ledger (userId already scopes it to a single district).
     const isAdmin = req.user!.role === "admin" || req.user!.role === "superAdmin";
-    const scopedQuery = isAdmin ? query : { ...query, userId: req.user!.sub };
-    const result = await getTransactionsUseCase(resolve("transaction"))(scopedQuery);
+    if (!isAdmin) {
+      const result = await getTransactionsUseCase(resolve("transaction"))({ ...query, userId: req.user!.sub });
+      return { status: 200, body: result };
+    }
+
+    const scope = resolveListDistrictScope(req.user!, query.districtId);
+    if ("empty" in scope) {
+      return { status: 200, body: { data: [], total: 0, page: query.page, limit: query.limit } };
+    }
+    const result = await getTransactionsUseCase(resolve("transaction"))({ ...query, districtId: scope.districtId });
     return { status: 200, body: result };
   },
 
@@ -21,9 +30,12 @@ export const transactionsRouter = s.router(transactionsContract, {
     // Non-admins can only move their own tokens (no spoofed source, no system minting).
     const data = isAdmin ? body : { ...body, fromUserId: req.user!.sub };
 
-    const result = await createTransactionUseCase(resolve("transaction"))(data);
+    const result = await createTransactionUseCase(resolve("transaction"), resolve("user"))(data);
     if (result.kind === "insufficient-funds") {
       return { status: 400, body: { message: "Insufficient balance" } };
+    }
+    if (result.kind === "sender-not-found") {
+      return { status: 400, body: { message: "Sender not found" } };
     }
     if (result.kind === "recipient-not-found") {
       return { status: 400, body: { message: "Recipient not found" } };
