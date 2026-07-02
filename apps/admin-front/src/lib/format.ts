@@ -11,6 +11,6 @@ export function formatDate(iso?: string): string {
   });
 }
 
-export function shortId(id: string): string {
-  return id.length > 10 ? `${id.slice(0, 8)}…` : id;
+export function formatTokens(n: number): string {
+  return `${n.toLocaleString()} tokens`;
 }

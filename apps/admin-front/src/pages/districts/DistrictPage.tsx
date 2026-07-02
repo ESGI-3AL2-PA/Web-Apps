@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import type { GeoJson } from "@repo/contracts";
 import { getDistrict, updateDistrict } from "../../api-service/districts";
 import { Field } from "../../components/Field";
+import { useToast } from "../../components/Toast";
 import { useDistrictScope } from "../../app/DistrictScopeProvider";
 import { DistrictMapEditor } from "./DistrictMapEditor";
 
@@ -19,6 +20,7 @@ function isValidPolygon(geoJson: GeoJson): boolean {
 // selector. There is no list/create/delete — the deployment has a single district.
 export default function DistrictPage() {
   const { districtId, loading: scopeLoading } = useDistrictScope();
+  const toast = useToast();
 
   const [name, setName] = useState("");
   const [geoJson, setGeoJson] = useState<GeoJson | null>(null);
@@ -70,6 +72,7 @@ export default function DistrictPage() {
       // null explicitly clears an existing boundary; undefined would be dropped by JSON.
       await updateDistrict(districtId, { name, geoJson });
       setSaved(true);
+      toast.show("District saved");
     } catch (err: unknown) {
       const e2 = err as { response?: { data?: { message?: string } }; message?: string };
       setError(e2?.response?.data?.message ?? e2?.message ?? "Failed to save");

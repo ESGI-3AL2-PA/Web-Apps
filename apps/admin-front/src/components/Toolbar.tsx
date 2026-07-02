@@ -13,11 +13,20 @@ interface ToolbarProps {
   onSearchChange?: (value: string) => void;
   searchPlaceholder?: string;
   filters?: FilterSelect[];
+  /** Extra inline filter controls rendered alongside the selects (e.g. a debounced text filter). */
+  extraFilters?: ReactNode;
   /** Trailing slot, e.g. a "Create" button. */
   actions?: ReactNode;
 }
 
-export function Toolbar({ search, onSearchChange, searchPlaceholder = "Search…", filters, actions }: ToolbarProps) {
+export function Toolbar({
+  search,
+  onSearchChange,
+  searchPlaceholder = "Search…",
+  filters,
+  extraFilters,
+  actions,
+}: ToolbarProps) {
   return (
     <div className="flex flex-wrap items-end gap-3 mb-4">
       {onSearchChange && (
@@ -46,6 +55,7 @@ export function Toolbar({ search, onSearchChange, searchPlaceholder = "Search…
           ))}
         </select>
       ))}
+      {extraFilters}
       {actions && <div className="ms-auto">{actions}</div>}
     </div>
   );

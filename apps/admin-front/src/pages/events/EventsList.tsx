@@ -9,6 +9,9 @@ import { Toolbar } from "../../components/Toolbar";
 import { StatusBadge } from "../../components/StatusBadge";
 import { FormModal } from "../../components/FormModal";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
+import { useToast } from "../../components/Toast";
+import { useAsyncAction } from "../../hooks/useAsyncAction";
+import { useDistrictScope } from "../../app/DistrictScopeProvider";
 import { formatDate } from "../../lib/format";
 
 const STATUSES: EventStatus[] = ["upcoming", "ongoing", "completed", "cancelled"];
@@ -17,6 +20,9 @@ export default function EventsList() {
   const { user } = useAuth();
   const isSuperAdmin = user?.role === "superAdmin";
   const list = useScopedList<EventResponseDto>(listEvents);
+  const scope = useDistrictScope();
+  const toast = useToast();
+  const del = useAsyncAction();
   const [viewing, setViewing] = useState<EventResponseDto | null>(null);
   const [deleting, setDeleting] = useState<EventResponseDto | null>(null);
 
@@ -72,7 +78,7 @@ export default function EventsList() {
             <Info label="Status" value={viewing.status} />
             <Info label="Location" value={viewing.location} />
             <Info label="Creator" value={viewing.creatorId} />
-            <Info label="District" value={viewing.districtId} />
+            <Info label="District" value={scope.districtName ?? viewing.districtId} />
             <Info label="Seats" value={`${viewing.remainingSeats} / ${viewing.totalSeats}`} />
             <Info label="Registrants" value={String(viewing.registrants.length)} />
             <Info label="Event date" value={formatDate(viewing.eventDate)} />
@@ -88,13 +94,20 @@ export default function EventsList() {
         open={!!deleting}
         title="Delete event"
         message={`Delete event "${deleting?.title}"?`}
-        onCancel={() => setDeleting(null)}
-        onConfirm={async () => {
-          if (!deleting) return;
-          await deleteEvent(deleting.id);
+        busy={del.busy}
+        error={del.error}
+        onCancel={() => {
           setDeleting(null);
-          list.refetch();
+          del.reset();
         }}
+        onConfirm={() =>
+          del.run(async () => {
+            await deleteEvent(deleting!.id);
+            toast.show("Event deleted");
+            setDeleting(null);
+            list.refetch();
+          })
+        }
       />
     </div>
   );

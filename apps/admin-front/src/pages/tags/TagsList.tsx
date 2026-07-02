@@ -8,9 +8,13 @@ import { Toolbar } from "../../components/Toolbar";
 import { FormModal } from "../../components/FormModal";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { Field } from "../../components/Field";
+import { useToast } from "../../components/Toast";
+import { useAsyncAction } from "../../hooks/useAsyncAction";
 
 export default function TagsList() {
   const list = useList<TagResponseDto>(listTags);
+  const toast = useToast();
+  const del = useAsyncAction();
   const [editing, setEditing] = useState<TagResponseDto | "new" | null>(null);
   const [deleting, setDeleting] = useState<TagResponseDto | null>(null);
 
@@ -55,8 +59,9 @@ export default function TagsList() {
         <TagEdit
           tag={editing === "new" ? null : editing}
           onClose={() => setEditing(null)}
-          onSaved={() => {
+          onSaved={(created) => {
             setEditing(null);
+            toast.show(created ? "Tag created" : "Tag updated");
             list.refetch();
           }}
         />
@@ -65,19 +70,34 @@ export default function TagsList() {
         open={!!deleting}
         title="Delete tag"
         message={`Delete tag "${deleting?.name}"?`}
-        onCancel={() => setDeleting(null)}
-        onConfirm={async () => {
-          if (!deleting) return;
-          await deleteTag(deleting.id);
+        busy={del.busy}
+        error={del.error}
+        onCancel={() => {
           setDeleting(null);
-          list.refetch();
+          del.reset();
         }}
+        onConfirm={() =>
+          del.run(async () => {
+            await deleteTag(deleting!.id);
+            toast.show("Tag deleted");
+            setDeleting(null);
+            list.refetch();
+          })
+        }
       />
     </div>
   );
 }
 
-function TagEdit({ tag, onClose, onSaved }: { tag: TagResponseDto | null; onClose: () => void; onSaved: () => void }) {
+function TagEdit({
+  tag,
+  onClose,
+  onSaved,
+}: {
+  tag: TagResponseDto | null;
+  onClose: () => void;
+  onSaved: (created: boolean) => void;
+}) {
   const [name, setName] = useState(tag?.name ?? "");
   const [description, setDescription] = useState(tag?.description ?? "");
   const [submitting, setSubmitting] = useState(false);
@@ -95,7 +115,7 @@ function TagEdit({ tag, onClose, onSaved }: { tag: TagResponseDto | null; onClos
         const body: CreateTagDto = { name, description: description || undefined };
         await createTag(body);
       }
-      onSaved();
+      onSaved(!tag);
     } catch (err: unknown) {
       const e2 = err as { response?: { data?: { message?: string } }; message?: string };
       setError(e2?.response?.data?.message ?? e2?.message ?? "Failed to save");
