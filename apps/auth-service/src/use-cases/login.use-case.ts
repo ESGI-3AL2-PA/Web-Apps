@@ -10,6 +10,7 @@ import { issueTokensForUser, type IssuedTokens } from "./issue-tokens.js";
 export type LoginResult =
   | ({ kind: "ok" } & IssuedTokens)
   | { kind: "invalid-credentials" }
+  | { kind: "banned" }
   | { kind: "email-not-verified" }
   | { kind: "mfa-required"; mfaToken: string };
 
@@ -33,6 +34,8 @@ export const loginUseCase = (
 
     const valid = await argon2.verify(user.passwordHash, data.password);
     if (!valid) return { kind: "invalid-credentials" };
+
+    if (user.banned) return { kind: "banned" };
 
     if (!user.emailVerified && !skipEmailVerification()) return { kind: "email-not-verified" };
 
