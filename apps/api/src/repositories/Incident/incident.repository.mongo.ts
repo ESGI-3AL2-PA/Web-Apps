@@ -95,26 +95,26 @@ export class MongoIncidentRepository implements IIncidentRepository {
     return result.deletedCount === 1;
   }
 
-  async getStats(): Promise<{
+  async getStats(districtId?: string): Promise<{
     total: number;
     byStatus: Record<string, number>;
     byCategory: Record<string, number>;
-    byDistrict: Record<string, number>;
   }> {
-    const [total, byStatus, byCategory, byDistrict] = await Promise.all([
-      this.collection.countDocuments(),
-      this.aggregateCount("$status"),
-      this.aggregateCount("$category"),
-      this.aggregateCount("$districtId"),
+    const match = districtId ? { districtId } : {};
+    const [total, byStatus, byCategory] = await Promise.all([
+      this.collection.countDocuments(match),
+      this.aggregateCount("$status", match),
+      this.aggregateCount("$category", match),
     ]);
 
-    return { total, byStatus, byCategory, byDistrict };
+    return { total, byStatus, byCategory };
   }
 
-  private async aggregateCount(field: string): Promise<Record<string, number>> {
-    const docs = await this.collection
-      .aggregate<{ _id: string; count: number }>([{ $group: { _id: field, count: { $sum: 1 } } }])
-      .toArray();
+  private async aggregateCount(field: string, match: Record<string, unknown>): Promise<Record<string, number>> {
+    const pipeline = [];
+    if (Object.keys(match).length > 0) pipeline.push({ $match: match });
+    pipeline.push({ $group: { _id: field, count: { $sum: 1 } } });
+    const docs = await this.collection.aggregate<{ _id: string; count: number }>(pipeline).toArray();
     return docs.reduce<Record<string, number>>((acc, { _id, count }) => {
       if (_id !== null && _id !== undefined) acc[_id] = count;
       return acc;

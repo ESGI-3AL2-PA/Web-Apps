@@ -4,6 +4,7 @@ import type { IncidentStatsDto } from "@repo/contracts";
 import { getIncidentStats } from "../../api-service/incidents";
 import { listUsers } from "../../api-service/users";
 import { listListings } from "../../api-service/listings";
+import { useDistrictScope } from "../../app/DistrictScopeProvider";
 
 interface StatCard {
   label: string;
@@ -14,6 +15,7 @@ interface StatCard {
 }
 
 export default function Dashboard() {
+  const { districtId } = useDistrictScope();
   const [stats, setStats] = useState<IncidentStatsDto | null>(null);
   const [userCount, setUserCount] = useState<number | null>(null);
   const [listingCount, setListingCount] = useState<number | null>(null);
@@ -21,7 +23,12 @@ export default function Dashboard() {
 
   useEffect(() => {
     let cancelled = false;
-    Promise.all([getIncidentStats(), listUsers({ page: 1, limit: 1 }), listListings({ page: 1, limit: 1 })])
+    const scoped = districtId ?? undefined;
+    Promise.all([
+      getIncidentStats(scoped),
+      listUsers({ page: 1, limit: 1, ...(scoped && { districtId: scoped }) }),
+      listListings({ page: 1, limit: 1, ...(scoped && { districtId: scoped }) }),
+    ])
       .then(([s, u, l]) => {
         if (cancelled) return;
         setStats(s);
@@ -34,7 +41,7 @@ export default function Dashboard() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [districtId]);
 
   const cards: StatCard[] = [
     { label: "Users", value: userCount ?? "—", icon: "icon-[tabler--users]", to: "/users", accent: "text-primary" },
@@ -83,10 +90,9 @@ export default function Dashboard() {
       </div>
 
       {stats && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <StatsBlock title="Incidents by status" entries={Object.entries(stats.byStatus)} />
           <StatsBlock title="Incidents by category" entries={Object.entries(stats.byCategory)} />
-          <StatsBlock title="Incidents by district" entries={Object.entries(stats.byDistrict)} />
         </div>
       )}
     </div>

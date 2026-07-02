@@ -21,8 +21,12 @@ export const incidentsRouter = s.router(incidentsContract, {
     return { status: 200, body: result };
   },
 
-  getIncidentStats: async () => {
-    const stats = await getIncidentStatsUseCase(resolve("incident"))();
+  getIncidentStats: async ({ query, req }) => {
+    const scope = resolveListDistrictScope(req.user!, query.districtId);
+    if ("empty" in scope) {
+      return { status: 200, body: { total: 0, byStatus: {}, byCategory: {} } };
+    }
+    const stats = await getIncidentStatsUseCase(resolve("incident"))(scope.districtId);
     return { status: 200, body: stats };
   },
 
