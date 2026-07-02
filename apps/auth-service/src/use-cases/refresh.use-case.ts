@@ -40,6 +40,13 @@ export const refreshUseCase = (
     const user = await userReader.findById(stored.userId);
     if (!user) return null;
 
+    // A banned user's sessions are dead: revoke the whole family and refuse to mint a new token
+    // (the caller clears cookies and returns 401), completing the block started at the api layer.
+    if (user.banned) {
+      await refreshTokenRepo.revokeAllForUser(user.id);
+      return null;
+    }
+
     const adminDistrictId = await lookupAdminDistrictId(user, districtAdminReader);
     const accessToken = await signAccessToken(user, adminDistrictId);
 
