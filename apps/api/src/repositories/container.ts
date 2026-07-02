@@ -41,7 +41,22 @@ export const initContainer = (db: Db) => {
   };
 
   // Ensure required indexes exist (idempotent, non-blocking on startup).
-  void repositories.district.ensureIndexes().catch((err) => console.error("Failed to ensure district indexes:", err));
+  const withIndexes: Array<[string, { ensureIndexes(): Promise<void> }]> = [
+    ["district", repositories.district],
+    ["user", repositories.user],
+    ["listing", repositories.listing],
+    ["event", repositories.event],
+    ["incident", repositories.incident],
+    ["vote", repositories.vote],
+    ["tag", repositories.tag],
+    ["contract", repositories.contract],
+    ["notification", repositories.notification],
+    ["transaction", repositories.transaction],
+    ["conversation", repositories.conversation],
+  ];
+  for (const [name, repo] of withIndexes) {
+    void repo.ensureIndexes().catch((err) => console.error(`Failed to ensure ${name} indexes:`, err));
+  }
 };
 
 type Container = NonNullable<typeof repositories>;

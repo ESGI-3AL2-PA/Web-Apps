@@ -1,6 +1,8 @@
 import type { Event } from "../../entities/event.entity.js";
 
 export interface IEventRepository {
+  ensureIndexes(): Promise<void>;
+
   getEvents(params: {
     search?: string;
     status?: string;
