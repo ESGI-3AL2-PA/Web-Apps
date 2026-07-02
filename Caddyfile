@@ -1,0 +1,32 @@
+# Reverse proxy + automatic HTTPS (Let's Encrypt).
+# Domains and ACME email are injected from secrets/prod.env via the caddy
+# service's env_file. Each block terminates TLS and proxies to an internal
+# service on the compose network.
+
+{
+	email {$ACME_EMAIL}
+}
+
+# Public user front
+{$USER_DOMAIN} {
+	encode zstd gzip
+	reverse_proxy user-front:5000
+}
+
+# Admin front
+{$ADMIN_DOMAIN} {
+	encode zstd gzip
+	reverse_proxy admin-front:4000
+}
+
+# Resource API
+{$API_DOMAIN} {
+	encode zstd gzip
+	reverse_proxy api:3000
+}
+
+# Auth service (issues tokens, serves JWKS, email links)
+{$AUTH_DOMAIN} {
+	encode zstd gzip
+	reverse_proxy auth-service:3001
+}

@@ -1,0 +1,85 @@
+# Production stack. Runs pre-built images from GHCR behind Caddy (auto-TLS).
+# All runtime config/secrets come from ./secrets/prod.env, produced by decrypting
+# secrets/prod.enc.env with SOPS during deploy (see scripts/deploy.sh).
+#
+#   TAG=<git-sha> docker compose -f docker-compose.prod.yml up -d
+#
+# Only Caddy publishes ports; every other service is reachable on the internal
+# network by its service name (api:3000, auth-service:3001, etc.).
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    env_file: [./secrets/prod.env] # {$API_DOMAIN} etc. resolved from here
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api
+      - auth-service
+      - admin-front
+      - user-front
+
+  api:
+    image: ghcr.io/esgi-3al2-pa/web-apps-api:${TAG:-latest}
+    restart: unless-stopped
+    env_file: [./secrets/prod.env]
+    environment:
+      NODE_ENV: production
+      # internal cluster addresses (not exposed publicly)
+      AUTH_JWKS_URL: http://auth-service:3001/.well-known/jwks.json
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      auth-service:
+        condition: service_started
+
+  auth-service:
+    image: ghcr.io/esgi-3al2-pa/web-apps-auth-service:${TAG:-latest}
+    restart: unless-stopped
+    env_file: [./secrets/prod.env]
+    environment:
+      NODE_ENV: production
+      API_URL: http://api:3000
+    depends_on:
+      mongodb:
+        condition: service_healthy
+
+  admin-front:
+    image: ghcr.io/esgi-3al2-pa/web-apps-admin-front:${TAG:-latest}
+    restart: unless-stopped
+
+  user-front:
+    image: ghcr.io/esgi-3al2-pa/web-apps-user-front:${TAG:-latest}
+    restart: unless-stopped
+
+  mongodb:
+    image: mongo:8
+    restart: unless-stopped
+    env_file: [./secrets/prod.env] # MONGO_INITDB_ROOT_USERNAME / _PASSWORD
+    volumes:
+      - mongodb_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  neo4j:
+    image: neo4j:5
+    restart: unless-stopped
+    env_file: [./secrets/prod.env] # NEO4J_AUTH
+    volumes:
+      - neo4j_data:/data
+
+volumes:
+  mongodb_data:
+  neo4j_data:
+  caddy_data:
+  caddy_config:
