@@ -8,3 +8,7 @@ export const connectDB = async (): Promise<Db> => {
   await client.connect();
   return client.db(dbName);
 };
+
+export const closeDB = async (): Promise<void> => {
+  await client.close();
+};

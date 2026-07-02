@@ -32,7 +32,8 @@ import { transactionsRouter } from "./routes/transactions/transactions.router.js
 import { errorHandler, NotFoundError } from "./middleware/error-handler.js";
 import { requireAuth } from "./middleware/auth.middleware.js";
 import { authorize } from "./middleware/authorize.middleware.js";
-import { connectDB } from "./repositories/mongodb.connector.js";
+import { connectDB, closeDB } from "./repositories/mongodb.connector.js";
+import { setupGracefulShutdown } from "./shutdown.js";
 import { initContainer } from "./repositories/container.js";
 import { generateOpenApi } from "@ts-rest/open-api";
 import { apiReference } from "@scalar/express-api-reference";
@@ -173,7 +174,7 @@ app.use(errorHandler);
 connectDB()
   .then((db) => {
     initContainer(db);
-    app.listen(port, () => {
+    const server = app.listen(port, () => {
       const localUrl = `http://localhost:${port}`;
 
       console.log("");
@@ -183,6 +184,7 @@ connectDB()
       console.log("");
       console.log(`\x1b[33m⚡ Ready to accept connections\x1b[0m`);
     });
+    setupGracefulShutdown(server, closeDB);
   })
   .catch((err) => {
     console.error("Failed to connect to MongoDB:", err);
