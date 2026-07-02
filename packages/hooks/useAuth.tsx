@@ -7,6 +7,7 @@ export interface AuthUser {
   lastName: string;
   role: string;
   districtId?: string;
+  adminDistrictId?: string | null;
   balance: number;
 }
 

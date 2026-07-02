@@ -8,7 +8,7 @@ import { getPrivateKey } from "../keys.js";
 export interface IssuedTokens {
   accessToken: string;
   refreshToken: string;
-  user: Omit<UserRecord, "passwordHash" | "totpSecret">;
+  user: Omit<UserRecord, "passwordHash" | "totpSecret"> & { adminDistrictId: string | null };
 }
 
 // adminDistrictId is only meaningful for the `admin` role (one district each).
@@ -64,5 +64,5 @@ export const issueTokensForUser = async (
   });
 
   const { passwordHash: _passwordHash, totpSecret: _totpSecret, ...userDto } = user;
-  return { accessToken, refreshToken: rawRefreshToken, user: userDto };
+  return { accessToken, refreshToken: rawRefreshToken, user: { ...userDto, adminDistrictId } };
 };
