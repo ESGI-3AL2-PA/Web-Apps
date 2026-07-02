@@ -1,8 +1,11 @@
 import type { Notification } from "../../entities/notification.entity.js";
 
 export interface INotificationRepository {
+  ensureIndexes(): Promise<void>;
+
   getNotifications(params: {
     recipientId?: string;
+    districtId?: string;
     type?: string;
     read?: boolean;
     page?: number;
