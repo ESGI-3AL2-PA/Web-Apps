@@ -12,6 +12,11 @@ export class MongoIncidentRepository implements IIncidentRepository {
     this.collection = db.collection("incidents");
   }
 
+  async ensureIndexes(): Promise<void> {
+    // Backs district-scoped list filtering.
+    await this.collection.createIndex({ districtId: 1 });
+  }
+
   async getIncidents(params: {
     search?: string;
     status?: string;

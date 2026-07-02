@@ -1,6 +1,8 @@
 import type { Incident } from "../../entities/incident.entity.js";
 
 export interface IIncidentRepository {
+  ensureIndexes(): Promise<void>;
+
   getIncidents(params: {
     search?: string;
     status?: string;
