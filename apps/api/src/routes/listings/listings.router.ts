@@ -2,6 +2,7 @@ import { initServer } from "@ts-rest/express";
 import { listingsContract } from "@repo/contracts";
 import { resolve } from "../../repositories/container.js";
 import type { IUserRepository } from "../../repositories/User/user.repository.js";
+import { resolveListDistrictScope } from "../../middleware/district-scope.js";
 import { getListingsUseCase } from "../../use-cases/listings/get-listings.use-case.js";
 import { getListingByIdUseCase } from "../../use-cases/listings/get-listing-by-id.use-case.js";
 import { createListingUseCase } from "../../use-cases/listings/create-listing.use-case.js";
@@ -11,12 +12,16 @@ import { deleteListingUseCase } from "../../use-cases/listings/delete-listing.us
 const s = initServer();
 
 export const listingsRouter = s.router(listingsContract, {
-  getListings: async ({ query: { page, limit, search, type, status, districtId, authorId } }) => {
+  getListings: async ({ query: { page, limit, search, type, status, districtId, authorId }, req }) => {
+    const scope = resolveListDistrictScope(req.user!, districtId);
+    if ("empty" in scope) {
+      return { status: 200, body: { data: [], total: 0, page, limit } };
+    }
     const result = await getListingsUseCase(resolve("listing"))({
       search,
       type,
       status,
-      districtId,
+      districtId: scope.districtId,
       authorId,
       page,
       limit,

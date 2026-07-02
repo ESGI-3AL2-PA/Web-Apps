@@ -1,5 +1,5 @@
 import { randomUUID } from "crypto";
-import type { Collection, Db } from "mongodb";
+import type { Collection, Db, Filter } from "mongodb";
 import type { User } from "../../entities/user.entity.js";
 import type { IUserRepository } from "./user.repository.js";
 
@@ -10,23 +10,23 @@ export class MongoUserRepository implements IUserRepository {
     this.collection = db.collection("users");
   }
 
-  async getUsers(params: { search?: string; page?: number; limit?: number }): Promise<{
+  async getUsers(params: { search?: string; districtId?: string; page?: number; limit?: number }): Promise<{
     data: User[];
     total: number;
     page: number;
     limit: number;
   }> {
-    const { search, page = 1, limit = 10 } = params;
+    const { search, districtId, page = 1, limit = 10 } = params;
 
-    const filter = search
-      ? {
-          $or: [
-            { firstName: { $regex: search, $options: "i" } },
-            { lastName: { $regex: search, $options: "i" } },
-            { email: { $regex: search, $options: "i" } },
-          ],
-        }
-      : {};
+    const filter: Filter<Omit<User, "id"> & { _id: string }> = {};
+    if (search) {
+      filter.$or = [
+        { firstName: { $regex: search, $options: "i" } },
+        { lastName: { $regex: search, $options: "i" } },
+        { email: { $regex: search, $options: "i" } },
+      ];
+    }
+    if (districtId) filter.districtId = districtId;
 
     const [total, docs] = await Promise.all([
       this.collection.countDocuments(filter),
