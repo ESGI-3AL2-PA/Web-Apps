@@ -49,6 +49,14 @@ export class InMemoryUserRepository implements IUserRepository {
     return this.users[index];
   }
 
+  async setBanned(id: string, banned: boolean): Promise<User | null> {
+    const existing = this.users.find((u) => u.id === id);
+    if (!existing) return null;
+    existing.banned = banned;
+    existing.updatedAt = new Date().toISOString();
+    return existing;
+  }
+
   async deleteUser(id: string): Promise<boolean> {
     const index = this.users.findIndex((u) => u.id === id);
     if (index === -1) return false;

@@ -66,6 +66,15 @@ export class MongoUserRepository implements IUserRepository {
     return result ? this.toUser(result) : null;
   }
 
+  async setBanned(id: string, banned: boolean): Promise<User | null> {
+    const result = await this.collection.findOneAndUpdate(
+      { _id: id },
+      { $set: { banned, updatedAt: new Date().toISOString() } },
+      { returnDocument: "after" },
+    );
+    return result ? this.toUser(result) : null;
+  }
+
   async deleteUser(id: string): Promise<boolean> {
     const result = await this.collection.deleteOne({ _id: id });
     return result.deletedCount === 1;
