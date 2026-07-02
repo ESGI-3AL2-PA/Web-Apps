@@ -40,7 +40,12 @@ export const conversationsContract = c.router({
     summary: "Get a single conversation by ID (participant only)",
     metadata: auth({
       audience: "api",
-      scope: { resource: "conversation", ownerArrayField: "participants", notFoundOnDeny: true },
+      scope: {
+        resource: "conversation",
+        ownerArrayField: "participants",
+        districtField: "districtId",
+        notFoundOnDeny: true,
+      },
     }),
   },
 
@@ -50,6 +55,7 @@ export const conversationsContract = c.router({
     body: CreateConversationDtoSchema,
     responses: {
       201: ConversationResponseDtoSchema,
+      404: NotFoundErrorSchema,
     },
     summary: "Create a new conversation",
     metadata: auth({ audience: "api" }),
@@ -67,7 +73,12 @@ export const conversationsContract = c.router({
     summary: "Get messages of a conversation (participant only)",
     metadata: auth({
       audience: "api",
-      scope: { resource: "conversation", ownerArrayField: "participants", notFoundOnDeny: true },
+      scope: {
+        resource: "conversation",
+        ownerArrayField: "participants",
+        districtField: "districtId",
+        notFoundOnDeny: true,
+      },
     }),
   },
 
@@ -83,7 +94,12 @@ export const conversationsContract = c.router({
     summary: "Send a message in a conversation (participant only)",
     metadata: auth({
       audience: "api",
-      scope: { resource: "conversation", ownerArrayField: "participants", notFoundOnDeny: true },
+      scope: {
+        resource: "conversation",
+        ownerArrayField: "participants",
+        districtField: "districtId",
+        notFoundOnDeny: true,
+      },
     }),
   },
 
@@ -99,7 +115,12 @@ export const conversationsContract = c.router({
     summary: "Mark a message as read (conversation participant only)",
     metadata: auth({
       audience: "api",
-      scope: { resource: "messageParticipants", ownerArrayField: "participants", notFoundOnDeny: true },
+      scope: {
+        resource: "messageParticipants",
+        ownerArrayField: "participants",
+        districtField: "districtId",
+        notFoundOnDeny: true,
+      },
     }),
   },
 
@@ -115,7 +136,7 @@ export const conversationsContract = c.router({
     summary: "Attach media (photo/audio/file) to an existing message (sender only)",
     metadata: auth({
       audience: "api",
-      scope: { resource: "message", ownerField: "senderId", notFoundOnDeny: true },
+      scope: { resource: "message", ownerField: "senderId", districtField: "districtId", notFoundOnDeny: true },
     }),
   },
 });
