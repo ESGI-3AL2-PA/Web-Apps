@@ -10,10 +10,15 @@ import { StatusBadge } from "../../components/StatusBadge";
 import { FormModal } from "../../components/FormModal";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { Field } from "../../components/Field";
-import { formatDate } from "../../lib/format";
+import { useToast } from "../../components/Toast";
+import { useAsyncAction } from "../../hooks/useAsyncAction";
+import { useDistrictScope } from "../../app/DistrictScopeProvider";
+import { formatDate, formatTokens } from "../../lib/format";
 
 export default function UsersList() {
   const list = useScopedList<UserResponseDto>(listUsers);
+  const toast = useToast();
+  const del = useAsyncAction();
   const [viewing, setViewing] = useState<UserResponseDto | null>(null);
   const [editing, setEditing] = useState<UserResponseDto | null>(null);
   const [deleting, setDeleting] = useState<UserResponseDto | null>(null);
@@ -25,7 +30,7 @@ export default function UsersList() {
     },
     { header: "Email", cell: (u) => u.email },
     { header: "Role", cell: (u) => <StatusBadge value={u.role} /> },
-    { header: "Balance", cell: (u) => u.balance },
+    { header: "Balance", cell: (u) => formatTokens(u.balance) },
     { header: "Verified", cell: (u) => (u.emailVerified ? "✓" : "—") },
     { header: "Created", cell: (u) => formatDate(u.createdAt) },
   ];
@@ -70,6 +75,7 @@ export default function UsersList() {
           onClose={() => setEditing(null)}
           onSaved={() => {
             setEditing(null);
+            toast.show("User updated");
             list.refetch();
           }}
         />
@@ -78,19 +84,27 @@ export default function UsersList() {
         open={!!deleting}
         title="Delete user"
         message={`Permanently delete ${deleting?.email}? This cannot be undone.`}
-        onCancel={() => setDeleting(null)}
-        onConfirm={async () => {
-          if (!deleting) return;
-          await deleteUser(deleting.id);
+        busy={del.busy}
+        error={del.error}
+        onCancel={() => {
           setDeleting(null);
-          list.refetch();
+          del.reset();
         }}
+        onConfirm={() =>
+          del.run(async () => {
+            await deleteUser(deleting!.id);
+            toast.show("User deleted");
+            setDeleting(null);
+            list.refetch();
+          })
+        }
       />
     </div>
   );
 }
 
 function UserView({ user, onClose }: { user: UserResponseDto; onClose: () => void }) {
+  const scope = useDistrictScope();
   const [balance, setBalance] = useState<UserBalanceResponseDto | null>(null);
   const [txns, setTxns] = useState<TransactionResponseDto[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -117,9 +131,9 @@ function UserView({ user, onClose }: { user: UserResponseDto; onClose: () => voi
         <Info label="Email" value={user.email} />
         <Info label="Phone" value={user.phone ?? "—"} />
         <Info label="Role" value={user.role} />
-        <Info label="District" value={user.districtId ?? "—"} />
+        <Info label="District" value={scope.districtName ?? user.districtId ?? "—"} />
         <Info label="Address" value={user.address ?? "—"} />
-        <Info label="Balance" value={String(balance?.balance ?? user.balance)} />
+        <Info label="Balance" value={formatTokens(balance?.balance ?? user.balance)} />
       </div>
       {error && <p className="text-sm text-error">{error}</p>}
       <div>
@@ -133,7 +147,7 @@ function UserView({ user, onClose }: { user: UserResponseDto; onClose: () => voi
                 <span>
                   <StatusBadge value={t.type} /> <span className="text-base-content/60">{t.refType ?? ""}</span>
                 </span>
-                <span className="font-medium">{t.amount}</span>
+                <span className="font-medium">{formatTokens(t.amount)}</span>
                 <span className="text-base-content/60">{formatDate(t.createdAt)}</span>
               </li>
             ))}
