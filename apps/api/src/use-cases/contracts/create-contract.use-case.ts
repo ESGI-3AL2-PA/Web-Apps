@@ -3,7 +3,7 @@ import type { Contract } from "../../entities/contract.entity.js";
 import type { IContractRepository } from "../../repositories/Contract/contract.repository.js";
 
 export const createContractUseCase = (contractRepository: IContractRepository) => {
-  return async (data: CreateContractDto & { providerId: string }): Promise<Contract> => {
+  return async (data: CreateContractDto & { providerId: string; districtId: string }): Promise<Contract> => {
     return await contractRepository.createContract({
       ...data,
       openSignDocumentId: "",
