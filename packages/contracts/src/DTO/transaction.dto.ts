@@ -10,6 +10,7 @@ export const TransactionResponseDtoSchema = z
   .object({
     id: z.string().openapi({ description: "Unique transaction identifier" }),
     userId: z.string().openapi({ description: "ID of the user this transaction belongs to" }),
+    districtId: z.string().openapi({ description: "District of the user this transaction belongs to" }),
     type: TransactionTypeSchema.openapi({ description: "Direction of the points movement" }),
     amount: z.number().int().openapi({ description: "Amount in tokens (can be negative for debits)" }),
     refId: z.string().optional().openapi({ description: "ID of the referenced resource" }),
@@ -38,6 +39,7 @@ export const TransactionQueryDtoSchema = z
     page: z.coerce.number().int().min(1).optional().default(1),
     limit: z.coerce.number().int().min(1).max(100).optional().default(20),
     userId: z.string().optional(),
+    districtId: z.string().optional(),
     type: TransactionTypeSchema.optional(),
     refType: TransactionRefTypeSchema.optional(),
   })
