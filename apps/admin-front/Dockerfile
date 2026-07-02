@@ -21,11 +21,17 @@ COPY apps/admin-front/ ./apps/admin-front/
 EXPOSE 4000
 CMD ["npx", "vite", "--host", "--port", "4000", "--clearScreen", "false", "--config", "apps/admin-front/vite.config.ts", "apps/admin-front"]
 
-# PROD
-FROM deps AS prod
+# BUILD (prod bundle — VITE_* are inlined at build time)
+FROM deps AS build
 ENV NODE_ENV=production
+ARG VITE_AUTH_SERVICE_URL
 COPY packages/ ./packages/
 COPY apps/admin-front/ ./apps/admin-front/
 RUN npx turbo run build --filter=admin-front
+
+# PROD (static assets served by nginx with SPA fallback)
+FROM nginx:alpine AS prod
+COPY apps/admin-front/nginx.conf /etc/nginx/conf.d/default.conf
+COPY --from=build /app/apps/admin-front/dist /usr/share/nginx/html
 EXPOSE 4000
-CMD ["npx", "vite", "preview", "--host", "--port", "4000", "--config", "apps/admin-front/vite.config.ts", "apps/admin-front"]
+CMD ["nginx", "-g", "daemon off;"]
