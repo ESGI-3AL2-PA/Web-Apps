@@ -1,6 +1,8 @@
 import { initServer } from "@ts-rest/express";
 import { contractsContract } from "@repo/contracts";
 import { resolve } from "../../repositories/container.js";
+import type { IListingRepository } from "../../repositories/Listing/listing.repository.js";
+import { resolveListDistrictScope } from "../../middleware/district-scope.js";
 import { getContractsUseCase } from "../../use-cases/contracts/get-contracts.use-case.js";
 import { getContractByIdUseCase } from "../../use-cases/contracts/get-contract-by-id.use-case.js";
 import { createContractUseCase } from "../../use-cases/contracts/create-contract.use-case.js";
@@ -12,12 +14,17 @@ const s = initServer();
 
 export const contractsRouter = s.router(contractsContract, {
   getContracts: async ({
-    query: { page, limit, listingId, providerId, beneficiaryId, openSignStatus, disputed },
+    query: { page, limit, listingId, districtId, providerId, beneficiaryId, openSignStatus, disputed },
     req,
   }) => {
+    const scope = resolveListDistrictScope(req.user!, districtId);
+    if ("empty" in scope) {
+      return { status: 200, body: { data: [], total: 0, page, limit } };
+    }
     const isAdmin = req.user!.role === "admin";
     const result = await getContractsUseCase(resolve("contract"))({
       listingId,
+      districtId: scope.districtId,
       // Non-admins only see contracts they are a party to; admins may filter by either side.
       providerId: isAdmin ? providerId : undefined,
       beneficiaryId: isAdmin ? beneficiaryId : undefined,
@@ -40,10 +47,18 @@ export const contractsRouter = s.router(contractsContract, {
   },
 
   createContract: async ({ body, req }) => {
+    // Annotated so resolve("listing") gets a contextual type — see listings.router for the same workaround.
+    const listingRepo: IListingRepository = resolve("listing");
+    const listing = await listingRepo.getListingById(body.listingId);
+    if (!listing) {
+      return { status: 404, body: { message: "Listing not found" } };
+    }
     // The request author is the provider; the beneficiary comes from the body.
+    // districtId is derived server-side from the referenced listing, never from the client.
     const newContract = await createContractUseCase(resolve("contract"))({
       ...body,
       providerId: req.user!.sub,
+      districtId: listing.districtId,
     });
     return { status: 201, body: newContract };
   },

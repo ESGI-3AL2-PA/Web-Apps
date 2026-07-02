@@ -1,8 +1,11 @@
 import type { Contract } from "../../entities/contract.entity.js";
 
 export interface IContractRepository {
+  ensureIndexes(): Promise<void>;
+
   getContracts(params: {
     listingId?: string;
+    districtId?: string;
     providerId?: string;
     beneficiaryId?: string;
     // Restrict to contracts where this user is provider OR beneficiary.
