@@ -15,6 +15,11 @@ export class MongoVoteRepository implements IVoteRepository {
     this.responses = db.collection("vote_responses");
   }
 
+  async ensureIndexes(): Promise<void> {
+    // Multikey index backing district-scoped list filtering (votes span multiple districts).
+    await this.votes.createIndex({ districtIds: 1 });
+  }
+
   async getVotes(params: {
     search?: string;
     status?: string;

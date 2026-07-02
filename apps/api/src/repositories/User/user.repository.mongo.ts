@@ -10,6 +10,11 @@ export class MongoUserRepository implements IUserRepository {
     this.collection = db.collection("users");
   }
 
+  async ensureIndexes(): Promise<void> {
+    // Backs district-scoped list filtering.
+    await this.collection.createIndex({ districtId: 1 });
+  }
+
   async getUsers(params: { search?: string; districtId?: string; page?: number; limit?: number }): Promise<{
     data: User[];
     total: number;

@@ -12,6 +12,11 @@ export class MongoListingRepository implements IListingRepository {
     this.collection = db.collection("listings");
   }
 
+  async ensureIndexes(): Promise<void> {
+    // Backs district-scoped list filtering.
+    await this.collection.createIndex({ districtId: 1 });
+  }
+
   async getListings(params: {
     search?: string;
     type?: string;

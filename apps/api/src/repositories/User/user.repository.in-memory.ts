@@ -5,6 +5,10 @@ import type { IUserRepository } from "./user.repository.js";
 export class InMemoryUserRepository implements IUserRepository {
   private users: User[] = [];
 
+  async ensureIndexes(): Promise<void> {
+    // No-op: the in-memory repository has no indexes.
+  }
+
   async getUsers(params: { search?: string; page?: number; limit?: number }): Promise<{
     data: User[];
     total: number;

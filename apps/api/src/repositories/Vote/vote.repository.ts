@@ -1,6 +1,8 @@
 import type { Vote, VoteResponseEntity } from "../../entities/vote.entity.js";
 
 export interface IVoteRepository {
+  ensureIndexes(): Promise<void>;
+
   getVotes(params: {
     search?: string;
     status?: string;

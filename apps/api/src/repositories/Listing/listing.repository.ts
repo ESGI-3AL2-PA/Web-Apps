@@ -1,6 +1,8 @@
 import type { Listing } from "../../entities/listing.entity.js";
 
 export interface IListingRepository {
+  ensureIndexes(): Promise<void>;
+
   getListings(params: {
     search?: string;
     type?: string;

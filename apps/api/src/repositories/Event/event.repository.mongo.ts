@@ -12,6 +12,11 @@ export class MongoEventRepository implements IEventRepository {
     this.collection = db.collection("events");
   }
 
+  async ensureIndexes(): Promise<void> {
+    // Backs district-scoped list filtering.
+    await this.collection.createIndex({ districtId: 1 });
+  }
+
   async getEvents(params: {
     search?: string;
     status?: string;
