@@ -1,4 +1,5 @@
-import type { FormEvent, ReactNode } from "react";
+import { useId, type FormEvent, type ReactNode } from "react";
+import { ModalFrame } from "./ModalFrame";
 
 interface FormModalProps {
   open: boolean;
@@ -15,8 +16,8 @@ interface FormModalProps {
   size?: "md" | "lg";
 }
 
-// Controlled modal — rendered as a fixed overlay rather than relying on flyonui's JS toggle,
-// so open/close is pure React state.
+// Controlled modal — rendered as a focus-trapped overlay (see ModalFrame) rather than relying on
+// flyonui's JS toggle, so open/close is pure React state.
 export function FormModal({
   open,
   title,
@@ -29,12 +30,15 @@ export function FormModal({
   readOnly,
   size = "md",
 }: FormModalProps) {
+  const titleId = useId();
   if (!open) return null;
 
   const body = (
     <>
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold">{title}</h3>
+        <h3 id={titleId} className="text-lg font-semibold">
+          {title}
+        </h3>
         <button type="button" className="btn btn-text btn-circle btn-sm" onClick={onClose} aria-label="Close">
           <span className="icon-[tabler--x] size-5" />
         </button>
@@ -56,10 +60,14 @@ export function FormModal({
   );
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4">
-      <div className={`bg-base-100 rounded-box shadow-lg w-full my-8 p-6 ${size === "lg" ? "max-w-3xl" : "max-w-lg"}`}>
-        {onSubmit && !readOnly ? <form onSubmit={onSubmit}>{body}</form> : body}
-      </div>
-    </div>
+    <ModalFrame
+      onClose={onClose}
+      dismissible={!submitting}
+      align="start"
+      labelledBy={titleId}
+      panelClassName={`my-8 p-6 ${size === "lg" ? "max-w-3xl" : "max-w-lg"}`}
+    >
+      {onSubmit && !readOnly ? <form onSubmit={onSubmit}>{body}</form> : body}
+    </ModalFrame>
   );
 }
