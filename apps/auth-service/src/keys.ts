@@ -7,8 +7,11 @@ let publicKey: KeyLike;
 let jwks: { keys: object[] };
 
 export const initKeys = async () => {
-  const privPem = process.env.AUTH_PRIVATE_KEY;
-  const pubPem = process.env.AUTH_PUBLIC_KEY;
+  // Allow the PEM to be supplied as a single line with escaped newlines (how it
+  // is stored in the SOPS-encrypted env / docker env_file) or with real newlines.
+  const normalizePem = (pem?: string) => pem?.replace(/\\n/g, "\n");
+  const privPem = normalizePem(process.env.AUTH_PRIVATE_KEY);
+  const pubPem = normalizePem(process.env.AUTH_PUBLIC_KEY);
 
   if (privPem && pubPem) {
     privateKey = await importPKCS8(privPem, "RS256");
