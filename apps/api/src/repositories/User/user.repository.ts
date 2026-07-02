@@ -18,5 +18,7 @@ export interface IUserRepository {
 
   updateUser(id: string, data: Partial<Omit<User, "id" | "createdAt" | "updatedAt">>): Promise<User | null>;
 
+  setBanned(id: string, banned: boolean): Promise<User | null>;
+
   deleteUser(id: string): Promise<boolean>;
 }

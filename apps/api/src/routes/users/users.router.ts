@@ -8,6 +8,7 @@ import { getUsersUseCase } from "../../use-cases/users/get-users.use-case.js";
 import { getUserByIdUseCase } from "../../use-cases/users/get-user-by-id.use-case.js";
 import { createUserUseCase } from "../../use-cases/users/create-user.use-case.js";
 import { updateUserUseCase } from "../../use-cases/users/update-user.use-case.js";
+import { banUserUseCase } from "../../use-cases/users/ban-user.use-case.js";
 import { deleteUserUseCase } from "../../use-cases/users/delete-user.use-case.js";
 
 // Strip secrets (password hash + TOTP secret) from user responses.
@@ -45,6 +46,17 @@ export const usersRouter = s.router(usersContract, {
     }
     if (result.kind === "wrong-password") {
       return { status: 401, body: { message: "Current password is incorrect" } };
+    }
+    return { status: 200, body: toDto(result.user) };
+  },
+
+  banUser: async ({ params: { id }, body: { banned } }) => {
+    const result = await banUserUseCase(resolve("user"))(id, banned);
+    if (result.kind === "not-found") {
+      return { status: 404, body: { message: "User not found" } };
+    }
+    if (result.kind === "forbidden") {
+      return { status: 403, body: { message: "Only regular users can be banned" } };
     }
     return { status: 200, body: toDto(result.user) };
   },
