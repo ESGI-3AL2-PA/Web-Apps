@@ -35,10 +35,12 @@ export const usersContract = c.router({
       200: UserResponseDtoSchema,
       404: NotFoundErrorSchema,
     },
-    summary: "Get a single user by ID (self or admin)",
+    summary: "Get a single user by ID (self, same-district admin, or superAdmin)",
     metadata: auth({
       audience: "api",
-      scope: { resource: "user", selfParam: "id", bypassRoles: ["superAdmin"] },
+      // Self (record id === subject) or an admin reading a user in their own district; superAdmin
+      // bypasses. Mirrors the district scoping already applied to GET /users.
+      scope: { resource: "user", ownerField: "id", districtField: "districtId", bypassRoles: ["superAdmin"] },
     }),
   },
 
