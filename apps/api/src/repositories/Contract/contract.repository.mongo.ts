@@ -12,8 +12,14 @@ export class MongoContractRepository implements IContractRepository {
     this.collection = db.collection("contracts");
   }
 
+  async ensureIndexes(): Promise<void> {
+    // Backs district-scoped list filtering.
+    await this.collection.createIndex({ districtId: 1 });
+  }
+
   async getContracts(params: {
     listingId?: string;
+    districtId?: string;
     providerId?: string;
     beneficiaryId?: string;
     partyId?: string;
@@ -27,11 +33,22 @@ export class MongoContractRepository implements IContractRepository {
     page: number;
     limit: number;
   }> {
-    const { listingId, providerId, beneficiaryId, partyId, openSignStatus, disputed, page = 1, limit = 20 } = params;
+    const {
+      listingId,
+      districtId,
+      providerId,
+      beneficiaryId,
+      partyId,
+      openSignStatus,
+      disputed,
+      page = 1,
+      limit = 20,
+    } = params;
 
     const filter: Filter<ContractDoc> = {};
 
     if (listingId) filter.listingId = listingId;
+    if (districtId) filter.districtId = districtId;
     if (providerId) filter.providerId = providerId;
     if (beneficiaryId) filter.beneficiaryId = beneficiaryId;
     if (partyId) filter.$or = [{ providerId: partyId }, { beneficiaryId: partyId }];

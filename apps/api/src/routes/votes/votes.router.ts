@@ -1,6 +1,7 @@
 import { initServer } from "@ts-rest/express";
 import { votesContract } from "@repo/contracts";
 import { resolve } from "../../repositories/container.js";
+import { resolveListDistrictScope } from "../../middleware/district-scope.js";
 import { getVotesUseCase } from "../../use-cases/votes/get-votes.use-case.js";
 import { getVoteByIdUseCase } from "../../use-cases/votes/get-vote-by-id.use-case.js";
 import { createVoteUseCase } from "../../use-cases/votes/create-vote.use-case.js";
@@ -12,8 +13,12 @@ import { getVoteResultsUseCase } from "../../use-cases/votes/get-vote-results.us
 const s = initServer();
 
 export const votesRouter = s.router(votesContract, {
-  getVotes: async ({ query }) => {
-    const result = await getVotesUseCase(resolve("vote"))(query);
+  getVotes: async ({ query, req }) => {
+    const scope = resolveListDistrictScope(req.user!, query.districtId);
+    if ("empty" in scope) {
+      return { status: 200, body: { data: [], total: 0, page: query.page, limit: query.limit } };
+    }
+    const result = await getVotesUseCase(resolve("vote"))({ ...query, districtId: scope.districtId });
     return { status: 200, body: result };
   },
 

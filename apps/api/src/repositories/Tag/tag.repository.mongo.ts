@@ -12,18 +12,24 @@ export class MongoTagRepository implements ITagRepository {
     this.collection = db.collection("tags");
   }
 
-  async getTags(params: { search?: string; page?: number; limit?: number }): Promise<{
+  async ensureIndexes(): Promise<void> {
+    // Backs district-scoped list filtering and the per-district name dedupe in getTagsByNames.
+    await this.collection.createIndex({ districtId: 1, name: 1 });
+  }
+
+  async getTags(params: { search?: string; districtId?: string; page?: number; limit?: number }): Promise<{
     data: Tag[];
     total: number;
     page: number;
     limit: number;
   }> {
-    const { search, page = 1, limit = 20 } = params;
+    const { search, districtId, page = 1, limit = 20 } = params;
 
     const filter: Filter<TagDoc> = {};
     if (search) {
       filter.$or = [{ name: { $regex: search, $options: "i" } }, { description: { $regex: search, $options: "i" } }];
     }
+    if (districtId) filter.districtId = districtId;
 
     const [total, docs] = await Promise.all([
       this.collection.countDocuments(filter),
@@ -40,6 +46,12 @@ export class MongoTagRepository implements ITagRepository {
   async getTagById(id: string): Promise<Tag | null> {
     const doc = await this.collection.findOne({ _id: id });
     return doc ? this.toTag(doc) : null;
+  }
+
+  async getTagsByNames(districtId: string, names: string[]): Promise<Tag[]> {
+    if (names.length === 0) return [];
+    const docs = await this.collection.find({ districtId, name: { $in: names } }).toArray();
+    return docs.map(this.toTag);
   }
 
   async createTag(data: Omit<Tag, "id">): Promise<Tag> {

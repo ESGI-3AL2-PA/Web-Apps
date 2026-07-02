@@ -20,6 +20,8 @@ export const userinfoUseCase = (userReader: IUserReaderRepository) => {
 
     // Never expose the password hash or the TOTP secret.
     const { passwordHash: _passwordHash, totpSecret: _totpSecret, ...userDto } = user;
-    return userDto;
+    // adminDistrictId lives on the token (minted at login/refresh), not the user record —
+    // surface it so the admin front can scope itself to the district this admin administers.
+    return { ...userDto, adminDistrictId: (payload.adminDistrictId as string | null | undefined) ?? null };
   };
 };

@@ -17,6 +17,7 @@ export type NotificationRefType = z.infer<typeof NotificationRefTypeSchema>;
 export const NotificationSchema = z.object({
   id: z.string(),
   recipientId: z.string(),
+  districtId: z.string(),
   type: NotificationTypeSchema,
   title: z.string().min(1).max(200),
   message: z.string().min(1),

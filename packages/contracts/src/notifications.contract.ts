@@ -34,6 +34,7 @@ export const notificationsContract = c.router({
     responses: {
       201: NotificationResponseDtoSchema,
       403: ForbiddenErrorSchema,
+      404: NotFoundErrorSchema,
     },
     summary: "Create a notification (admin only; normally triggered server-side)",
     metadata: auth({ audience: "api", roles: ["admin", "superAdmin"] }),
@@ -54,6 +55,7 @@ export const notificationsContract = c.router({
       scope: {
         resource: "notification",
         ownerField: "recipientId",
+        districtField: "districtId",
         bypassRoles: ["superAdmin"],
         notFoundOnDeny: true,
       },
@@ -86,6 +88,7 @@ export const notificationsContract = c.router({
       scope: {
         resource: "notification",
         ownerField: "recipientId",
+        districtField: "districtId",
         bypassRoles: ["superAdmin"],
         notFoundOnDeny: true,
       },

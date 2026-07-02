@@ -19,6 +19,7 @@ export const NotificationResponseDtoSchema = z
   .object({
     id: z.string().openapi({ description: "Unique notification identifier" }),
     recipientId: z.string().openapi({ description: "ID of the user receiving the notification" }),
+    districtId: z.string().openapi({ description: "ID of the district this notification belongs to" }),
     type: NotificationTypeSchema.openapi({ description: "Notification category" }),
     title: z.string().openapi({ description: "Title", example: "New message" }),
     message: z.string().openapi({ description: "Notification body" }),
@@ -50,6 +51,7 @@ export const NotificationQueryDtoSchema = z
     page: z.coerce.number().int().min(1).optional().default(1),
     limit: z.coerce.number().int().min(1).max(100).optional().default(20),
     recipientId: z.string().optional(),
+    districtId: z.string().optional(),
     type: NotificationTypeSchema.optional(),
     read: BooleanQueryParamSchema.optional(),
   })

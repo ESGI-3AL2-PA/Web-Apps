@@ -8,6 +8,7 @@ import {
   TagResponseDtoSchema,
   UpdateTagDtoSchema,
   NotFoundErrorSchema,
+  BadRequestErrorSchema,
   PaginatedResponseDtoSchema,
 } from "./DTO";
 import { auth } from "./auth-meta";
@@ -35,7 +36,14 @@ export const tagsContract = c.router({
       404: NotFoundErrorSchema,
     },
     summary: "Get a single tag by ID",
-    metadata: auth({ audience: "api" }),
+    metadata: auth({
+      audience: "api",
+      scope: {
+        resource: "tag",
+        districtField: "districtId",
+        bypassRoles: ["superAdmin"],
+      },
+    }),
   },
 
   createTag: {
@@ -44,6 +52,7 @@ export const tagsContract = c.router({
     body: CreateTagDtoSchema,
     responses: {
       201: TagResponseDtoSchema,
+      400: BadRequestErrorSchema,
     },
     summary: "Create a new tag (admin only)",
     metadata: auth({ audience: "api", roles: ["admin", "superAdmin"] }),
@@ -59,7 +68,15 @@ export const tagsContract = c.router({
       404: NotFoundErrorSchema,
     },
     summary: "Partially update a tag (admin only)",
-    metadata: auth({ audience: "api", roles: ["admin", "superAdmin"] }),
+    metadata: auth({
+      audience: "api",
+      roles: ["admin", "superAdmin"],
+      scope: {
+        resource: "tag",
+        districtField: "districtId",
+        bypassRoles: ["superAdmin"],
+      },
+    }),
   },
 
   deleteTag: {
@@ -72,6 +89,14 @@ export const tagsContract = c.router({
       404: NotFoundErrorSchema,
     },
     summary: "Delete a tag (admin only)",
-    metadata: auth({ audience: "api", roles: ["admin", "superAdmin"] }),
+    metadata: auth({
+      audience: "api",
+      roles: ["admin", "superAdmin"],
+      scope: {
+        resource: "tag",
+        districtField: "districtId",
+        bypassRoles: ["superAdmin"],
+      },
+    }),
   },
 });

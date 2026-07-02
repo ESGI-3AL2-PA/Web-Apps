@@ -9,6 +9,7 @@ export type TransactionRefType = z.infer<typeof TransactionRefTypeSchema>;
 export const TransactionSchema = z.object({
   id: z.string(),
   userId: z.string(),
+  districtId: z.string(),
   type: TransactionTypeSchema,
   amount: z.number().int(),
   refId: z.string().optional(),

@@ -10,6 +10,7 @@ export const ConversationResponseDtoSchema = z
   .object({
     id: z.string().openapi({ description: "Unique conversation identifier" }),
     participants: z.array(z.string()).openapi({ description: "IDs of the participants" }),
+    districtId: z.string().openapi({ description: "District shared by all participants" }),
     type: ConversationTypeSchema.openapi({ description: "direct or group" }),
     name: z.string().optional().openapi({ description: "Name (mostly for group conversations)" }),
     lastMessageAt: z.string().datetime().optional().openapi({ description: "Timestamp of the last message" }),
@@ -35,6 +36,7 @@ export const ConversationQueryDtoSchema = z
     page: z.coerce.number().int().min(1).optional().default(1),
     limit: z.coerce.number().int().min(1).max(100).optional().default(20),
     participantId: z.string().optional(),
+    districtId: z.string().optional(),
   })
   .openapi({ title: "ConversationQuery" });
 export type ConversationQueryDto = z.infer<typeof ConversationQueryDtoSchema>;
@@ -44,6 +46,7 @@ export const MessageResponseDtoSchema = z
     id: z.string(),
     senderId: z.string(),
     conversationId: z.string(),
+    districtId: z.string(),
     type: MessageTypeSchema,
     content: z.string().openapi({ description: "Text content (or caption for media)" }),
     mediaUrl: z.string().optional().openapi({ description: "Media URL when type is image/audio/file" }),

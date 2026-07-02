@@ -15,16 +15,27 @@ export class MongoConversationRepository implements IConversationRepository {
     this.messages = db.collection("messages");
   }
 
-  async getConversations(params: { participantId?: string; page?: number; limit?: number }): Promise<{
+  async ensureIndexes(): Promise<void> {
+    // Backs district-scoped (admin) conversation list filtering.
+    await this.conversations.createIndex({ districtId: 1 });
+  }
+
+  async getConversations(params: {
+    participantId?: string;
+    districtId?: string;
+    page?: number;
+    limit?: number;
+  }): Promise<{
     data: Conversation[];
     total: number;
     page: number;
     limit: number;
   }> {
-    const { participantId, page = 1, limit = 20 } = params;
+    const { participantId, districtId, page = 1, limit = 20 } = params;
 
     const filter: Filter<ConversationDoc> = {};
     if (participantId) filter.participants = participantId;
+    if (districtId) filter.districtId = districtId;
 
     const [total, docs] = await Promise.all([
       this.conversations.countDocuments(filter),
