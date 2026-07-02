@@ -20,6 +20,7 @@ export const UserResponseDtoSchema = z
       .optional()
       .openapi({ description: "District this user administers (admin role only). Populated on login/userinfo." }),
     balance: z.number().int().openapi({ description: "User balance in tokens" }),
+    banned: z.boolean().optional().openapi({ description: "Whether the account is banned (blocked from logging in)" }),
     emailVerified: z.boolean().openapi({ description: "Whether the email has been verified" }),
     totpEnabled: z.boolean().openapi({ description: "Whether the user has TOTP MFA enabled" }),
     createdAt: z.string().datetime().openapi({ description: "Creation timestamp" }),
@@ -67,6 +68,13 @@ export const UpdateUserDtoSchema = z
   })
   .openapi({ title: "UpdateUser" });
 export type UpdateUserDto = z.infer<typeof UpdateUserDtoSchema>;
+
+export const BanUserDtoSchema = z
+  .object({
+    banned: z.boolean().openapi({ description: "true to ban (block login), false to lift the ban" }),
+  })
+  .openapi({ title: "BanUser" });
+export type BanUserDto = z.infer<typeof BanUserDtoSchema>;
 
 export const UserParamsDtoSchema = z
   .object({
