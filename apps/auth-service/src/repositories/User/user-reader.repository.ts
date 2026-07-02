@@ -9,6 +9,7 @@ export interface UserRecord {
   address: string;
   districtId: string;
   balance: number;
+  banned?: boolean;
   emailVerified: boolean;
   totpSecret: string | null;
   totpEnabled: boolean;
