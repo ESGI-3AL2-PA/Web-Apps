@@ -40,6 +40,14 @@ export function useList<T>(
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
 
+  // `search` drives the input immediately; `debouncedSearch` drives the fetch so typing doesn't
+  // fire a request per keystroke.
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(t);
+  }, [search]);
+
   const setSearch = useCallback((value: string) => {
     setPage(1);
     setSearchState(value);
@@ -72,7 +80,7 @@ export function useList<T>(
     setError(null);
 
     const params: ListParams = { page, limit };
-    if (search) params.search = search;
+    if (debouncedSearch) params.search = debouncedSearch;
     for (const [key, value] of Object.entries(filters)) {
       if (value) params[key] = value;
     }
@@ -97,7 +105,7 @@ export function useList<T>(
     return () => {
       cancelled = true;
     };
-  }, [fetcher, page, limit, search, filters, reloadKey, extraParamsKey]);
+  }, [fetcher, page, limit, debouncedSearch, filters, reloadKey, extraParamsKey]);
 
   return {
     items,
