@@ -25,10 +25,9 @@ export interface IIncidentRepository {
 
   deleteIncident(id: string): Promise<boolean>;
 
-  getStats(): Promise<{
+  getStats(districtId?: string): Promise<{
     total: number;
     byStatus: Record<string, number>;
     byCategory: Record<string, number>;
-    byDistrict: Record<string, number>;
   }>;
 }

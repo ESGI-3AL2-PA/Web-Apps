@@ -7,6 +7,7 @@ import {
   IncidentQueryDtoSchema,
   IncidentResponseDtoSchema,
   IncidentStatsDtoSchema,
+  IncidentStatsQueryDtoSchema,
   UpdateIncidentDtoSchema,
   NotFoundErrorSchema,
   ForbiddenErrorSchema,
@@ -31,10 +32,11 @@ export const incidentsContract = c.router({
   getIncidentStats: {
     method: "GET",
     path: "/incidents/stats",
+    query: IncidentStatsQueryDtoSchema,
     responses: {
       200: IncidentStatsDtoSchema,
     },
-    summary: "Get aggregated incident statistics",
+    summary: "Get aggregated incident statistics (district-scoped for admins)",
     metadata: auth({ audience: "api" }),
   },
 
