@@ -1,7 +1,7 @@
 import { randomUUID } from "crypto";
-import type { Collection, Db, Filter } from "mongodb";
+import type { Collection, Db, Filter, UpdateFilter } from "mongodb";
 import type { District, GeoJson } from "../../entities/district.entity.js";
-import type { IDistrictRepository } from "./district.repository.js";
+import type { IDistrictRepository, UpdateDistrictData } from "./district.repository.js";
 
 type DistrictDoc = Omit<District, "id"> & { _id: string };
 
@@ -58,12 +58,16 @@ export class MongoDistrictRepository implements IDistrictRepository {
     return this.toDistrict(doc);
   }
 
-  async updateDistrict(id: string, data: Partial<Omit<District, "id">>): Promise<District | null> {
-    const result = await this.collection.findOneAndUpdate(
-      { _id: id },
-      { $set: { ...data } },
-      { returnDocument: "after" },
-    );
+  async updateDistrict(id: string, data: UpdateDistrictData): Promise<District | null> {
+    // geoJson: null means "clear the boundary" — $unset it rather than $set null, since the
+    // 2dsphere index rejects a literal null value but tolerates the field being absent.
+    const { geoJson, ...rest } = data;
+    const update: UpdateFilter<DistrictDoc> = { $set: { ...rest, ...(geoJson ? { geoJson } : {}) } };
+    if (geoJson === null) {
+      update.$unset = { geoJson: "" };
+    }
+
+    const result = await this.collection.findOneAndUpdate({ _id: id }, update, { returnDocument: "after" });
     return result ? this.toDistrict(result) : null;
   }
 
