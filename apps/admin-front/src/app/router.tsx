@@ -4,7 +4,7 @@ import { DistrictScopeProvider } from "./DistrictScopeProvider";
 import AdminLayout from "../layouts/AdminLayout";
 import Dashboard from "../pages/dashboard/Dashboard";
 import UsersList from "../pages/users/UsersList";
-import DistrictsList from "../pages/districts/DistrictsList";
+import DistrictPage from "../pages/districts/DistrictPage";
 import TagsList from "../pages/tags/TagsList";
 import IncidentsList from "../pages/incidents/IncidentsList";
 import ListingsList from "../pages/listings/ListingsList";
@@ -23,7 +23,7 @@ export const router = createBrowserRouter([
     children: [
       { path: "/", element: <Dashboard /> },
       { path: "/users", element: <UsersList /> },
-      { path: "/districts", element: <DistrictsList /> },
+      { path: "/districts", element: <DistrictPage /> },
       { path: "/tags", element: <TagsList /> },
       { path: "/incidents", element: <IncidentsList /> },
       { path: "/listings", element: <ListingsList /> },
