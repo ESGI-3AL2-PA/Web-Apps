@@ -23,19 +23,11 @@ const NAV: { section: string; items: NavItem[] }[] = [
     ],
   },
   {
-    section: "Economy",
-    items: [
-      { to: "/transactions", label: "Transactions", icon: "icon-[tabler--coins]" },
-      { to: "/notifications", label: "Notifications", icon: "icon-[tabler--bell]" },
-    ],
-  },
-  {
     section: "Moderation",
     items: [
       { to: "/listings", label: "Listings", icon: "icon-[tabler--clipboard-list]" },
       { to: "/events", label: "Events", icon: "icon-[tabler--calendar-event]" },
       { to: "/votes", label: "Votes", icon: "icon-[tabler--checkbox]" },
-      { to: "/contracts", label: "Contracts", icon: "icon-[tabler--file-text]" },
     ],
   },
 ];

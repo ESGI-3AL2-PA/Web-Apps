@@ -7,12 +7,9 @@ import UsersList from "../pages/users/UsersList";
 import DistrictsList from "../pages/districts/DistrictsList";
 import TagsList from "../pages/tags/TagsList";
 import IncidentsList from "../pages/incidents/IncidentsList";
-import TransactionsList from "../pages/transactions/TransactionsList";
-import NotificationsList from "../pages/notifications/NotificationsList";
 import ListingsList from "../pages/listings/ListingsList";
 import EventsList from "../pages/events/EventsList";
 import VotesList from "../pages/votes/VotesList";
-import ContractsList from "../pages/contracts/ContractsList";
 
 export const router = createBrowserRouter([
   {
@@ -29,12 +26,9 @@ export const router = createBrowserRouter([
       { path: "/districts", element: <DistrictsList /> },
       { path: "/tags", element: <TagsList /> },
       { path: "/incidents", element: <IncidentsList /> },
-      { path: "/transactions", element: <TransactionsList /> },
-      { path: "/notifications", element: <NotificationsList /> },
       { path: "/listings", element: <ListingsList /> },
       { path: "/events", element: <EventsList /> },
       { path: "/votes", element: <VotesList /> },
-      { path: "/contracts", element: <ContractsList /> },
     ],
   },
 ]);
