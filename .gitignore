@@ -11,3 +11,5 @@ server/dist
 public/dist
 CLAUDE.local.md
 .claude/settings.local.json
+.playwright-mcp
+graphify-out
