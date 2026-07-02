@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && cp -r src/login-page src/register-page dist/",
     "dev": "tsx --watch src/index.ts",
     "start": "node ./dist/index.js",
     "seed:superadmin": "tsx src/seed-superadmin.ts",

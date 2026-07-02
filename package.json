@@ -2,7 +2,7 @@
   "private": true,
   "scripts": {
     "build": "turbo run build",
-    "dev": "turbo run dev",
+    "dev": "docker compose -f docker-compose.local.yml up -d && turbo run dev",
     "lint": "turbo run lint",
     "lint:fix": "turbo run lint:fix",
     "start": "turbo run start",

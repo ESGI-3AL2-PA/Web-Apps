@@ -1,7 +1,20 @@
-import { defineConfig } from "vite";
+import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
+import { fileURLToPath } from "node:url";
 
-export default defineConfig({
-  plugins: [react(), tailwindcss()],
+// Ports are env-driven with a sane default. process.env wins (compose sets a
+// fixed internal port in Docker); otherwise fall back to the repo-root .env,
+// then the default.
+const repoRoot = fileURLToPath(new URL("../../", import.meta.url));
+
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, repoRoot, "");
+  const port = Number(process.env.LANDING_PORT ?? env.LANDING_PORT) || 6060;
+
+  return {
+    plugins: [react(), tailwindcss()],
+    server: { port },
+    preview: { port },
+  };
 });

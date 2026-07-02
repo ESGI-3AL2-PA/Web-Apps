@@ -13,9 +13,10 @@ import { authContract } from "@repo/contracts";
 import { authRouter } from "./routes/auth/auth.router.js";
 import { jwksHandler } from "./routes/jwks.route.js";
 import { errorHandler, NotFoundError } from "./middleware/error-handler.js";
-import { connectDB } from "./repositories/mongodb.connector.js";
+import { connectDB, closeDB } from "./repositories/mongodb.connector.js";
 import { initContainer } from "./repositories/container.js";
 import { initKeys } from "./keys.js";
+import { setupGracefulShutdown } from "./shutdown.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -25,7 +26,7 @@ const allowedOrigins = (process.env.CORS_ORIGINS ?? "http://localhost:3000,http:
   .filter(Boolean);
 
 const app: Application = express();
-const port = Number(process.env.PORT) || 3001;
+const port = Number(process.env.AUTH_PORT ?? process.env.PORT) || 3001;
 
 // Behind a reverse proxy/LB, set TRUST_PROXY (e.g. "1" for one hop) so
 // express-rate-limit keys on the real client IP. Left unset by default so a
@@ -138,7 +139,7 @@ connectDB()
     initContainer(db);
     await initKeys();
 
-    app.listen(port, () => {
+    const server = app.listen(port, () => {
       const localUrl = `http://localhost:${port}`;
 
       console.log("");
@@ -151,6 +152,7 @@ connectDB()
       console.log("");
       console.log(`\x1b[33m⚡ Ready to accept connections\x1b[0m`);
     });
+    setupGracefulShutdown(server, closeDB);
   })
   .catch((err) => {
     console.error("Failed to start auth-service:", err);
