@@ -2,7 +2,9 @@ import { initContract } from "@ts-rest/core";
 import { z } from "zod";
 
 import {
+  BanUserDtoSchema,
   CreateUserDtoSchema,
+  ForbiddenErrorSchema,
   NotFoundErrorSchema,
   UnauthorizedErrorSchema,
   UpdateUserDtoSchema,
@@ -67,6 +69,24 @@ export const usersContract = c.router({
     metadata: auth({
       audience: "api",
       scope: { resource: "user", selfParam: "id", bypassRoles: ["superAdmin"] },
+    }),
+  },
+
+  banUser: {
+    method: "PATCH",
+    path: "/users/:id/ban",
+    pathParams: UserParamsDtoSchema,
+    body: BanUserDtoSchema,
+    responses: {
+      200: UserResponseDtoSchema,
+      403: ForbiddenErrorSchema,
+      404: NotFoundErrorSchema,
+    },
+    summary: "Ban or unban a regular user. Admins are scoped to their district; superAdmin any.",
+    metadata: auth({
+      audience: "api",
+      roles: ["admin", "superAdmin"],
+      scope: { resource: "user", districtField: "districtId", bypassRoles: ["superAdmin"] },
     }),
   },
 
