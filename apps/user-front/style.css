@@ -1,23 +1,35 @@
-@import "tailwindcss/preflight";
-@tailwind utilities;
 @import "tailwindcss";
 @plugin "flyonui";
 
 @theme {
-    --color-blc: #f8f7f2;
+  /* Registered so the `blc`/`brand-soft` utilities exist; values are overridden per theme below. */
+  --color-blc: #f8f7f2;
+  --color-brand-soft: #e29279;
 }
 
 /* thème DaisyUI/Flyonui */
 [data-theme="light"] {
-    --color-primary: #6366f1;
-    --color-secondary: #f59e0b;
-    --color-accent: #06b6d4;
-    --color-base-100: #ffffff;
+  --color-primary: #da7758;
+  --color-primary-content: #ffffff;
+  --color-secondary: #f59e0b;
+  --color-secondary-content: #ffffff;
+  --color-accent: #06b6d4;
+  --color-base-100: #ffffff;
+  --color-base-200: #f1f0eb;
+  --color-base-300: #e4e2da;
+  --color-base-content: #1a1210;
+  --color-blc: #f8f7f2;
 }
 
 [data-theme="dark"] {
-    --color-primary: #818cf8;
-    --color-secondary: #fbbf24;
-    --color-accent: #22d3ee;
-    --color-base-100: #0f172a;
+  --color-primary: #e08a6f;
+  --color-primary-content: #1a1210;
+  --color-secondary: #fbbf24;
+  --color-secondary-content: #1a1210;
+  --color-accent: #22d3ee;
+  --color-base-100: #0f172a;
+  --color-base-200: #1e293b;
+  --color-base-300: #334155;
+  --color-base-content: #e5e7eb;
+  --color-blc: #1e293b;
 }

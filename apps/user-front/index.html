@@ -1,17 +1,25 @@
 <!doctype html>
-<html lang="en" data-theme="light">
+<html lang="fr" data-theme="light">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" href="/Logo-connectedNeighbours.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script>
+      // Seed the theme before paint to avoid a flash of the wrong theme.
+      (function () {
+        try {
+          var stored = localStorage.getItem("theme");
+          var theme = stored || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+          document.documentElement.setAttribute("data-theme", theme);
+        } catch (e) {}
+      })();
+    </script>
+    <link href="./style.css" rel="stylesheet" />
+    <title>Connected NeighBours</title>
+  </head>
 
-<head>
-  <meta charset="UTF-8" />
-  <link rel="icon" type="image/png" href="/Logo-connectedNeighbours.png" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <link href="./style.css" rel="stylesheet">
-  <title>Connected NeighBours</title>
-</head>
-
-<body>
-  <div id="app"></div>
-  <script type="module" src="/src/main.tsx"></script>
-</body>
-
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
 </html>
