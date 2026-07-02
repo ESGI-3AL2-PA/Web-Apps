@@ -64,6 +64,13 @@ export const ListingQueryDtoSchema = z
     status: ListingStatusSchema.optional(),
     districtId: z.string().optional(),
     authorId: z.string().optional(),
+    // Query strings deliver a single tag as a string and multiple as an array — normalise to an array.
+    tags: z
+      .union([z.string(), z.array(z.string())])
+      .optional()
+      .transform((v) => (v === undefined ? undefined : Array.isArray(v) ? v : [v])),
+    minPrice: z.coerce.number().int().min(0).optional(),
+    maxPrice: z.coerce.number().int().min(0).optional(),
   })
   .openapi({ title: "ListingQuery" });
 export type ListingQueryDto = z.infer<typeof ListingQueryDtoSchema>;

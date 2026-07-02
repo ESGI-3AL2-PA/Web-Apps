@@ -23,6 +23,9 @@ export class MongoListingRepository implements IListingRepository {
     status?: string;
     districtId?: string;
     authorId?: string;
+    tags?: string[];
+    minPrice?: number;
+    maxPrice?: number;
     page?: number;
     limit?: number;
   }): Promise<{
@@ -31,7 +34,7 @@ export class MongoListingRepository implements IListingRepository {
     page: number;
     limit: number;
   }> {
-    const { search, type, status, districtId, authorId, page = 1, limit = 20 } = params;
+    const { search, type, status, districtId, authorId, tags, minPrice, maxPrice, page = 1, limit = 20 } = params;
 
     const filter: Filter<ListingDoc> = {};
 
@@ -42,6 +45,13 @@ export class MongoListingRepository implements IListingRepository {
     if (status) filter.status = status as ListingStatus;
     if (districtId) filter.districtId = districtId;
     if (authorId) filter.authorId = authorId;
+    if (tags && tags.length > 0) filter.tags = { $in: tags };
+    if (minPrice !== undefined || maxPrice !== undefined) {
+      filter.price = {
+        ...(minPrice !== undefined ? { $gte: minPrice } : {}),
+        ...(maxPrice !== undefined ? { $lte: maxPrice } : {}),
+      };
+    }
 
     const [total, docs] = await Promise.all([
       this.collection.countDocuments(filter),
