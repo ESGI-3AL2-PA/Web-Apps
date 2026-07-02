@@ -1,6 +1,7 @@
 import { initServer } from "@ts-rest/express";
 import { tagsContract } from "@repo/contracts";
 import { resolve } from "../../repositories/container.js";
+import { resolveListDistrictScope } from "../../middleware/district-scope.js";
 import { getTagsUseCase } from "../../use-cases/tags/get-tags.use-case.js";
 import { getTagByIdUseCase } from "../../use-cases/tags/get-tag-by-id.use-case.js";
 import { createTagUseCase } from "../../use-cases/tags/create-tag.use-case.js";
@@ -10,8 +11,12 @@ import { deleteTagUseCase } from "../../use-cases/tags/delete-tag.use-case.js";
 const s = initServer();
 
 export const tagsRouter = s.router(tagsContract, {
-  getTags: async ({ query: { page, limit, search } }) => {
-    const result = await getTagsUseCase(resolve("tag"))({ search, page, limit });
+  getTags: async ({ query: { page, limit, search, districtId }, req }) => {
+    const scope = resolveListDistrictScope(req.user!, districtId);
+    if ("empty" in scope) {
+      return { status: 200, body: { data: [], total: 0, page, limit } };
+    }
+    const result = await getTagsUseCase(resolve("tag"))({ search, districtId: scope.districtId, page, limit });
     return { status: 200, body: result };
   },
 
@@ -23,8 +28,12 @@ export const tagsRouter = s.router(tagsContract, {
     return { status: 200, body: tag };
   },
 
-  createTag: async ({ body }) => {
-    const newTag = await createTagUseCase(resolve("tag"))(body);
+  createTag: async ({ body, req }) => {
+    const districtId = req.user!.role === "admin" ? req.user!.adminDistrictId : body.districtId;
+    if (!districtId) {
+      return { status: 400, body: { message: "districtId required" } };
+    }
+    const newTag = await createTagUseCase(resolve("tag"))({ ...body, districtId });
     return { status: 201, body: newTag };
   },
 

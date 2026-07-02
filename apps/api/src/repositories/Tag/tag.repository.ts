@@ -1,7 +1,9 @@
 import type { Tag } from "../../entities/tag.entity.js";
 
 export interface ITagRepository {
-  getTags(params: { search?: string; page?: number; limit?: number }): Promise<{
+  ensureIndexes(): Promise<void>;
+
+  getTags(params: { search?: string; districtId?: string; page?: number; limit?: number }): Promise<{
     data: Tag[];
     total: number;
     page: number;
@@ -9,6 +11,8 @@ export interface ITagRepository {
   }>;
 
   getTagById(id: string): Promise<Tag | null>;
+
+  getTagsByNames(districtId: string, names: string[]): Promise<Tag[]>;
 
   createTag(data: Omit<Tag, "id">): Promise<Tag>;
 
