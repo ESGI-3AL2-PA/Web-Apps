@@ -1,6 +1,7 @@
 import { initServer } from "@ts-rest/express";
 import { eventsContract } from "@repo/contracts";
 import { resolve } from "../../repositories/container.js";
+import { resolveListDistrictScope } from "../../middleware/district-scope.js";
 import { getEventsUseCase } from "../../use-cases/events/get-events.use-case.js";
 import { getEventByIdUseCase } from "../../use-cases/events/get-event-by-id.use-case.js";
 import { createEventUseCase } from "../../use-cases/events/create-event.use-case.js";
@@ -13,11 +14,15 @@ import { attendEventUseCase } from "../../use-cases/events/attend-event.use-case
 const s = initServer();
 
 export const eventsRouter = s.router(eventsContract, {
-  getEvents: async ({ query: { page, limit, search, status, districtId, creatorId } }) => {
+  getEvents: async ({ query: { page, limit, search, status, districtId, creatorId }, req }) => {
+    const scope = resolveListDistrictScope(req.user!, districtId);
+    if ("empty" in scope) {
+      return { status: 200, body: { data: [], total: 0, page, limit } };
+    }
     const result = await getEventsUseCase(resolve("event"))({
       search,
       status,
-      districtId,
+      districtId: scope.districtId,
       creatorId,
       page,
       limit,

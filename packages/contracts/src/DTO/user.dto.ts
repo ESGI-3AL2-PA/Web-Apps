@@ -14,6 +14,11 @@ export const UserResponseDtoSchema = z
     role: UserRoleSchema.openapi({ description: "Role in the system" }),
     address: z.string().optional().openapi({ description: "User's address" }),
     districtId: z.string().optional().openapi({ description: "ID of the district the user belongs to" }),
+    adminDistrictId: z
+      .string()
+      .nullable()
+      .optional()
+      .openapi({ description: "District this user administers (admin role only). Populated on login/userinfo." }),
     balance: z.number().int().openapi({ description: "User balance in tokens" }),
     emailVerified: z.boolean().openapi({ description: "Whether the email has been verified" }),
     totpEnabled: z.boolean().openapi({ description: "Whether the user has TOTP MFA enabled" }),
@@ -75,6 +80,7 @@ export const UserQueryDtoSchema = z
     page: z.coerce.number().int().min(1).optional().default(1),
     limit: z.coerce.number().int().min(1).max(100).optional().default(20),
     search: z.string().optional(),
+    districtId: z.string().optional().openapi({ description: "Filter users by their residence district" }),
   })
   .openapi({ title: "UserQuery" });
 export type UserQueryDto = z.infer<typeof UserQueryDtoSchema>;

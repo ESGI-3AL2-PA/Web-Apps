@@ -1,6 +1,7 @@
 import { initServer } from "@ts-rest/express";
 import { incidentsContract } from "@repo/contracts";
 import { resolve } from "../../repositories/container.js";
+import { resolveListDistrictScope } from "../../middleware/district-scope.js";
 import { getIncidentsUseCase } from "../../use-cases/incidents/get-incidents.use-case.js";
 import { getIncidentByIdUseCase } from "../../use-cases/incidents/get-incident-by-id.use-case.js";
 import { createIncidentUseCase } from "../../use-cases/incidents/create-incident.use-case.js";
@@ -11,8 +12,12 @@ import { getIncidentStatsUseCase } from "../../use-cases/incidents/get-incident-
 const s = initServer();
 
 export const incidentsRouter = s.router(incidentsContract, {
-  getIncidents: async ({ query }) => {
-    const result = await getIncidentsUseCase(resolve("incident"))(query);
+  getIncidents: async ({ query, req }) => {
+    const scope = resolveListDistrictScope(req.user!, query.districtId);
+    if ("empty" in scope) {
+      return { status: 200, body: { data: [], total: 0, page: query.page, limit: query.limit } };
+    }
+    const result = await getIncidentsUseCase(resolve("incident"))({ ...query, districtId: scope.districtId });
     return { status: 200, body: result };
   },
 

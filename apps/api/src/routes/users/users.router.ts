@@ -3,6 +3,7 @@ import { usersContract } from "@repo/contracts";
 import type { UserResponseDto } from "@repo/contracts";
 import type { User } from "../../entities/user.entity.js";
 import { resolve } from "../../repositories/container.js";
+import { resolveListDistrictScope } from "../../middleware/district-scope.js";
 import { getUsersUseCase } from "../../use-cases/users/get-users.use-case.js";
 import { getUserByIdUseCase } from "../../use-cases/users/get-user-by-id.use-case.js";
 import { createUserUseCase } from "../../use-cases/users/create-user.use-case.js";
@@ -15,8 +16,12 @@ const toDto = ({ passwordHash: _passwordHash, totpSecret: _totpSecret, ...rest }
 const s = initServer();
 
 export const usersRouter = s.router(usersContract, {
-  getUsers: async ({ query: { page, limit, search } }) => {
-    const result = await getUsersUseCase(resolve("user"))({ search, page, limit });
+  getUsers: async ({ query: { page, limit, search, districtId }, req }) => {
+    const scope = resolveListDistrictScope(req.user!, districtId);
+    if ("empty" in scope) {
+      return { status: 200, body: { data: [], total: 0, page, limit } };
+    }
+    const result = await getUsersUseCase(resolve("user"))({ search, districtId: scope.districtId, page, limit });
     return { status: 200, body: { ...result, data: result.data.map(toDto) } };
   },
 
