@@ -7,6 +7,8 @@ dist-ssr
 *.local
 .env
 .cache
+# Decrypted production secrets (regenerated from secrets/prod.enc.env at deploy).
+secrets/prod.env
 server/dist
 public/dist
 CLAUDE.local.md
