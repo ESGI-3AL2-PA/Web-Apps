@@ -1,0 +1,15 @@
+# SOPS config. Encrypts the production env with an age key held on the VPS.
+#
+# One-time (on the VPS, as the deploy user):
+#   age-keygen -o ~/.config/sops/age/keys.txt      # prints the public key
+# Copy the "public key: age1..." value below, then encrypt:
+#   sops -e secrets/prod.env > secrets/prod.enc.env   # commit prod.enc.env
+#
+# Deploy decrypts with the private key at ~/.config/sops/age/keys.txt
+# (SOPS_AGE_KEY_FILE), see scripts/deploy.sh.
+creation_rules:
+  - path_regex: secrets/.*\.enc\.env$
+    input_type: dotenv
+    output_type: dotenv
+    # Replace with the VPS age public key printed by age-keygen.
+    age: "age1REPLACE_WITH_VPS_PUBLIC_KEY"
