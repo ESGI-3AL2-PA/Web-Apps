@@ -1,5 +1,8 @@
 import type { District, GeoJson } from "../../entities/district.entity.js";
 
+// geoJson: null clears an existing boundary; omitted leaves it untouched.
+export type UpdateDistrictData = Partial<Omit<District, "id" | "geoJson">> & { geoJson?: GeoJson | null };
+
 export interface IDistrictRepository {
   // Creates the 2dsphere index backing findDistrictContaining (idempotent).
   ensureIndexes(): Promise<void>;
@@ -18,7 +21,7 @@ export interface IDistrictRepository {
 
   createDistrict(data: Omit<District, "id">): Promise<District>;
 
-  updateDistrict(id: string, data: Partial<Omit<District, "id">>): Promise<District | null>;
+  updateDistrict(id: string, data: UpdateDistrictData): Promise<District | null>;
 
   deleteDistrict(id: string): Promise<boolean>;
 }

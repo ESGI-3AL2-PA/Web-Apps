@@ -21,7 +21,8 @@ export type CreateDistrictDto = z.infer<typeof CreateDistrictDtoSchema>;
 export const UpdateDistrictDtoSchema = z
   .object({
     name: z.string().min(1).max(200).optional().openapi({ description: "District name", example: "Montmartre" }),
-    geoJson: GeoJsonSchema.optional(),
+    // null clears an existing boundary; omitted/undefined leaves it untouched.
+    geoJson: GeoJsonSchema.nullable().optional(),
   })
   .openapi({ title: "UpdateDistrict" });
 export type UpdateDistrictDto = z.infer<typeof UpdateDistrictDtoSchema>;
