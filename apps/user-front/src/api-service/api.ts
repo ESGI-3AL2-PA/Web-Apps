@@ -1,14 +1,31 @@
 import axios from "axios";
 import { isTokenExpiringSoon } from "@repo/hooks";
 import { config } from "@repo/config";
-import { type ListingResponseDto } from "../type/annonce";
+import type {
+  ContractQueryDto,
+  ContractResponseDto,
+  ConversationResponseDto,
+  CreateListingDto,
+  EventQueryDto,
+  EventResponseDto,
+  ListingQueryDto,
+  ListingResponseDto,
+  MessageResponseDto,
+  NotificationResponseDto,
+  TransactionQueryDto,
+  TransactionResponseDto,
+  VoteQueryDto,
+  VoteResponseDto,
+} from "@repo/contracts";
 
-type PaginatedListingsResponse = {
-  data: ListingResponseDto[];
+type Paginated<T> = {
+  data: T[];
   total: number;
   page: number;
   limit: number;
 };
+
+type PaginatedListingsResponse = Paginated<ListingResponseDto>;
 
 const AUTH_SERVICE_URL = config.authServiceUrl;
 const API_BASE_URL = config.apiUrl;
@@ -16,6 +33,8 @@ const API_BASE_URL = config.apiUrl;
 const api = axios.create({
   baseURL: API_BASE_URL,
   timeout: 10000,
+  // Serialise array params as repeated keys (`tags=a&tags=b`) rather than `tags[]=a`.
+  paramsSerializer: { indexes: null },
 });
 
 let getAccessToken: (() => string | null) | null = null;
@@ -67,18 +86,100 @@ api.interceptors.response.use(
   },
 );
 
-export async function getAllAnnonces(): Promise<ListingResponseDto[]> {
-  try {
-    const res = await api.get<PaginatedListingsResponse>("/listings");
+export async function getListings(query: Partial<ListingQueryDto> = {}): Promise<PaginatedListingsResponse> {
+  const res = await api.get<PaginatedListingsResponse>("/listings", { params: query });
+  return res.data;
+}
 
-    if (!res.data) {
-      throw Error();
-    }
+export async function createListing(body: CreateListingDto): Promise<ListingResponseDto> {
+  const res = await api.post<ListingResponseDto>("/listings", body);
+  return res.data;
+}
 
-    return res.data.data;
-  } catch (error) {
-    throw new Error("Erreur lors de du get all annonces");
-  }
+export async function deleteListing(id: string): Promise<void> {
+  await api.delete(`/listings/${id}`);
+}
+
+export async function getUserTransactions(
+  userId: string,
+  query: Partial<TransactionQueryDto> = {},
+): Promise<Paginated<TransactionResponseDto>> {
+  const res = await api.get<Paginated<TransactionResponseDto>>(`/users/${userId}/transactions`, { params: query });
+  return res.data;
+}
+
+export async function getNotifications(
+  query: { page?: number; limit?: number; read?: boolean } = {},
+): Promise<Paginated<NotificationResponseDto>> {
+  const res = await api.get<Paginated<NotificationResponseDto>>("/notifications", { params: query });
+  return res.data;
+}
+
+export async function markNotificationRead(id: string): Promise<void> {
+  await api.patch(`/notifications/${id}/read`);
+}
+
+export async function markAllNotificationsRead(): Promise<void> {
+  await api.patch("/notifications/read-all");
+}
+
+export async function deleteNotification(id: string): Promise<void> {
+  await api.delete(`/notifications/${id}`);
+}
+
+export async function getContracts(query: Partial<ContractQueryDto> = {}): Promise<Paginated<ContractResponseDto>> {
+  const res = await api.get<Paginated<ContractResponseDto>>("/contracts", { params: query });
+  return res.data;
+}
+
+export async function disputeContract(id: string, reason: string): Promise<ContractResponseDto> {
+  const res = await api.post<ContractResponseDto>(`/contracts/${id}/dispute`, { reason });
+  return res.data;
+}
+
+export async function getConversations(): Promise<Paginated<ConversationResponseDto>> {
+  const res = await api.get<Paginated<ConversationResponseDto>>("/conversations", { params: { limit: 100 } });
+  return res.data;
+}
+
+export async function getMessages(conversationId: string): Promise<Paginated<MessageResponseDto>> {
+  const res = await api.get<Paginated<MessageResponseDto>>(`/conversations/${conversationId}/messages`, {
+    params: { limit: 200 },
+  });
+  return res.data;
+}
+
+export async function sendMessage(conversationId: string, content: string): Promise<MessageResponseDto> {
+  const res = await api.post<MessageResponseDto>(`/conversations/${conversationId}/messages`, {
+    type: "text",
+    content,
+  });
+  return res.data;
+}
+
+export async function getEvents(query: Partial<EventQueryDto> = {}): Promise<Paginated<EventResponseDto>> {
+  const res = await api.get<Paginated<EventResponseDto>>("/events", { params: query });
+  return res.data;
+}
+
+export async function registerToEvent(id: string): Promise<EventResponseDto> {
+  const res = await api.post<EventResponseDto>(`/events/${id}/register`);
+  return res.data;
+}
+
+export async function unregisterFromEvent(id: string): Promise<EventResponseDto> {
+  const res = await api.delete<EventResponseDto>(`/events/${id}/register`);
+  return res.data;
+}
+
+export async function getVotes(query: Partial<VoteQueryDto> = {}): Promise<Paginated<VoteResponseDto>> {
+  const res = await api.get<Paginated<VoteResponseDto>>("/votes", { params: query });
+  return res.data;
+}
+
+export async function submitVoteResponse(id: string, chosenOption: string): Promise<VoteResponseDto> {
+  const res = await api.post<VoteResponseDto>(`/votes/${id}/responses`, { chosenOption });
+  return res.data;
 }
 
 export default api;
