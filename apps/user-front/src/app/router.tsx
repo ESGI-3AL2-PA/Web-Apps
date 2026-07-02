@@ -1,13 +1,15 @@
-import { createBrowserRouter, Navigate } from 'react-router-dom'
-import { ProtectedRoute } from '@repo/hooks'
-import MainLayout from '../layouts/MainLayouts'
-import ServicePage from '../pages/service/Service'
-import EvenementPage from '../pages/Evenement'
-import MessageriePage from '../pages/Messagerie'
-import Annonces from '../pages/service/Annonces'
-import AnnoncesUser from '../pages/service/AnnoncesUser'
-import Contrat from '../pages/service/Contrat'
-import DashBoard from '../pages/dashboard/DashBoard'
+import { createBrowserRouter, Navigate } from "react-router-dom";
+import { ProtectedRoute } from "@repo/hooks";
+import MainLayout from "../layouts/MainLayouts";
+import ServicePage from "../pages/service/Service";
+import EvenementPage from "../pages/Evenement";
+import MessageriePage from "../pages/Messagerie";
+import VotesPage from "../pages/Votes";
+import Annonces from "../pages/service/Annonces";
+import AnnoncesUser from "../pages/service/AnnoncesUser";
+import Contrat from "../pages/service/Contrat";
+import DashBoard from "../pages/dashboard/DashBoard";
+import NotFound from "../pages/NotFound";
 
 export const router = createBrowserRouter([
   {
@@ -16,26 +18,23 @@ export const router = createBrowserRouter([
         <MainLayout />
       </ProtectedRoute>
     ),
+    errorElement: <NotFound />,
     children: [
-      { path: '/', element: <DashBoard /> },
+      { path: "/", element: <DashBoard /> },
       {
-        path: '/service',
+        path: "/service",
         element: <ServicePage />,
         children: [
           { index: true, element: <Navigate to="annonces" replace /> },
-          { path: 'annonces', element: <Annonces /> },
-          { path: 'mes-annonces', element: <AnnoncesUser /> },
-          { path: 'mes-contrats', element: <Contrat /> },
-        ]
+          { path: "annonces", element: <Annonces /> },
+          { path: "mes-annonces", element: <AnnoncesUser /> },
+          { path: "mes-contrats", element: <Contrat /> },
+        ],
       },
-      { path: '/evenement', element: <EvenementPage /> },
-      { path: '/messagerie', element: <MessageriePage /> },
-    ]
+      { path: "/evenement", element: <EvenementPage /> },
+      { path: "/messagerie", element: <MessageriePage /> },
+      { path: "/votes", element: <VotesPage /> },
+      { path: "*", element: <NotFound /> },
+    ],
   },
-  {
-    path: '/auth',
-    children: [
-      // Public auth routes (if needed in future)
-    ]
-  }
-])
+]);
