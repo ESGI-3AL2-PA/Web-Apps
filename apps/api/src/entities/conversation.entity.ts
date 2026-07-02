@@ -6,6 +6,7 @@ export type ConversationType = z.infer<typeof ConversationTypeSchema>;
 export const ConversationSchema = z.object({
   id: z.string(),
   participants: z.array(z.string()),
+  districtId: z.string(),
   type: ConversationTypeSchema,
   name: z.string().optional(),
   lastMessageAt: z.string().datetime().optional(),
@@ -20,6 +21,7 @@ export const MessageSchema = z.object({
   id: z.string(),
   senderId: z.string(),
   conversationId: z.string(),
+  districtId: z.string(),
   type: MessageTypeSchema,
   content: z.string(),
   mediaUrl: z.string().optional(),

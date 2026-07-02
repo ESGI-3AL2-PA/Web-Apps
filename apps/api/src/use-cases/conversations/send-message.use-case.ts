@@ -10,6 +10,7 @@ export const sendMessageUseCase = (conversationRepository: IConversationReposito
     return await conversationRepository.createMessage({
       conversationId,
       senderId,
+      districtId: conversation.districtId,
       type: data.type,
       content: data.content,
       mediaUrl: data.mediaUrl,
