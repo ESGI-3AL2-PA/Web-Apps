@@ -9,6 +9,8 @@ dist-ssr
 .cache
 # Decrypted production secrets (regenerated from secrets/prod.enc.env at deploy).
 secrets/prod.env
+# Local DB dumps produced by scripts/backup.sh.
+backups/
 server/dist
 public/dist
 CLAUDE.local.md

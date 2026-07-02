@@ -41,6 +41,12 @@ if [ ! -d "$APP_DIR/.git" ]; then
   sudo -u "$DEPLOY_USER" git clone "$REPO_URL" "$APP_DIR"
 fi
 
+echo "▸ Installing nightly backup cron (04:00) for '${DEPLOY_USER}'…"
+CRON_LINE="0 4 * * * cd ${APP_DIR} && ./scripts/backup.sh >> ${APP_DIR}/backups/backup.log 2>&1"
+if ! sudo -u "$DEPLOY_USER" crontab -l 2>/dev/null | grep -qF "scripts/backup.sh"; then
+  ( sudo -u "$DEPLOY_USER" crontab -l 2>/dev/null; echo "$CRON_LINE" ) | sudo -u "$DEPLOY_USER" crontab -
+fi
+
 cat <<EOF
 
 ✓ Base provisioning done. Now, AS the '${DEPLOY_USER}' user, finish setup:
