@@ -1,8 +1,11 @@
 import type { Transaction } from "../../entities/transaction.entity.js";
 
 export interface ITransactionRepository {
+  ensureIndexes(): Promise<void>;
+
   getTransactions(params: {
     userId?: string;
+    districtId?: string;
     type?: string;
     refType?: string;
     page?: number;

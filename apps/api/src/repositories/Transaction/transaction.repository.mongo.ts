@@ -15,8 +15,14 @@ export class MongoTransactionRepository implements ITransactionRepository {
     this.users = db.collection("users");
   }
 
+  async ensureIndexes(): Promise<void> {
+    // Backs district-scoped (admin) list filtering.
+    await this.transactions.createIndex({ districtId: 1 });
+  }
+
   async getTransactions(params: {
     userId?: string;
+    districtId?: string;
     type?: string;
     refType?: string;
     page?: number;
@@ -27,10 +33,11 @@ export class MongoTransactionRepository implements ITransactionRepository {
     page: number;
     limit: number;
   }> {
-    const { userId, type, refType, page = 1, limit = 20 } = params;
+    const { userId, districtId, type, refType, page = 1, limit = 20 } = params;
 
     const filter: Filter<TransactionDoc> = {};
     if (userId) filter.userId = userId;
+    if (districtId) filter.districtId = districtId;
     if (type) filter.type = type as TransactionType;
     if (refType) filter.refType = refType as TransactionRefType;
 
