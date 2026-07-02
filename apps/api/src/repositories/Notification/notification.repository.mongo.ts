@@ -12,8 +12,14 @@ export class MongoNotificationRepository implements INotificationRepository {
     this.collection = db.collection("notifications");
   }
 
+  async ensureIndexes(): Promise<void> {
+    // Backs district-scoped (admin) list filtering.
+    await this.collection.createIndex({ districtId: 1 });
+  }
+
   async getNotifications(params: {
     recipientId?: string;
+    districtId?: string;
     type?: string;
     read?: boolean;
     page?: number;
@@ -24,10 +30,11 @@ export class MongoNotificationRepository implements INotificationRepository {
     page: number;
     limit: number;
   }> {
-    const { recipientId, type, read, page = 1, limit = 20 } = params;
+    const { recipientId, districtId, type, read, page = 1, limit = 20 } = params;
 
     const filter: Filter<NotificationDoc> = {};
     if (recipientId) filter.recipientId = recipientId;
+    if (districtId) filter.districtId = districtId;
     if (type) filter.type = type as NotificationType;
     if (read !== undefined) filter.read = read;
 
