@@ -7,6 +7,7 @@ import { Pagination } from "../../components/Pagination";
 import { Toolbar } from "../../components/Toolbar";
 import { StatusBadge } from "../../components/StatusBadge";
 import { ShortId } from "../../components/ShortId";
+import { UserPicker } from "../../components/UserPicker";
 import { FormModal } from "../../components/FormModal";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { Field } from "../../components/Field";
@@ -201,8 +202,8 @@ function IncidentEdit({
             ))}
           </select>
         </Field>
-        <Field label="Assigned to (user ID)">
-          <input className="input" value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)} />
+        <Field label="Assignee" hint="Search residents of this district by name or email.">
+          <UserPicker value={assignedTo} onChange={setAssignedTo} districtId={incident.districtId} />
         </Field>
       </div>
       <Field label="History note" hint="Appended to the timeline on save.">
