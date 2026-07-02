@@ -9,9 +9,12 @@ export interface AppConfig {
   authServiceUrl: string;
   /** Public base URL of the api. */
   apiUrl: string;
+  /** Public base URL of the user-facing app (post-auth redirect target). */
+  appUrl: string;
 }
 
 export const config: AppConfig = {
   authServiceUrl: import.meta.env.VITE_AUTH_SERVICE_URL ?? "http://localhost:3001",
   apiUrl: import.meta.env.VITE_API_URL ?? "http://localhost:3000",
+  appUrl: import.meta.env.VITE_APP_URL ?? "http://localhost:5000",
 };
