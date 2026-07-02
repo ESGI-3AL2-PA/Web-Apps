@@ -19,11 +19,14 @@ export default function Dashboard() {
   const [stats, setStats] = useState<IncidentStatsDto | null>(null);
   const [userCount, setUserCount] = useState<number | null>(null);
   const [listingCount, setListingCount] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     const scoped = districtId ?? undefined;
+    setLoading(true);
+    setError(null);
     Promise.all([
       getIncidentStats(scoped),
       listUsers({ page: 1, limit: 1, ...(scoped && { districtId: scoped }) }),
@@ -37,6 +40,9 @@ export default function Dashboard() {
       })
       .catch((err) => {
         if (!cancelled) setError(err?.response?.data?.message ?? err?.message ?? "Failed to load");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
       });
     return () => {
       cancelled = true;
@@ -44,17 +50,17 @@ export default function Dashboard() {
   }, [districtId]);
 
   const cards: StatCard[] = [
-    { label: "Users", value: userCount ?? "—", icon: "icon-[tabler--users]", to: "/users", accent: "text-primary" },
+    { label: "Users", value: userCount ?? 0, icon: "icon-[tabler--users]", to: "/users", accent: "text-primary" },
     {
       label: "Listings",
-      value: listingCount ?? "—",
+      value: listingCount ?? 0,
       icon: "icon-[tabler--clipboard-list]",
       to: "/listings",
       accent: "text-info",
     },
     {
       label: "Total incidents",
-      value: stats?.total ?? "—",
+      value: stats?.total ?? 0,
       icon: "icon-[tabler--alert-triangle]",
       to: "/incidents",
       accent: "text-warning",
@@ -84,7 +90,11 @@ export default function Dashboard() {
               <span className="text-sm text-base-content/60">{c.label}</span>
               <span className={`${c.icon} size-6 ${c.accent}`} />
             </div>
-            <p className="text-3xl font-semibold mt-2">{c.value}</p>
+            {loading ? (
+              <div className="h-9 w-16 rounded bg-base-200 animate-pulse mt-2" />
+            ) : (
+              <p className="text-3xl font-semibold mt-2">{c.value}</p>
+            )}
           </Link>
         ))}
       </div>
