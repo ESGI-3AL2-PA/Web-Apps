@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useAuth } from "@repo/hooks";
 import type { EventResponseDto, EventStatus } from "@repo/contracts";
-import { useList } from "../../hooks/useList";
+import { useScopedList } from "../../hooks/useScopedList";
 import { deleteEvent, listEvents } from "../../api-service/events";
 import { DataTable, type Column } from "../../components/DataTable";
 import { Pagination } from "../../components/Pagination";
@@ -16,7 +16,7 @@ const STATUSES: EventStatus[] = ["upcoming", "ongoing", "completed", "cancelled"
 export default function EventsList() {
   const { user } = useAuth();
   const isSuperAdmin = user?.role === "superAdmin";
-  const list = useList<EventResponseDto>(listEvents);
+  const list = useScopedList<EventResponseDto>(listEvents);
   const [viewing, setViewing] = useState<EventResponseDto | null>(null);
   const [deleting, setDeleting] = useState<EventResponseDto | null>(null);
 
