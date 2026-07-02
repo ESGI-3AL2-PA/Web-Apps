@@ -6,6 +6,7 @@ export type OpenSignStatus = z.infer<typeof OpenSignStatusSchema>;
 export const ContractSchema = z.object({
   id: z.string(),
   listingId: z.string(),
+  districtId: z.string(),
   providerId: z.string(),
   beneficiaryId: z.string(),
   price: z.number().int().min(0),

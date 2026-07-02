@@ -3,6 +3,7 @@ import type { IContractRepository } from "../../repositories/Contract/contract.r
 export const getContractsUseCase = (contractRepository: IContractRepository) => {
   return async (params: {
     listingId?: string;
+    districtId?: string;
     providerId?: string;
     beneficiaryId?: string;
     partyId?: string;

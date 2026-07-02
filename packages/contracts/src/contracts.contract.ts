@@ -42,6 +42,7 @@ export const contractsContract = c.router({
       scope: {
         resource: "contract",
         ownerFields: ["providerId", "beneficiaryId"],
+        districtField: "districtId",
         bypassRoles: ["superAdmin"],
         notFoundOnDeny: true,
       },
@@ -54,6 +55,7 @@ export const contractsContract = c.router({
     body: CreateContractDtoSchema,
     responses: {
       201: ContractResponseDtoSchema,
+      404: NotFoundErrorSchema,
     },
     summary: "Create a new contract (the authenticated caller is the provider)",
     metadata: auth({ audience: "api" }),
@@ -72,7 +74,7 @@ export const contractsContract = c.router({
     summary: "Update contract signature status (party only)",
     metadata: auth({
       audience: "api",
-      scope: { resource: "contract", ownerFields: ["providerId", "beneficiaryId"] },
+      scope: { resource: "contract", ownerFields: ["providerId", "beneficiaryId"], districtField: "districtId" },
     }),
   },
 
@@ -89,7 +91,7 @@ export const contractsContract = c.router({
     summary: "Mark a contract as disputed (party only)",
     metadata: auth({
       audience: "api",
-      scope: { resource: "contract", ownerFields: ["providerId", "beneficiaryId"] },
+      scope: { resource: "contract", ownerFields: ["providerId", "beneficiaryId"], districtField: "districtId" },
     }),
   },
 
@@ -109,6 +111,7 @@ export const contractsContract = c.router({
       scope: {
         resource: "contract",
         ownerFields: ["providerId", "beneficiaryId"],
+        districtField: "districtId",
         bypassRoles: ["superAdmin"],
       },
     }),

@@ -8,6 +8,7 @@ export const ContractResponseDtoSchema = z
   .object({
     id: z.string().openapi({ description: "Unique contract identifier" }),
     listingId: z.string().openapi({ description: "ID of the listing this contract was generated for" }),
+    districtId: z.string().openapi({ description: "District ID, derived from the referenced listing" }),
     providerId: z.string().openapi({ description: "ID of the user providing the service" }),
     beneficiaryId: z.string().openapi({ description: "ID of the user benefiting from the service" }),
     price: z.number().int().openapi({ description: "Price in tokens", example: 10 }),
@@ -61,6 +62,7 @@ export const ContractQueryDtoSchema = z
     page: z.coerce.number().int().min(1).optional().default(1),
     limit: z.coerce.number().int().min(1).max(100).optional().default(20),
     listingId: z.string().optional(),
+    districtId: z.string().optional(),
     providerId: z.string().optional(),
     beneficiaryId: z.string().optional(),
     openSignStatus: OpenSignStatusSchema.optional(),
