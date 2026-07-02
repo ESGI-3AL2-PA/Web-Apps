@@ -21,14 +21,14 @@ export const router = createBrowserRouter([
       </ProtectedRoute>
     ),
     children: [
-      { path: "/", element: <Dashboard /> },
-      { path: "/users", element: <UsersList /> },
-      { path: "/districts", element: <DistrictPage /> },
-      { path: "/tags", element: <TagsList /> },
-      { path: "/incidents", element: <IncidentsList /> },
-      { path: "/listings", element: <ListingsList /> },
-      { path: "/events", element: <EventsList /> },
-      { path: "/votes", element: <VotesList /> },
+      { path: "/", element: <Dashboard />, handle: { title: "Dashboard" } },
+      { path: "/users", element: <UsersList />, handle: { title: "Users" } },
+      { path: "/districts", element: <DistrictPage />, handle: { title: "District" } },
+      { path: "/tags", element: <TagsList />, handle: { title: "Tags" } },
+      { path: "/incidents", element: <IncidentsList />, handle: { title: "Incidents" } },
+      { path: "/listings", element: <ListingsList />, handle: { title: "Listings" } },
+      { path: "/events", element: <EventsList />, handle: { title: "Events" } },
+      { path: "/votes", element: <VotesList />, handle: { title: "Votes" } },
     ],
   },
 ]);
