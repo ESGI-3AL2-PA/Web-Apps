@@ -2,6 +2,7 @@ import { useState } from "react";
 import { NavLink } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@repo/hooks";
+import { config } from "@repo/config";
 import { applyTheme, getInitialTheme, type Theme } from "../lib/theme";
 import NotificationsBell from "./NotificationsBell";
 
@@ -29,6 +30,7 @@ const Header = () => {
 
   const initials = user ? `${user.firstName?.[0] ?? ""}${user.lastName?.[0] ?? ""}`.toUpperCase() || "?" : "?";
   const fullName = user ? `${user.firstName} ${user.lastName}`.trim() : "";
+  const isAdmin = user?.role === "admin" || user?.role === "superAdmin";
   const lang = i18n.language?.startsWith("en") ? "en" : "fr";
 
   const linkClass = ({ isActive }: { isActive: boolean }) => (isActive ? "active font-medium" : "font-medium");
@@ -116,6 +118,11 @@ const Header = () => {
             {fullName && (
               <li className="menu-title truncate px-2 py-1 text-sm opacity-70">
                 <span>{fullName}</span>
+              </li>
+            )}
+            {isAdmin && (
+              <li>
+                <a href={config.adminUrl}>{t("header.adminSpace")}</a>
               </li>
             )}
             <li>

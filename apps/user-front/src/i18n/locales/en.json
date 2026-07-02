@@ -12,6 +12,7 @@
     "notifications": "Notifications",
     "account": "My account",
     "logout": "Sign out",
+    "adminSpace": "Admin space",
     "toDark": "Switch to dark theme",
     "toLight": "Switch to light theme"
   },
