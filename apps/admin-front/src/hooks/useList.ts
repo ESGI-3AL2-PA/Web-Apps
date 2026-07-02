@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { ListParams, Paginated } from "../api-service/types";
 
-interface UseListResult<T> {
+export interface UseListResult<T> {
   items: T[];
   total: number;
   page: number;
@@ -19,6 +19,9 @@ interface UseListResult<T> {
 interface UseListOptions {
   limit?: number;
   initialFilters?: Record<string, string>;
+  // Params injected on top of user-controlled search/filters (e.g. the active district scope).
+  // Changing them refetches. Kept separate from `filters` so page/search UI never touches them.
+  extraParams?: Record<string, string | undefined>;
 }
 
 // Encapsulates list state (page/search/filters) + fetch lifecycle. Every list screen drives a
@@ -54,6 +57,15 @@ export function useList<T>(
 
   const refetch = useCallback(() => setReloadKey((k) => k + 1), []);
 
+  // Serialize so the object identity (recreated each render by callers) doesn't drive effects.
+  const extraParamsKey = JSON.stringify(options.extraParams ?? {});
+
+  // A scope change (new extraParams) resets to the first page — the current page may not exist
+  // within the newly scoped result set.
+  useEffect(() => {
+    setPage(1);
+  }, [extraParamsKey]);
+
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
@@ -62,6 +74,9 @@ export function useList<T>(
     const params: ListParams = { page, limit };
     if (search) params.search = search;
     for (const [key, value] of Object.entries(filters)) {
+      if (value) params[key] = value;
+    }
+    for (const [key, value] of Object.entries(JSON.parse(extraParamsKey) as Record<string, string | undefined>)) {
       if (value) params[key] = value;
     }
 
@@ -82,7 +97,7 @@ export function useList<T>(
     return () => {
       cancelled = true;
     };
-  }, [fetcher, page, limit, search, filters, reloadKey]);
+  }, [fetcher, page, limit, search, filters, reloadKey, extraParamsKey]);
 
   return {
     items,

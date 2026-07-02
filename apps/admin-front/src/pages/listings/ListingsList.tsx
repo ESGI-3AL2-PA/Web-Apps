@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useAuth } from "@repo/hooks";
 import type { ListingResponseDto, ListingStatus, ListingType } from "@repo/contracts";
-import { useList } from "../../hooks/useList";
+import { useScopedList } from "../../hooks/useScopedList";
 import { deleteListing, listListings } from "../../api-service/listings";
 import { DataTable, type Column } from "../../components/DataTable";
 import { Pagination } from "../../components/Pagination";
@@ -17,7 +17,7 @@ const STATUSES: ListingStatus[] = ["active", "closed", "expired"];
 export default function ListingsList() {
   const { user } = useAuth();
   const isSuperAdmin = user?.role === "superAdmin";
-  const list = useList<ListingResponseDto>(listListings);
+  const list = useScopedList<ListingResponseDto>(listListings);
   const [viewing, setViewing] = useState<ListingResponseDto | null>(null);
   const [deleting, setDeleting] = useState<ListingResponseDto | null>(null);
 
