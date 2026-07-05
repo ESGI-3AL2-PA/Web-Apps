@@ -1,7 +1,7 @@
 import { createBrowserRouter, Navigate } from "react-router-dom";
 import { ProtectedRoute } from "@repo/hooks";
 import MainLayout from "../layouts/MainLayouts";
-import ServicePage from "../pages/service/Service";
+import ServiceLayout from "../pages/service/ServiceLayout";
 import EvenementPage from "../pages/Evenement";
 import MessageriePage from "../pages/Messagerie";
 import Annonces from "../pages/service/Annonces";
@@ -21,7 +21,7 @@ export const router = createBrowserRouter([
       { path: "/", element: <DashBoard /> },
       {
         path: "/service",
-        element: <ServicePage />,
+        element: <ServiceLayout />,
         children: [
           { index: true, element: <Navigate to="annonces" replace /> },
           { path: "annonces", element: <Annonces /> },

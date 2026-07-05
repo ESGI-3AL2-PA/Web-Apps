@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useOutletContext } from "react-router-dom";
 import type { ListingQueryDto, ListingResponseDto } from "@repo/contracts";
 import { getListings } from "../../api-service/listings.service";
-import type { ServiceOutletContext } from "./Service";
+import type { ServiceOutletContext } from "./ServiceLayout";
 import AnnonceList from "../../component/AnnonceList";
 
 const Annonces = () => {
@@ -37,9 +37,7 @@ const Annonces = () => {
   if (loading) return <div>Chargement des annonces...</div>;
   if (error) return <div style={{ color: "red" }}>{error}</div>;
 
-  return (
-    <AnnonceList annonces={data} title="Listes des annonces" onChanged={fetchAnnonces} />
-  );
+  return <AnnonceList annonces={data} title="Listes des annonces" onChanged={fetchAnnonces} />;
 };
 
 export default Annonces;

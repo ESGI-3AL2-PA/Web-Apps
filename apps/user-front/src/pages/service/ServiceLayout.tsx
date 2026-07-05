@@ -8,7 +8,7 @@ export type ServiceOutletContext = {
   selectedTag: string;
 };
 
-const Service = () => {
+const ServiceLayout = () => {
   const [selectedTag, setSelectedTag] = useState<string>("");
   const [activeCount, setActiveCount] = useState<number | null>(null);
 
@@ -87,4 +87,4 @@ const Service = () => {
   );
 };
 
-export default Service;
+export default ServiceLayout;

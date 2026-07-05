@@ -3,7 +3,7 @@ import { useOutletContext } from "react-router-dom";
 import { useAuth } from "@repo/hooks";
 import type { ListingQueryDto, ListingResponseDto } from "@repo/contracts";
 import { getListings } from "../../api-service/listings.service";
-import type { ServiceOutletContext } from "./Service";
+import type { ServiceOutletContext } from "./ServiceLayout";
 import AnnonceList from "../../component/AnnonceList";
 
 // "Mes annonces" — filtre les annonces du user connecté, avec possibilité de
@@ -42,9 +42,7 @@ const AnnoncesUser = () => {
   if (isLoading) return <div>Chargement des annonces...</div>;
   if (error) return <div style={{ color: "red" }}>{error}</div>;
 
-  return (
-    <AnnonceList annonces={data} title="Mes annonces" onChanged={fetchMyAnnonces} />
-  );
+  return <AnnonceList annonces={data} title="Mes annonces" onChanged={fetchMyAnnonces} />;
 };
 
 export default AnnoncesUser;
