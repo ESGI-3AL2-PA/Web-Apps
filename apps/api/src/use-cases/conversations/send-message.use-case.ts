@@ -1,13 +1,14 @@
 import type { SendMessageDto } from "@repo/contracts";
 import type { Message } from "../../entities/conversation.entity.js";
 import type { IConversationRepository } from "../../repositories/Conversation/conversation.repository.js";
+import { broadcastNewMessage } from "../../sockets/io.js";
 
 export const sendMessageUseCase = (conversationRepository: IConversationRepository) => {
   return async (conversationId: string, senderId: string, data: SendMessageDto): Promise<Message | null> => {
     const conversation = await conversationRepository.getConversationById(conversationId);
     if (!conversation) return null;
 
-    return await conversationRepository.createMessage({
+    const message = await conversationRepository.createMessage({
       conversationId,
       senderId,
       districtId: conversation.districtId,
@@ -15,5 +16,9 @@ export const sendMessageUseCase = (conversationRepository: IConversationReposito
       content: data.content,
       mediaUrl: data.mediaUrl,
     });
+
+    // Push aux autres participants connectés (eux refetcheront automatiquement).
+    broadcastNewMessage(conversation.participants, message);
+    return message;
   };
 };

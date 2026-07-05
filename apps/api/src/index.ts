@@ -30,6 +30,9 @@ import { votesRouter } from "./routes/votes/votes.router.js";
 import { conversationsRouter } from "./routes/conversations/conversations.router.js";
 import { notificationsRouter } from "./routes/notifications/notifications.router.js";
 import { transactionsRouter } from "./routes/transactions/transactions.router.js";
+import { createServer } from "http";
+import { setupSocketIo } from "./sockets/io.js";
+import { voiceMessageHandler, audioStreamHandler } from "./routes/conversations/voice-message.handler.js";
 import { errorHandler, NotFoundError } from "./middleware/error-handler.js";
 import { requireAuth } from "./middleware/auth.middleware.js";
 import { authorize } from "./middleware/authorize.middleware.js";
@@ -125,7 +128,8 @@ app.use(
     credentials: true,
   }),
 );
-app.use(express.json());
+// Limite augmentée pour accepter les uploads audio inline en base64 (~5MB max).
+app.use(express.json({ limit: "10mb" }));
 
 app.get("/health", (_req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
@@ -145,6 +149,8 @@ app.use(
 // Everything below /health, /openapi.json and /docs requires a valid access token.
 // requireAuth verifies the JWT (iss/aud) and sets req.user.
 app.use(requireAuth);
+app.post("/conversations/:id/messages/voice", voiceMessageHandler);
+app.get("/messages/:id/audio", audioStreamHandler);
 
 // Authorization is declared per-route in the contract `metadata.auth` and enforced
 // by this single global middleware (reads req.tsRestRoute, loads records for
@@ -176,17 +182,23 @@ app.use(errorHandler);
 Promise.all([connectDB(), connectNeo4j()])
   .then(([db, neo4jDriver]) => {
     initContainer(db, neo4jDriver);
-    const server = app.listen(port, () => {
+
+    // Création d'un http.Server manuel pour pouvoir y attacher Socket.io.
+    const httpServer = createServer(app);
+    setupSocketIo(httpServer);
+
+    httpServer.listen(port, () => {
       const localUrl = `http://localhost:${port}`;
 
       console.log("");
       console.log(" 🚀  API Server Running !");
       console.log("");
       console.log(` ➜  Local:   \x1b[36m${localUrl}\x1b[0m`);
+      console.log(` ➜  Socket:  \x1b[36mws://localhost:${port}\x1b[0m`);
       console.log("");
       console.log(`\x1b[33m⚡ Ready to accept connections\x1b[0m`);
     });
-    setupGracefulShutdown(server, async () => {
+    setupGracefulShutdown(httpServer, async () => {
       await Promise.all([closeDB(), closeNeo4j()]);
     });
   })
