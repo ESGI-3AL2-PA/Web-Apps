@@ -26,6 +26,11 @@ export const VoteResponseDtoSchema = z
     results: z.array(VoteResultEntrySchema).openapi({ description: "Aggregated results" }),
     startDate: z.string().datetime().openapi({ description: "Vote start date" }),
     endDate: z.string().datetime().openapi({ description: "Vote end date" }),
+    userHasVoted: z.boolean().optional().openapi({ description: "True si le current user a déjà voté" }),
+    myChosenOptions: z
+      .array(z.string())
+      .optional()
+      .openapi({ description: "Options choisies par le current user (vide si pas encore voté)" }),
   })
   .openapi({ title: "VoteResponse" });
 export type VoteResponseDto = z.infer<typeof VoteResponseDtoSchema>;
@@ -71,7 +76,11 @@ export type VoteQueryDto = z.infer<typeof VoteQueryDtoSchema>;
 
 export const SubmitVoteResponseDtoSchema = z
   .object({
-    chosenOption: z.string().openapi({ description: "Option chosen by the user" }),
+    chosenOption: z.string().optional().openapi({ description: "Option unique (single_choice)" }),
+    chosenOptions: z.array(z.string()).optional().openapi({ description: "Options multiples (multiple_choice)" }),
+  })
+  .refine((data) => Boolean(data.chosenOption) || Boolean(data.chosenOptions && data.chosenOptions.length > 0), {
+    message: "chosenOption ou chosenOptions est requis",
   })
   .openapi({ title: "SubmitVoteResponse" });
 export type SubmitVoteResponseDto = z.infer<typeof SubmitVoteResponseDtoSchema>;

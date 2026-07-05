@@ -6,6 +6,7 @@ export const getVotesUseCase = (voteRepository: IVoteRepository) => {
     status?: string;
     districtId?: string;
     creatorId?: string;
+    currentUserId?: string;
     page?: number;
     limit?: number;
   }) => {
