@@ -1,9 +1,12 @@
 import { randomUUID } from "crypto";
 import type { Collection, Db, Filter } from "mongodb";
-import type { Event, EventStatus } from "../../entities/event.entity.js";
+import type { Event } from "../../entities/event.entity.js";
 import type { IEventRepository } from "./event.repository.js";
 
 type EventDoc = Omit<Event, "id"> & { _id: string };
+
+// Default event duration: within 4h of start = "ongoing", after = "completed".
+const FOUR_HOURS_MS = 4 * 60 * 60 * 1000;
 
 export class MongoEventRepository implements IEventRepository {
   private collection: Collection<EventDoc>;
@@ -22,6 +25,7 @@ export class MongoEventRepository implements IEventRepository {
     status?: string;
     districtId?: string;
     creatorId?: string;
+    registrantId?: string;
     page?: number;
     limit?: number;
   }): Promise<{
@@ -30,20 +34,37 @@ export class MongoEventRepository implements IEventRepository {
     page: number;
     limit: number;
   }> {
-    const { search, status, districtId, creatorId, page = 1, limit = 20 } = params;
+    const { search, status, districtId, creatorId, registrantId, page = 1, limit = 20 } = params;
 
     const filter: Filter<EventDoc> = {};
 
+    // Title-only search — matching description/location caused false positives.
     if (search) {
-      filter.$or = [
-        { title: { $regex: search, $options: "i" } },
-        { description: { $regex: search, $options: "i" } },
-        { location: { $regex: search, $options: "i" } },
-      ];
+      filter.title = { $regex: search, $options: "i" };
     }
-    if (status) filter.status = status as EventStatus;
+
     if (districtId) filter.districtId = districtId;
     if (creatorId) filter.creatorId = creatorId;
+    if (registrantId) filter.registrants = registrantId;
+
+    // Date-derived status (see computeStatus in the use-case); "cancelled" stays explicit.
+    if (status) {
+      if (status === "cancelled") {
+        filter.status = "cancelled" as Event["status"];
+      } else {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (filter as any).status = { $ne: "cancelled" };
+        const nowIso = new Date().toISOString();
+        const fourHoursAgoIso = new Date(Date.now() - FOUR_HOURS_MS).toISOString();
+        if (status === "upcoming") {
+          filter.eventDate = { $gt: nowIso };
+        } else if (status === "ongoing") {
+          filter.eventDate = { $gt: fourHoursAgoIso, $lte: nowIso };
+        } else if (status === "completed") {
+          filter.eventDate = { $lte: fourHoursAgoIso };
+        }
+      }
+    }
 
     const [total, docs] = await Promise.all([
       this.collection.countDocuments(filter),
@@ -60,6 +81,12 @@ export class MongoEventRepository implements IEventRepository {
   async getEventById(id: string): Promise<Event | null> {
     const doc = await this.collection.findOne({ _id: id });
     return doc ? this.toEvent(doc) : null;
+  }
+
+  async getEventsByIds(ids: string[]): Promise<Event[]> {
+    if (ids.length === 0) return [];
+    const docs = await this.collection.find({ _id: { $in: ids } }).toArray();
+    return docs.map(this.toEvent);
   }
 
   async createEvent(data: Omit<Event, "id" | "createdAt">): Promise<Event> {

@@ -8,6 +8,7 @@ export interface IEventRepository {
     status?: string;
     districtId?: string;
     creatorId?: string;
+    registrantId?: string;
     page?: number;
     limit?: number;
   }): Promise<{
@@ -18,6 +19,9 @@ export interface IEventRepository {
   }>;
 
   getEventById(id: string): Promise<Event | null>;
+
+  /** Batch fetch by IDs. Result order is NOT guaranteed — re-sort if needed. */
+  getEventsByIds(ids: string[]): Promise<Event[]>;
 
   createEvent(data: Omit<Event, "id" | "createdAt">): Promise<Event>;
 

@@ -10,11 +10,12 @@ import { deleteEventUseCase } from "../../use-cases/events/delete-event.use-case
 import { registerToEventUseCase } from "../../use-cases/events/register-to-event.use-case.js";
 import { unregisterFromEventUseCase } from "../../use-cases/events/unregister-from-event.use-case.js";
 import { attendEventUseCase } from "../../use-cases/events/attend-event.use-case.js";
+import { markInterestUseCase } from "../../use-cases/events/mark-interest.use-case.js";
 
 const s = initServer();
 
 export const eventsRouter = s.router(eventsContract, {
-  getEvents: async ({ query: { page, limit, search, status, districtId, creatorId }, req }) => {
+  getEvents: async ({ query: { page, limit, search, status, districtId, creatorId, registrantId }, req }) => {
     const scope = resolveListDistrictScope(req.user!, districtId);
     if ("empty" in scope) {
       return { status: 200, body: { data: [], total: 0, page, limit } };
@@ -24,6 +25,7 @@ export const eventsRouter = s.router(eventsContract, {
       status,
       districtId: scope.districtId,
       creatorId,
+      registrantId,
       page,
       limit,
     });
@@ -39,7 +41,10 @@ export const eventsRouter = s.router(eventsContract, {
   },
 
   createEvent: async ({ body, req }) => {
-    const newEvent = await createEventUseCase(resolve("event"))({
+    const newEvent = await createEventUseCase(
+      resolve("event"),
+      resolve("graph"),
+    )({
       ...body,
       creatorId: req.user!.sub,
     });
@@ -56,7 +61,7 @@ export const eventsRouter = s.router(eventsContract, {
   },
 
   deleteEvent: async ({ params: { id } }) => {
-    const deleted = await deleteEventUseCase(resolve("event"))({ id });
+    const deleted = await deleteEventUseCase(resolve("event"), resolve("graph"))({ id });
     if (!deleted) {
       return { status: 404, body: { message: "Event not found" } };
     }
@@ -64,7 +69,7 @@ export const eventsRouter = s.router(eventsContract, {
   },
 
   registerToEvent: async ({ params: { id }, req }) => {
-    const event = await registerToEventUseCase(resolve("event"))(id, req.user!.sub);
+    const event = await registerToEventUseCase(resolve("event"), resolve("graph"))(id, req.user!.sub);
     if (!event) {
       return { status: 404, body: { message: "Event not found or no seats available" } };
     }
@@ -72,7 +77,7 @@ export const eventsRouter = s.router(eventsContract, {
   },
 
   unregisterFromEvent: async ({ params: { id }, req }) => {
-    const event = await unregisterFromEventUseCase(resolve("event"))(id, req.user!.sub);
+    const event = await unregisterFromEventUseCase(resolve("event"), resolve("graph"))(id, req.user!.sub);
     if (!event) {
       return { status: 404, body: { message: "Event not found or user was not registered" } };
     }
@@ -80,10 +85,15 @@ export const eventsRouter = s.router(eventsContract, {
   },
 
   attendEvent: async ({ params: { id }, body: { rating }, req }) => {
-    const event = await attendEventUseCase(resolve("event"))(id, req.user!.sub, rating);
+    const event = await attendEventUseCase(resolve("event"), resolve("graph"))(id, req.user!.sub, rating);
     if (!event) {
       return { status: 404, body: { message: "Event not found" } };
     }
     return { status: 200, body: event };
+  },
+
+  markInterest: async ({ params: { id }, body: { rating }, req }) => {
+    await markInterestUseCase(resolve("graph"))(req.user!.sub, id, rating);
+    return { status: 200, body: { success: true } };
   },
 });
