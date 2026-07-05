@@ -19,19 +19,13 @@ export const listingsRouter = s.router(listingsContract, {
     if ("empty" in scope) {
       return { status: 200, body: { data: [], total: 0, page, limit } };
     }
-    // Inject le contract repo pour que le use-case puisse peupler
-    // `userHasContract` sur chaque listing renvoyé.
-    const result = await getListingsUseCase(
-      resolve("listing"),
-      resolve("contract"),
-    )({
+    const result = await getListingsUseCase(resolve("listing"))({
       search,
       type,
       status,
       districtId: scope.districtId,
       authorId,
       tag,
-      currentUserId: req.user?.sub,
       page,
       limit,
     });
