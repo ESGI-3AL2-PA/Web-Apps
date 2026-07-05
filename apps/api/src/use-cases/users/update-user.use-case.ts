@@ -1,11 +1,13 @@
 import argon2 from "argon2";
 import type { IUserRepository } from "../../repositories/User/user.repository.js";
+import type { IGraphRepository } from "../../repositories/Graph/graph.repository.js";
 import type { User } from "../../entities/user.entity.js";
 import type { UpdateUserDto } from "@repo/contracts";
+import { syncGraph } from "../../repositories/Graph/graph.sync.js";
 
 export type UpdateUserResult = { kind: "ok"; user: User } | { kind: "not-found" } | { kind: "wrong-password" };
 
-export const updateUserUseCase = (userRepository: IUserRepository) => {
+export const updateUserUseCase = (userRepository: IUserRepository, graphRepository: IGraphRepository) => {
   return async (id: string, data: UpdateUserDto): Promise<UpdateUserResult> => {
     const { currentPassword, newPassword } = data;
 
@@ -30,6 +32,19 @@ export const updateUserUseCase = (userRepository: IUserRepository) => {
 
     const user = await userRepository.updateUser(id, update);
     if (!user) return { kind: "not-found" };
+
+    // Mirror to Neo4j if any of the projected attributes changed.
+    if (update.firstName !== undefined || update.lastName !== undefined || update.email !== undefined) {
+      await syncGraph(`upsertUser(${user.id})`, () =>
+        graphRepository.upsertUser({
+          id: user.id,
+          name: `${user.firstName} ${user.lastName}`.trim(),
+          email: user.email,
+          role: user.role,
+        }),
+      );
+    }
+
     return { kind: "ok", user };
   };
 };
