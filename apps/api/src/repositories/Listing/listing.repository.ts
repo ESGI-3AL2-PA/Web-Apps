@@ -9,6 +9,7 @@ export interface IListingRepository {
     status?: string;
     districtId?: string;
     authorId?: string;
+    tag?: string;
     page?: number;
     limit?: number;
   }): Promise<{

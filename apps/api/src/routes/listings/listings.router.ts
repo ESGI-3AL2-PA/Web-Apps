@@ -2,6 +2,7 @@ import { initServer } from "@ts-rest/express";
 import { listingsContract } from "@repo/contracts";
 import { resolve } from "../../repositories/container.js";
 import type { IUserRepository } from "../../repositories/User/user.repository.js";
+import type { IListingRepository } from "../../repositories/Listing/listing.repository.js";
 import { resolveListDistrictScope } from "../../middleware/district-scope.js";
 import { getListingsUseCase } from "../../use-cases/listings/get-listings.use-case.js";
 import { getListingByIdUseCase } from "../../use-cases/listings/get-listing-by-id.use-case.js";
@@ -88,7 +89,9 @@ export const listingsRouter = s.router(listingsContract, {
   },
 
   getActiveListingsCount: async () => {
-    const listingRepo = resolve("listing") as any;
+    // Annotated so resolve("listing") gets a contextual type — without it, TS infers
+    // `never` in this bare handler (same reason as createListing's userRepo annotation).
+    const listingRepo: IListingRepository = resolve("listing");
     const count = await listingRepo.countActiveListings();
     return { status: 200, body: { count } };
   },
