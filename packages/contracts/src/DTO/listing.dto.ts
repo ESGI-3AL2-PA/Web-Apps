@@ -13,7 +13,7 @@ export const ListingResponseDtoSchema = z
     districtId: z.string().openapi({ description: "ID of the district this listing belongs to" }),
     title: z.string().openapi({ description: "Listing title", example: "Plumber available for small repairs" }),
     description: z.string().openapi({ description: "Detailed description of the listing" }),
-    type: ListingTypeSchema.openapi({ description: "Category of the listing" }),
+    type: ListingTypeSchema.openapi({ description: "Whether this is an offer or a request" }),
     price: z.number().int().openapi({ description: "Price in tokens", example: 10 }),
     status: ListingStatusSchema.openapi({ description: "Current status of the listing" }),
     tags: z
@@ -38,7 +38,7 @@ export const CreateListingDtoSchema = z
       .max(300)
       .openapi({ description: "Listing title", example: "Plumber available for small repairs" }),
     description: z.string().min(1).openapi({ description: "Detailed description" }),
-    type: ListingTypeSchema.openapi({ description: "Category of the listing" }),
+    type: ListingTypeSchema.openapi({ description: "offer or request" }),
     price: z.number().int().min(0).openapi({ description: "Price in tokens", example: 10 }),
     tags: z
       .array(z.string())
