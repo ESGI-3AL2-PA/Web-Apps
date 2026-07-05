@@ -13,13 +13,3 @@ export type CreateListingDto = {
   type: "offer" | "request";
   price: number;
 };
-
-export const listingTypes = [
-  "Jardinage",
-  "Bricolage",
-  "Garde d'enfants",
-  "Cuisine",
-  "Transport",
-  "Animaux",
-  "Informatique",
-] as const;

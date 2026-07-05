@@ -1,18 +1,13 @@
 import { useEffect, useState } from "react";
-import type {
-  CreateListingDto,
-  ListingResponseDto,
-  ListingType,
-  TagResponseDto,
-} from "@repo/contracts";
+import type { CreateListingDto, ListingResponseDto, TagResponseDto } from "@repo/contracts";
 import { getTags } from "../api-service/tags.service";
 
 // Formulaire réutilisable — utilisé à la fois pour CREATER (CreateService) et
 // pour ÉDITER (modale de CarteService). On passe optionnellement les valeurs
 // initiales : si absentes, le formulaire démarre vide.
 //
-// La liste des `type` est tirée dynamiquement des tags via `getTags()`,
-// conformément à la consigne ("LISTING_TYPES = valeurs des tags").
+// `type` = offre/demande. La catégorie est un tag, choisi séparément et
+// envoyé dans `tags` (source des filtres et du moteur de reco Neo4j).
 type ListingFormProps = {
   initialValues?: Partial<ListingResponseDto>;
   onSubmit: (data: CreateListingDto) => Promise<void>;
@@ -23,14 +18,14 @@ const ListingForm = ({ initialValues, onSubmit, submitLabel }: ListingFormProps)
   const [tags, setTags] = useState<TagResponseDto[]>([]);
   const [tagsError, setTagsError] = useState<string | null>(null);
 
-  const [formData, setFormData] = useState<CreateListingDto>({
+  const [formData, setFormData] = useState<Omit<CreateListingDto, "tags">>({
     title: initialValues?.title ?? "",
     description: initialValues?.description ?? "",
-    // Cast nécessaire car le backend `ListingTypeSchema` est un enum strict :
-    // si un tag a un nom hors enum, le backend renverra une 400 à la soumission.
-    type: (initialValues?.type ?? "") as ListingType,
+    type: initialValues?.type ?? "offer",
     price: initialValues?.price ?? 0,
   });
+  // Catégorie = nom d'un tag, indépendante de `type`.
+  const [category, setCategory] = useState<string>(initialValues?.tags?.[0] ?? "");
 
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [success, setSuccess] = useState<string>("");
@@ -43,10 +38,8 @@ const ListingForm = ({ initialValues, onSubmit, submitLabel }: ListingFormProps)
       .then((res) => {
         if (cancelled) return;
         setTags(res.data);
-        // Si aucun type pré-sélectionné, on prend le 1er tag dispo comme défaut.
-        if (!initialValues?.type && res.data.length > 0) {
-          setFormData((prev) => ({ ...prev, type: res.data[0].name as ListingType }));
-        }
+        // Si aucune catégorie pré-sélectionnée, on prend le 1er tag dispo par défaut.
+        setCategory((prev) => prev || res.data[0]?.name || "");
       })
       .catch(() => {
         if (!cancelled) setTagsError("Impossible de charger les catégories");
@@ -54,12 +47,9 @@ const ListingForm = ({ initialValues, onSubmit, submitLabel }: ListingFormProps)
     return () => {
       cancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>,
-  ) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
@@ -73,11 +63,10 @@ const ListingForm = ({ initialValues, onSubmit, submitLabel }: ListingFormProps)
     setSuccess("");
     setSubmitting(true);
     try {
-      // On envoie aussi le tag choisi dans le tableau `tags` pour qu'il soit
-      // exploité par le moteur de reco Neo4j et par les filtres tag-based.
+      // La catégorie choisie part dans `tags` (filtres + reco Neo4j).
       const payload: CreateListingDto = {
         ...formData,
-        tags: [formData.type],
+        tags: category ? [category] : [],
       };
       await onSubmit(payload);
       setSuccess("Opération réussie");
@@ -116,14 +105,28 @@ const ListingForm = ({ initialValues, onSubmit, submitLabel }: ListingFormProps)
 
       <div className="flex flex-col gap-1">
         <label>Type</label>
+        <select
+          className="border border-black rounded px-2 py-1"
+          name="type"
+          value={formData.type}
+          onChange={handleChange}
+          required
+        >
+          <option value="offer">Offre</option>
+          <option value="request">Demande</option>
+        </select>
+      </div>
+
+      <div className="flex flex-col gap-1">
+        <label>Catégorie</label>
         {tagsError ? (
           <span className="text-xs text-red-600">{tagsError}</span>
         ) : (
           <select
             className="border border-black rounded px-2 py-1"
-            name="type"
-            value={formData.type}
-            onChange={handleChange}
+            name="category"
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
             required
           >
             {tags.length === 0 && <option value="">Chargement…</option>}
@@ -149,11 +152,7 @@ const ListingForm = ({ initialValues, onSubmit, submitLabel }: ListingFormProps)
         />
       </div>
 
-      <button
-        className="border border-black rounded px-4 py-2 disabled:opacity-50"
-        type="submit"
-        disabled={submitting}
-      >
+      <button className="border border-black rounded px-4 py-2 disabled:opacity-50" type="submit" disabled={submitting}>
         {submitting ? "Envoi…" : submitLabel}
       </button>
 
