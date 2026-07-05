@@ -16,6 +16,9 @@ services:
       MONGODB_URL: mongodb://root:root@mongodb:27017
       MONGODB_DB: db
       AUTH_JWKS_URL: http://auth-service:3001/.well-known/jwks.json
+      NEO4J_URL: bolt://neo4j:7687
+      NEO4J_USER: neo4j
+      NEO4J_PASSWORD: password
     depends_on:
       - mongodb
       - neo4j

@@ -34,7 +34,7 @@ import { errorHandler, NotFoundError } from "./middleware/error-handler.js";
 import { requireAuth } from "./middleware/auth.middleware.js";
 import { authorize } from "./middleware/authorize.middleware.js";
 import { connectDB, closeDB } from "./repositories/mongodb.connector.js";
-import { connectNeo4j } from "./repositories/neo4j.connector.js";
+import { connectNeo4j, closeNeo4j } from "./repositories/neo4j.connector.js";
 import { setupGracefulShutdown } from "./shutdown.js";
 import { initContainer } from "./repositories/container.js";
 import { generateOpenApi } from "@ts-rest/open-api";
@@ -186,7 +186,9 @@ Promise.all([connectDB(), connectNeo4j()])
       console.log("");
       console.log(`\x1b[33m⚡ Ready to accept connections\x1b[0m`);
     });
-    setupGracefulShutdown(server, closeDB);
+    setupGracefulShutdown(server, async () => {
+      await Promise.all([closeDB(), closeNeo4j()]);
+    });
   })
   .catch((err) => {
     console.error("Failed to connect to databases:", err);
