@@ -34,6 +34,7 @@ import { errorHandler, NotFoundError } from "./middleware/error-handler.js";
 import { requireAuth } from "./middleware/auth.middleware.js";
 import { authorize } from "./middleware/authorize.middleware.js";
 import { connectDB, closeDB } from "./repositories/mongodb.connector.js";
+import { connectNeo4j } from "./repositories/neo4j.connector.js";
 import { setupGracefulShutdown } from "./shutdown.js";
 import { initContainer } from "./repositories/container.js";
 import { generateOpenApi } from "@ts-rest/open-api";
@@ -172,9 +173,9 @@ app.use((_req, _res, next) => {
 
 app.use(errorHandler);
 
-connectDB()
-  .then((db) => {
-    initContainer(db);
+Promise.all([connectDB(), connectNeo4j()])
+  .then(([db, neo4jDriver]) => {
+    initContainer(db, neo4jDriver);
     const server = app.listen(port, () => {
       const localUrl = `http://localhost:${port}`;
 
@@ -188,6 +189,6 @@ connectDB()
     setupGracefulShutdown(server, closeDB);
   })
   .catch((err) => {
-    console.error("Failed to connect to MongoDB:", err);
+    console.error("Failed to connect to databases:", err);
     process.exit(1);
   });
