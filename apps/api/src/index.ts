@@ -20,6 +20,7 @@ import {
 } from "@repo/contracts";
 
 import { usersRouter } from "./routes/users/users.router.js";
+import { userPublicHandler } from "./routes/users/users-public.handler.js";
 import { listingsRouter } from "./routes/listings/listings.router.js";
 import { eventsRouter } from "./routes/events/events.router.js";
 import { contractsRouter } from "./routes/contracts/contracts.router.js";
@@ -145,6 +146,7 @@ app.use(
 // Everything below /health, /openapi.json and /docs requires a valid access token.
 // requireAuth verifies the JWT (iss/aud) and sets req.user.
 app.use(requireAuth);
+app.get("/users/:id/public", userPublicHandler);
 
 // Authorization is declared per-route in the contract `metadata.auth` and enforced
 // by this single global middleware (reads req.tsRestRoute, loads records for
