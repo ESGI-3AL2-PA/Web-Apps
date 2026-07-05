@@ -1,56 +1,45 @@
-
-import { useEffect, useState } from "react";
-import { getAllAnnonces } from "../../api-service/api";
-import type { ListingResponseDto } from "../../type/annonce";
+import { useEffect, useState, useCallback } from "react";
+import { useOutletContext } from "react-router-dom";
+import type { ListingQueryDto, ListingResponseDto } from "@repo/contracts";
+import { getListings } from "../../api-service/listings.service";
+import type { ServiceOutletContext } from "./Service";
+import AnnonceList from "../../component/AnnonceList";
 
 const Annonces = () => {
-    const [data, setData] = useState<ListingResponseDto[]>([]);
-    const [loading, setLoading] = useState<boolean>(true);
-    const [error, setError] = useState<string | null>(null);
+  const { selectedTag } = useOutletContext<ServiceOutletContext>();
 
-    useEffect(() => {
-        const fetchAnnonces = async () => {
-            try {
-                const result = await getAllAnnonces();
-                setData(result);
-            } catch {
-                setError("Impossible de charger les annonces");
-            } finally {
-                setLoading(false);
-            }
-        };
+  const [data, setData] = useState<ListingResponseDto[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
 
-        fetchAnnonces();
-    }, []);
+  const fetchAnnonces = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      // ListingQueryDto accepte désormais `tag` (filtre par nom de tag — match
+      // automatique sur l'array `tags` côté Mongo).
+      const filters: ListingQueryDto = {} as ListingQueryDto;
+      if (selectedTag) filters.tag = selectedTag;
 
-    if (loading) {
-        return <div>Chargement des annonces...</div>;
+      const result = await getListings(filters);
+      setData(result.data);
+    } catch {
+      setError("Impossible de charger les annonces");
+    } finally {
+      setLoading(false);
     }
+  }, [selectedTag]);
 
-    if (error) {
-        return <div>{error}</div>;
-    }
+  useEffect(() => {
+    fetchAnnonces();
+  }, [fetchAnnonces]);
 
-    return (
-        <div>
-            <h1>Liste des annonces</h1>
+  if (loading) return <div>Chargement des annonces...</div>;
+  if (error) return <div style={{ color: "red" }}>{error}</div>;
 
-            {data.length === 0 ? (
-                <p>Aucune annonce disponible.</p>
-            ) : (
-                data.map((annonce) => (
-                    <article key={annonce.id}>
-                        <h2>{annonce.title}</h2>
-                        <p>{annonce.description}</p>
-                        <p>ID: {annonce.id}</p>
-                        <p>Prix: {annonce.price} EUR</p>
-                        <p>Type: {annonce.type}</p>
-                        <p>Statut: {annonce.status}</p>
-                    </article>
-                ))
-            )}
-        </div>
-    );
+  return (
+    <AnnonceList annonces={data} title="Listes des annonces" onChanged={fetchAnnonces} />
+  );
 };
 
 export default Annonces;

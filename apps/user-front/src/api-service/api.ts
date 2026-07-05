@@ -1,17 +1,9 @@
 import axios from "axios";
 import { isTokenExpiringSoon } from "@repo/hooks";
 import { config } from "@repo/config";
-import { type ListingResponseDto } from "../type/annonce";
 
-type PaginatedListingsResponse = {
-  data: ListingResponseDto[];
-  total: number;
-  page: number;
-  limit: number;
-};
-
-const AUTH_SERVICE_URL = config.authServiceUrl;
 const API_BASE_URL = config.apiUrl;
+const AUTH_SERVICE_URL = config.authServiceUrl;
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -66,19 +58,5 @@ api.interceptors.response.use(
     return Promise.reject(error);
   },
 );
-
-export async function getAllAnnonces(): Promise<ListingResponseDto[]> {
-  try {
-    const res = await api.get<PaginatedListingsResponse>("/listings");
-
-    if (!res.data) {
-      throw Error();
-    }
-
-    return res.data.data;
-  } catch (error) {
-    throw new Error("Erreur lors de du get all annonces");
-  }
-}
 
 export default api;

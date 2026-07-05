@@ -20,9 +20,13 @@ export interface IListingRepository {
 
   getListingById(id: string): Promise<Listing | null>;
 
+  getListingsByAuthorId(authorId: string): Promise<Listing[]>;
+
   createListing(data: Omit<Listing, "id" | "createdAt">): Promise<Listing>;
 
   updateListing(id: string, data: Partial<Omit<Listing, "id" | "createdAt">>): Promise<Listing | null>;
 
   deleteListing(id: string): Promise<boolean>;
+
+  countActiveListings(): Promise<number>;
 }
