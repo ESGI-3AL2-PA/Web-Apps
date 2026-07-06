@@ -98,9 +98,13 @@ export const listingsContract = c.router({
   getActiveListingsCount: {
     method: "GET",
     path: "/listings/count/active",
+    query: z.object({
+      districtId: z.string().optional().openapi({ description: "Restrict the count to one district" }),
+    }),
     responses: {
       200: z.object({ count: z.number().int() }),
     },
     summary: "Get the number of active listings",
+    metadata: auth({ audience: "api" }),
   },
 });

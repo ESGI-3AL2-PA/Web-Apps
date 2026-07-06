@@ -89,8 +89,10 @@ export class MongoListingRepository implements IListingRepository {
     return result.deletedCount === 1;
   }
 
-  async countActiveListings(): Promise<number> {
-    return this.collection.countDocuments({ status: "active" });
+  async countActiveListings(districtId?: string): Promise<number> {
+    const filter: Filter<ListingDoc> = { status: "active" };
+    if (districtId) filter.districtId = districtId;
+    return this.collection.countDocuments(filter);
   }
 
   private toListing(doc: ListingDoc): Listing {

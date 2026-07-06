@@ -76,11 +76,15 @@ export const listingsRouter = s.router(listingsContract, {
     return { status: 204, body: undefined };
   },
 
-  getActiveListingsCount: async () => {
+  getActiveListingsCount: async ({ query: { districtId }, req }) => {
+    const scope = resolveListDistrictScope(req.user!, districtId);
+    if ("empty" in scope) {
+      return { status: 200, body: { count: 0 } };
+    }
     // Annotated so resolve("listing") gets a contextual type — without it, TS infers
     // `never` in this bare handler (same reason as createListing's userRepo annotation).
     const listingRepo: IListingRepository = resolve("listing");
-    const count = await listingRepo.countActiveListings();
+    const count = await listingRepo.countActiveListings(scope.districtId);
     return { status: 200, body: { count } };
   },
 });

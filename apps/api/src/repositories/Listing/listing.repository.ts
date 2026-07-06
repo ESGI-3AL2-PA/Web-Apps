@@ -27,5 +27,5 @@ export interface IListingRepository {
 
   deleteListing(id: string): Promise<boolean>;
 
-  countActiveListings(): Promise<number>;
+  countActiveListings(districtId?: string): Promise<number>;
 }
