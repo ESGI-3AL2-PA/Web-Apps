@@ -68,11 +68,6 @@ export class MongoListingRepository implements IListingRepository {
     return doc ? this.toListing(doc) : null;
   }
 
-  async getListingsByAuthorId(authorId: string): Promise<Listing[]> {
-    const docs = await this.collection.find({ authorId }).toArray();
-    return docs.map(this.toListing);
-  }
-
   async createListing(data: Omit<Listing, "id" | "createdAt">): Promise<Listing> {
     const now = new Date().toISOString();
     const doc: ListingDoc = { ...data, _id: randomUUID(), createdAt: now };

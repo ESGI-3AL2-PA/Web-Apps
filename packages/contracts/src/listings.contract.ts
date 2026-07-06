@@ -39,17 +39,6 @@ export const listingsContract = c.router({
     metadata: auth({ audience: "api" }),
   },
 
-  getListingsById: {
-    method: "GET",
-    path: "/listings/author/:id",
-    pathParams: ListingParamsDtoSchema,
-    responses: {
-      200: z.array(ListingResponseDtoSchema),
-    },
-    summary: "Get all listings created by a given author ID",
-    metadata: auth({ audience: "api" }),
-  },
-
   createListing: {
     method: "POST",
     path: "/listings",

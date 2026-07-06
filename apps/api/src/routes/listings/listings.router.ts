@@ -6,7 +6,6 @@ import type { IListingRepository } from "../../repositories/Listing/listing.repo
 import { resolveListDistrictScope } from "../../middleware/district-scope.js";
 import { getListingsUseCase } from "../../use-cases/listings/get-listings.use-case.js";
 import { getListingByIdUseCase } from "../../use-cases/listings/get-listing-by-id.use-case.js";
-import { getListingsByIdUseCase } from "../../use-cases/listings/get-listings-by-id.use-case.js";
 import { createListingUseCase } from "../../use-cases/listings/create-listing.use-case.js";
 import { updateListingUseCase } from "../../use-cases/listings/update-listing.use-case.js";
 import { deleteListingUseCase } from "../../use-cases/listings/delete-listing.use-case.js";
@@ -38,11 +37,6 @@ export const listingsRouter = s.router(listingsContract, {
       return { status: 404, body: { message: "Listing not found" } };
     }
     return { status: 200, body: listing };
-  },
-
-  getListingsById: async ({ params: { id } }) => {
-    const listings = await getListingsByIdUseCase(resolve("listing"))({ id });
-    return { status: 200, body: listings };
   },
 
   createListing: async ({ body, req }) => {

@@ -11,9 +11,7 @@ import api from "./api";
 type PaginatedListings = PaginatedResponseDto<typeof ListingResponseDtoSchema>;
 
 // GET /listings — paginated list with optional filters (search, type, status, tag, …)
-export async function getListings(
-  filters: ListingQueryDto = {} as ListingQueryDto,
-): Promise<PaginatedListings> {
+export async function getListings(filters: ListingQueryDto = {} as ListingQueryDto): Promise<PaginatedListings> {
   try {
     const res = await api.get<PaginatedListings>("/listings", { params: filters });
     if (!res.data) {
@@ -38,19 +36,6 @@ export async function getListingById(id: string): Promise<ListingResponseDto> {
   }
 }
 
-// GET /listings/author/:id — every listing published by a given author
-export async function getListingsByAuthorId(id: string): Promise<ListingResponseDto[]> {
-  try {
-    const res = await api.get<ListingResponseDto[]>(`/listings/author/${id}`);
-    if (!res) {
-      throw new Error();
-    }
-    return res.data;
-  } catch {
-    throw new Error("Aucunes donnée trouvées");
-  }
-}
-
 // GET /listings/count/active — number of currently active listings
 export async function getActiveListingsCount(): Promise<number> {
   const res = await api.get<{ count: number }>("/listings/count/active");
@@ -71,10 +56,7 @@ export async function createListing(data: CreateListingDto): Promise<ListingResp
 }
 
 // PATCH /listings/:id — partial update (owner only, enforced by backend `authorize`)
-export async function updateListing(
-  id: string,
-  data: UpdateListingDto,
-): Promise<ListingResponseDto> {
+export async function updateListing(id: string, data: UpdateListingDto): Promise<ListingResponseDto> {
   try {
     const res = await api.patch<ListingResponseDto>(`/listings/${id}`, data);
     if (!res.data) {
