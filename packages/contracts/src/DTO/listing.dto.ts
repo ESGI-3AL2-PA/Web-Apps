@@ -56,6 +56,7 @@ export const UpdateListingDtoSchema = z
     type: ListingTypeSchema.optional(),
     price: z.number().int().min(0).optional(),
     status: ListingStatusSchema.optional(),
+    tags: z.array(z.string()).optional(),
     expiresAt: z.string().datetime().optional(),
   })
   .openapi({ title: "UpdateListing" });
