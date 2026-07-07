@@ -9,7 +9,7 @@ import { getUserByIdUseCase } from "../../use-cases/users/get-user-by-id.use-cas
 import { createUserUseCase } from "../../use-cases/users/create-user.use-case.js";
 import { updateUserUseCase } from "../../use-cases/users/update-user.use-case.js";
 import { banUserUseCase } from "../../use-cases/users/ban-user.use-case.js";
-import { deleteUserUseCase } from "../../use-cases/users/delete-user.use-case.js";
+import { deleteUserUseCase, CannotDeleteSuperAdminError } from "../../use-cases/users/delete-user.use-case.js";
 
 // Strip secrets (password hash + TOTP secret) from user responses.
 const toDto = ({ passwordHash: _passwordHash, totpSecret: _totpSecret, ...rest }: User): UserResponseDto => rest;
@@ -62,10 +62,19 @@ export const usersRouter = s.router(usersContract, {
   },
 
   deleteUser: async ({ params: { id } }) => {
-    const deleted = await deleteUserUseCase(resolve("user"))({ id });
-    if (!deleted) {
-      return { status: 404, body: { message: "User not found" } };
+    // Route scope already restricts this to the caller's own id; the use-case adds the
+    // superAdmin guardrail.
+    try {
+      const deleted = await deleteUserUseCase(resolve("user"))({ id });
+      if (!deleted) {
+        return { status: 404, body: { message: "User not found" } };
+      }
+      return { status: 204, body: undefined };
+    } catch (err) {
+      if (err instanceof CannotDeleteSuperAdminError) {
+        return { status: 403, body: { message: err.message } };
+      }
+      throw err;
     }
-    return { status: 204, body: undefined };
   },
 });
