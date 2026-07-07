@@ -15,10 +15,14 @@ export const contractPdfHandler = async (req: Request, res: Response) => {
   const contractRepo: IContractRepository = resolve("contract");
   const contract = await contractRepo.getContractById(req.params.id!);
 
-  // 404 (not 403) on deny so we don't reveal which contracts exist.
+  // 404 (not 403) on deny so we don't reveal which contracts exist. Mirrors the
+  // authorize policy on GET /contracts/:id: parties always, superAdmin bypasses,
+  // and a district admin only within their own district.
   const isParty = contract && (contract.providerId === user.sub || contract.beneficiaryId === user.sub);
-  const isAdmin = user.role === "admin" || user.role === "superAdmin";
-  if (!contract || (!isParty && !isAdmin)) {
+  const isSuperAdmin = user.role === "superAdmin";
+  const isDistrictAdmin =
+    user.role === "admin" && !!user.adminDistrictId && contract?.districtId === user.adminDistrictId;
+  if (!contract || (!isParty && !isSuperAdmin && !isDistrictAdmin)) {
     res.status(404).json({ message: "Contract not found" });
     return;
   }
