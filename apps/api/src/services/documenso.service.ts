@@ -35,8 +35,10 @@ export interface IDocumensoService {
   verifyWebhookSecret(received: string | undefined): boolean;
 }
 
-// Documenso DocumentStatus → our contract signature status.
-export const mapDocumensoStatus = (status: string | undefined): ContractSignatureStatus => {
+// Documenso DocumentStatus → our contract signature status. Returns null for any
+// status we don't recognise, so an unknown/unhandled event is ignored rather than
+// coerced into a (regressive) "draft" state.
+export const mapDocumensoStatus = (status: string | undefined): ContractSignatureStatus | null => {
   switch (status) {
     case "COMPLETED":
       return "completed";
@@ -44,8 +46,10 @@ export const mapDocumensoStatus = (status: string | undefined): ContractSignatur
       return "rejected";
     case "PENDING":
       return "pending";
-    default:
+    case "DRAFT":
       return "draft";
+    default:
+      return null;
   }
 };
 

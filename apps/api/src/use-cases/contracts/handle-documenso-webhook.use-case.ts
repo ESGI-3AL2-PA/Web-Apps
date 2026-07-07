@@ -53,6 +53,8 @@ export const handleDocumensoWebhookUseCase = (
     if (!contract) return null;
 
     const signatureStatus = mapDocumensoStatus(event.payload?.status);
+    // Unknown/unhandled event — ignore it (don't touch the contract).
+    if (signatureStatus === null) return contract;
 
     if (signatureStatus === "completed") {
       // Both parties signed — release the escrow to the provider (once).
@@ -68,6 +70,10 @@ export const handleDocumensoWebhookUseCase = (
       return rejected ?? contract;
     }
 
-    return contractRepository.updateContract(contract.id, { signatureStatus });
+    // Non-terminal transition (pending/draft): apply it atomically only while the
+    // contract is still non-terminal, so a late or out-of-order event can't drag a
+    // completed/rejected contract back to pending. Already-terminal → no-op.
+    const updated = await contractRepository.applyNonTerminalStatus(contract.id, signatureStatus);
+    return updated ?? contract;
   };
 };

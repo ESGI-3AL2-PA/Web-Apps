@@ -1,4 +1,4 @@
-import type { Contract } from "../../entities/contract.entity.js";
+import type { Contract, ContractSignatureStatus } from "../../entities/contract.entity.js";
 
 export interface IContractRepository {
   ensureIndexes(): Promise<void>;
@@ -33,6 +33,11 @@ export interface IContractRepository {
   // exactly once.
   completeContract(id: string): Promise<Contract | null>;
   rejectContract(id: string): Promise<Contract | null>;
+
+  // Atomically apply a non-terminal status (pending/draft) only while the contract is
+  // still non-terminal, so a late/duplicate webhook can't regress a completed/rejected
+  // contract. Returns null if the contract was already terminal (or gone).
+  applyNonTerminalStatus(id: string, status: ContractSignatureStatus): Promise<Contract | null>;
 
   // Returns an existing non-terminal (draft/pending) contract binding the same
   // listing + provider + beneficiary, if any — used to reject duplicate creations

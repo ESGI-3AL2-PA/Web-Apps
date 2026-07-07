@@ -106,6 +106,17 @@ export class MongoContractRepository implements IContractRepository {
     return result ? this.toContract(result) : null;
   }
 
+  async applyNonTerminalStatus(id: string, status: ContractSignatureStatus): Promise<Contract | null> {
+    // Same {$nin} terminal guard as complete/reject — a pending/draft event that
+    // arrives after settlement finds no match and is ignored, so it can't regress.
+    const result = await this.collection.findOneAndUpdate(
+      { _id: id, signatureStatus: { $nin: ["completed", "rejected"] } },
+      { $set: { signatureStatus: status } },
+      { returnDocument: "after" },
+    );
+    return result ? this.toContract(result) : null;
+  }
+
   async findActiveContract(params: {
     listingId: string;
     providerId: string;
