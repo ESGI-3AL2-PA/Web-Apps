@@ -18,6 +18,15 @@ export class MongoContractRepository implements IContractRepository {
     // Backs the webhook lookup by Documenso document id (sparse: null before a
     // document is generated). Unique — one contract per Documenso document.
     await this.collection.createIndex({ documensoDocumentId: 1 }, { unique: true, sparse: true });
+    // At most one *active* contract per (listing, provider, beneficiary). Makes the
+    // duplicate-create guard atomic — the app-level findActiveContract check races
+    // under concurrency. Contracts are always created "pending", so equality on that
+    // status covers every create; the trio frees up once the contract goes terminal
+    // (completed/rejected) or is deleted. ($in isn't allowed in a partial filter.)
+    await this.collection.createIndex(
+      { listingId: 1, providerId: 1, beneficiaryId: 1 },
+      { unique: true, partialFilterExpression: { signatureStatus: "pending" } },
+    );
   }
 
   async getContracts(params: {

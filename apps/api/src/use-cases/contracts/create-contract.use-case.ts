@@ -26,6 +26,11 @@ export class DuplicateContractError extends Error {
   }
 }
 
+// A MongoServerError with code 11000 is a unique-index violation — here, the partial
+// unique index on (listingId, providerId, beneficiaryId) for pending contracts.
+const isDuplicateKeyError = (err: unknown): boolean =>
+  typeof err === "object" && err !== null && (err as { code?: number }).code === 11000;
+
 // The caller is the beneficiary (payer). Their tokens are escrowed up front — held
 // until the contract completes (released to the provider) or is rejected/deleted
 // (refunded). Generating the Documenso document and persisting the contract happen
@@ -89,8 +94,18 @@ export const createContractUseCase = (
         disputeReason: null,
       });
     } catch (err) {
-      // Roll the escrow hold back — no contract was persisted.
-      if (data.price > 0) await transactionRepository.adjustBalance(data.beneficiaryId, data.price);
+      // Roll the escrow hold back — no contract was persisted. Best-effort so a failed
+      // refund can't mask the original error (the more useful one to surface).
+      if (data.price > 0) {
+        await transactionRepository
+          .adjustBalance(data.beneficiaryId, data.price)
+          .catch((refundErr) =>
+            console.error(`[contracts] escrow rollback failed for beneficiary ${data.beneficiaryId}:`, refundErr),
+          );
+      }
+      // A concurrent identical create won the unique-index race (both passed the
+      // findActiveContract check above) — surface it as a 409, not a 500.
+      if (isDuplicateKeyError(err)) throw new DuplicateContractError();
       throw err;
     }
 
