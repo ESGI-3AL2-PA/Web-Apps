@@ -24,6 +24,7 @@ import { listingsRouter } from "./routes/listings/listings.router.js";
 import { eventsRouter } from "./routes/events/events.router.js";
 import { contractsRouter } from "./routes/contracts/contracts.router.js";
 import { documensoWebhookHandler } from "./routes/contracts/documenso-webhook.handler.js";
+import { contractPdfHandler } from "./routes/contracts/contract-pdf.handler.js";
 import { incidentsRouter } from "./routes/incidents/incidents.router.js";
 import { districtsRouter } from "./routes/districts/districts.router.js";
 import { tagsRouter } from "./routes/tags/tags.router.js";
@@ -149,6 +150,11 @@ app.post("/contracts/webhook", documensoWebhookHandler);
 // Everything below /health, /openapi.json and /docs requires a valid access token.
 // requireAuth verifies the JWT (iss/aud) and sets req.user.
 app.use(requireAuth);
+
+// Binary passthrough for the signed contract PDF (proxied from Documenso so the
+// front never talks to Documenso/S3 directly). Raw handler — does its own party/
+// admin authorization. Registered before the ts-rest contract routes.
+app.get("/contracts/:id/pdf", contractPdfHandler);
 
 // Authorization is declared per-route in the contract `metadata.auth` and enforced
 // by this single global middleware (reads req.tsRestRoute, loads records for

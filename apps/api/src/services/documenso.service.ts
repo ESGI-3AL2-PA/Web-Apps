@@ -29,6 +29,8 @@ export interface IDocumensoService {
   }): Promise<GeneratedContractDocument>;
   // Re-send the signing invitation emails for a document.
   resendDocument(documentId: number): Promise<void>;
+  // Fetch the signed PDF bytes for a completed document; null if not completed yet.
+  fetchSignedPdf(documentId: number): Promise<{ body: Buffer; contentType: string; filename: string } | null>;
   // Constant-time comparison of an inbound webhook's X-Documenso-Secret header.
   verifyWebhookSecret(received: string | undefined): boolean;
 }
@@ -163,6 +165,28 @@ class HttpDocumensoService implements IDocumensoService {
     });
   }
 
+  async fetchSignedPdf(documentId: number): Promise<{ body: Buffer; contentType: string; filename: string } | null> {
+    let meta: { downloadUrl: string; filename?: string; contentType?: string };
+    try {
+      meta = await this.request(`/documents/${documentId}/download?version=signed`);
+    } catch (err) {
+      // Documenso 400s a not-yet-completed document; treat as "no signed PDF yet".
+      if (err instanceof DocumensoServiceError && /not completed/i.test(err.message)) return null;
+      throw err;
+    }
+    // The api runs on the same docker network as Documenso's object storage, so the
+    // presigned URL host is directly reachable — a plain fetch suffices.
+    const res = await fetch(meta.downloadUrl);
+    if (!res.ok) {
+      throw new DocumensoServiceError(`Documenso S3 download failed (${res.status})`);
+    }
+    return {
+      body: Buffer.from(await res.arrayBuffer()),
+      contentType: meta.contentType || "application/pdf",
+      filename: meta.filename || `contrat-${documentId}.pdf`,
+    };
+  }
+
   verifyWebhookSecret(received: string | undefined): boolean {
     const expected = this.config.webhookSecret;
     if (!expected || !received) return false;
@@ -188,6 +212,9 @@ class DisabledDocumensoService implements IDocumensoService {
   }
   async resendDocument(): Promise<void> {
     this.fail();
+  }
+  async fetchSignedPdf(): Promise<{ body: Buffer; contentType: string; filename: string } | null> {
+    return null;
   }
   verifyWebhookSecret(): boolean {
     return false;
