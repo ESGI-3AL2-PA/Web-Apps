@@ -23,6 +23,7 @@ import { usersRouter } from "./routes/users/users.router.js";
 import { listingsRouter } from "./routes/listings/listings.router.js";
 import { eventsRouter } from "./routes/events/events.router.js";
 import { contractsRouter } from "./routes/contracts/contracts.router.js";
+import { documensoWebhookHandler } from "./routes/contracts/documenso-webhook.handler.js";
 import { incidentsRouter } from "./routes/incidents/incidents.router.js";
 import { districtsRouter } from "./routes/districts/districts.router.js";
 import { tagsRouter } from "./routes/tags/tags.router.js";
@@ -140,6 +141,10 @@ app.use(
     theme: "moon",
   }) as unknown as RequestHandler, // Ugly but it works ¯\_(ツ)_/¯
 );
+
+// Documenso posts signing events here. It authenticates with a shared secret
+// (verified inside the handler), not our JWT, so it must sit ABOVE requireAuth.
+app.post("/contracts/webhook", documensoWebhookHandler);
 
 // Everything below /health, /openapi.json and /docs requires a valid access token.
 // requireAuth verifies the JWT (iss/aud) and sets req.user.

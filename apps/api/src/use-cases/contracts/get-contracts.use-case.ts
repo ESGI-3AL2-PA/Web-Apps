@@ -7,7 +7,7 @@ export const getContractsUseCase = (contractRepository: IContractRepository) => 
     providerId?: string;
     beneficiaryId?: string;
     partyId?: string;
-    openSignStatus?: string;
+    signatureStatus?: string;
     disputed?: boolean;
     page?: number;
     limit?: number;

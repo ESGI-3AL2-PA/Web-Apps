@@ -1,6 +1,6 @@
 import { randomUUID } from "crypto";
 import type { Collection, Db, Filter } from "mongodb";
-import type { Contract, OpenSignStatus } from "../../entities/contract.entity.js";
+import type { Contract, ContractSignatureStatus } from "../../entities/contract.entity.js";
 import type { IContractRepository } from "./contract.repository.js";
 
 type ContractDoc = Omit<Contract, "id"> & { _id: string };
@@ -15,6 +15,9 @@ export class MongoContractRepository implements IContractRepository {
   async ensureIndexes(): Promise<void> {
     // Backs district-scoped list filtering.
     await this.collection.createIndex({ districtId: 1 });
+    // Backs the webhook lookup by Documenso document id (sparse: null before a
+    // document is generated). Unique — one contract per Documenso document.
+    await this.collection.createIndex({ documensoDocumentId: 1 }, { unique: true, sparse: true });
   }
 
   async getContracts(params: {
@@ -23,7 +26,7 @@ export class MongoContractRepository implements IContractRepository {
     providerId?: string;
     beneficiaryId?: string;
     partyId?: string;
-    openSignStatus?: string;
+    signatureStatus?: string;
     disputed?: boolean;
     page?: number;
     limit?: number;
@@ -39,7 +42,7 @@ export class MongoContractRepository implements IContractRepository {
       providerId,
       beneficiaryId,
       partyId,
-      openSignStatus,
+      signatureStatus,
       disputed,
       page = 1,
       limit = 20,
@@ -52,7 +55,7 @@ export class MongoContractRepository implements IContractRepository {
     if (providerId) filter.providerId = providerId;
     if (beneficiaryId) filter.beneficiaryId = beneficiaryId;
     if (partyId) filter.$or = [{ providerId: partyId }, { beneficiaryId: partyId }];
-    if (openSignStatus) filter.openSignStatus = openSignStatus as OpenSignStatus;
+    if (signatureStatus) filter.signatureStatus = signatureStatus as ContractSignatureStatus;
     if (disputed !== undefined) filter.disputed = disputed;
 
     const [total, docs] = await Promise.all([
@@ -69,6 +72,11 @@ export class MongoContractRepository implements IContractRepository {
 
   async getContractById(id: string): Promise<Contract | null> {
     const doc = await this.collection.findOne({ _id: id });
+    return doc ? this.toContract(doc) : null;
+  }
+
+  async getContractByDocumensoDocumentId(documentId: number): Promise<Contract | null> {
+    const doc = await this.collection.findOne({ documensoDocumentId: documentId });
     return doc ? this.toContract(doc) : null;
   }
 

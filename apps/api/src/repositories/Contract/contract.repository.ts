@@ -10,7 +10,7 @@ export interface IContractRepository {
     beneficiaryId?: string;
     // Restrict to contracts where this user is provider OR beneficiary.
     partyId?: string;
-    openSignStatus?: string;
+    signatureStatus?: string;
     disputed?: boolean;
     page?: number;
     limit?: number;
@@ -22,6 +22,10 @@ export interface IContractRepository {
   }>;
 
   getContractById(id: string): Promise<Contract | null>;
+
+  // Lookup by the Documenso document id — used by the webhook handler to map an
+  // inbound signing event back to our contract.
+  getContractByDocumensoDocumentId(documentId: number): Promise<Contract | null>;
 
   createContract(data: Omit<Contract, "id" | "createdAt">): Promise<Contract>;
 

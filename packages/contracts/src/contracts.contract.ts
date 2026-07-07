@@ -7,7 +7,6 @@ import {
   ContractResponseDtoSchema,
   CreateContractDtoSchema,
   DisputeContractDtoSchema,
-  SignContractDtoSchema,
   NotFoundErrorSchema,
   ForbiddenErrorSchema,
   PaginatedResponseDtoSchema,
@@ -61,17 +60,17 @@ export const contractsContract = c.router({
     metadata: auth({ audience: "api" }),
   },
 
-  signContract: {
+  resendContract: {
     method: "POST",
-    path: "/contracts/:id/sign",
+    path: "/contracts/:id/resend",
     pathParams: ContractParamsDtoSchema,
-    body: SignContractDtoSchema,
+    body: c.noBody(),
     responses: {
-      200: ContractResponseDtoSchema,
+      200: z.object({ resent: z.boolean() }),
       403: ForbiddenErrorSchema,
       404: NotFoundErrorSchema,
     },
-    summary: "Update contract signature status (party only)",
+    summary: "Re-send the Documenso signing invitation emails (party only)",
     metadata: auth({
       audience: "api",
       scope: { resource: "contract", ownerFields: ["providerId", "beneficiaryId"], districtField: "districtId" },
