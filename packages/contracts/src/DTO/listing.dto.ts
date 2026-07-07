@@ -16,7 +16,14 @@ export const ListingResponseDtoSchema = z
     type: ListingTypeSchema.openapi({ description: "Whether this is an offer or a request" }),
     price: z.number().int().openapi({ description: "Price in tokens", example: 10 }),
     status: ListingStatusSchema.openapi({ description: "Current status of the listing" }),
-    tags: z.array(z.string()).openapi({ description: "Tags for categorisation", example: ["plumbing"] }),
+    tags: z
+      .array(z.string())
+      .optional()
+      .openapi({ description: "Tag names attached to this listing", example: ["gardening", "weekend-help"] }),
+    userHasContract: z
+      .boolean()
+      .optional()
+      .openapi({ description: "True si le user authentifié a déjà pris ce service" }),
     createdAt: z.string().datetime().openapi({ description: "Creation timestamp" }),
     expiresAt: z.string().datetime().optional().openapi({ description: "Expiry timestamp" }),
   })
@@ -33,7 +40,10 @@ export const CreateListingDtoSchema = z
     description: z.string().min(1).openapi({ description: "Detailed description" }),
     type: ListingTypeSchema.openapi({ description: "offer or request" }),
     price: z.number().int().min(0).openapi({ description: "Price in tokens", example: 10 }),
-    tags: z.array(z.string()).optional().default([]),
+    tags: z
+      .array(z.string())
+      .optional()
+      .openapi({ description: "Tag names attached to this listing", example: ["gardening"] }),
     expiresAt: z.string().datetime().optional(),
   })
   .openapi({ title: "CreateListing" });
@@ -64,6 +74,7 @@ export const ListingQueryDtoSchema = z
     status: ListingStatusSchema.optional(),
     districtId: z.string().optional(),
     authorId: z.string().optional(),
+    tag: z.string().optional().openapi({ description: "Filter listings by a single tag name (Mongo array match)" }),
   })
   .openapi({ title: "ListingQuery" });
 export type ListingQueryDto = z.infer<typeof ListingQueryDtoSchema>;

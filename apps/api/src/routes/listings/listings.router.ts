@@ -2,6 +2,7 @@ import { initServer } from "@ts-rest/express";
 import { listingsContract } from "@repo/contracts";
 import { resolve } from "../../repositories/container.js";
 import type { IUserRepository } from "../../repositories/User/user.repository.js";
+import type { IListingRepository } from "../../repositories/Listing/listing.repository.js";
 import { resolveListDistrictScope } from "../../middleware/district-scope.js";
 import { getListingsUseCase } from "../../use-cases/listings/get-listings.use-case.js";
 import { getListingByIdUseCase } from "../../use-cases/listings/get-listing-by-id.use-case.js";
@@ -12,7 +13,7 @@ import { deleteListingUseCase } from "../../use-cases/listings/delete-listing.us
 const s = initServer();
 
 export const listingsRouter = s.router(listingsContract, {
-  getListings: async ({ query: { page, limit, search, type, status, districtId, authorId }, req }) => {
+  getListings: async ({ query: { page, limit, search, type, status, districtId, authorId, tag }, req }) => {
     const scope = resolveListDistrictScope(req.user!, districtId);
     if ("empty" in scope) {
       return { status: 200, body: { data: [], total: 0, page, limit } };
@@ -23,6 +24,7 @@ export const listingsRouter = s.router(listingsContract, {
       status,
       districtId: scope.districtId,
       authorId,
+      tag,
       page,
       limit,
     });
@@ -46,7 +48,10 @@ export const listingsRouter = s.router(listingsContract, {
     if (!author) {
       return { status: 404, body: { message: "Author not found" } };
     }
-    const newListing = await createListingUseCase(resolve("listing"))({
+    const newListing = await createListingUseCase(
+      resolve("listing"),
+      resolve("graph"),
+    )({
       ...body,
       authorId: author.id,
       districtId: author.districtId,
@@ -64,10 +69,22 @@ export const listingsRouter = s.router(listingsContract, {
   },
 
   deleteListing: async ({ params: { id } }) => {
-    const deleted = await deleteListingUseCase(resolve("listing"))({ id });
+    const deleted = await deleteListingUseCase(resolve("listing"), resolve("graph"))({ id });
     if (!deleted) {
       return { status: 404, body: { message: "Listing not found" } };
     }
     return { status: 204, body: undefined };
+  },
+
+  getActiveListingsCount: async ({ query: { districtId }, req }) => {
+    const scope = resolveListDistrictScope(req.user!, districtId);
+    if ("empty" in scope) {
+      return { status: 200, body: { count: 0 } };
+    }
+    // Annotated so resolve("listing") gets a contextual type — without it, TS infers
+    // `never` in this bare handler (same reason as createListing's userRepo annotation).
+    const listingRepo: IListingRepository = resolve("listing");
+    const count = await listingRepo.countActiveListings(scope.districtId);
+    return { status: 200, body: { count } };
   },
 });

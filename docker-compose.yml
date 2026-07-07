@@ -16,6 +16,9 @@ services:
       MONGODB_URL: mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongodb:27017
       MONGODB_DB: db
       AUTH_JWKS_URL: http://auth-service:3001/.well-known/jwks.json
+      NEO4J_URL: bolt://neo4j:7687
+      NEO4J_USER: neo4j
+      NEO4J_PASSWORD: password
       # Documenso (contracts). Reached over the docker network; the token/template/
       # secret come from .env (created once in the Documenso UI). Signing URLs that
       # Documenso returns already use its public URL (localhost:3030), browser-reachable.

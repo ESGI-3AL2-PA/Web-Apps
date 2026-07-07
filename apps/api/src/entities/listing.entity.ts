@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+// `type` = l'axe offre/demande de l'annonce. La catégorie (jardinage, etc.)
+// est portée par `tags`, pas par `type`.
 export const ListingTypeSchema = z.enum(["offer", "request"]);
 export type ListingType = z.infer<typeof ListingTypeSchema>;
 
