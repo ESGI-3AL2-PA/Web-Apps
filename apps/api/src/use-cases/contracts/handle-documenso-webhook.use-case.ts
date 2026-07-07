@@ -19,16 +19,22 @@ const credit = async (
 ): Promise<void> => {
   if (contract.price <= 0) return;
   await transactionRepository.adjustBalance(userId, contract.price);
-  await transactionRepository.createTransactions([
-    {
-      userId,
-      districtId: contract.districtId,
-      type: "transfer_in",
-      amount: contract.price,
-      refId: contract.id,
-      refType: "contract",
-    },
-  ]);
+  // The balance move above already settled the escrow; the ledger row is an audit
+  // record. Don't let its failure bubble up — that would 500 the webhook and trigger
+  // a Documenso retry, but the atomic complete/reject gate has already fired so the
+  // retry can't re-credit. Log instead so the missing entry can be reconciled.
+  await transactionRepository
+    .createTransactions([
+      {
+        userId,
+        districtId: contract.districtId,
+        type: "transfer_in",
+        amount: contract.price,
+        refId: contract.id,
+        refType: "contract",
+      },
+    ])
+    .catch((err) => console.error(`[contracts] escrow-settle ledger write failed for ${contract.id}:`, err));
 };
 
 // Maps an inbound Documenso event to a contract status transition. Idempotent: the

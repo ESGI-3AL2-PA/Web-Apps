@@ -13,6 +13,7 @@ import {
   createContractUseCase,
   ContractPartyNotFoundError,
   InsufficientFundsError,
+  DuplicateContractError,
 } from "../../use-cases/contracts/create-contract.use-case.js";
 import { resendContractUseCase } from "../../use-cases/contracts/resend-contract.use-case.js";
 import { disputeContractUseCase } from "../../use-cases/contracts/dispute-contract.use-case.js";
@@ -33,6 +34,7 @@ const toResponse = (contract: Contract, userId: string | undefined): ContractRes
   price: contract.price,
   signatureStatus: contract.signatureStatus,
   disputed: contract.disputed,
+  disputeReason: contract.disputeReason ?? null,
   createdAt: contract.createdAt,
   signingUrl:
     contract.signatureStatus === "completed"
@@ -89,6 +91,10 @@ export const contractsRouter = s.router(contractsContract, {
     if (!listing) {
       return { status: 404, body: { message: "Listing not found" } };
     }
+    // Only an open listing can be contracted.
+    if (listing.status !== "active") {
+      return { status: 400, body: { message: "This listing is no longer active" } };
+    }
     // The caller is the beneficiary (payer, whose tokens are escrowed); the provider
     // being booked comes from the body.
     const beneficiaryId = req.user!.sub;
@@ -103,7 +109,8 @@ export const contractsRouter = s.router(contractsContract, {
     if (!authorIsExpectedParty) {
       return { status: 403, body: { message: "You are not a party to this listing's contract" } };
     }
-    // districtId is derived server-side from the referenced listing, never from the client.
+    // districtId and price are derived server-side from the referenced listing, never
+    // from the client — the escrowed amount always matches the advertised price.
     try {
       const newContract = await createContractUseCase(
         resolve("contract"),
@@ -114,12 +121,17 @@ export const contractsRouter = s.router(contractsContract, {
         ...body,
         beneficiaryId,
         districtId: listing.districtId,
+        price: listing.price,
         redirectUrl: process.env.CONTRACTS_SIGN_REDIRECT_URL,
       });
       return { status: 201, body: toResponse(newContract, req.user!.sub) };
     } catch (err) {
       if (err instanceof ContractPartyNotFoundError) {
         return { status: 404, body: { message: err.message } };
+      }
+      // An identical active contract already exists (double-submit).
+      if (err instanceof DuplicateContractError) {
+        return { status: 409, body: { message: err.message } };
       }
       // Beneficiary can't cover the price to escrow.
       if (err instanceof InsufficientFundsError) {

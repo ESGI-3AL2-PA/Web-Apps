@@ -21,6 +21,10 @@ export const ContractResponseDtoSchema = z
       .nullable()
       .openapi({ description: "Documenso signing URL for the current user, if they still need to sign" }),
     disputed: z.boolean().openapi({ description: "Whether the contract is currently disputed" }),
+    disputeReason: z
+      .string()
+      .nullable()
+      .openapi({ description: "Reason supplied when the contract was disputed, if any" }),
     createdAt: z.string().datetime().openapi({ description: "Creation timestamp" }),
   })
   .openapi({ title: "ContractResponse" });
@@ -32,7 +36,8 @@ export const CreateContractDtoSchema = z
     // The authenticated caller is the beneficiary (payer, whose tokens are escrowed);
     // the provider being booked is named here and never derived from the client.
     providerId: z.string().openapi({ description: "ID of the user providing the service" }),
-    price: z.number().int().min(0).openapi({ description: "Price in tokens", example: 10 }),
+    // Price is NOT accepted from the client — it is derived server-side from the
+    // referenced listing so the escrowed amount always matches the advertised price.
   })
   .openapi({ title: "CreateContract" });
 export type CreateContractDto = z.infer<typeof CreateContractDtoSchema>;

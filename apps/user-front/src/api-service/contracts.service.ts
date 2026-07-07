@@ -23,8 +23,8 @@ export async function getContractById(id: string): Promise<ContractResponseDto> 
   return res.data;
 }
 
-// POST /contracts — create a contract; the caller is the provider. This kicks off
-// Documenso document generation server-side and returns the caller's signing URL.
+// POST /contracts — create a contract; the caller is the beneficiary (payer). This
+// kicks off Documenso document generation server-side and returns the signing URL.
 export async function createContract(data: CreateContractDto): Promise<ContractResponseDto> {
   const res = await api.post<ContractResponseDto>("/contracts", data);
   return res.data;

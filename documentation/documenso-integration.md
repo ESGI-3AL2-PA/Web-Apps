@@ -65,8 +65,8 @@ contract is never persisted without a signable document.
 Raw Express handler (`routes/contracts/documenso-webhook.handler.ts`) mounted **above**
 `requireAuth` in `index.ts`, because Documenso authenticates with the shared secret, not
 our JWT. It verifies `X-Documenso-Secret`, then maps the event to a status update
-(`DOCUMENT_COMPLETED` → `completed`, `DOCUMENT_REJECTED` → `rejected` + `disputed`). The
-update is idempotent and looked up by `documensoDocumentId` (unique, sparse index).
+(`DOCUMENT_COMPLETED` → `completed`, `DOCUMENT_REJECTED` → `rejected`). The update is
+idempotent and looked up by `documensoDocumentId` (unique, sparse index).
 
 ### Contract model
 
@@ -81,7 +81,8 @@ signing _as that recipient_, so the other party's URL is never returned.
 
 1. The **beneficiary** (payer) creates the contract naming the provider → `POST /contracts`.
    Roles are resolved against the listing `type`: on an **offer** the listing author is
-   the provider being booked; on a **request** the author is the beneficiary.
+   the provider being booked; on a **request** the author is the beneficiary. The listing
+   must be `active`, and the `price` is taken from the listing (never from the client).
 2. The beneficiary's `price` tokens are **escrowed** (debited up front); the API then
    validates the listing, derives `districtId`, and calls Documenso `generate-document`
    (provider = signer 1, beneficiary = 2). If Documenso fails the escrow is rolled back.
@@ -98,13 +99,16 @@ signing _as that recipient_, so the other party's URL is never returned.
 The `price` is held from the beneficiary at creation and settled by whichever terminal
 event occurs first (each transition is atomic, so the escrow moves exactly once):
 
-| Event                                | Escrow                                                    |
-| ------------------------------------ | --------------------------------------------------------- |
-| `DOCUMENT_COMPLETED`                 | released to the provider                                  |
-| `DOCUMENT_REJECTED`                  | refunded to the beneficiary (contract flagged `disputed`) |
-| contract deleted while still pending | refunded to the beneficiary                               |
+| Event                                | Escrow                      |
+| ------------------------------------ | --------------------------- |
+| `DOCUMENT_COMPLETED`                 | released to the provider    |
+| `DOCUMENT_REJECTED`                  | refunded to the beneficiary |
+| contract deleted while still pending | refunded to the beneficiary |
 
-A create with insufficient balance is rejected (`400`) before any external work.
+A create with insufficient balance is rejected (`400`) before any external work; a
+duplicate active contract for the same listing + parties is rejected (`409`). Disputes
+are separate from rejection: a party may flag a contract `disputed` (with a reason) at
+any time, and only a district admin (or superAdmin) can clear it.
 
 ---
 

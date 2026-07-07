@@ -30,9 +30,18 @@ export interface IContractRepository {
   // Atomically transition a non-terminal contract to completed / rejected exactly
   // once (clearing signing URLs). Return the updated contract when this call made
   // the transition, null otherwise — lets the webhook release/refund the escrow
-  // exactly once. rejectContract also raises the disputed flag.
+  // exactly once.
   completeContract(id: string): Promise<Contract | null>;
   rejectContract(id: string): Promise<Contract | null>;
+
+  // Returns an existing non-terminal (draft/pending) contract binding the same
+  // listing + provider + beneficiary, if any — used to reject duplicate creations
+  // (an accidental double-submit would otherwise escrow the price twice).
+  findActiveContract(params: {
+    listingId: string;
+    providerId: string;
+    beneficiaryId: string;
+  }): Promise<Contract | null>;
 
   createContract(data: Omit<Contract, "id" | "createdAt">): Promise<Contract>;
 

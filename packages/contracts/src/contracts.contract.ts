@@ -11,6 +11,7 @@ import {
   ForbiddenErrorSchema,
   BadRequestErrorSchema,
   BadGatewayErrorSchema,
+  ConflictErrorSchema,
   PaginatedResponseDtoSchema,
 } from "./DTO";
 import { auth } from "./auth-meta";
@@ -59,9 +60,10 @@ export const contractsContract = c.router({
       400: BadRequestErrorSchema,
       403: ForbiddenErrorSchema,
       404: NotFoundErrorSchema,
+      409: ConflictErrorSchema,
       502: BadGatewayErrorSchema,
     },
-    summary: "Create a new contract (the authenticated caller is the provider)",
+    summary: "Create a new contract (the authenticated caller is the beneficiary/payer)",
     metadata: auth({ audience: "api" }),
   },
 

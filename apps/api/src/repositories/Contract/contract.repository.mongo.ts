@@ -97,7 +97,6 @@ export class MongoContractRepository implements IContractRepository {
       {
         $set: {
           signatureStatus: "rejected",
-          disputed: true,
           providerSigningUrl: null,
           beneficiarySigningUrl: null,
         },
@@ -105,6 +104,20 @@ export class MongoContractRepository implements IContractRepository {
       { returnDocument: "after" },
     );
     return result ? this.toContract(result) : null;
+  }
+
+  async findActiveContract(params: {
+    listingId: string;
+    providerId: string;
+    beneficiaryId: string;
+  }): Promise<Contract | null> {
+    const doc = await this.collection.findOne({
+      listingId: params.listingId,
+      providerId: params.providerId,
+      beneficiaryId: params.beneficiaryId,
+      signatureStatus: { $in: ["draft", "pending"] },
+    });
+    return doc ? this.toContract(doc) : null;
   }
 
   async createContract(data: Omit<Contract, "id" | "createdAt">): Promise<Contract> {

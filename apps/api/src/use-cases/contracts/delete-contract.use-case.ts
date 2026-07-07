@@ -15,16 +15,20 @@ export const deleteContractUseCase = (
     const escrowStillHeld = deleted.signatureStatus === "pending" || deleted.signatureStatus === "draft";
     if (escrowStillHeld && deleted.price > 0) {
       await transactionRepository.adjustBalance(deleted.beneficiaryId, deleted.price);
-      await transactionRepository.createTransactions([
-        {
-          userId: deleted.beneficiaryId,
-          districtId: deleted.districtId,
-          type: "transfer_in",
-          amount: deleted.price,
-          refId: deleted.id,
-          refType: "contract",
-        },
-      ]);
+      // Ledger row is an audit record; the refund above already settled the escrow.
+      // A write failure here must not fail the delete — log for reconciliation.
+      await transactionRepository
+        .createTransactions([
+          {
+            userId: deleted.beneficiaryId,
+            districtId: deleted.districtId,
+            type: "transfer_in",
+            amount: deleted.price,
+            refId: deleted.id,
+            refType: "contract",
+          },
+        ])
+        .catch((err) => console.error(`[contracts] escrow-refund ledger write failed for ${deleted.id}:`, err));
     }
     return true;
   };

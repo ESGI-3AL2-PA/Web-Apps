@@ -19,6 +19,13 @@ export class InsufficientFundsError extends Error {
   }
 }
 
+export class DuplicateContractError extends Error {
+  constructor() {
+    super("An active contract already exists for this listing and parties");
+    this.name = "DuplicateContractError";
+  }
+}
+
 // The caller is the beneficiary (payer). Their tokens are escrowed up front — held
 // until the contract completes (released to the provider) or is rejected/deleted
 // (refunded). Generating the Documenso document and persisting the contract happen
@@ -30,7 +37,9 @@ export const createContractUseCase = (
   transactionRepository: ITransactionRepository,
 ) => {
   return async (
-    data: CreateContractDto & { beneficiaryId: string; districtId: string; redirectUrl?: string },
+    // `price` is derived server-side from the listing by the caller (router), never
+    // taken from the client, so the escrowed amount always matches the listing.
+    data: CreateContractDto & { beneficiaryId: string; districtId: string; price: number; redirectUrl?: string },
   ): Promise<Contract> => {
     const [provider, beneficiary] = await Promise.all([
       userRepository.getUserById(data.providerId),
@@ -39,12 +48,25 @@ export const createContractUseCase = (
     if (!provider) throw new ContractPartyNotFoundError("Provider not found");
     if (!beneficiary) throw new ContractPartyNotFoundError("Beneficiary not found");
 
+    // Reject an accidental double-submit before touching money — a second identical
+    // contract would escrow the price again against the same booking.
+    const existing = await contractRepository.findActiveContract({
+      listingId: data.listingId,
+      providerId: data.providerId,
+      beneficiaryId: data.beneficiaryId,
+    });
+    if (existing) throw new DuplicateContractError();
+
     // Escrow the price from the beneficiary before doing any external work.
     if (data.price > 0) {
       const held = await transactionRepository.tryDebit(data.beneficiaryId, data.price);
       if (!held) throw new InsufficientFundsError();
     }
 
+    // Everything from the hold up to a persisted contract must roll the hold back on
+    // failure (nothing durable exists yet). Once the contract row exists the hold is
+    // correctly captured, so a later ledger hiccup must NOT refund a live contract.
+    let contract: Contract;
     try {
       const document = await documenso.generateContractDocument({
         title: `Contrat — annonce ${data.listingId}`,
@@ -53,7 +75,7 @@ export const createContractUseCase = (
         redirectUrl: data.redirectUrl,
       });
 
-      const contract = await contractRepository.createContract({
+      contract = await contractRepository.createContract({
         listingId: data.listingId,
         districtId: data.districtId,
         providerId: data.providerId,
@@ -64,11 +86,20 @@ export const createContractUseCase = (
         providerSigningUrl: document.providerSigningUrl,
         beneficiarySigningUrl: document.beneficiarySigningUrl,
         disputed: false,
+        disputeReason: null,
       });
+    } catch (err) {
+      // Roll the escrow hold back — no contract was persisted.
+      if (data.price > 0) await transactionRepository.adjustBalance(data.beneficiaryId, data.price);
+      throw err;
+    }
 
-      // Record the escrow hold once the contract exists to reference it.
-      if (data.price > 0) {
-        await transactionRepository.createTransactions([
+    // Record the escrow-hold ledger entry now that the contract exists to reference
+    // it. The money is already correctly held and the contract is live, so a ledger
+    // write failure here must not roll anything back — log it for reconciliation.
+    if (data.price > 0) {
+      await transactionRepository
+        .createTransactions([
           {
             userId: data.beneficiaryId,
             districtId: data.districtId,
@@ -77,13 +108,9 @@ export const createContractUseCase = (
             refId: contract.id,
             refType: "contract",
           },
-        ]);
-      }
-      return contract;
-    } catch (err) {
-      // Roll the escrow hold back — the contract was never created.
-      if (data.price > 0) await transactionRepository.adjustBalance(data.beneficiaryId, data.price);
-      throw err;
+        ])
+        .catch((err) => console.error(`[contracts] escrow-hold ledger write failed for ${contract.id}:`, err));
     }
+    return contract;
   };
 };

@@ -4,7 +4,7 @@ import { z } from "zod";
 // draft: contract row created, Documenso document not yet generated/sent.
 // pending: document sent, awaiting one or more signatures.
 // completed: every party has signed (Documenso DOCUMENT_COMPLETED).
-// rejected: a party declined (Documenso DOCUMENT_REJECTED) — also flags `disputed`.
+// rejected: a party declined (Documenso DOCUMENT_REJECTED) — escrow is refunded.
 export const ContractSignatureStatusSchema = z.enum(["draft", "pending", "completed", "rejected"]);
 export type ContractSignatureStatus = z.infer<typeof ContractSignatureStatusSchema>;
 
@@ -22,6 +22,8 @@ export const ContractSchema = z.object({
   providerSigningUrl: z.string().nullable(),
   beneficiarySigningUrl: z.string().nullable(),
   disputed: z.boolean().default(false),
+  // Free-text reason captured when a party raises a dispute; null otherwise.
+  disputeReason: z.string().nullable().default(null),
   createdAt: z.string().datetime(),
 });
 
