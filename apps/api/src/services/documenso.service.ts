@@ -147,6 +147,13 @@ class HttpDocumensoService implements IDocumensoService {
       }),
     });
 
+    // generate-document leaves the document in DRAFT; sending it activates the
+    // recipients' signing tokens and dispatches the invitation emails.
+    await this.request(`/documents/${result.documentId}/send`, {
+      method: "POST",
+      body: JSON.stringify({}),
+    });
+
     // Match the returned signing URLs back to each party by email.
     const urlFor = (email: string) =>
       result.recipients?.find((r) => r.email.toLowerCase() === email.toLowerCase())?.signingUrl ?? null;
