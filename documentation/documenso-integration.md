@@ -79,15 +79,32 @@ signing _as that recipient_, so the other party's URL is never returned.
 
 ## Signing flow
 
-1. A listing is accepted → `POST /contracts`.
-2. API validates the listing, derives `districtId` from it, resolves both parties'
-   emails, and calls Documenso `generate-document` (provider = signer 1, beneficiary = 2).
+1. The **beneficiary** (payer) creates the contract naming the provider → `POST /contracts`.
+   Roles are resolved against the listing `type`: on an **offer** the listing author is
+   the provider being booked; on a **request** the author is the beneficiary.
+2. The beneficiary's `price` tokens are **escrowed** (debited up front); the API then
+   validates the listing, derives `districtId`, and calls Documenso `generate-document`
+   (provider = signer 1, beneficiary = 2). If Documenso fails the escrow is rolled back.
 3. Documenso returns a document id and a signing URL per recipient; the API persists them
    with `signatureStatus: "pending"` and emails each party a signing invitation.
 4. The frontend lists the contract and renders the PDF preview (`react-pdf`).
 5. The caller clicks to sign and is redirected to _their_ signing URL.
 6. Once all parties sign, Documenso fires `DOCUMENT_COMPLETED` → the webhook sets
-   `signatureStatus: "completed"` and clears the signing URLs.
+   `signatureStatus: "completed"`, clears the signing URLs, and **releases the escrow to
+   the provider**.
+
+## Escrow
+
+The `price` is held from the beneficiary at creation and settled by whichever terminal
+event occurs first (each transition is atomic, so the escrow moves exactly once):
+
+| Event                                | Escrow                                                    |
+| ------------------------------------ | --------------------------------------------------------- |
+| `DOCUMENT_COMPLETED`                 | released to the provider                                  |
+| `DOCUMENT_REJECTED`                  | refunded to the beneficiary (contract flagged `disputed`) |
+| contract deleted while still pending | refunded to the beneficiary                               |
+
+A create with insufficient balance is rejected (`400`) before any external work.
 
 ---
 

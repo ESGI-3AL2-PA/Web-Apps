@@ -27,14 +27,18 @@ export interface IContractRepository {
   // inbound signing event back to our contract.
   getContractByDocumensoDocumentId(documentId: number): Promise<Contract | null>;
 
-  // Atomically mark a contract completed (clearing signing URLs) only if it was
-  // not already completed. Returns the updated contract when it transitioned,
-  // null otherwise — lets the webhook settle the payment exactly once.
+  // Atomically transition a non-terminal contract to completed / rejected exactly
+  // once (clearing signing URLs). Return the updated contract when this call made
+  // the transition, null otherwise — lets the webhook release/refund the escrow
+  // exactly once. rejectContract also raises the disputed flag.
   completeContract(id: string): Promise<Contract | null>;
+  rejectContract(id: string): Promise<Contract | null>;
 
   createContract(data: Omit<Contract, "id" | "createdAt">): Promise<Contract>;
 
   updateContract(id: string, data: Partial<Omit<Contract, "id" | "createdAt">>): Promise<Contract | null>;
 
-  deleteContract(id: string): Promise<boolean>;
+  // Deletes and returns the removed contract (atomically, with its state at
+  // deletion) so a caller can refund a still-held escrow. Null if it didn't exist.
+  deleteContract(id: string): Promise<Contract | null>;
 }

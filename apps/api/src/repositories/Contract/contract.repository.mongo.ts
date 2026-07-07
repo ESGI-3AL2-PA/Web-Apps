@@ -81,11 +81,27 @@ export class MongoContractRepository implements IContractRepository {
   }
 
   async completeContract(id: string): Promise<Contract | null> {
-    // The {$ne: "completed"} guard + $set are one atomic update, so concurrent
-    // DOCUMENT_COMPLETED webhooks can't both transition (and double-pay).
+    // The {$nin} guard + $set are one atomic update, so concurrent webhooks can't
+    // both transition (and double-release), and a rejected contract can't complete.
     const result = await this.collection.findOneAndUpdate(
-      { _id: id, signatureStatus: { $ne: "completed" } },
+      { _id: id, signatureStatus: { $nin: ["completed", "rejected"] } },
       { $set: { signatureStatus: "completed", providerSigningUrl: null, beneficiarySigningUrl: null } },
+      { returnDocument: "after" },
+    );
+    return result ? this.toContract(result) : null;
+  }
+
+  async rejectContract(id: string): Promise<Contract | null> {
+    const result = await this.collection.findOneAndUpdate(
+      { _id: id, signatureStatus: { $nin: ["completed", "rejected"] } },
+      {
+        $set: {
+          signatureStatus: "rejected",
+          disputed: true,
+          providerSigningUrl: null,
+          beneficiarySigningUrl: null,
+        },
+      },
       { returnDocument: "after" },
     );
     return result ? this.toContract(result) : null;
@@ -107,9 +123,11 @@ export class MongoContractRepository implements IContractRepository {
     return result ? this.toContract(result) : null;
   }
 
-  async deleteContract(id: string): Promise<boolean> {
-    const result = await this.collection.deleteOne({ _id: id });
-    return result.deletedCount === 1;
+  async deleteContract(id: string): Promise<Contract | null> {
+    // findOneAndDelete returns the removed doc with its state at deletion, so the
+    // caller can atomically decide whether to refund a still-held escrow.
+    const result = await this.collection.findOneAndDelete({ _id: id });
+    return result ? this.toContract(result) : null;
   }
 
   private toContract(doc: ContractDoc): Contract {

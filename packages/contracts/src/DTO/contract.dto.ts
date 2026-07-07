@@ -29,8 +29,9 @@ export type ContractResponseDto = z.infer<typeof ContractResponseDtoSchema>;
 export const CreateContractDtoSchema = z
   .object({
     listingId: z.string().openapi({ description: "ID of the listing this contract is generated for" }),
-    // providerId is derived from the authenticated caller (the request author), never sent by the client.
-    beneficiaryId: z.string().openapi({ description: "ID of the user benefiting from the service" }),
+    // The authenticated caller is the beneficiary (payer, whose tokens are escrowed);
+    // the provider being booked is named here and never derived from the client.
+    providerId: z.string().openapi({ description: "ID of the user providing the service" }),
     price: z.number().int().min(0).openapi({ description: "Price in tokens", example: 10 }),
   })
   .openapi({ title: "CreateContract" });
