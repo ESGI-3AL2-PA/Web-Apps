@@ -119,13 +119,14 @@ pass = `RESEND_API_KEY`) — no second email provider needed.
    create an **API token**, and build a **template** with two signer placeholders and a
    signature field for each. Put the token + numeric template id in `.env`.
 4. Set up a **webhook** (Settings → Webhooks) for at least `DOCUMENT_COMPLETED` /
-   `DOCUMENT_REJECTED`, pointing at `http://host.docker.internal:3000/contracts/webhook`,
-   with the same secret as `DOCUMENSO_WEBHOOK_SECRET`.
+   `DOCUMENT_REJECTED`, pointing at `http://api:3000/contracts/webhook` (the api runs
+   in-network in the dev compose; use `http://host.docker.internal:3000/...` if you run
+   the api on the host via `npm run dev`), with the same secret as `DOCUMENSO_WEBHOOK_SECRET`.
 
-> **SSRF note:** Documenso blocks webhooks to private/loopback hosts. For local delivery
-> to the API (which runs on the host) the compose sets
-> `NEXT_PRIVATE_WEBHOOK_SSRF_BYPASS_HOSTS=host.docker.internal,localhost` — **local dev
-> only**. In production the API has a public hostname and the guard stays fully armed.
+> **SSRF note:** Documenso blocks webhooks to private/loopback hosts. The dev compose sets
+> `NEXT_PRIVATE_WEBHOOK_SSRF_BYPASS_HOSTS=api,host.docker.internal,localhost` so it can
+> reach the api — **dev only**. In production the SSRF guard stays armed except for the
+> in-network `api` host.
 
 ---
 
