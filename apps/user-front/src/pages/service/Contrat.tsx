@@ -64,7 +64,7 @@ const Contrat = () => {
       <h1 className="mb-6 text-2xl font-semibold">Mes contrats</h1>
       {error && <p className="mb-4 rounded bg-red-50 p-3 text-sm text-red-700">{error}</p>}
       {contracts.length === 0 ? (
-        <p className="text-gray-500">Vous n'avez aucun contrat pour le moment.</p>
+        <p className="text-gray-500">{"Vous n'avez aucun contrat pour le moment."}</p>
       ) : (
         <ul className="space-y-3">
           {contracts.map((c) => (
@@ -140,7 +140,7 @@ const ContractPdf = ({ id }: { id: string }) => {
     };
   }, [id]);
 
-  if (failed) return <p className="mt-3 text-sm text-red-700">Impossible d'afficher le PDF.</p>;
+  if (failed) return <p className="mt-3 text-sm text-red-700">{"Impossible d'afficher le PDF."}</p>;
   if (!file) return <p className="mt-3 text-sm text-gray-500">Chargement du PDF…</p>;
 
   return (
