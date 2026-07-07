@@ -194,7 +194,8 @@ services:
       MONGODB_URL: mongodb://root:root@mongodb:27017
       MONGODB_DB: db
       API_URL: http://api:3000
-      # Dev email → mailpit (SMTP branch of email.service.ts).
+      # Dev email → mailpit (SMTP branch of email.service.ts). Verification/reset
+      # links are read from mailpit's UI (:8025). MFA is opt-in, so no auth bypasses.
       SMTP_HOST: mailpit
       SMTP_PORT: "1025"
       SMTP_SECURE: "false"

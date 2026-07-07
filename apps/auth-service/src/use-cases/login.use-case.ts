@@ -4,7 +4,6 @@ import type { IUserReaderRepository } from "../repositories/User/user-reader.rep
 import type { IRefreshTokenRepository } from "../repositories/RefreshToken/refresh-token.repository.js";
 import type { IDistrictAdminReaderRepository } from "../repositories/DistrictAdmin/district-admin-reader.repository.js";
 import { getPrivateKey } from "../keys.js";
-import { skipEmailVerification, skipTotp } from "../dev-auth.js";
 import { issueTokensForUser, type IssuedTokens } from "./issue-tokens.js";
 
 export type LoginResult =
@@ -37,9 +36,10 @@ export const loginUseCase = (
 
     if (user.banned) return { kind: "banned" };
 
-    if (!user.emailVerified && !skipEmailVerification()) return { kind: "email-not-verified" };
+    if (!user.emailVerified) return { kind: "email-not-verified" };
 
-    if (user.totpEnabled && !skipTotp()) {
+    // MFA is opt-in: only users who enrolled and confirmed TOTP are challenged.
+    if (user.totpEnabled) {
       // Issue a short-lived MFA token; client must POST it + a TOTP code to /auth/login/mfa.
       const mfaToken = await new SignJWT({})
         .setProtectedHeader({ alg: "RS256", kid: "auth-1" })
