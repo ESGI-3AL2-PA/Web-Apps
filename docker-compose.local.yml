@@ -32,6 +32,121 @@ services:
     environment:
       NEO4J_AUTH: neo4j/password
 
+  # Local SMTP sink. Documenso requires an SMTP transport to boot; mailpit
+  # accepts everything and exposes a web UI on 8025 so we can read the signing
+  # invitation emails (and grab the signing links) during local E2E testing.
+  mailpit:
+    image: axllent/mailpit:latest
+    ports:
+      - "${MAILPIT_SMTP_PORT:-1025}:1025"
+      - "${MAILPIT_UI_PORT:-8025}:8025"
+
+  # Dedicated Postgres for Documenso (it is Prisma/Postgres; cannot share Mongo).
+  documenso-db:
+    image: postgres:15
+    ports:
+      - "${DOCUMENSO_DB_PORT:-5432}:5432"
+    volumes:
+      - documenso_db:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: documenso
+      POSTGRES_PASSWORD: documenso
+      POSTGRES_DB: documenso
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U documenso"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Self-hosted Documenso (community edition). Stores uploaded/signed PDFs in MinIO
+  # (S3 transport — required for the api to download the PDF for in-app preview),
+  # mails via mailpit, signs with a local dev P12 cert (scripts/gen-documenso-cert.sh).
+  # Browser-facing on http://localhost:${DOCUMENSO_PORT:-3030}. Our api talks to
+  # it at the same URL; its webhooks reach our api via host.docker.internal.
+  documenso:
+    image: documenso/documenso:latest
+    depends_on:
+      documenso-db:
+        condition: service_healthy
+      mailpit:
+        condition: service_started
+      minio-createbucket:
+        condition: service_completed_successfully
+    # Same host/container port so the app's internal job queue (which posts jobs —
+    # incl. outbound email — to NEXT_PUBLIC_WEBAPP_URL) can reach itself over loopback.
+    ports:
+      - "${DOCUMENSO_PORT:-3030}:${DOCUMENSO_PORT:-3030}"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./docker/documenso/cert.p12:/opt/documenso/cert.p12:ro
+    environment:
+      PORT: "${DOCUMENSO_PORT:-3030}"
+      NEXTAUTH_SECRET: ${DOCUMENSO_NEXTAUTH_SECRET:-documenso-dev-nextauth-secret}
+      NEXT_PRIVATE_ENCRYPTION_KEY: ${DOCUMENSO_ENCRYPTION_KEY:-documenso-dev-encryption-key-primary}
+      NEXT_PRIVATE_ENCRYPTION_SECONDARY_KEY: ${DOCUMENSO_ENCRYPTION_SECONDARY_KEY:-documenso-dev-encryption-key-secondary}
+      NEXT_PUBLIC_WEBAPP_URL: http://localhost:${DOCUMENSO_PORT:-3030}
+      NEXT_PRIVATE_INTERNAL_WEBAPP_URL: http://localhost:${DOCUMENSO_PORT:-3030}
+      # Documenso blocks webhooks to private/loopback addresses (SSRF guard). In
+      # local dev the api runs on the host, so allowlist host.docker.internal
+      # (where the container reaches it) for webhook delivery to work.
+      NEXT_PRIVATE_WEBHOOK_SSRF_BYPASS_HOSTS: host.docker.internal,localhost
+      NEXT_PRIVATE_DATABASE_URL: postgres://documenso:documenso@documenso-db:5432/documenso
+      NEXT_PRIVATE_DIRECT_DATABASE_URL: postgres://documenso:documenso@documenso-db:5432/documenso
+      # S3 (MinIO) storage so the api can download the PDF via the v1 API for preview.
+      NEXT_PUBLIC_UPLOAD_TRANSPORT: s3
+      NEXT_PRIVATE_UPLOAD_ENDPOINT: http://minio:9000
+      NEXT_PRIVATE_UPLOAD_FORCE_PATH_STYLE: "true"
+      NEXT_PRIVATE_UPLOAD_REGION: us-east-1
+      NEXT_PRIVATE_UPLOAD_BUCKET: documenso
+      NEXT_PRIVATE_UPLOAD_ACCESS_KEY_ID: minioadmin
+      NEXT_PRIVATE_UPLOAD_SECRET_ACCESS_KEY: minioadmin
+      # SMTP → mailpit (no auth, plaintext).
+      NEXT_PRIVATE_SMTP_TRANSPORT: smtp-auth
+      NEXT_PRIVATE_SMTP_HOST: mailpit
+      NEXT_PRIVATE_SMTP_PORT: "1025"
+      NEXT_PRIVATE_SMTP_SECURE: "false"
+      NEXT_PRIVATE_SMTP_UNSAFE_IGNORE_TLS: "true"
+      NEXT_PRIVATE_SMTP_FROM_NAME: Documenso Local
+      NEXT_PRIVATE_SMTP_FROM_ADDRESS: documenso@local.dev
+      # Local dev signing certificate.
+      NEXT_PRIVATE_SIGNING_LOCAL_FILE_PATH: /opt/documenso/cert.p12
+      NEXT_PRIVATE_SIGNING_PASSPHRASE: ""
+
+  # S3-compatible object storage for Documenso's PDFs (console on :9001).
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    ports:
+      - "${MINIO_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - minio_data:/data
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # One-shot: create the documenso bucket, then exit. Documenso waits on it.
+  minio-createbucket:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_started
+    entrypoint:
+      - /bin/sh
+      - -c
+      - >
+        until mc alias set local http://minio:9000 minioadmin minioadmin; do sleep 1; done;
+        mc mb --ignore-existing local/documenso;
+        exit 0;
+
 volumes:
   mongodb_data:
   neo4j_data:
+  documenso_db:
+  minio_data:

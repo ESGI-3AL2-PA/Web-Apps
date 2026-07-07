@@ -60,11 +60,14 @@ erDiagram
   CONTRACTS {
     ObjectId _id PK
     ObjectId listingId FK
+    ObjectId districtId FK
     ObjectId providerId FK
     ObjectId beneficiaryId FK
     int price
-    string openSignDocumentId
-    string openSignStatus
+    int documensoDocumentId
+    string signatureStatus
+    string providerSigningUrl
+    string beneficiarySigningUrl
     boolean disputed
     timestamp createdAt
   }
