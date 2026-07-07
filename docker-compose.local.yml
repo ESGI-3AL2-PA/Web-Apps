@@ -1,5 +1,6 @@
 services:
   mongodb:
+    profiles: [core]
     image: mongo:8
     ports:
       - "${MONGO_PORT:-27017}:27017"
@@ -10,6 +11,7 @@ services:
       MONGO_INITDB_ROOT_PASSWORD: root
 
   mongo-express:
+    profiles: [core]
     image: mongo-express:latest
     restart: on-failure
     ports:
@@ -23,6 +25,7 @@ services:
       - mongodb
 
   neo4j:
+    profiles: [core]
     image: neo4j:5
     ports:
       - "${NEO4J_HTTP_PORT:-7474}:7474"
@@ -36,6 +39,7 @@ services:
   # accepts everything and exposes a web UI on 8025 so we can read the signing
   # invitation emails (and grab the signing links) during local E2E testing.
   mailpit:
+    profiles: [core, contracts]
     image: axllent/mailpit:latest
     ports:
       - "${MAILPIT_SMTP_PORT:-1025}:1025"
@@ -43,6 +47,7 @@ services:
 
   # Dedicated Postgres for Documenso (it is Prisma/Postgres; cannot share Mongo).
   documenso-db:
+    profiles: [contracts]
     image: postgres:15
     ports:
       - "${DOCUMENSO_DB_PORT:-5432}:5432"
@@ -64,6 +69,7 @@ services:
   # Browser-facing on http://localhost:${DOCUMENSO_PORT:-3030}; the api reaches it
   # in-network at http://documenso:3030 and its webhooks reach the api at api:3000.
   documenso:
+    profiles: [contracts]
     image: documenso/documenso:latest
     depends_on:
       documenso-db:
@@ -115,6 +121,7 @@ services:
 
   # S3-compatible object storage for Documenso's PDFs (console on :9001).
   minio:
+    profiles: [contracts]
     image: minio/minio:latest
     command: server /data --console-address ":9001"
     ports:
@@ -133,6 +140,7 @@ services:
 
   # One-shot: create the documenso bucket, then exit. Documenso waits on it.
   minio-createbucket:
+    profiles: [contracts]
     image: minio/mc:latest
     depends_on:
       minio:
@@ -149,6 +157,7 @@ services:
   # Running the api in-network means it reaches documenso:3030 and minio:9000 by
   # name — no host/container split-horizon for the PDF proxy or webhooks.
   api:
+    profiles: [core]
     build:
       context: .
       dockerfile: apps/api/Dockerfile
@@ -172,12 +181,14 @@ services:
       DOCUMENSO_WEBHOOK_SECRET: ${DOCUMENSO_WEBHOOK_SECRET:-}
       DOCUMENSO_SIGNING_LANGUAGE: ${DOCUMENSO_SIGNING_LANGUAGE:-fr}
       CONTRACTS_SIGN_REDIRECT_URL: ${CONTRACTS_SIGN_REDIRECT_URL:-http://localhost:5000/mes-contrats}
+    # No hard dependency on `documenso` (contracts profile): the api calls it lazily
+    # per contract request and 502s if it's absent, so core can run without it.
     depends_on:
       - mongodb
       - auth-service
-      - documenso
 
   auth-service:
+    profiles: [core]
     build:
       context: .
       dockerfile: apps/auth-service/Dockerfile
@@ -208,6 +219,7 @@ services:
       - mailpit
 
   admin-front:
+    profiles: [core]
     build:
       context: .
       dockerfile: apps/admin-front/Dockerfile
@@ -226,6 +238,7 @@ services:
       - auth-service
 
   user-front:
+    profiles: [core]
     build:
       context: .
       dockerfile: apps/user-front/Dockerfile
