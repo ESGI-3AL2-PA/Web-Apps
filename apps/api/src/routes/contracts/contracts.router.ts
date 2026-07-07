@@ -6,7 +6,7 @@ import type { IListingRepository } from "../../repositories/Listing/listing.repo
 import type { IUserRepository } from "../../repositories/User/user.repository.js";
 import type { Contract } from "../../entities/contract.entity.js";
 import { resolveListDistrictScope } from "../../middleware/district-scope.js";
-import { documensoService } from "../../services/documenso.service.js";
+import { documensoService, DocumensoServiceError } from "../../services/documenso.service.js";
 import { getContractsUseCase } from "../../use-cases/contracts/get-contracts.use-case.js";
 import { getContractByIdUseCase } from "../../use-cases/contracts/get-contract-by-id.use-case.js";
 import {
@@ -15,6 +15,7 @@ import {
 } from "../../use-cases/contracts/create-contract.use-case.js";
 import { resendContractUseCase } from "../../use-cases/contracts/resend-contract.use-case.js";
 import { disputeContractUseCase } from "../../use-cases/contracts/dispute-contract.use-case.js";
+import { resolveDisputeUseCase } from "../../use-cases/contracts/resolve-dispute.use-case.js";
 import { deleteContractUseCase } from "../../use-cases/contracts/delete-contract.use-case.js";
 
 const s = initServer();
@@ -87,6 +88,16 @@ export const contractsRouter = s.router(contractsContract, {
     if (!listing) {
       return { status: 404, body: { message: "Listing not found" } };
     }
+    const providerId = req.user!.sub;
+    // A contract binds two distinct people.
+    if (providerId === body.beneficiaryId) {
+      return { status: 400, body: { message: "Provider and beneficiary must be different users" } };
+    }
+    // One of the two parties must own the listing — a third party can't create a
+    // contract between two other users on someone else's listing.
+    if (listing.authorId !== providerId && listing.authorId !== body.beneficiaryId) {
+      return { status: 403, body: { message: "You must be a party to the listing to create its contract" } };
+    }
     // The request author is the provider; the beneficiary comes from the body.
     // districtId is derived server-side from the referenced listing, never from the client.
     try {
@@ -105,6 +116,10 @@ export const contractsRouter = s.router(contractsContract, {
       if (err instanceof ContractPartyNotFoundError) {
         return { status: 404, body: { message: err.message } };
       }
+      // The e-signature service failed — surface as a gateway error, not a 500.
+      if (err instanceof DocumensoServiceError) {
+        return { status: 502, body: { message: "The signature service is unavailable, please retry" } };
+      }
       throw err;
     }
   },
@@ -120,6 +135,15 @@ export const contractsRouter = s.router(contractsContract, {
 
   disputeContract: async ({ params: { id }, body, req }) => {
     const contract = await disputeContractUseCase(resolve("contract"))(id, body);
+    if (!contract) {
+      return { status: 404, body: { message: "Contract not found" } };
+    }
+    return { status: 200, body: toResponse(contract, req.user!.sub) };
+  },
+
+  resolveDispute: async ({ params: { id }, req }) => {
+    // District-admin-only authorization is enforced by the contract-metadata middleware.
+    const contract = await resolveDisputeUseCase(resolve("contract"))({ id });
     if (!contract) {
       return { status: 404, body: { message: "Contract not found" } };
     }

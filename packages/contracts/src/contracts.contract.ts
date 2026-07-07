@@ -9,6 +9,8 @@ import {
   DisputeContractDtoSchema,
   NotFoundErrorSchema,
   ForbiddenErrorSchema,
+  BadRequestErrorSchema,
+  BadGatewayErrorSchema,
   PaginatedResponseDtoSchema,
 } from "./DTO";
 import { auth } from "./auth-meta";
@@ -54,7 +56,10 @@ export const contractsContract = c.router({
     body: CreateContractDtoSchema,
     responses: {
       201: ContractResponseDtoSchema,
+      400: BadRequestErrorSchema,
+      403: ForbiddenErrorSchema,
       404: NotFoundErrorSchema,
+      502: BadGatewayErrorSchema,
     },
     summary: "Create a new contract (the authenticated caller is the provider)",
     metadata: auth({ audience: "api" }),
@@ -91,6 +96,25 @@ export const contractsContract = c.router({
     metadata: auth({
       audience: "api",
       scope: { resource: "contract", ownerFields: ["providerId", "beneficiaryId"], districtField: "districtId" },
+    }),
+  },
+
+  resolveDispute: {
+    method: "POST",
+    path: "/contracts/:id/resolve-dispute",
+    pathParams: ContractParamsDtoSchema,
+    body: c.noBody(),
+    responses: {
+      200: ContractResponseDtoSchema,
+      403: ForbiddenErrorSchema,
+      404: NotFoundErrorSchema,
+    },
+    summary: "Clear the disputed flag on a contract (district admin only)",
+    // No ownerFields: only a district admin (matching districtId) or superAdmin may
+    // resolve — the parties can raise a dispute but not clear it themselves.
+    metadata: auth({
+      audience: "api",
+      scope: { resource: "contract", districtField: "districtId", bypassRoles: ["superAdmin"] },
     }),
   },
 

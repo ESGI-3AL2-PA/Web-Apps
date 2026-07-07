@@ -71,7 +71,11 @@ const readConfig = (): DocumensoConfig | null => {
   };
 };
 
-class DocumensoServiceError extends Error {
+// Upstream Documenso call budget — bounds contract creation so a hung Documenso
+// or S3 can't stall the request indefinitely.
+const DOCUMENSO_TIMEOUT_MS = 15_000;
+
+export class DocumensoServiceError extends Error {
   constructor(message: string) {
     super(message);
     this.name = "DocumensoServiceError";
@@ -86,14 +90,22 @@ class HttpDocumensoService implements IDocumensoService {
   }
 
   private async request<T>(path: string, init?: RequestInit): Promise<T> {
-    const res = await fetch(`${this.config.baseUrl}/api/v1${path}`, {
-      ...init,
-      headers: {
-        Authorization: this.config.apiToken,
-        "Content-Type": "application/json",
-        ...init?.headers,
-      },
-    });
+    let res: Response;
+    try {
+      res = await fetch(`${this.config.baseUrl}/api/v1${path}`, {
+        ...init,
+        signal: AbortSignal.timeout(DOCUMENSO_TIMEOUT_MS),
+        headers: {
+          Authorization: this.config.apiToken,
+          "Content-Type": "application/json",
+          ...init?.headers,
+        },
+      });
+    } catch (err) {
+      // Network failure or timeout — normalise so callers map it to a 502.
+      const reason = err instanceof Error ? err.message : "unknown error";
+      throw new DocumensoServiceError(`Documenso ${init?.method ?? "GET"} ${path} unreachable: ${reason}`);
+    }
     if (!res.ok) {
       const body = await res.text().catch(() => "");
       throw new DocumensoServiceError(`Documenso ${init?.method ?? "GET"} ${path} failed (${res.status}): ${body}`);
@@ -148,11 +160,17 @@ class HttpDocumensoService implements IDocumensoService {
     });
 
     // generate-document leaves the document in DRAFT; sending it activates the
-    // recipients' signing tokens and dispatches the invitation emails.
-    await this.request(`/documents/${result.documentId}/send`, {
-      method: "POST",
-      body: JSON.stringify({}),
-    });
+    // recipients' signing tokens and dispatches the invitation emails. If sending
+    // fails, delete the orphaned draft so a failed create leaves nothing behind.
+    try {
+      await this.request(`/documents/${result.documentId}/send`, {
+        method: "POST",
+        body: JSON.stringify({}),
+      });
+    } catch (err) {
+      await this.request(`/documents/${result.documentId}`, { method: "DELETE" }).catch(() => {});
+      throw err;
+    }
 
     // Match the returned signing URLs back to each party by email.
     const urlFor = (email: string) =>
@@ -183,7 +201,7 @@ class HttpDocumensoService implements IDocumensoService {
     }
     // The api runs on the same docker network as Documenso's object storage, so the
     // presigned URL host is directly reachable — a plain fetch suffices.
-    const res = await fetch(meta.downloadUrl);
+    const res = await fetch(meta.downloadUrl, { signal: AbortSignal.timeout(DOCUMENSO_TIMEOUT_MS) });
     if (!res.ok) {
       throw new DocumensoServiceError(`Documenso S3 download failed (${res.status})`);
     }
@@ -229,6 +247,13 @@ class DisabledDocumensoService implements IDocumensoService {
 }
 
 const config = readConfig();
+if (config && !config.webhookSecret) {
+  // Without it every inbound webhook is rejected (fail-closed), so contracts would
+  // never advance past "pending". Warn loudly rather than fail silently.
+  console.warn(
+    "[documenso] DOCUMENSO_WEBHOOK_SECRET is not set — signing webhooks will be rejected and contracts will stay pending.",
+  );
+}
 export const documensoService: IDocumensoService = config
   ? new HttpDocumensoService(config)
   : new DisabledDocumensoService();
