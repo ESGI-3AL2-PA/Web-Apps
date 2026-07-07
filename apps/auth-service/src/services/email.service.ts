@@ -1,10 +1,25 @@
 import { Resend } from "resend";
+import nodemailer from "nodemailer";
 
 const apiKey = process.env.RESEND_API_KEY;
 const fromEmail = process.env.FROM_EMAIL ?? "no-reply@example.com";
 const appName = process.env.APP_NAME ?? "Web-Apps";
 
-// Falls back to console.log when RESEND_API_KEY is missing (dev mode without a real provider).
+// Transport priority: SMTP (dev — e.g. the local mailpit sink) → Resend (prod) → console.
+// Setting SMTP_HOST routes all mail to that server, letting local dev inspect
+// verification/reset emails in mailpit's UI instead of hitting a real provider.
+const smtpHost = process.env.SMTP_HOST;
+const smtpTransport = smtpHost
+  ? nodemailer.createTransport({
+      host: smtpHost,
+      port: Number(process.env.SMTP_PORT ?? 1025),
+      secure: process.env.SMTP_SECURE === "true",
+      // mailpit accepts unauthenticated mail; only pass credentials when provided.
+      auth: process.env.SMTP_USER ? { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS } : undefined,
+    })
+  : null;
+
+// Falls back to console.log when neither SMTP nor Resend is configured (dev without a provider).
 const resend = apiKey ? new Resend(apiKey) : null;
 
 const logFallback = (subject: string, to: string, body: string) => {
@@ -12,6 +27,10 @@ const logFallback = (subject: string, to: string, body: string) => {
 };
 
 const send = async (to: string, subject: string, html: string, text: string) => {
+  if (smtpTransport) {
+    await smtpTransport.sendMail({ from: fromEmail, to, subject, html, text });
+    return;
+  }
   if (!resend) {
     logFallback(subject, to, text);
     return;
