@@ -80,6 +80,17 @@ export class MongoContractRepository implements IContractRepository {
     return doc ? this.toContract(doc) : null;
   }
 
+  async completeContract(id: string): Promise<Contract | null> {
+    // The {$ne: "completed"} guard + $set are one atomic update, so concurrent
+    // DOCUMENT_COMPLETED webhooks can't both transition (and double-pay).
+    const result = await this.collection.findOneAndUpdate(
+      { _id: id, signatureStatus: { $ne: "completed" } },
+      { $set: { signatureStatus: "completed", providerSigningUrl: null, beneficiarySigningUrl: null } },
+      { returnDocument: "after" },
+    );
+    return result ? this.toContract(result) : null;
+  }
+
   async createContract(data: Omit<Contract, "id" | "createdAt">): Promise<Contract> {
     const now = new Date().toISOString();
     const doc: ContractDoc = { ...data, _id: randomUUID(), createdAt: now };

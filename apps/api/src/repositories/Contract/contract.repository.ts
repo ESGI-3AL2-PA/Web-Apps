@@ -27,6 +27,11 @@ export interface IContractRepository {
   // inbound signing event back to our contract.
   getContractByDocumensoDocumentId(documentId: number): Promise<Contract | null>;
 
+  // Atomically mark a contract completed (clearing signing URLs) only if it was
+  // not already completed. Returns the updated contract when it transitioned,
+  // null otherwise — lets the webhook settle the payment exactly once.
+  completeContract(id: string): Promise<Contract | null>;
+
   createContract(data: Omit<Contract, "id" | "createdAt">): Promise<Contract>;
 
   updateContract(id: string, data: Partial<Omit<Contract, "id" | "createdAt">>): Promise<Contract | null>;

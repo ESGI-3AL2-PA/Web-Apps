@@ -1,6 +1,7 @@
 import type { Request, Response } from "express";
 import { resolve } from "../../repositories/container.js";
 import type { IContractRepository } from "../../repositories/Contract/contract.repository.js";
+import type { ITransactionRepository } from "../../repositories/Transaction/transaction.repository.js";
 import { documensoService } from "../../services/documenso.service.js";
 import { handleDocumensoWebhookUseCase } from "../../use-cases/contracts/handle-documenso-webhook.use-case.js";
 
@@ -14,8 +15,9 @@ export const documensoWebhookHandler = async (req: Request, res: Response) => {
   }
 
   const contractRepo: IContractRepository = resolve("contract");
+  const transactionRepo: ITransactionRepository = resolve("transaction");
   try {
-    await handleDocumensoWebhookUseCase(contractRepo)(req.body ?? {});
+    await handleDocumensoWebhookUseCase(contractRepo, transactionRepo)(req.body ?? {});
   } catch (err) {
     console.error("Documenso webhook handling failed:", err);
     // 500 so Documenso retries; the update is idempotent.
