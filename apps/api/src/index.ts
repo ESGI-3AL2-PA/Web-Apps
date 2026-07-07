@@ -2,6 +2,7 @@ import "./load-env.js"; // must be first: loads .env before any module reads pro
 import express, { type Application, type RequestHandler } from "express";
 import cors from "cors";
 import helmet from "helmet";
+import rateLimit from "express-rate-limit";
 
 import { createExpressEndpoints } from "@ts-rest/express";
 import {
@@ -152,10 +153,21 @@ app.post("/contracts/webhook", documensoWebhookHandler);
 // requireAuth verifies the JWT (iss/aud) and sets req.user.
 app.use(requireAuth);
 
+// Rate limiting (per client IP; req.ip honours the TRUST_PROXY setting above).
+// Mirrors the auth-service limiter — 1-minute window, draft-7 headers. A generous
+// global cap protects every authenticated route; the two endpoints that trigger
+// external work (Documenso/email on create, an S3 fetch on the PDF proxy) get
+// tighter caps below. NOTE: in-memory store — fine single-instance, move to a
+// shared store (Redis) before scaling the api horizontally.
+const rateLimitMessage = { message: "Too many requests — try again later" };
+const makeLimiter = (limit: number) =>
+  rateLimit({ windowMs: 60_000, limit, standardHeaders: "draft-7", legacyHeaders: false, message: rateLimitMessage });
+app.use(makeLimiter(120));
+
 // Binary passthrough for the signed contract PDF (proxied from Documenso so the
 // front never talks to Documenso/S3 directly). Raw handler — does its own party/
 // admin authorization. Registered before the ts-rest contract routes.
-app.get("/contracts/:id/pdf", contractPdfHandler);
+app.get("/contracts/:id/pdf", makeLimiter(30), contractPdfHandler);
 
 // Authorization is declared per-route in the contract `metadata.auth` and enforced
 // by this single global middleware (reads req.tsRestRoute, loads records for
@@ -165,6 +177,11 @@ app.get("/contracts/:id/pdf", contractPdfHandler);
 // (the contract's generic flows from args 1-2); `authorize` is a valid Express handler.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const endpointOptions: any = { globalMiddleware: [authorize] };
+
+// Tighter cap on contract creation — each call fans out to Documenso (document
+// generation + invitation emails) and escrows funds. Registered before the ts-rest
+// contracts router so it runs first, then falls through to the handler.
+app.post("/contracts", makeLimiter(10));
 
 createExpressEndpoints(usersContract, usersRouter, app, endpointOptions);
 createExpressEndpoints(listingsContract, listingsRouter, app, endpointOptions);
