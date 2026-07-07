@@ -13,6 +13,7 @@ CLAUDE.local.md
 .claude/settings.local.json
 .playwright-mcp
 graphify-out
+.audit
 
 # Local Documenso dev signing certificate (generate via scripts/gen-documenso-cert.sh)
 docker/documenso/cert.p12
