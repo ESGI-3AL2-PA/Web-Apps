@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { io, type Socket } from "socket.io-client";
 import { useAuth } from "@repo/hooks";
 import { config } from "@repo/config";
@@ -19,7 +19,9 @@ export const useSocket = () => useContext(SocketContext);
 
 export const SocketProvider = ({ children }: { children: ReactNode }) => {
   const { user, getAccessToken } = useAuth();
-  const socketRef = useRef<Socket | null>(null);
+  // Le socket est en state (pas en ref) pour que la valeur du contexte se recompose
+  // à la connexion — sinon les abonnements consommateurs restent liés à `null`.
+  const [socket, setSocket] = useState<Socket | null>(null);
   const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set());
 
   useEffect(() => {
@@ -32,7 +34,7 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
       withCredentials: true,
       transports: ["websocket", "polling"],
     });
-    socketRef.current = s;
+    setSocket(s);
 
     s.on("presence:list", (userIds: string[]) => {
       setOnlineUsers(new Set(userIds));
@@ -40,18 +42,18 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
 
     return () => {
       s.disconnect();
-      socketRef.current = null;
+      setSocket(null);
       setOnlineUsers(new Set());
     };
   }, [user?.id, getAccessToken]);
 
   const value = useMemo<SocketContextValue>(
     () => ({
-      socket: socketRef.current,
+      socket,
       onlineUsers,
       isUserOnline: (id: string) => onlineUsers.has(id),
     }),
-    [onlineUsers],
+    [socket, onlineUsers],
   );
 
   return <SocketContext.Provider value={value}>{children}</SocketContext.Provider>;

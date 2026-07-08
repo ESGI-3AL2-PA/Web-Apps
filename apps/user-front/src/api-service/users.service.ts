@@ -28,7 +28,7 @@ export async function getUserPublic(id: string): Promise<UserPublic> {
       const res = await api.get<UserPublic>(`/users/${id}/public`);
       if (!res.data) throw new Error();
       return res.data;
-    } catch (e) {
+    } catch {
       publicCache.delete(id);
       throw new Error("Profil public introuvable");
     }

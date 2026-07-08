@@ -52,9 +52,7 @@ const Messagerie = () => {
     try {
       const res = await getMessages(conversationId, { limit: 100 } as never);
       // Tri ASC (les + anciens en haut, les + récents en bas)
-      const sorted = [...res.data].sort(
-        (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
-      );
+      const sorted = [...res.data].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
       setMessages(sorted);
     } catch {
       setError("Impossible de charger les messages");
@@ -111,16 +109,24 @@ const Messagerie = () => {
 
   const handleSend = async (content: string) => {
     if (!activeId) return;
-    await sendMessage(activeId, { type: "text", content });
-    await fetchMessages(activeId);
-    await fetchConversations();
+    try {
+      await sendMessage(activeId, { type: "text", content });
+      await fetchMessages(activeId);
+      await fetchConversations();
+    } catch {
+      setError("Échec de l'envoi du message");
+    }
   };
 
   const handleSendVoice = async (blob: Blob) => {
     if (!activeId) return;
-    await sendVoiceMessage(activeId, blob);
-    await fetchMessages(activeId);
-    await fetchConversations();
+    try {
+      await sendVoiceMessage(activeId, blob);
+      await fetchMessages(activeId);
+      await fetchConversations();
+    } catch {
+      setError("Échec de l'envoi du message vocal");
+    }
   };
 
   const activeConv = conversations.find((c) => c.id === activeId) ?? null;
@@ -182,7 +188,7 @@ const Messagerie = () => {
             <p style={{ padding: 14, color: "#666", fontSize: 13 }}>Chargement…</p>
           ) : conversations.length === 0 ? (
             <p style={{ padding: 14, color: "#666", fontSize: 13 }}>
-              Aucune conversation. Click "+ Nouveau" pour démarrer.
+              Aucune conversation. Cliquez sur "+ Nouveau" pour démarrer.
             </p>
           ) : (
             conversations.map((c) => (
@@ -228,6 +234,9 @@ const Messagerie = () => {
               </h2>
             </div>
             <div
+              role="log"
+              aria-live="polite"
+              aria-label="Messages de la conversation"
               style={{
                 flex: 1,
                 overflowY: "auto",
@@ -270,6 +279,7 @@ const Messagerie = () => {
 
       {error && (
         <div
+          role="alert"
           style={{
             position: "absolute",
             bottom: 20,

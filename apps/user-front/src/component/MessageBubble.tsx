@@ -31,14 +31,19 @@ const MessageBubble = ({ message, isMine, showSender }: MessageBubbleProps) => {
   // Fetch l'audio en blob (Bearer auto) puis le wrap en URL locale
   useEffect(() => {
     if (message.type !== "audio") return;
+    let cancelled = false;
     let createdUrl: string | null = null;
     fetchAudioBlob(message.id)
       .then((blob) => {
+        if (cancelled) return;
         createdUrl = URL.createObjectURL(blob);
         setAudioUrl(createdUrl);
       })
-      .catch(() => setAudioUrl(""));
+      .catch(() => {
+        if (!cancelled) setAudioUrl("");
+      });
     return () => {
+      cancelled = true;
       if (createdUrl) URL.revokeObjectURL(createdUrl);
     };
   }, [message.id, message.type]);
@@ -53,7 +58,7 @@ const MessageBubble = ({ message, isMine, showSender }: MessageBubbleProps) => {
       }}
     >
       {!isMine && showSender && senderName && (
-        <span style={{ fontSize: 11, color: "#888", marginLeft: 8, marginBottom: 2 }}>{senderName}</span>
+        <span style={{ fontSize: 11, color: "#666", marginLeft: 8, marginBottom: 2 }}>{senderName}</span>
       )}
       <div
         style={{
@@ -78,7 +83,7 @@ const MessageBubble = ({ message, isMine, showSender }: MessageBubbleProps) => {
           <span style={{ fontSize: 14 }}>{message.content}</span>
         )}
       </div>
-      <span style={{ fontSize: 10, color: "#888", marginTop: 2, marginLeft: 8, marginRight: 8 }}>
+      <span style={{ fontSize: 10, color: "#666", marginTop: 2, marginLeft: 8, marginRight: 8 }}>
         {formatTime(message.createdAt)}
       </span>
     </div>
