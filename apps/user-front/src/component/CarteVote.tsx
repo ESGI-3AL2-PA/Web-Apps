@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { SubmitVoteResponseDto, VoteResponseDto, VoteStatus } from "@repo/contracts";
 import { getVoteById, submitVoteResponse } from "../api-service/votes.service";
 
@@ -33,6 +33,9 @@ const CarteVote = ({ vote, onChanged }: CarteVoteProps) => {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [localVote, setLocalVote] = useState<VoteResponseDto>(vote);
+  // Resynchronise sur la prop quand le parent refetch (une action sur une autre
+  // carte peut rafraîchir la liste : sinon cette carte garde un état périmé).
+  useEffect(() => setLocalVote(vote), [vote]);
   // Mode édition : si l'user a déjà voté, on cache le form par défaut.
   // Click "Modifier mon vote" pour réafficher.
   const [editing, setEditing] = useState<boolean>(false);
@@ -284,35 +287,40 @@ const CarteVote = ({ vote, onChanged }: CarteVoteProps) => {
             {/* ── Cas 3 : formulaire de vote (création ou édition) ─ */}
             {!isClosed && (!userHasVoted || editing) && (
               <form onSubmit={handleSubmit} style={{ marginBottom: 20 }}>
-                <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 12 }}>
-                  {localVote.options.map((opt) => {
-                    const checked = isMulti ? chosenMulti.has(opt) : chosenSingle === opt;
-                    return (
-                      <label
-                        key={opt}
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 8,
-                          padding: 8,
-                          border: "1px solid #e5e7eb",
-                          borderRadius: 6,
-                          cursor: "pointer",
-                          background: checked ? "#f0f9ff" : "transparent",
-                        }}
-                      >
-                        <input
-                          type={isMulti ? "checkbox" : "radio"}
-                          name="chosen"
-                          value={opt}
-                          checked={checked}
-                          onChange={() => (isMulti ? toggleMulti(opt) : setChosenSingle(opt))}
-                        />
-                        <span>{opt}</span>
-                      </label>
-                    );
-                  })}
-                </div>
+                <fieldset style={{ border: "none", padding: 0, margin: 0, marginBottom: 12 }}>
+                  <legend style={{ fontSize: 13, fontWeight: 600, padding: 0, marginBottom: 8 }}>
+                    {isMulti ? "Choisissez une ou plusieurs options" : "Choisissez une option"}
+                  </legend>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    {localVote.options.map((opt) => {
+                      const checked = isMulti ? chosenMulti.has(opt) : chosenSingle === opt;
+                      return (
+                        <label
+                          key={opt}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 8,
+                            padding: 8,
+                            border: "1px solid #e5e7eb",
+                            borderRadius: 6,
+                            cursor: "pointer",
+                            background: checked ? "#f0f9ff" : "transparent",
+                          }}
+                        >
+                          <input
+                            type={isMulti ? "checkbox" : "radio"}
+                            name="chosen"
+                            value={opt}
+                            checked={checked}
+                            onChange={() => (isMulti ? toggleMulti(opt) : setChosenSingle(opt))}
+                          />
+                          <span>{opt}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </fieldset>
                 <div style={{ display: "flex", gap: 8 }}>
                   <button
                     type="submit"
@@ -390,8 +398,16 @@ const CarteVote = ({ vote, onChanged }: CarteVoteProps) => {
               )}
             </div>
 
-            {success && <p style={{ color: "#10b981", marginTop: 12, fontSize: 13 }}>{success}</p>}
-            {error && <p style={{ color: "red", marginTop: 12, fontSize: 13 }}>{error}</p>}
+            {success && (
+              <p role="status" style={{ color: "#047857", marginTop: 12, fontSize: 13 }}>
+                {success}
+              </p>
+            )}
+            {error && (
+              <p role="alert" style={{ color: "#b91c1c", marginTop: 12, fontSize: 13 }}>
+                {error}
+              </p>
+            )}
           </div>
         </div>
       )}

@@ -47,6 +47,7 @@ const Votes = () => {
       <div style={{ display: "flex", gap: 12, marginBottom: 24, flexWrap: "wrap" }}>
         <select
           className="border border-black rounded px-2 py-1"
+          aria-label="Filtrer par statut"
           value={status}
           onChange={(e) => setStatus(e.target.value as VoteStatus | "")}
         >
@@ -59,6 +60,7 @@ const Votes = () => {
         <input
           className="border border-black rounded px-2 py-1"
           type="text"
+          aria-label="Rechercher un vote"
           placeholder="Rechercher…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
@@ -66,9 +68,11 @@ const Votes = () => {
       </div>
 
       {loading ? (
-        <p>Chargement des votes…</p>
+        <p role="status">Chargement des votes…</p>
       ) : error ? (
-        <p style={{ color: "red" }}>{error}</p>
+        <p role="alert" style={{ color: "#b91c1c" }}>
+          {error}
+        </p>
       ) : (
         <VoteList votes={votes} title="" onChanged={fetchVotes} />
       )}
