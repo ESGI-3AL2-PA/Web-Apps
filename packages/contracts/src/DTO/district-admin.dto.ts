@@ -19,9 +19,7 @@ export const CreateDistrictAdminDtoSchema = z
   .openapi({ title: "CreateDistrictAdmin" });
 export type CreateDistrictAdminDto = z.infer<typeof CreateDistrictAdminDtoSchema>;
 
-export const DistrictAdminParamsDtoSchema = z
-  .object({ id: z.string() })
-  .openapi({ title: "DistrictAdminParams" });
+export const DistrictAdminParamsDtoSchema = z.object({ id: z.string() }).openapi({ title: "DistrictAdminParams" });
 export type DistrictAdminParamsDto = z.infer<typeof DistrictAdminParamsDtoSchema>;
 
 export const DistrictAdminQueryDtoSchema = z

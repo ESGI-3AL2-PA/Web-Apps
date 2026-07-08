@@ -12,12 +12,7 @@ export class MongoDistrictAdminRepository implements IDistrictAdminRepository {
     this.collection = db.collection("district_admins");
   }
 
-  async listDistrictAdmins(params: {
-    districtId?: string;
-    userId?: string;
-    page?: number;
-    limit?: number;
-  }) {
+  async listDistrictAdmins(params: { districtId?: string; userId?: string; page?: number; limit?: number }) {
     const { districtId, userId, page = 1, limit = 20 } = params;
     const filter: Filter<DistrictAdminDoc> = {};
     if (districtId) filter.districtId = districtId;
@@ -45,9 +40,7 @@ export class MongoDistrictAdminRepository implements IDistrictAdminRepository {
     return doc ? this.toEntity(doc) : null;
   }
 
-  async createDistrictAdmin(
-    data: Omit<DistrictAdmin, "id" | "createdAt">,
-  ): Promise<DistrictAdmin> {
+  async createDistrictAdmin(data: Omit<DistrictAdmin, "id" | "createdAt">): Promise<DistrictAdmin> {
     const doc: DistrictAdminDoc = {
       _id: randomUUID(),
       ...data,
