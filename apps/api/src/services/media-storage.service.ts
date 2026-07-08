@@ -17,10 +17,7 @@ export const buildAudioPath = (messageId: string): string => {
 };
 
 // Sauve un audio (data-URL base64 ou base64 brut) sur disque sous storage/messages/{id}.webm
-export const saveAudioFromBase64 = async (
-  messageId: string,
-  base64Input: string,
-): Promise<{ audioPath: string }> => {
+export const saveAudioFromBase64 = async (messageId: string, base64Input: string): Promise<{ audioPath: string }> => {
   await ensureStorageDir();
   const base64 = base64Input.replace(/^data:audio\/[a-zA-Z+-]+;base64,/, "");
   const bytes = Buffer.from(base64, "base64");

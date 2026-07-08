@@ -46,9 +46,7 @@ export async function getConversationById(id: string): Promise<ConversationRespo
 }
 
 // POST /conversations — démarrer une nouvelle conversation
-export async function createConversation(
-  data: CreateConversationDto,
-): Promise<ConversationResponseDto> {
+export async function createConversation(data: CreateConversationDto): Promise<ConversationResponseDto> {
   try {
     const res = await api.post<ConversationResponseDto>("/conversations", data);
     if (!res.data) {
@@ -81,15 +79,9 @@ export async function getMessages(
 }
 
 // POST /conversations/:id/messages — envoyer un message (participant only)
-export async function sendMessage(
-  conversationId: string,
-  data: SendMessageDto,
-): Promise<MessageResponseDto> {
+export async function sendMessage(conversationId: string, data: SendMessageDto): Promise<MessageResponseDto> {
   try {
-    const res = await api.post<MessageResponseDto>(
-      `/conversations/${conversationId}/messages`,
-      data,
-    );
+    const res = await api.post<MessageResponseDto>(`/conversations/${conversationId}/messages`, data);
     if (!res.data) {
       throw new Error();
     }
@@ -113,10 +105,7 @@ export async function markMessageRead(messageId: string): Promise<MessageRespons
 }
 
 // POST /messages/:id/media — attacher une photo/audio/fichier (sender only)
-export async function attachMediaToMessage(
-  messageId: string,
-  data: UploadMediaDto,
-): Promise<MessageResponseDto> {
+export async function attachMediaToMessage(messageId: string, data: UploadMediaDto): Promise<MessageResponseDto> {
   try {
     const res = await api.post<MessageResponseDto>(`/messages/${messageId}/media`, data);
     if (!res.data) {
@@ -141,16 +130,10 @@ const blobToBase64 = (blob: Blob): Promise<string> =>
   });
 
 // POST /conversations/:id/messages/voice — envoie un message vocal
-export async function sendVoiceMessage(
-  conversationId: string,
-  audioBlob: Blob,
-): Promise<MessageResponseDto> {
+export async function sendVoiceMessage(conversationId: string, audioBlob: Blob): Promise<MessageResponseDto> {
   try {
     const audioBase64 = await blobToBase64(audioBlob);
-    const res = await api.post<MessageResponseDto>(
-      `/conversations/${conversationId}/messages/voice`,
-      { audioBase64 },
-    );
+    const res = await api.post<MessageResponseDto>(`/conversations/${conversationId}/messages/voice`, { audioBase64 });
     if (!res.data) throw new Error();
     return res.data;
   } catch {
