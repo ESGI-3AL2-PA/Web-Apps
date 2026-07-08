@@ -1,6 +1,13 @@
 import { useMemo, useState } from "react";
-import type { SubmitVoteResponseDto, VoteResponseDto } from "@repo/contracts";
+import type { SubmitVoteResponseDto, VoteResponseDto, VoteStatus } from "@repo/contracts";
 import { getVoteById, submitVoteResponse } from "../api-service/votes.service";
+
+// Le statut vient de l'API sous forme d'enum anglais ; on l'affiche traduit.
+const STATUS_LABELS: Record<VoteStatus, string> = {
+  draft: "Brouillon",
+  open: "Ouvert",
+  closed: "Clos",
+};
 
 // Carte cliquable + modale détail d'un vote.
 // Gère 3 axes supplémentaires :
@@ -35,10 +42,7 @@ const CarteVote = ({ vote, onChanged }: CarteVoteProps) => {
   const [chosenSingle, setChosenSingle] = useState<string>("");
   const [chosenMulti, setChosenMulti] = useState<Set<string>>(new Set());
 
-  const total = useMemo(
-    () => localVote.results.reduce((sum, r) => sum + r.count, 0),
-    [localVote.results],
-  );
+  const total = useMemo(() => localVote.results.reduce((sum, r) => sum + r.count, 0), [localVote.results]);
 
   // ── Calcul deadline expirée ──────────────────────────────────────────
   const isExpired = useMemo(() => {
@@ -136,16 +140,14 @@ const CarteVote = ({ vote, onChanged }: CarteVoteProps) => {
           cursor: "pointer",
         }}
       >
-        <h2 style={{ fontSize: 15, fontWeight: 600, color: "#6366f1", margin: 0 }}>
-          {localVote.question}
-        </h2>
+        <h2 style={{ fontSize: 15, fontWeight: 600, color: "#6366f1", margin: 0 }}>{localVote.question}</h2>
         <p style={{ color: "#666", margin: 0, fontSize: 12 }}>Jusqu'au {formatDate(localVote.endDate)}</p>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 4 }}>
           <span style={{ background: "#f3f4f6", borderRadius: 6, padding: "2px 7px", fontSize: 12 }}>
             {total} réponse{total > 1 ? "s" : ""}
           </span>
           <span style={{ background: "#f3f4f6", borderRadius: 6, padding: "2px 7px", fontSize: 12 }}>
-            {localVote.status}
+            {STATUS_LABELS[localVote.status]}
           </span>
           {isExpired && localVote.status === "open" && (
             <span
@@ -161,12 +163,16 @@ const CarteVote = ({ vote, onChanged }: CarteVoteProps) => {
             </span>
           )}
           {isMulti && (
-            <span style={{ background: "#e0e7ff", color: "#3730a3", borderRadius: 6, padding: "2px 7px", fontSize: 12 }}>
+            <span
+              style={{ background: "#e0e7ff", color: "#3730a3", borderRadius: 6, padding: "2px 7px", fontSize: 12 }}
+            >
               Choix multiple
             </span>
           )}
           {userHasVoted && (
-            <span style={{ background: "#d1fae5", color: "#065f46", borderRadius: 6, padding: "2px 7px", fontSize: 12 }}>
+            <span
+              style={{ background: "#d1fae5", color: "#065f46", borderRadius: 6, padding: "2px 7px", fontSize: 12 }}
+            >
               ✓ Voté
             </span>
           )}
@@ -212,7 +218,7 @@ const CarteVote = ({ vote, onChanged }: CarteVoteProps) => {
             </div>
 
             <p style={{ fontSize: 12, color: "#666", marginBottom: 16 }}>
-              Statut : <strong>{localVote.status}</strong> ·{" "}
+              Statut : <strong>{STATUS_LABELS[localVote.status]}</strong> ·{" "}
               {isExpired ? "Expiré (deadline dépassée)" : `Jusqu'au ${formatDate(localVote.endDate)}`} · {total} réponse
               {total > 1 ? "s" : ""} · Type : <strong>{isMulti ? "Choix multiple" : "Choix unique"}</strong>
             </p>
@@ -357,7 +363,9 @@ const CarteVote = ({ vote, onChanged }: CarteVoteProps) => {
                     const userChose = myOptions.has(opt);
                     return (
                       <div key={opt}>
-                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 2 }}>
+                        <div
+                          style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 2 }}
+                        >
                           <span style={{ fontWeight: userChose ? 600 : 400 }}>
                             {opt} {userChose && <span style={{ color: "#10b981" }}>✓</span>}
                           </span>
