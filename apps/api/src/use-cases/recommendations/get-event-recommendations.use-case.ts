@@ -16,10 +16,7 @@ const computeStatus = (eventDate: string, storedStatus: string): Event["status"]
   return "completed";
 };
 
-export const getEventRecommendationsUseCase = (
-  graph: IGraphRepository,
-  eventRepo: IEventRepository,
-) => {
+export const getEventRecommendationsUseCase = (graph: IGraphRepository, eventRepo: IEventRepository) => {
   return async (userId: string, limit = 10): Promise<Event[]> => {
     // 1. Demande à Neo4j la liste ordonnée d'IDs d'events pertinents.
     const ids = await graph.getRecommendedEventIds(userId, limit);
@@ -31,9 +28,14 @@ export const getEventRecommendationsUseCase = (
     // 3. Re-tri pour préserver l'ordre Neo4j (le `find($in)` ne le garantit pas)
     //    + recompute du statut.
     const byId = new Map(events.map((e) => [e.id, e]));
-    return ids
-      .map((id) => byId.get(id))
-      .filter((e): e is Event => Boolean(e))
-      .map((e) => ({ ...e, status: computeStatus(e.eventDate, e.status) }));
+    return (
+      ids
+        .map((id) => byId.get(id))
+        .filter((e): e is Event => Boolean(e))
+        .map((e) => ({ ...e, status: computeStatus(e.eventDate, e.status) }))
+        // Le graphe classe par affinité sans filtrer la date : on écarte les
+        // events passés/annulés pour ne suggérer que ce à quoi l'user peut encore participer.
+        .filter((e) => e.status === "upcoming" || e.status === "ongoing")
+    );
   };
 };
