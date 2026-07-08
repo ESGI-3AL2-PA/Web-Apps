@@ -3,15 +3,8 @@ import { useAuth } from "@repo/hooks";
 const Points = () => {
   const { user, isLoading, isAuthenticated } = useAuth();
 
-  {
-    isLoading && <p>Chargement des données</p>;
-  }
-
-  {
-    !isAuthenticated && <p>L'user n'est pas connecter</p>;
-  }
-
-  const statCardClass = "bg-[#E29279] card card-xs sm:max-w-sm text-white";
+  if (isLoading) return <p>Chargement des données…</p>;
+  if (!isAuthenticated) return <p>Vous n'êtes pas connecté</p>;
 
   return (
     <div className="card card-lg sm:max-w-sm bg-[#DA7758] p-5 mt-10 text-white">
@@ -19,17 +12,6 @@ const Points = () => {
       <p>
         <span className="text-2xl">{user?.balance} </span>points
       </p>
-      {/* <div className="flex flex-row justify-around mt-5">
-        <div className={statCardClass}>
-          Donnée : <span>8</span>
-        </div>
-        <div className={statCardClass}>
-          recut : <span>5</span>
-        </div>
-        <div className={statCardClass}>
-          Echanger : <span>12</span>
-        </div>
-      </div> */}
     </div>
   );
 };
