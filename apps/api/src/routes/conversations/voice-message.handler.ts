@@ -2,6 +2,10 @@ import path from "path";
 import fs from "fs";
 import type { Request, Response, NextFunction } from "express";
 import { resolve } from "../../repositories/container.js";
+import type { IConversationRepository } from "../../repositories/Conversation/conversation.repository.js";
+
+// ~5 Mo décodés. base64 gonfle d'environ 4/3, donc 5 Mo ≈ 6.7M caractères.
+const MAX_AUDIO_BASE64_LENGTH = 7_000_000;
 import { saveAudioFromBase64, buildAudioPath } from "../../services/media-storage.service.js";
 import { broadcastNewMessage } from "../../sockets/io.js";
 
@@ -19,8 +23,13 @@ export const voiceMessageHandler = async (req: Request, res: Response, next: Nex
       res.status(400).json({ message: "audioBase64 manquant" });
       return;
     }
+    // Borne la taille pour éviter un remplissage disque (~5 Mo décodés ≈ 6.7M chars base64).
+    if (audioBase64.length > MAX_AUDIO_BASE64_LENGTH) {
+      res.status(413).json({ message: "Message vocal trop volumineux (max ~5 Mo)" });
+      return;
+    }
 
-    const repo = resolve("conversation");
+    const repo: IConversationRepository = resolve("conversation");
     const conversation = await repo.getConversationById(conversationId);
     if (!conversation) {
       res.status(404).json({ message: "Conversation not found" });
@@ -35,6 +44,7 @@ export const voiceMessageHandler = async (req: Request, res: Response, next: Nex
     const message = await repo.createMessage({
       conversationId,
       senderId: user.sub,
+      districtId: conversation.districtId,
       type: "audio",
       content: "[message vocal]",
     });
@@ -68,7 +78,7 @@ export const audioStreamHandler = async (req: Request, res: Response, next: Next
       return;
     }
 
-    const repo = resolve("conversation");
+    const repo: IConversationRepository = resolve("conversation");
     const message = await repo.getMessageById(messageId);
     if (!message) {
       res.status(404).json({ message: "Message not found" });

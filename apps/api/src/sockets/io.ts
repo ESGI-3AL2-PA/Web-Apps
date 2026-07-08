@@ -27,7 +27,8 @@ export const setupSocketIo = (httpServer: HttpServer): Server => {
   // Middleware d'authentification — token JWT passé dans le handshake.
   io.use(async (socket, next) => {
     try {
-      const token = (socket.handshake.auth?.token ?? socket.handshake.query?.token) as string | undefined;
+      // Token uniquement via handshake.auth (jamais la query string, qui finit dans les logs).
+      const token = socket.handshake.auth?.token as string | undefined;
       if (!token) throw new Error("missing token");
       const { payload } = await jwtVerify(token, JWKS, {
         algorithms: ["RS256"],
