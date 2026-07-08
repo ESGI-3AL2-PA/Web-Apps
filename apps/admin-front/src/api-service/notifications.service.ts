@@ -31,9 +31,7 @@ export async function getNotifications(
 }
 
 // POST /notifications — broadcast/cible une notification (admin → quartier ou user)
-export async function createNotification(
-  data: CreateNotificationDto,
-): Promise<NotificationResponseDto> {
+export async function createNotification(data: CreateNotificationDto): Promise<NotificationResponseDto> {
   try {
     const res = await api.post<NotificationResponseDto>("/notifications", data);
     if (!res.data) {

@@ -15,9 +15,7 @@ type PaginatedVotes = PaginatedResponseDto<typeof VoteResponseDtoSchema>;
 // (Pas de submitVoteResponse — réservé à l'user-front)
 
 // GET /votes — paginated list (filtres: search, status, districtId, …)
-export async function getVotes(
-  filters: VoteQueryDto = {} as VoteQueryDto,
-): Promise<PaginatedVotes> {
+export async function getVotes(filters: VoteQueryDto = {} as VoteQueryDto): Promise<PaginatedVotes> {
   try {
     const res = await api.get<PaginatedVotes>("/votes", { params: filters });
     if (!res.data) {

@@ -14,9 +14,7 @@ type PaginatedListings = PaginatedResponseDto<typeof ListingResponseDtoSchema>;
 // (Pas de create/update — réservés à l'user-front)
 
 // GET /listings — paginated list (admin: sans filtre authorId, voit tout)
-export async function getListings(
-  filters: ListingQueryDto = {} as ListingQueryDto,
-): Promise<PaginatedListings> {
+export async function getListings(filters: ListingQueryDto = {} as ListingQueryDto): Promise<PaginatedListings> {
   try {
     const res = await api.get<PaginatedListings>("/listings", { params: filters });
     if (!res.data) {

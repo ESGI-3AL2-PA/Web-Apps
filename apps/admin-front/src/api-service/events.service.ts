@@ -16,9 +16,7 @@ type PaginatedEvents = PaginatedResponseDto<typeof EventResponseDtoSchema>;
 // (Pas de create / register / attend — réservés à l'user-front)
 
 // GET /events — paginated list (admin: voit tout, pas de filtre creatorId)
-export async function getEvents(
-  filters: EventQueryDto = {} as EventQueryDto,
-): Promise<PaginatedEvents> {
+export async function getEvents(filters: EventQueryDto = {} as EventQueryDto): Promise<PaginatedEvents> {
   try {
     const res = await api.get<PaginatedEvents>("/events", { params: filters });
     if (!res.data) {

@@ -16,9 +16,7 @@ type PaginatedIncidents = PaginatedResponseDto<typeof IncidentResponseDtoSchema>
 // (Pas de create côté admin — c'est l'user qui signale)
 
 // GET /incidents — paginated list (filters: status, severity, districtId, …)
-export async function getIncidents(
-  filters: IncidentQueryDto = {} as IncidentQueryDto,
-): Promise<PaginatedIncidents> {
+export async function getIncidents(filters: IncidentQueryDto = {} as IncidentQueryDto): Promise<PaginatedIncidents> {
   try {
     const res = await api.get<PaginatedIncidents>("/incidents", { params: filters });
     if (!res.data) {
@@ -57,10 +55,7 @@ export async function getIncidentStats(): Promise<IncidentStatsDto> {
 }
 
 // PATCH /incidents/:id — change le statut, assigne un responsable
-export async function updateIncident(
-  id: string,
-  data: UpdateIncidentDto,
-): Promise<IncidentResponseDto> {
+export async function updateIncident(id: string, data: UpdateIncidentDto): Promise<IncidentResponseDto> {
   try {
     const res = await api.patch<IncidentResponseDto>(`/incidents/${id}`, data);
     if (!res.data) {

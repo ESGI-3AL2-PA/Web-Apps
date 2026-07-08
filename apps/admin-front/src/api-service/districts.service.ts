@@ -13,9 +13,7 @@ type PaginatedDistricts = PaginatedResponseDto<typeof DistrictResponseDtoSchema>
 // Consigne ADMIN — DISTRICTS: full CRUD (gestion géographique du quartier)
 
 // GET /districts — paginated list with optional search
-export async function getDistricts(
-  filters: DistrictQueryDto = {} as DistrictQueryDto,
-): Promise<PaginatedDistricts> {
+export async function getDistricts(filters: DistrictQueryDto = {} as DistrictQueryDto): Promise<PaginatedDistricts> {
   try {
     const res = await api.get<PaginatedDistricts>("/districts", { params: filters });
     if (!res.data) {
@@ -54,10 +52,7 @@ export async function createDistrict(data: CreateDistrictDto): Promise<DistrictR
 }
 
 // PATCH /districts/:id — partial update (name, geoJson, …)
-export async function updateDistrict(
-  id: string,
-  data: UpdateDistrictDto,
-): Promise<DistrictResponseDto> {
+export async function updateDistrict(id: string, data: UpdateDistrictDto): Promise<DistrictResponseDto> {
   try {
     const res = await api.patch<DistrictResponseDto>(`/districts/${id}`, data);
     if (!res.data) {

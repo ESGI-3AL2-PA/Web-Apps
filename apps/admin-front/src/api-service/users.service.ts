@@ -15,9 +15,7 @@ type PaginatedUsers = PaginatedResponseDto<typeof UserResponseDtoSchema>;
 //   - Delete (modération)
 
 // GET /users — paginated list (filters: search, role, status, districtId, …)
-export async function getUsers(
-  filters: UserQueryDto = {} as UserQueryDto,
-): Promise<PaginatedUsers> {
+export async function getUsers(filters: UserQueryDto = {} as UserQueryDto): Promise<PaginatedUsers> {
   try {
     const res = await api.get<PaginatedUsers>("/users", { params: filters });
     if (!res.data) {
