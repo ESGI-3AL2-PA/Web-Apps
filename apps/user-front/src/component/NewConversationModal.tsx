@@ -71,16 +71,21 @@ const NewConversationModal = ({ onClose, onCreated }: NewConversationModalProps)
           <button
             type="button"
             onClick={onClose}
+            aria-label="Fermer"
             style={{ fontSize: 22, lineHeight: 1, background: "none", border: "none", cursor: "pointer" }}
           >
-            ×
+            <span aria-hidden="true">×</span>
           </button>
         </div>
         <form onSubmit={handleSubmit}>
-          <label style={{ fontSize: 13, color: "#374151", display: "block", marginBottom: 6 }}>
+          <label
+            htmlFor="new-conversation-participant"
+            style={{ fontSize: 13, color: "#374151", display: "block", marginBottom: 6 }}
+          >
             ID de l'utilisateur à contacter :
           </label>
           <input
+            id="new-conversation-participant"
             type="text"
             value={participantId}
             onChange={(e) => setParticipantId(e.target.value)}

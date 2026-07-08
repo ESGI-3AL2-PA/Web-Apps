@@ -71,6 +71,8 @@ const CarteConversation = ({ conversation, active, unreadCount = 0, onClick }: C
         <span style={{ fontWeight: 600, fontSize: 14, display: "flex", alignItems: "center", gap: 6 }}>
           {otherId && (
             <span
+              role="img"
+              aria-label={online ? "En ligne" : "Hors ligne"}
               title={online ? "En ligne" : "Hors ligne"}
               style={{
                 width: 8,
@@ -86,7 +88,7 @@ const CarteConversation = ({ conversation, active, unreadCount = 0, onClick }: C
         <span style={{ fontSize: 11, color: "#666" }}>{formatTime(conversation.lastMessageAt)}</span>
       </div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <span style={{ fontSize: 12, color: "#888" }}>
+        <span style={{ fontSize: 12, color: "#666" }}>
           {conversation.type === "group" ? `${conversation.participants.length} participants` : "Conversation directe"}
         </span>
         {unreadCount > 0 && (

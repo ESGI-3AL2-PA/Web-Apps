@@ -61,8 +61,9 @@ const MessageComposer = ({ onSend, onSendVoice, disabled = false }: MessageCompo
               fontSize: 16,
             }}
             title="Enregistrer un message vocal"
+            aria-label="Enregistrer un message vocal"
           >
-            🎙
+            <span aria-hidden="true">🎙</span>
           </button>
         )}
         <textarea
@@ -70,6 +71,7 @@ const MessageComposer = ({ onSend, onSendVoice, disabled = false }: MessageCompo
           onChange={(e) => setText(e.target.value)}
           onKeyDown={handleKeyDown}
           disabled={disabled || recording}
+          aria-label="Message"
           placeholder="Tape ton message… (Entrée pour envoyer, Maj+Entrée pour aller à la ligne)"
           rows={1}
           style={{

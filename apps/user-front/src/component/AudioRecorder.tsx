@@ -16,7 +16,7 @@ const AudioRecorder = ({ onSubmit, onCancel }: AudioRecorderProps) => {
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     return () => {
@@ -104,8 +104,9 @@ const AudioRecorder = ({ onSubmit, onCancel }: AudioRecorderProps) => {
               fontSize: 20,
             }}
             title="Démarrer l'enregistrement"
+            aria-label="Démarrer l'enregistrement"
           >
-            🎙
+            <span aria-hidden="true">🎙</span>
           </button>
         )}
         {recording && (
@@ -124,15 +125,16 @@ const AudioRecorder = ({ onSubmit, onCancel }: AudioRecorderProps) => {
                 fontSize: 16,
               }}
               title="Arrêter"
+              aria-label="Arrêter l'enregistrement"
             >
-              ⏹
+              <span aria-hidden="true">⏹</span>
             </button>
-            <span style={{ fontSize: 13, color: "#7f1d1d" }}>● Enregistrement… {elapsedSec}s</span>
+            <span role="status" style={{ fontSize: 13, color: "#7f1d1d" }}>
+              ● Enregistrement… {elapsedSec}s
+            </span>
           </>
         )}
-        {blob && previewUrl && (
-          <audio controls src={previewUrl} style={{ height: 36 }} />
-        )}
+        {blob && previewUrl && <audio controls src={previewUrl} style={{ height: 36 }} />}
 
         <div style={{ flex: 1 }} />
 
@@ -186,7 +188,11 @@ const AudioRecorder = ({ onSubmit, onCancel }: AudioRecorderProps) => {
           Annuler
         </button>
       </div>
-      {error && <p style={{ color: "red", fontSize: 12, margin: 0 }}>{error}</p>}
+      {error && (
+        <p role="alert" style={{ color: "red", fontSize: 12, margin: 0 }}>
+          {error}
+        </p>
+      )}
     </div>
   );
 };
