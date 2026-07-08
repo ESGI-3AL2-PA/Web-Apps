@@ -79,13 +79,11 @@ export const AttendEventDtoSchema = z
   .openapi({ title: "AttendEvent" });
 export type AttendEventDto = z.infer<typeof AttendEventDtoSchema>;
 
-// Interest signal for the Neo4j reco engine: rating > 0 = 👍, < 0 = 👎 (front sends ±1).
+// Interest signal for the Neo4j reco engine: 👍 = 1, 👎 = -1. Clamped to ±1 so a
+// client can't inflate the accumulating reco score with an arbitrary magnitude.
 export const MarkInterestDtoSchema = z
   .object({
-    rating: z
-      .number()
-      .int()
-      .refine((n) => n !== 0, "rating must be non-zero"),
+    rating: z.union([z.literal(1), z.literal(-1)]),
   })
   .openapi({ title: "MarkInterest" });
 export type MarkInterestDto = z.infer<typeof MarkInterestDtoSchema>;

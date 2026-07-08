@@ -20,12 +20,16 @@ export const eventsRouter = s.router(eventsContract, {
     if ("empty" in scope) {
       return { status: 200, body: { data: [], total: 0, page, limit } };
     }
+    // Non-privileged callers may only filter by their OWN registrations — otherwise
+    // registrantId is an IDOR that enumerates a third party's event participation.
+    const privileged = ["admin", "superAdmin", "service"].includes(req.user!.role);
+    const scopedRegistrantId = registrantId && !privileged ? req.user!.sub : registrantId;
     const result = await getEventsUseCase(resolve("event"))({
       search,
       status,
       districtId: scope.districtId,
       creatorId,
-      registrantId,
+      registrantId: scopedRegistrantId,
       page,
       limit,
     });
@@ -93,7 +97,10 @@ export const eventsRouter = s.router(eventsContract, {
   },
 
   markInterest: async ({ params: { id }, body: { rating }, req }) => {
-    await markInterestUseCase(resolve("graph"))(req.user!.sub, id, rating);
+    const found = await markInterestUseCase(resolve("event"), resolve("graph"))(req.user!.sub, id, rating);
+    if (!found) {
+      return { status: 404, body: { message: "Event not found" } };
+    }
     return { status: 200, body: { success: true } };
   },
 });
