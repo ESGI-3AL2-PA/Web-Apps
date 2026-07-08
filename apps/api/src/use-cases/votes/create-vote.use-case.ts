@@ -4,10 +4,7 @@ import type { IVoteRepository } from "../../repositories/Vote/vote.repository.js
 import type { IGraphRepository } from "../../repositories/Graph/graph.repository.js";
 import { syncGraph } from "../../repositories/Graph/graph.sync.js";
 
-export const createVoteUseCase = (
-  voteRepository: IVoteRepository,
-  graphRepository: IGraphRepository,
-) => {
+export const createVoteUseCase = (voteRepository: IVoteRepository, graphRepository: IGraphRepository) => {
   return async (data: CreateVoteDto & { creatorId: string }): Promise<Vote> => {
     const vote = await voteRepository.createVote({
       ...data,

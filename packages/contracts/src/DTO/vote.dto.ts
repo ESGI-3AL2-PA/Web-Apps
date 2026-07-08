@@ -26,11 +26,11 @@ export const VoteResponseDtoSchema = z
     results: z.array(VoteResultEntrySchema).openapi({ description: "Aggregated results" }),
     startDate: z.string().datetime().openapi({ description: "Vote start date" }),
     endDate: z.string().datetime().openapi({ description: "Vote end date" }),
-    userHasVoted: z.boolean().optional().openapi({ description: "True si le current user a déjà voté" }),
+    userHasVoted: z.boolean().optional().openapi({ description: "True if the current user has already voted" }),
     myChosenOptions: z
       .array(z.string())
       .optional()
-      .openapi({ description: "Options choisies par le current user (vide si pas encore voté)" }),
+      .openapi({ description: "Options chosen by the current user (empty if not yet voted)" }),
   })
   .openapi({ title: "VoteResponse" });
 export type VoteResponseDto = z.infer<typeof VoteResponseDtoSchema>;
