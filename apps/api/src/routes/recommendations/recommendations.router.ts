@@ -7,10 +7,7 @@ const s = initServer();
 
 export const recommendationsRouter = s.router(recommendationsContract, {
   getEventRecommendations: async ({ query: { limit }, req }) => {
-    const events = await getEventRecommendationsUseCase(resolve("graph"), resolve("event"))(
-      req.user!.sub,
-      limit,
-    );
+    const events = await getEventRecommendationsUseCase(resolve("graph"), resolve("event"))(req.user!.sub, limit);
     return { status: 200, body: { data: events } };
   },
 });

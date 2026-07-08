@@ -1,9 +1,6 @@
 import { initContract } from "@ts-rest/core";
 
-import {
-  EventRecommendationsQueryDtoSchema,
-  EventRecommendationsResponseDtoSchema,
-} from "./DTO";
+import { EventRecommendationsQueryDtoSchema, EventRecommendationsResponseDtoSchema } from "./DTO";
 import { auth } from "./auth-meta";
 
 const c = initContract();
