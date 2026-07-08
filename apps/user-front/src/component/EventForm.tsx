@@ -74,8 +74,9 @@ const EventForm = ({ initialValues, onSubmit, submitLabel }: EventFormProps) => 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="flex flex-col gap-1">
-        <label>{"Titre de l'événement"}</label>
+        <label htmlFor="evt-title">{"Titre de l'événement"}</label>
         <input
+          id="evt-title"
           className="border border-black rounded px-2 py-1"
           type="text"
           name="title"
@@ -86,8 +87,9 @@ const EventForm = ({ initialValues, onSubmit, submitLabel }: EventFormProps) => 
       </div>
 
       <div className="flex flex-col gap-1">
-        <label>Description</label>
+        <label htmlFor="evt-description">Description</label>
         <textarea
+          id="evt-description"
           className="border border-black rounded px-2 py-1"
           name="description"
           value={formData.description}
@@ -98,8 +100,9 @@ const EventForm = ({ initialValues, onSubmit, submitLabel }: EventFormProps) => 
       </div>
 
       <div className="flex flex-col gap-1">
-        <label>Lieu</label>
+        <label htmlFor="evt-location">Lieu</label>
         <input
+          id="evt-location"
           className="border border-black rounded px-2 py-1"
           type="text"
           name="location"
@@ -110,8 +113,9 @@ const EventForm = ({ initialValues, onSubmit, submitLabel }: EventFormProps) => 
       </div>
 
       <div className="flex flex-col gap-1">
-        <label>Date et heure</label>
+        <label htmlFor="evt-date">Date et heure</label>
         <input
+          id="evt-date"
           className="border border-black rounded px-2 py-1"
           type="datetime-local"
           name="eventDateLocal"
@@ -122,8 +126,9 @@ const EventForm = ({ initialValues, onSubmit, submitLabel }: EventFormProps) => 
       </div>
 
       <div className="flex flex-col gap-1">
-        <label>Nombre de places</label>
+        <label htmlFor="evt-seats">Nombre de places</label>
         <input
+          id="evt-seats"
           className="border border-black rounded px-2 py-1"
           type="number"
           name="totalSeats"
@@ -138,8 +143,8 @@ const EventForm = ({ initialValues, onSubmit, submitLabel }: EventFormProps) => 
         {submitting ? "Envoi…" : submitLabel}
       </button>
 
-      {success && <p className="text-green-600">{success}</p>}
-      {error && <p className="text-red-500">{error}</p>}
+      {success && <p className="text-green-700">{success}</p>}
+      {error && <p className="text-red-600">{error}</p>}
     </form>
   );
 };

@@ -5,13 +5,14 @@ import { createEvent, getEvents } from "../api-service/events.service";
 import { getRecommendedEvents } from "../api-service/recommendations.service";
 import EventList from "../component/EventList";
 import EventForm from "../component/EventForm";
+import { STATUS_LABELS } from "../component/eventStatus";
 
 const STATUS_OPTIONS: { value: EventStatus | ""; label: string }[] = [
   { value: "", label: "Tous statuts" },
-  { value: "upcoming", label: "À venir" },
-  { value: "ongoing", label: "En cours" },
-  { value: "completed", label: "Terminés" },
-  { value: "cancelled", label: "Annulés" },
+  { value: "upcoming", label: STATUS_LABELS.upcoming },
+  { value: "ongoing", label: STATUS_LABELS.ongoing },
+  { value: "completed", label: STATUS_LABELS.completed },
+  { value: "cancelled", label: STATUS_LABELS.cancelled },
 ];
 
 type RegistrationFilter = "all" | "mine";
@@ -128,6 +129,7 @@ const Evenement = () => {
       <div style={{ display: "flex", gap: 12, marginBottom: 24, flexWrap: "wrap" }}>
         <select
           className="border border-black rounded px-2 py-1"
+          aria-label="Filtrer par statut"
           value={status}
           onChange={(e) => setStatus(e.target.value as EventStatus | "")}
         >
@@ -140,6 +142,7 @@ const Evenement = () => {
 
         <select
           className="border border-black rounded px-2 py-1"
+          aria-label="Filtrer par inscription"
           value={regFilter}
           onChange={(e) => setRegFilter(e.target.value as RegistrationFilter)}
           disabled={!user?.id}
@@ -152,6 +155,7 @@ const Evenement = () => {
         <input
           className="border border-black rounded px-2 py-1"
           type="text"
+          aria-label="Rechercher un événement"
           placeholder="Rechercher (titre)…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}

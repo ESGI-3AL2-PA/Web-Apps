@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useAuth } from "@repo/hooks";
 import type { EventResponseDto } from "@repo/contracts";
 import { markEventInterest, registerToEvent, unregisterFromEvent } from "../api-service/events.service";
+import { statusLabel } from "./eventStatus";
 
 type CarteEventProps = {
   event: EventResponseDto;
@@ -70,6 +71,7 @@ const CarteEvent = ({ event, onChanged }: CarteEventProps) => {
     try {
       await markEventInterest(event.id, rating);
       setInterestSent(rating > 0 ? "up" : "down");
+      onChanged?.();
     } catch {
       setError("Échec de l'enregistrement de votre préférence");
     } finally {
@@ -114,7 +116,7 @@ const CarteEvent = ({ event, onChanged }: CarteEventProps) => {
             {seatsLeft}/{event.totalSeats} places
           </span>
           <span style={{ background: "#f3f4f6", borderRadius: 6, padding: "2px 7px", fontSize: 12 }}>
-            {event.status}
+            {statusLabel(event.status)}
           </span>
         </div>
       </button>
@@ -149,7 +151,15 @@ const CarteEvent = ({ event, onChanged }: CarteEventProps) => {
               <button
                 type="button"
                 onClick={closeModal}
-                style={{ fontSize: 24, lineHeight: 1, background: "none", border: "none", cursor: "pointer" }}
+                style={{
+                  fontSize: 24,
+                  lineHeight: 1,
+                  minWidth: 44,
+                  minHeight: 44,
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                }}
                 aria-label="Fermer"
               >
                 ×
@@ -172,7 +182,7 @@ const CarteEvent = ({ event, onChanged }: CarteEventProps) => {
                 👥 {seatsLeft}/{event.totalSeats} places
               </span>
               <span style={{ background: "#f3f4f6", borderRadius: 6, padding: "4px 10px", fontSize: 13 }}>
-                <strong>Statut :</strong> {event.status}
+                <strong>Statut :</strong> {statusLabel(event.status)}
               </span>
             </div>
 
@@ -184,7 +194,7 @@ const CarteEvent = ({ event, onChanged }: CarteEventProps) => {
                     onClick={handleUnregister}
                     disabled={busy}
                     style={{
-                      background: "#ef4444",
+                      background: "#dc2626",
                       color: "#fff",
                       border: "none",
                       borderRadius: 6,
@@ -201,7 +211,7 @@ const CarteEvent = ({ event, onChanged }: CarteEventProps) => {
                     onClick={handleRegister}
                     disabled={busy || seatsLeft <= 0}
                     style={{
-                      background: seatsLeft > 0 ? "#10b981" : "#9ca3af",
+                      background: seatsLeft > 0 ? "#047857" : "#9ca3af",
                       color: "#fff",
                       border: "none",
                       borderRadius: 6,
@@ -225,10 +235,11 @@ const CarteEvent = ({ event, onChanged }: CarteEventProps) => {
                   type="button"
                   onClick={() => handleInterest(1)}
                   disabled={busy}
+                  aria-pressed={interestSent === "up"}
                   style={{
-                    background: interestSent === "up" ? "#10b981" : "#f3f4f6",
+                    background: interestSent === "up" ? "#047857" : "#f3f4f6",
                     color: interestSent === "up" ? "#fff" : "#111",
-                    border: "1px solid #d1d5db",
+                    border: interestSent === "up" ? "2px solid #065f46" : "1px solid #d1d5db",
                     borderRadius: 6,
                     padding: "6px 14px",
                     cursor: "pointer",
@@ -243,10 +254,11 @@ const CarteEvent = ({ event, onChanged }: CarteEventProps) => {
                   type="button"
                   onClick={() => handleInterest(-1)}
                   disabled={busy}
+                  aria-pressed={interestSent === "down"}
                   style={{
-                    background: interestSent === "down" ? "#ef4444" : "#f3f4f6",
+                    background: interestSent === "down" ? "#dc2626" : "#f3f4f6",
                     color: interestSent === "down" ? "#fff" : "#111",
-                    border: "1px solid #d1d5db",
+                    border: interestSent === "down" ? "2px solid #991b1b" : "1px solid #d1d5db",
                     borderRadius: 6,
                     padding: "6px 14px",
                     cursor: "pointer",
