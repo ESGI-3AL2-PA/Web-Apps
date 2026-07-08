@@ -13,19 +13,26 @@ export const createEventUseCase = (eventRepository: IEventRepository, graphRepos
       registrants: [],
     });
 
-    await syncGraph(`upsertEvent(${event.id})`, () =>
-      graphRepository.upsertEvent({ id: event.id, title: event.title, date: event.eventDate }),
-    );
-    if (event.creatorId) {
-      await syncGraph(`linkUserCreatedEvent(${event.creatorId}->${event.id})`, () =>
-        graphRepository.linkUserCreatedEvent(event.creatorId, event.id),
-      );
-    }
-    if (event.districtId) {
-      await syncGraph(`linkDistrictContainsEvent(${event.districtId}->${event.id})`, () =>
-        graphRepository.linkDistrictContainsEvent(event.districtId, event.id),
-      );
-    }
+    // Independent graph projections — node + creator + district edges — run in parallel.
+    await Promise.all([
+      syncGraph(`upsertEvent(${event.id})`, () =>
+        graphRepository.upsertEvent({ id: event.id, title: event.title, date: event.eventDate }),
+      ),
+      ...(event.creatorId
+        ? [
+            syncGraph(`linkUserCreatedEvent(${event.creatorId}->${event.id})`, () =>
+              graphRepository.linkUserCreatedEvent(event.creatorId, event.id),
+            ),
+          ]
+        : []),
+      ...(event.districtId
+        ? [
+            syncGraph(`linkDistrictContainsEvent(${event.districtId}->${event.id})`, () =>
+              graphRepository.linkDistrictContainsEvent(event.districtId, event.id),
+            ),
+          ]
+        : []),
+    ]);
     return event;
   };
 };

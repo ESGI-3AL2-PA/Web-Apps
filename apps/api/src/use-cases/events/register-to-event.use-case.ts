@@ -3,10 +3,7 @@ import type { IEventRepository } from "../../repositories/Event/event.repository
 import type { IGraphRepository } from "../../repositories/Graph/graph.repository.js";
 import { syncGraph } from "../../repositories/Graph/graph.sync.js";
 
-export const registerToEventUseCase = (
-  eventRepository: IEventRepository,
-  graphRepository: IGraphRepository,
-) => {
+export const registerToEventUseCase = (eventRepository: IEventRepository, graphRepository: IGraphRepository) => {
   return async (id: string, userId: string): Promise<Event | null> => {
     const event = await eventRepository.addRegistrant(id, userId);
     if (event) {

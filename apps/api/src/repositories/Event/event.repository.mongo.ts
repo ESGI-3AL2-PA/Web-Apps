@@ -50,10 +50,9 @@ export class MongoEventRepository implements IEventRepository {
     // Date-derived status (see computeStatus in the use-case); "cancelled" stays explicit.
     if (status) {
       if (status === "cancelled") {
-        filter.status = "cancelled" as Event["status"];
+        filter.status = "cancelled";
       } else {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (filter as any).status = { $ne: "cancelled" };
+        filter.status = { $ne: "cancelled" };
         const nowIso = new Date().toISOString();
         const fourHoursAgoIso = new Date(Date.now() - FOUR_HOURS_MS).toISOString();
         if (status === "upcoming") {

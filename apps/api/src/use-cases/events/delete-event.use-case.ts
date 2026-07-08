@@ -2,10 +2,7 @@ import type { IEventRepository } from "../../repositories/Event/event.repository
 import type { IGraphRepository } from "../../repositories/Graph/graph.repository.js";
 import { syncGraph } from "../../repositories/Graph/graph.sync.js";
 
-export const deleteEventUseCase = (
-  eventRepository: IEventRepository,
-  graphRepository: IGraphRepository,
-) => {
+export const deleteEventUseCase = (eventRepository: IEventRepository, graphRepository: IGraphRepository) => {
   return async (params: { id: string }): Promise<boolean> => {
     const deleted = await eventRepository.deleteEvent(params.id);
     if (deleted) {
