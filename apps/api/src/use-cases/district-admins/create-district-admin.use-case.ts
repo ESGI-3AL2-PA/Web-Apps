@@ -10,10 +10,22 @@ export class DistrictAdminAlreadyExistsError extends Error {
   }
 }
 
+// Mongo duplicate-key error code. The unique (districtId, userId) index is the real
+// guard; findExisting below is only a fast pre-check a concurrent insert can race past.
+const isDuplicateKeyError = (err: unknown): boolean =>
+  typeof err === "object" && err !== null && "code" in err && (err as { code?: unknown }).code === 11000;
+
 export const createDistrictAdminUseCase = (repo: IDistrictAdminRepository) => {
   return async (data: CreateDistrictAdminDto): Promise<DistrictAdminResponseDto> => {
     const existing = await repo.findExisting(data.districtId, data.userId);
     if (existing) throw new DistrictAdminAlreadyExistsError();
-    return await repo.createDistrictAdmin(data);
+    try {
+      return await repo.createDistrictAdmin(data);
+    } catch (err) {
+      // Lost the race to the unique index — surface the same 409 conflict
+      // instead of letting an undeclared 500 escape.
+      if (isDuplicateKeyError(err)) throw new DistrictAdminAlreadyExistsError();
+      throw err;
+    }
   };
 };
