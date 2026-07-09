@@ -1,6 +1,6 @@
 import { randomUUID } from "crypto";
 import type { Collection, Db, Filter } from "mongodb";
-import type { Contract, OpenSignStatus } from "../../entities/contract.entity.js";
+import type { Contract, ContractSignatureStatus } from "../../entities/contract.entity.js";
 import type { IContractRepository } from "./contract.repository.js";
 
 type ContractDoc = Omit<Contract, "id"> & { _id: string };
@@ -15,6 +15,18 @@ export class MongoContractRepository implements IContractRepository {
   async ensureIndexes(): Promise<void> {
     // Backs district-scoped list filtering.
     await this.collection.createIndex({ districtId: 1 });
+    // Backs the webhook lookup by Documenso document id (sparse: null before a
+    // document is generated). Unique — one contract per Documenso document.
+    await this.collection.createIndex({ documensoDocumentId: 1 }, { unique: true, sparse: true });
+    // At most one *active* contract per (listing, provider, beneficiary). Makes the
+    // duplicate-create guard atomic — the app-level findActiveContract check races
+    // under concurrency. Contracts are always created "pending", so equality on that
+    // status covers every create; the trio frees up once the contract goes terminal
+    // (completed/rejected) or is deleted. ($in isn't allowed in a partial filter.)
+    await this.collection.createIndex(
+      { listingId: 1, providerId: 1, beneficiaryId: 1 },
+      { unique: true, partialFilterExpression: { signatureStatus: "pending" } },
+    );
   }
 
   async getContracts(params: {
@@ -23,7 +35,7 @@ export class MongoContractRepository implements IContractRepository {
     providerId?: string;
     beneficiaryId?: string;
     partyId?: string;
-    openSignStatus?: string;
+    signatureStatus?: string;
     disputed?: boolean;
     page?: number;
     limit?: number;
@@ -39,7 +51,7 @@ export class MongoContractRepository implements IContractRepository {
       providerId,
       beneficiaryId,
       partyId,
-      openSignStatus,
+      signatureStatus,
       disputed,
       page = 1,
       limit = 20,
@@ -52,7 +64,7 @@ export class MongoContractRepository implements IContractRepository {
     if (providerId) filter.providerId = providerId;
     if (beneficiaryId) filter.beneficiaryId = beneficiaryId;
     if (partyId) filter.$or = [{ providerId: partyId }, { beneficiaryId: partyId }];
-    if (openSignStatus) filter.openSignStatus = openSignStatus as OpenSignStatus;
+    if (signatureStatus) filter.signatureStatus = signatureStatus as ContractSignatureStatus;
     if (disputed !== undefined) filter.disputed = disputed;
 
     const [total, docs] = await Promise.all([
@@ -72,6 +84,62 @@ export class MongoContractRepository implements IContractRepository {
     return doc ? this.toContract(doc) : null;
   }
 
+  async getContractByDocumensoDocumentId(documentId: number): Promise<Contract | null> {
+    const doc = await this.collection.findOne({ documensoDocumentId: documentId });
+    return doc ? this.toContract(doc) : null;
+  }
+
+  async completeContract(id: string): Promise<Contract | null> {
+    // The {$nin} guard + $set are one atomic update, so concurrent webhooks can't
+    // both transition (and double-release), and a rejected contract can't complete.
+    const result = await this.collection.findOneAndUpdate(
+      { _id: id, signatureStatus: { $nin: ["completed", "rejected"] } },
+      { $set: { signatureStatus: "completed", providerSigningUrl: null, beneficiarySigningUrl: null } },
+      { returnDocument: "after" },
+    );
+    return result ? this.toContract(result) : null;
+  }
+
+  async rejectContract(id: string): Promise<Contract | null> {
+    const result = await this.collection.findOneAndUpdate(
+      { _id: id, signatureStatus: { $nin: ["completed", "rejected"] } },
+      {
+        $set: {
+          signatureStatus: "rejected",
+          providerSigningUrl: null,
+          beneficiarySigningUrl: null,
+        },
+      },
+      { returnDocument: "after" },
+    );
+    return result ? this.toContract(result) : null;
+  }
+
+  async applyNonTerminalStatus(id: string, status: ContractSignatureStatus): Promise<Contract | null> {
+    // Same {$nin} terminal guard as complete/reject — a pending/draft event that
+    // arrives after settlement finds no match and is ignored, so it can't regress.
+    const result = await this.collection.findOneAndUpdate(
+      { _id: id, signatureStatus: { $nin: ["completed", "rejected"] } },
+      { $set: { signatureStatus: status } },
+      { returnDocument: "after" },
+    );
+    return result ? this.toContract(result) : null;
+  }
+
+  async findActiveContract(params: {
+    listingId: string;
+    providerId: string;
+    beneficiaryId: string;
+  }): Promise<Contract | null> {
+    const doc = await this.collection.findOne({
+      listingId: params.listingId,
+      providerId: params.providerId,
+      beneficiaryId: params.beneficiaryId,
+      signatureStatus: { $in: ["draft", "pending"] },
+    });
+    return doc ? this.toContract(doc) : null;
+  }
+
   async createContract(data: Omit<Contract, "id" | "createdAt">): Promise<Contract> {
     const now = new Date().toISOString();
     const doc: ContractDoc = { ...data, _id: randomUUID(), createdAt: now };
@@ -88,9 +156,11 @@ export class MongoContractRepository implements IContractRepository {
     return result ? this.toContract(result) : null;
   }
 
-  async deleteContract(id: string): Promise<boolean> {
-    const result = await this.collection.deleteOne({ _id: id });
-    return result.deletedCount === 1;
+  async deleteContract(id: string): Promise<Contract | null> {
+    // findOneAndDelete returns the removed doc with its state at deletion, so the
+    // caller can atomically decide whether to refund a still-held escrow.
+    const result = await this.collection.findOneAndDelete({ _id: id });
+    return result ? this.toContract(result) : null;
   }
 
   private toContract(doc: ContractDoc): Contract {

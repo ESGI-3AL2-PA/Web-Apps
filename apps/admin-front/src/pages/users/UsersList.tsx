@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react";
-import { useAuth } from "@repo/hooks";
 import type { TransactionResponseDto, UserBalanceResponseDto, UserResponseDto } from "@repo/contracts";
 import { useScopedList } from "../../hooks/useScopedList";
-import { banUser, deleteUser, listUsers, requestPasswordReset } from "../../api-service/users";
+import { banUser, listUsers, requestPasswordReset } from "../../api-service/users";
 import { getUserBalance, getUserTransactions } from "../../api-service/transactions";
 import { DataTable, type Column } from "../../components/DataTable";
 import { Pagination } from "../../components/Pagination";
@@ -16,17 +15,13 @@ import { useDistrictScope } from "../../app/DistrictScopeProvider";
 import { formatDate, formatTokens } from "../../lib/format";
 
 export default function UsersList() {
-  const { user: authUser } = useAuth();
-  const isSuperAdmin = authUser?.role === "superAdmin";
   const list = useScopedList<UserResponseDto>(listUsers);
   const toast = useToast();
   const ban = useAsyncAction();
   const reset = useAsyncAction();
-  const del = useAsyncAction();
   const [viewing, setViewing] = useState<UserResponseDto | null>(null);
   const [banning, setBanning] = useState<UserResponseDto | null>(null);
   const [resetting, setResetting] = useState<UserResponseDto | null>(null);
-  const [deleting, setDeleting] = useState<UserResponseDto | null>(null);
 
   const columns: Column<UserResponseDto>[] = [
     { header: "Name", cell: (u) => `${u.firstName} ${u.lastName}` },
@@ -64,11 +59,6 @@ export default function UsersList() {
                   {u.banned ? "Unban" : "Ban"}
                 </button>
               </>
-            )}
-            {isSuperAdmin && (
-              <button className="btn btn-xs btn-text btn-error" onClick={() => setDeleting(u)}>
-                Delete
-              </button>
             )}
           </div>
         )}
@@ -118,26 +108,6 @@ export default function UsersList() {
             await banUser(banning!.id, !wasBanned);
             toast.show(wasBanned ? "User unbanned" : "User banned");
             setBanning(null);
-            list.refetch();
-          })
-        }
-      />
-
-      <ConfirmDialog
-        open={!!deleting}
-        title="Delete user"
-        message={`Permanently delete ${deleting?.email}? This cannot be undone.`}
-        busy={del.busy}
-        error={del.error}
-        onCancel={() => {
-          setDeleting(null);
-          del.reset();
-        }}
-        onConfirm={() =>
-          del.run(async () => {
-            await deleteUser(deleting!.id);
-            toast.show("User deleted");
-            setDeleting(null);
             list.refetch();
           })
         }

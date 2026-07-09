@@ -23,10 +23,6 @@ export async function banUser(id: string, banned: boolean): Promise<UserResponse
   return res.data;
 }
 
-export async function deleteUser(id: string): Promise<void> {
-  await api.delete(`/users/${id}`);
-}
-
 // Triggers the auth-service's password-reset email flow for a stuck user. Public endpoint (always
 // 200, no enumeration); the admin already has the email from the users table.
 export async function requestPasswordReset(email: string): Promise<void> {

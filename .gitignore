@@ -14,3 +14,9 @@ CLAUDE.local.md
 .playwright-mcp
 graphify-out
 .audit/
+
+# Local Documenso dev signing certificate (generate via scripts/gen-documenso-cert.sh)
+docker/documenso/cert.p12
+
+# Local dev auth-service RS256 keys (generate via scripts/gen-auth-keys.sh)
+docker/auth/*.pem

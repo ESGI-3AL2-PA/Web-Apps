@@ -1,8 +1,9 @@
 import { z } from "../zod";
 import { BooleanQueryParamSchema } from "./query.dto";
 
-export const OpenSignStatusSchema = z.enum(["draft", "sent", "partially_signed", "signed", "expired", "declined"]);
-export type OpenSignStatus = z.infer<typeof OpenSignStatusSchema>;
+// Contract signature lifecycle, mirrored from the Documenso document status.
+export const ContractSignatureStatusSchema = z.enum(["draft", "pending", "completed", "rejected"]);
+export type ContractSignatureStatus = z.infer<typeof ContractSignatureStatusSchema>;
 
 export const ContractResponseDtoSchema = z
   .object({
@@ -12,9 +13,18 @@ export const ContractResponseDtoSchema = z
     providerId: z.string().openapi({ description: "ID of the user providing the service" }),
     beneficiaryId: z.string().openapi({ description: "ID of the user benefiting from the service" }),
     price: z.number().int().openapi({ description: "Price in tokens", example: 10 }),
-    openSignDocumentId: z.string().openapi({ description: "OpenSign document identifier" }),
-    openSignStatus: OpenSignStatusSchema.openapi({ description: "Current OpenSign signature status" }),
+    signatureStatus: ContractSignatureStatusSchema.openapi({ description: "Current signature lifecycle status" }),
+    // The signing URL for the *authenticated caller only* (provider or beneficiary). Null for
+    // admins/observers or once signing is done — never exposes the other party's signing token.
+    signingUrl: z
+      .string()
+      .nullable()
+      .openapi({ description: "Documenso signing URL for the current user, if they still need to sign" }),
     disputed: z.boolean().openapi({ description: "Whether the contract is currently disputed" }),
+    disputeReason: z
+      .string()
+      .nullable()
+      .openapi({ description: "Reason supplied when the contract was disputed, if any" }),
     createdAt: z.string().datetime().openapi({ description: "Creation timestamp" }),
   })
   .openapi({ title: "ContractResponse" });
@@ -23,29 +33,14 @@ export type ContractResponseDto = z.infer<typeof ContractResponseDtoSchema>;
 export const CreateContractDtoSchema = z
   .object({
     listingId: z.string().openapi({ description: "ID of the listing this contract is generated for" }),
-    // providerId is derived from the authenticated caller (the request author), never sent by the client.
-    beneficiaryId: z.string().openapi({ description: "ID of the user benefiting from the service" }),
-    price: z.number().int().min(0).openapi({ description: "Price in tokens", example: 10 }),
+    // The authenticated caller is the beneficiary (payer, whose tokens are escrowed);
+    // the provider being booked is named here and never derived from the client.
+    providerId: z.string().openapi({ description: "ID of the user providing the service" }),
+    // Price is NOT accepted from the client — it is derived server-side from the
+    // referenced listing so the escrowed amount always matches the advertised price.
   })
   .openapi({ title: "CreateContract" });
 export type CreateContractDto = z.infer<typeof CreateContractDtoSchema>;
-
-export const UpdateContractDtoSchema = z
-  .object({
-    openSignDocumentId: z.string().optional(),
-    openSignStatus: OpenSignStatusSchema.optional(),
-    disputed: z.boolean().optional(),
-  })
-  .openapi({ title: "UpdateContract" });
-export type UpdateContractDto = z.infer<typeof UpdateContractDtoSchema>;
-
-export const SignContractDtoSchema = z
-  .object({
-    openSignDocumentId: z.string().openapi({ description: "OpenSign document ID returned by the signature callback" }),
-    openSignStatus: OpenSignStatusSchema.openapi({ description: "New OpenSign status reported by the callback" }),
-  })
-  .openapi({ title: "SignContract" });
-export type SignContractDto = z.infer<typeof SignContractDtoSchema>;
 
 export const DisputeContractDtoSchema = z
   .object({
@@ -65,7 +60,7 @@ export const ContractQueryDtoSchema = z
     districtId: z.string().optional(),
     providerId: z.string().optional(),
     beneficiaryId: z.string().optional(),
-    openSignStatus: OpenSignStatusSchema.optional(),
+    signatureStatus: ContractSignatureStatusSchema.optional(),
     disputed: BooleanQueryParamSchema.optional(),
   })
   .openapi({ title: "ContractQuery" });

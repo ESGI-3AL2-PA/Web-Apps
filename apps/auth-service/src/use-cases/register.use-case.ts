@@ -2,7 +2,6 @@ import { SignJWT } from "jose";
 import type { IUserReaderRepository } from "../repositories/User/user-reader.repository.js";
 import type { IAuthTokenRepository } from "../repositories/AuthToken/auth-token.repository.js";
 import { getPrivateKey } from "../keys.js";
-import { skipEmailVerification } from "../dev-auth.js";
 import { sendVerificationEmailUseCase } from "./send-verification-email.use-case.js";
 
 const API_URL = process.env.API_URL || "http://localhost:3000";
@@ -49,13 +48,9 @@ export const registerUseCase = (userReader: IUserReaderRepository, authTokenRepo
     const user = await userReader.findByEmail(data.email);
     if (!user) throw new Error("User created but not found");
 
-    // Email verification — user can't log in until they click the link.
-    // In dev (flag set) we mark them verified immediately and skip the email.
-    if (skipEmailVerification()) {
-      await userReader.setEmailVerified(user.id);
-    } else {
-      await sendVerificationEmailUseCase(authTokenRepo)(user.id, user.email);
-    }
+    // Email verification — user can't log in until they click the link. In dev the
+    // mail lands in mailpit (:8025) instead of a real inbox.
+    await sendVerificationEmailUseCase(authTokenRepo)(user.id, user.email);
 
     return "ok";
   };

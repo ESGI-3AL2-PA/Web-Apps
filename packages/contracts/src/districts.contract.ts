@@ -45,8 +45,8 @@ export const districtsContract = c.router({
     responses: {
       201: DistrictResponseDtoSchema,
     },
-    summary: "Create a new district (admin only)",
-    metadata: auth({ audience: "api", roles: ["admin", "superAdmin"] }),
+    summary: "Create a new district (superAdmin only)",
+    metadata: auth({ audience: "api", roles: ["superAdmin"] }),
   },
 
   updateDistrict: {
@@ -58,8 +58,14 @@ export const districtsContract = c.router({
       200: DistrictResponseDtoSchema,
       404: NotFoundErrorSchema,
     },
-    summary: "Partially update a district (admin only)",
-    metadata: auth({ audience: "api", roles: ["admin", "superAdmin"] }),
+    summary: "Partially update a district. District admins may only edit their own; superAdmin any.",
+    // districtField:"id" — the record's own id must equal the caller's adminDistrictId,
+    // so a district admin can't mutate a district they don't administer.
+    metadata: auth({
+      audience: "api",
+      roles: ["admin", "superAdmin"],
+      scope: { resource: "district", districtField: "id", bypassRoles: ["superAdmin"] },
+    }),
   },
 
   deleteDistrict: {
@@ -71,7 +77,7 @@ export const districtsContract = c.router({
       204: z.undefined(),
       404: NotFoundErrorSchema,
     },
-    summary: "Delete a district (admin only)",
-    metadata: auth({ audience: "api", roles: ["admin", "superAdmin"] }),
+    summary: "Delete a district (superAdmin only)",
+    metadata: auth({ audience: "api", roles: ["superAdmin"] }),
   },
 });
