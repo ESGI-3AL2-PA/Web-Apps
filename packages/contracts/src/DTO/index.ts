@@ -14,4 +14,5 @@ export * from "./vote.dto";
 export * from "./conversation.dto";
 export * from "./notification.dto";
 export * from "./transaction.dto";
+export * from "./recommendation.dto";
 export * from "./paginatedResponse.dto";

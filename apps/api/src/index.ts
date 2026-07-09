@@ -18,6 +18,7 @@ import {
   conversationsContract,
   notificationsContract,
   transactionsContract,
+  recommendationsContract,
 } from "@repo/contracts";
 
 import { usersRouter } from "./routes/users/users.router.js";
@@ -36,6 +37,7 @@ import { transactionsRouter } from "./routes/transactions/transactions.router.js
 import { createServer } from "http";
 import { setupSocketIo } from "./sockets/io.js";
 import { voiceMessageHandler, audioStreamHandler } from "./routes/conversations/voice-message.handler.js";
+import { recommendationsRouter } from "./routes/recommendations/recommendations.router.js";
 import { errorHandler, NotFoundError } from "./middleware/error-handler.js";
 import { requireAuth } from "./middleware/auth.middleware.js";
 import { authorize } from "./middleware/authorize.middleware.js";
@@ -74,6 +76,7 @@ const openApiDocument = generateOpenApi(
     Conversations: conversationsContract,
     Notifications: notificationsContract,
     Transactions: transactionsContract,
+    Recommendations: recommendationsContract,
   },
   {
     info: {
@@ -98,6 +101,7 @@ const openApiDocument = generateOpenApi(
       { name: "Conversations" },
       { name: "Notifications" },
       { name: "Transactions" },
+      { name: "Recommendations" },
     ],
   },
   {
@@ -179,6 +183,7 @@ createExpressEndpoints(votesContract, votesRouter, app, endpointOptions);
 createExpressEndpoints(conversationsContract, conversationsRouter, app, endpointOptions);
 createExpressEndpoints(notificationsContract, notificationsRouter, app, endpointOptions);
 createExpressEndpoints(transactionsContract, transactionsRouter, app, endpointOptions);
+createExpressEndpoints(recommendationsContract, recommendationsRouter, app, endpointOptions);
 
 app.use((_req, _res, next) => {
   next(new NotFoundError());
