@@ -47,8 +47,9 @@ export const votesContract = c.router({
     body: CreateVoteDtoSchema,
     responses: {
       201: VoteResponseDtoSchema,
+      403: ForbiddenErrorSchema,
     },
-    summary: "Create a new vote",
+    summary: "Create a new vote (draft; residents may only target their own district)",
     metadata: auth({ audience: "api" }),
   },
 

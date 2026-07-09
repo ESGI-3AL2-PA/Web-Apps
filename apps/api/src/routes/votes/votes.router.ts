@@ -1,6 +1,7 @@
 import { initServer } from "@ts-rest/express";
 import { votesContract } from "@repo/contracts";
 import { resolve } from "../../repositories/container.js";
+import type { IUserRepository } from "../../repositories/User/user.repository.js";
 import { resolveListDistrictScope } from "../../middleware/district-scope.js";
 import { getVotesUseCase } from "../../use-cases/votes/get-votes.use-case.js";
 import { getVoteByIdUseCase } from "../../use-cases/votes/get-vote-by-id.use-case.js";
@@ -41,17 +42,41 @@ export const votesRouter = s.router(votesContract, {
   },
 
   createVote: async ({ body, req }) => {
+    const user = req.user!;
+    const districtIds = body.districtIds ?? [];
+    // Résidents : proposent (createVote force status:"draft") uniquement pour LEUR quartier.
+    // Admins : confinés à leur adminDistrictId. superAdmin : n'importe quel quartier.
+    if (user.role === "superAdmin") {
+      // no district restriction
+    } else if (user.role === "admin") {
+      if (!user.adminDistrictId || districtIds.length === 0 || !districtIds.every((d) => d === user.adminDistrictId)) {
+        return { status: 403, body: { message: "Vous ne pouvez créer un vote que pour votre quartier" } };
+      }
+    } else {
+      const userRepo: IUserRepository = resolve("user");
+      const caller = await userRepo.getUserById(user.sub);
+      if (!caller || districtIds.length === 0 || !districtIds.every((d) => d === caller.districtId)) {
+        return { status: 403, body: { message: "Vous ne pouvez proposer un vote que pour votre quartier" } };
+      }
+    }
     const newVote = await createVoteUseCase(
       resolve("vote"),
       resolve("graph"),
     )({
       ...body,
-      creatorId: req.user!.sub,
+      creatorId: user.sub,
     });
     return { status: 201, body: newVote };
   },
 
-  updateVote: async ({ params: { id }, body }) => {
+  updateVote: async ({ params: { id }, body, req }) => {
+    const user = req.user!;
+    // Publier / fermer un vote (changer status) est réservé aux admins — un créateur
+    // résident propose en draft mais ne peut pas l'ouvrir lui-même.
+    const isAdmin = user.role === "admin" || user.role === "superAdmin";
+    if (body.status !== undefined && !isAdmin) {
+      return { status: 403, body: { message: "Seul un administrateur peut publier ou fermer un vote" } };
+    }
     const vote = await updateVoteUseCase(resolve("vote"))(id, body);
     if (!vote) {
       return { status: 404, body: { message: "Vote not found" } };
