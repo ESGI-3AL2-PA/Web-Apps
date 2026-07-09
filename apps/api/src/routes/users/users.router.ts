@@ -4,6 +4,7 @@ import type { UserResponseDto } from "@repo/contracts";
 import type { User } from "../../entities/user.entity.js";
 import { resolve } from "../../repositories/container.js";
 import { resolveListDistrictScope } from "../../middleware/district-scope.js";
+import { documensoService } from "../../services/documenso.service.js";
 import { getUsersUseCase } from "../../use-cases/users/get-users.use-case.js";
 import { getUserByIdUseCase } from "../../use-cases/users/get-user-by-id.use-case.js";
 import { createUserUseCase } from "../../use-cases/users/create-user.use-case.js";
@@ -75,6 +76,8 @@ export const usersRouter = s.router(usersContract, {
         eventRepository: resolve("event"),
         incidentRepository: resolve("incident"),
         transactionRepository: resolve("transaction"),
+        contractRepository: resolve("contract"),
+        documenso: documensoService,
       })({ id });
       if (!deleted) {
         return { status: 404, body: { message: "User not found" } };

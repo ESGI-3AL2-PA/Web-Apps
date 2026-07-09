@@ -7,8 +7,11 @@ import type { IListingRepository } from "../../repositories/Listing/listing.repo
 import type { IEventRepository } from "../../repositories/Event/event.repository.js";
 import type { IIncidentRepository } from "../../repositories/Incident/incident.repository.js";
 import type { ITransactionRepository } from "../../repositories/Transaction/transaction.repository.js";
+import type { IContractRepository } from "../../repositories/Contract/contract.repository.js";
+import type { IDocumensoService } from "../../services/documenso.service.js";
 import { syncGraph } from "../../repositories/Graph/graph.sync.js";
 import { deleteAudio } from "../../services/media-storage.service.js";
+import { deleteContractUseCase } from "../contracts/delete-contract.use-case.js";
 
 // Raised when a deletion targets a superAdmin account. superAdmins are the global
 // break-glass operators; allowing their account to be removed (even by themselves)
@@ -30,6 +33,8 @@ export interface DeleteUserDeps {
   eventRepository: IEventRepository;
   incidentRepository: IIncidentRepository;
   transactionRepository: ITransactionRepository;
+  contractRepository: IContractRepository;
+  documenso: IDocumensoService;
 }
 
 // Self-service account deletion (the route scopes this to the caller's own id). The
@@ -53,6 +58,8 @@ export const deleteUserUseCase = (deps: DeleteUserDeps) => {
       eventRepository,
       incidentRepository,
       transactionRepository,
+      contractRepository,
+      documenso,
     } = deps;
 
     const id = params.id;
@@ -79,10 +86,20 @@ export const deleteUserUseCase = (deps: DeleteUserDeps) => {
       transactionRepository.pseudonymiseUser(id),
     ]);
 
-    // NOTE: contracts and their Documenso documents / S3 objects are intentionally NOT
-    // erased here. Completed contracts carry a legal-retention exception (Art. 17(3)),
-    // and erasing pending/draft ones requires an escrow refund + a Documenso remote
-    // delete — that path is handled with the Documenso/infra work, not this cascade.
+    // Contracts: erase the user's pending/draft contracts — refund the held escrow,
+    // delete the Documenso document (best-effort remote erase), and remove the row.
+    // Completed/rejected contracts are RETAINED under the accounting/legal-retention
+    // exception (Art. 17(3)); the ledger link to this user was pseudonymised above.
+    const { data: contracts } = await contractRepository.getContracts({ partyId: id, limit: 10_000 });
+    const deleteContract = deleteContractUseCase(contractRepository, transactionRepository);
+    for (const contract of contracts) {
+      if (contract.signatureStatus === "pending" || contract.signatureStatus === "draft") {
+        if (contract.documensoDocumentId !== null) {
+          await documenso.deleteDocument(contract.documensoDocumentId).catch(() => {});
+        }
+        await deleteContract({ id: contract.id }); // refunds escrow + deletes the row (atomic)
+      }
+    }
 
     const deleted = await userRepository.deleteUser(id);
     if (deleted) {

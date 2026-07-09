@@ -29,6 +29,8 @@ export interface IDocumensoService {
   }): Promise<GeneratedContractDocument>;
   // Re-send the signing invitation emails for a document.
   resendDocument(documentId: number): Promise<void>;
+  // Permanently delete a document (used for GDPR erasure of pending/draft contracts).
+  deleteDocument(documentId: number): Promise<void>;
   // Fetch the signed PDF bytes for a completed document; null if not completed yet.
   fetchSignedPdf(documentId: number): Promise<{ body: Buffer; contentType: string; filename: string } | null>;
   // Constant-time comparison of an inbound webhook's X-Documenso-Secret header.
@@ -194,6 +196,10 @@ class HttpDocumensoService implements IDocumensoService {
     });
   }
 
+  async deleteDocument(documentId: number): Promise<void> {
+    await this.request(`/documents/${documentId}`, { method: "DELETE" });
+  }
+
   async fetchSignedPdf(documentId: number): Promise<{ body: Buffer; contentType: string; filename: string } | null> {
     let meta: { downloadUrl: string; filename?: string; contentType?: string };
     try {
@@ -241,6 +247,10 @@ class DisabledDocumensoService implements IDocumensoService {
   }
   async resendDocument(): Promise<void> {
     this.fail();
+  }
+  async deleteDocument(): Promise<void> {
+    // No-op when Documenso is unconfigured — nothing to erase remotely, and account
+    // deletion must not fail just because the e-signature stack isn't running.
   }
   async fetchSignedPdf(): Promise<{ body: Buffer; contentType: string; filename: string } | null> {
     return null;
