@@ -119,9 +119,10 @@ services:
       NEXT_PRIVATE_SIGNING_LOCAL_FILE_PATH: /opt/documenso/cert.p12
       NEXT_PRIVATE_SIGNING_PASSPHRASE: ""
 
-  # S3-compatible object storage for Documenso's PDFs (console on :9001).
+  # S3-compatible object storage. Documenso stores its PDFs here (contracts profile);
+  # the core app also stores voice messages here, so it runs in both profiles.
   minio:
-    profiles: [contracts]
+    profiles: [core, contracts]
     image: minio/minio:latest
     command: server /data --console-address ":9001"
     ports:
@@ -138,9 +139,9 @@ services:
       timeout: 5s
       retries: 5
 
-  # One-shot: create the documenso bucket, then exit. Documenso waits on it.
+  # One-shot: create the buckets (documenso PDFs + voice messages), then exit.
   minio-createbucket:
-    profiles: [contracts]
+    profiles: [core, contracts]
     image: minio/mc:latest
     depends_on:
       minio:
@@ -151,6 +152,7 @@ services:
       - >
         until mc alias set local http://minio:9000 minioadmin minioadmin; do sleep 1; done;
         mc mb --ignore-existing local/documenso;
+        mc mb --ignore-existing local/messages;
         exit 0;
 
   # ── Application services (dev target, hot-reload via bind mount) ─────────────
@@ -181,11 +183,17 @@ services:
       DOCUMENSO_WEBHOOK_SECRET: ${DOCUMENSO_WEBHOOK_SECRET:-}
       DOCUMENSO_SIGNING_LANGUAGE: ${DOCUMENSO_SIGNING_LANGUAGE:-fr}
       CONTRACTS_SIGN_REDIRECT_URL: ${CONTRACTS_SIGN_REDIRECT_URL:-http://localhost:5000/mes-contrats}
+      # Voice-message storage in MinIO (bucket created by minio-createbucket).
+      MESSAGES_MINIO_ENDPOINT: http://minio:9000
+      MESSAGES_MINIO_BUCKET: messages
+      MESSAGES_MINIO_ACCESS_KEY: minioadmin
+      MESSAGES_MINIO_SECRET_KEY: minioadmin
     # No hard dependency on `documenso` (contracts profile): the api calls it lazily
     # per contract request and 502s if it's absent, so core can run without it.
     depends_on:
       - mongodb
       - auth-service
+      - minio-createbucket
 
   auth-service:
     profiles: [core]
