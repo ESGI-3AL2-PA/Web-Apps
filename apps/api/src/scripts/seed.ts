@@ -321,23 +321,34 @@ const contracts = [
   {
     _id: ids.contracts.plumberJob,
     listingId: ids.listings.plumber,
+    districtId: ids.districts.montmartre,
     providerId: ids.users.bob,
     beneficiaryId: ids.users.alice,
     price: 10,
-    openSignDocumentId: "opensign-doc-demo-001",
-    openSignStatus: "signed",
+    // Fully signed demo contract (Documenso DOCUMENT_COMPLETED); signing URLs are
+    // nulled once completed, mirroring the runtime toResponse behaviour.
+    documensoDocumentId: 1001,
+    signatureStatus: "completed",
+    providerSigningUrl: null,
+    beneficiarySigningUrl: null,
     disputed: false,
+    disputeReason: null,
     createdAt: now,
   },
   {
     _id: ids.contracts.tutoringJob,
     listingId: ids.listings.tutoring,
+    districtId: ids.districts.marais,
     providerId: ids.users.diana,
     beneficiaryId: ids.users.charlie,
     price: 2,
-    openSignDocumentId: "opensign-doc-demo-002",
-    openSignStatus: "sent",
+    // Sent, awaiting signatures (Documenso pending) — each party has a signing URL.
+    documensoDocumentId: 1002,
+    signatureStatus: "pending",
+    providerSigningUrl: "https://documenso.local/sign/demo-provider-1002",
+    beneficiarySigningUrl: "https://documenso.local/sign/demo-beneficiary-1002",
     disputed: false,
+    disputeReason: null,
     createdAt: now,
   },
 ];
