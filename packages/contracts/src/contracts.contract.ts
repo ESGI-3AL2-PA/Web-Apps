@@ -91,10 +91,11 @@ export const contractsContract = c.router({
     body: DisputeContractDtoSchema,
     responses: {
       200: ContractResponseDtoSchema,
+      400: BadRequestErrorSchema,
       403: ForbiddenErrorSchema,
       404: NotFoundErrorSchema,
     },
-    summary: "Mark a contract as disputed (party only)",
+    summary: "Mark a contract as disputed (party or district-admin; pending/completed only)",
     metadata: auth({
       audience: "api",
       scope: { resource: "contract", ownerFields: ["providerId", "beneficiaryId"], districtField: "districtId" },

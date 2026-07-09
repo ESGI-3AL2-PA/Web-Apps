@@ -16,7 +16,10 @@ import {
   DuplicateContractError,
 } from "../../use-cases/contracts/create-contract.use-case.js";
 import { resendContractUseCase } from "../../use-cases/contracts/resend-contract.use-case.js";
-import { disputeContractUseCase } from "../../use-cases/contracts/dispute-contract.use-case.js";
+import {
+  disputeContractUseCase,
+  InvalidDisputeStateError,
+} from "../../use-cases/contracts/dispute-contract.use-case.js";
 import { resolveDisputeUseCase } from "../../use-cases/contracts/resolve-dispute.use-case.js";
 import { deleteContractUseCase } from "../../use-cases/contracts/delete-contract.use-case.js";
 
@@ -155,11 +158,18 @@ export const contractsRouter = s.router(contractsContract, {
   },
 
   disputeContract: async ({ params: { id }, body, req }) => {
-    const contract = await disputeContractUseCase(resolve("contract"))(id, body);
-    if (!contract) {
-      return { status: 404, body: { message: "Contract not found" } };
+    try {
+      const contract = await disputeContractUseCase(resolve("contract"))(id, body);
+      if (!contract) {
+        return { status: 404, body: { message: "Contract not found" } };
+      }
+      return { status: 200, body: toResponse(contract, req.user!.sub) };
+    } catch (err) {
+      if (err instanceof InvalidDisputeStateError) {
+        return { status: 400, body: { message: err.message } };
+      }
+      throw err;
     }
-    return { status: 200, body: toResponse(contract, req.user!.sub) };
   },
 
   resolveDispute: async ({ params: { id }, req }) => {
