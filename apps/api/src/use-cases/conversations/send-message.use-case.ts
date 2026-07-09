@@ -1,10 +1,13 @@
 import type { SendMessageDto } from "@repo/contracts";
 import type { Message } from "../../entities/conversation.entity.js";
 import type { IConversationRepository } from "../../repositories/Conversation/conversation.repository.js";
-import { broadcastNewMessage } from "../../sockets/io.js";
 
 export const sendMessageUseCase = (conversationRepository: IConversationRepository) => {
-  return async (conversationId: string, senderId: string, data: SendMessageDto): Promise<Message | null> => {
+  return async (
+    conversationId: string,
+    senderId: string,
+    data: SendMessageDto,
+  ): Promise<{ message: Message; participants: string[] } | null> => {
     const conversation = await conversationRepository.getConversationById(conversationId);
     if (!conversation) return null;
 
@@ -17,8 +20,8 @@ export const sendMessageUseCase = (conversationRepository: IConversationReposito
       mediaUrl: data.mediaUrl,
     });
 
-    // Push aux autres participants connectés (eux refetcheront automatiquement).
-    broadcastNewMessage(conversation.participants, message);
-    return message;
+    // Le broadcast socket (effet de bord transport) est laissé au routeur pour garder
+    // ce use-case pur — cohérent avec le chemin vocal (voice-message.handler).
+    return { message, participants: conversation.participants };
   };
 };

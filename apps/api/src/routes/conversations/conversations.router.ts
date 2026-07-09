@@ -10,6 +10,7 @@ import { getMessagesUseCase } from "../../use-cases/conversations/get-messages.u
 import { sendMessageUseCase } from "../../use-cases/conversations/send-message.use-case.js";
 import { markMessageReadUseCase } from "../../use-cases/conversations/mark-message-read.use-case.js";
 import { attachMediaUseCase } from "../../use-cases/conversations/attach-media.use-case.js";
+import { broadcastNewMessage } from "../../sockets/io.js";
 
 const s = initServer();
 
@@ -69,11 +70,13 @@ export const conversationsRouter = s.router(conversationsContract, {
   },
 
   sendMessage: async ({ params: { id }, body, req }) => {
-    const message = await sendMessageUseCase(resolve("conversation"))(id, req.user!.sub, body);
-    if (!message) {
+    const result = await sendMessageUseCase(resolve("conversation"))(id, req.user!.sub, body);
+    if (!result) {
       return { status: 404, body: { message: "Conversation not found" } };
     }
-    return { status: 201, body: message };
+    // Push aux autres participants connectés (eux refetcheront automatiquement).
+    broadcastNewMessage(result.participants, result.message);
+    return { status: 201, body: result.message };
   },
 
   markMessageRead: async ({ params: { id } }) => {
