@@ -118,6 +118,10 @@ export class MongoConversationRepository implements IConversationRepository {
     return result ? this.toMessage(result) : null;
   }
 
+  async deleteMessage(id: string): Promise<void> {
+    await this.messages.deleteOne({ _id: id });
+  }
+
   private toConversation(doc: ConversationDoc): Conversation {
     const { _id, ...rest } = doc;
     return { id: _id, ...rest };

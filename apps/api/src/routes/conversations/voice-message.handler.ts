@@ -49,8 +49,16 @@ export const voiceMessageHandler = async (req: Request, res: Response, next: Nex
       content: "[message vocal]",
     });
 
-    // 2) Sauve l'audio sur disque sous storage/messages/{messageId}.webm
-    await saveAudioFromBase64(message.id, audioBase64);
+    // 2) Sauve l'audio sur disque sous storage/messages/{messageId}.webm.
+    //    Le nom de fichier dépend de l'id du message (créé en 1), donc si l'écriture
+    //    échoue on supprime la ligne pour ne pas laisser une bulle "[message vocal]"
+    //    sans média (orphelin non lisible).
+    try {
+      await saveAudioFromBase64(message.id, audioBase64);
+    } catch (err) {
+      await repo.deleteMessage(message.id).catch(() => {});
+      throw err;
+    }
 
     // 3) Met à jour la mediaUrl du message → endpoint streaming.
     const updated = await repo.attachMedia(message.id, `/messages/${message.id}/audio`, "audio");

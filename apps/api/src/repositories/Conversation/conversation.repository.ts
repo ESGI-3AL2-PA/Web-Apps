@@ -31,4 +31,6 @@ export interface IConversationRepository {
   markMessageRead(id: string): Promise<Message | null>;
 
   attachMedia(id: string, mediaUrl: string, type: Message["type"]): Promise<Message | null>;
+
+  deleteMessage(id: string): Promise<void>;
 }
