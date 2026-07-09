@@ -1,6 +1,7 @@
 import type { SubmitVoteResponseDto } from "@repo/contracts";
 import type { Vote } from "../../entities/vote.entity.js";
 import type { IVoteRepository } from "../../repositories/Vote/vote.repository.js";
+import type { IUserRepository } from "../../repositories/User/user.repository.js";
 import type { IGraphRepository } from "../../repositories/Graph/graph.repository.js";
 import { syncGraph } from "../../repositories/Graph/graph.sync.js";
 
@@ -11,10 +12,30 @@ export class InvalidVoteSubmissionError extends Error {
   }
 }
 
-export const submitVoteResponseUseCase = (voteRepository: IVoteRepository, graphRepository: IGraphRepository) => {
+export class VoteDistrictForbiddenError extends Error {
+  constructor() {
+    super("Vous ne pouvez voter que sur un scrutin concernant votre quartier");
+    this.name = "VoteDistrictForbiddenError";
+  }
+}
+
+export const submitVoteResponseUseCase = (
+  voteRepository: IVoteRepository,
+  graphRepository: IGraphRepository,
+  userRepository: IUserRepository,
+) => {
   return async (voteId: string, userId: string, data: SubmitVoteResponseDto): Promise<{ vote: Vote | null }> => {
     const vote = await voteRepository.getVoteById(voteId, userId);
     if (!vote) return { vote: null };
+
+    // Contrôle d'appartenance : un votant ne peut se prononcer que sur un scrutin
+    // concernant SON quartier de résidence — sans ça, n'importe quel utilisateur
+    // pourrait bourrer les urnes d'un autre quartier. superAdmin excepté. Le quartier
+    // de résidence n'est pas dans le JWT (seul adminDistrictId l'est), d'où le load.
+    const caller = await userRepository.getUserById(userId);
+    if (!caller || (caller.role !== "superAdmin" && !vote.districtIds.includes(caller.districtId))) {
+      throw new VoteDistrictForbiddenError();
+    }
 
     // Le garde-fou de statut/deadline vit ici et non côté client : un POST direct
     // ne doit pas pouvoir voter sur un vote draft, clos ou dont la date est dépassée.

@@ -103,6 +103,7 @@ export const votesContract = c.router({
     body: SubmitVoteResponseDtoSchema,
     responses: {
       200: VoteResponseDtoSchema,
+      403: ForbiddenErrorSchema,
       404: NotFoundErrorSchema,
     },
     summary: "Cast a vote response",

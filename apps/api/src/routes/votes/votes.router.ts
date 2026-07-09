@@ -10,6 +10,7 @@ import { deleteVoteUseCase } from "../../use-cases/votes/delete-vote.use-case.js
 import {
   submitVoteResponseUseCase,
   InvalidVoteSubmissionError,
+  VoteDistrictForbiddenError,
 } from "../../use-cases/votes/submit-vote-response.use-case.js";
 import { getVoteResultsUseCase } from "../../use-cases/votes/get-vote-results.use-case.js";
 
@@ -68,12 +69,20 @@ export const votesRouter = s.router(votesContract, {
 
   submitVoteResponse: async ({ params: { id }, body, req }) => {
     try {
-      const { vote } = await submitVoteResponseUseCase(resolve("vote"), resolve("graph"))(id, req.user!.sub, body);
+      const { vote } = await submitVoteResponseUseCase(resolve("vote"), resolve("graph"), resolve("user"))(
+        id,
+        req.user!.sub,
+        body,
+      );
       if (!vote) {
         return { status: 404, body: { message: "Vote not found" } };
       }
       return { status: 200, body: vote };
     } catch (err) {
+      // Voter hors de son quartier de résidence → 403 (anti-bourrage d'urnes).
+      if (err instanceof VoteDistrictForbiddenError) {
+        return { status: 403, body: { message: err.message } };
+      }
       // Les erreurs de validation métier (single_choice avec plusieurs options,
       // option inexistante, etc.) sont remontées en 400. L'auth/scope reste
       // géré en amont par le middleware contract-metadata.
