@@ -38,7 +38,7 @@ import { conversationsRouter } from "./routes/conversations/conversations.router
 import { notificationsRouter } from "./routes/notifications/notifications.router.js";
 import { transactionsRouter } from "./routes/transactions/transactions.router.js";
 import { createServer } from "http";
-import { setupSocketIo } from "./sockets/io.js";
+import { setupSocketIo, closeSocketIo } from "./sockets/io.js";
 import { voiceMessageHandler, audioStreamHandler } from "./routes/conversations/voice-message.handler.js";
 import { recommendationsRouter } from "./routes/recommendations/recommendations.router.js";
 import { errorHandler, NotFoundError } from "./middleware/error-handler.js";
@@ -238,9 +238,13 @@ Promise.all([connectDB(), connectNeo4j()])
       console.warn("");
       console.warn(`\x1b[33m⚡ Ready to accept connections\x1b[0m`);
     });
-    setupGracefulShutdown(httpServer, async () => {
-      await Promise.all([closeDB(), closeNeo4j()]);
-    });
+    setupGracefulShutdown(
+      httpServer,
+      async () => {
+        await Promise.all([closeDB(), closeNeo4j()]);
+      },
+      closeSocketIo,
+    );
   })
   .catch((err) => {
     console.error("Failed to connect to databases:", err);

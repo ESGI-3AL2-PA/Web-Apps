@@ -75,6 +75,14 @@ export const setupSocketIo = (httpServer: HttpServer): Server => {
   return io;
 };
 
+// Called during graceful shutdown: forcibly disconnect every live socket so the
+// underlying HTTP server's keep-alive WS connections drop and `server.close()` can
+// actually complete (otherwise it hangs until the shutdown watchdog force-exits).
+export const closeSocketIo = (): void => {
+  if (!io) return;
+  io.disconnectSockets(true);
+};
+
 const broadcastPresenceList = () => {
   if (!io) return;
   io.emit("presence:list", Array.from(onlineSockets.keys()));
