@@ -8,7 +8,7 @@ function CreateService() {
   return (
     <div>
       <h1 className="text-2xl font-bold mb-6">Créer une annonce</h1>
-      <ListingForm onSubmit={createListing} submitLabel="Créer le service" />
+      <ListingForm onSubmit={async (data) => void (await createListing(data))} submitLabel="Créer le service" />
     </div>
   );
 }

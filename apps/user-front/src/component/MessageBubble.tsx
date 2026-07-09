@@ -77,7 +77,7 @@ const MessageBubble = ({ message, isMine, showSender }: MessageBubbleProps) => {
           audioUrl ? (
             <audio controls src={audioUrl} style={{ display: "block", maxWidth: 240, height: 36 }} />
           ) : (
-            <span style={{ fontSize: 12, opacity: 0.8 }}>🎙 Chargement de l'audio…</span>
+            <span style={{ fontSize: 12, opacity: 0.8 }}>🎙 Chargement de l&apos;audio…</span>
           )
         ) : (
           <span style={{ fontSize: 14 }}>{message.content}</span>

@@ -188,7 +188,7 @@ const Messagerie = () => {
             <p style={{ padding: 14, color: "#666", fontSize: 13 }}>Chargement…</p>
           ) : conversations.length === 0 ? (
             <p style={{ padding: 14, color: "#666", fontSize: 13 }}>
-              Aucune conversation. Cliquez sur "+ Nouveau" pour démarrer.
+              Aucune conversation. Cliquez sur &quot;+ Nouveau&quot; pour démarrer.
             </p>
           ) : (
             conversations.map((c) => (

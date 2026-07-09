@@ -90,7 +90,7 @@ export default function ListingsList() {
             <Info label="Price" value={formatTokens(viewing.price)} />
             <Info label="Author" value={viewing.authorId} />
             <Info label="District" value={scope.districtName ?? viewing.districtId} />
-            <Info label="Tags" value={viewing.tags.join(", ") || "—"} />
+            <Info label="Tags" value={viewing.tags?.join(", ") || "—"} />
             <Info label="Created" value={formatDate(viewing.createdAt)} />
             <Info label="Expires" value={formatDate(viewing.expiresAt)} />
           </div>

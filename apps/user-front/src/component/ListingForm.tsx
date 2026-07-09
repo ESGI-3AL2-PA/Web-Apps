@@ -80,7 +80,7 @@ const ListingForm = ({ initialValues, onSubmit, submitLabel }: ListingFormProps)
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="flex flex-col gap-1">
-        <label>Titre de l'annonce</label>
+        <label>Titre de l&apos;annonce</label>
         <input
           className="border border-black rounded px-2 py-1"
           type="text"

@@ -1,6 +1,12 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@repo/hooks";
-import type { UserResponseDto } from "@repo/contracts";
+import type {
+  UserResponseDto,
+  ListingQueryDto,
+  EventQueryDto,
+  VoteQueryDto,
+  TransactionQueryDto,
+} from "@repo/contracts";
 import { getUserById, updateUser, deleteUser } from "../api-service/users.service";
 import { getDistrictById } from "../api-service/districts.service";
 import { getUserBalance, getUserTransactions } from "../api-service/transactions.service";
@@ -51,7 +57,7 @@ const Profile = () => {
             .then((d) => !cancelled && setDistrictName(d.name))
             .catch(() => !cancelled && setDistrictName(""));
         }
-      } catch (e) {
+      } catch {
         if (!cancelled) setError("Impossible de charger le profil");
       }
     })();
@@ -77,11 +83,11 @@ const Profile = () => {
     (async () => {
       try {
         const [listingsRes, contractsProvider, contractsBenef, eventsRes, votesRes] = await Promise.all([
-          getListings({ authorId: user.id, limit: 1 } as any),
-          getContracts({ providerId: user.id, limit: 1 } as any),
-          getContracts({ beneficiaryId: user.id, limit: 1 } as any),
-          getEvents({ creatorId: user.id, limit: 1 } as any),
-          getVotes({ creatorId: user.id, limit: 1 } as any),
+          getListings({ authorId: user.id, limit: 1 } as ListingQueryDto),
+          getContracts({ providerId: user.id, limit: 1 }),
+          getContracts({ beneficiaryId: user.id, limit: 1 }),
+          getEvents({ creatorId: user.id, limit: 1 } as EventQueryDto),
+          getVotes({ creatorId: user.id, limit: 1 } as VoteQueryDto),
         ]);
         if (cancelled) return;
         setStats({
@@ -149,22 +155,22 @@ const Profile = () => {
     try {
       const [profile, listingsRes, contractsP, contractsB, eventsRes, votesRes, txRes] = await Promise.all([
         getUserById(user.id),
-        getListings({ authorId: user.id, limit: 200 } as any).catch(() => ({ data: [] })),
-        getContracts({ providerId: user.id, limit: 200 } as any).catch(() => ({ data: [] })),
-        getContracts({ beneficiaryId: user.id, limit: 200 } as any).catch(() => ({ data: [] })),
-        getEvents({ creatorId: user.id, limit: 200 } as any).catch(() => ({ data: [] })),
-        getVotes({ creatorId: user.id, limit: 200 } as any).catch(() => ({ data: [] })),
-        getUserTransactions(user.id, { limit: 500 } as any).catch(() => ({ data: [] })),
+        getListings({ authorId: user.id, limit: 200 } as ListingQueryDto).catch(() => ({ data: [] })),
+        getContracts({ providerId: user.id, limit: 200 }).catch(() => ({ data: [] })),
+        getContracts({ beneficiaryId: user.id, limit: 200 }).catch(() => ({ data: [] })),
+        getEvents({ creatorId: user.id, limit: 200 } as EventQueryDto).catch(() => ({ data: [] })),
+        getVotes({ creatorId: user.id, limit: 200 } as VoteQueryDto).catch(() => ({ data: [] })),
+        getUserTransactions(user.id, { limit: 500 } as TransactionQueryDto).catch(() => ({ data: [] })),
       ]);
       const payload = {
         exportedAt: new Date().toISOString(),
         profile,
-        listings: (listingsRes as any).data,
-        contractsAsProvider: (contractsP as any).data,
-        contractsAsBeneficiary: (contractsB as any).data,
-        events: (eventsRes as any).data,
-        votes: (votesRes as any).data,
-        transactions: (txRes as any).data,
+        listings: listingsRes.data,
+        contractsAsProvider: contractsP.data,
+        contractsAsBeneficiary: contractsB.data,
+        events: eventsRes.data,
+        votes: votesRes.data,
+        transactions: txRes.data,
       };
       const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
       const url = URL.createObjectURL(blob);
@@ -173,7 +179,7 @@ const Profile = () => {
       a.download = `mes-donnees-${user.id.slice(0, 8)}-${Date.now()}.json`;
       a.click();
       setTimeout(() => URL.revokeObjectURL(url), 5000);
-    } catch (e) {
+    } catch {
       setError("Erreur lors de l'export de vos données");
     } finally {
       setExporting(false);
@@ -215,7 +221,7 @@ const Profile = () => {
         <div className="card-body">
           <h2 className="card-title text-lg">🆔 Mon identifiant</h2>
           <p className="text-sm text-base-content/70">
-            Partage ton ID avec un voisin pour qu'il puisse t'ajouter en messagerie.
+            {"Partage ton ID avec un voisin pour qu'il puisse t'ajouter en messagerie."}
           </p>
           <div className="flex gap-2 items-center">
             <code className="flex-1 px-3 py-2 bg-base-200 rounded text-sm break-all">{user.id}</code>
@@ -290,7 +296,7 @@ const Profile = () => {
         <div className="card-body">
           <h2 className="card-title text-lg">🛡️ Mes données (RGPD)</h2>
           <p className="text-sm text-base-content/70">
-            Tu peux télécharger l'intégralité de tes données personnelles dans un fichier JSON.
+            {"Tu peux télécharger l'intégralité de tes données personnelles dans un fichier JSON."}
           </p>
           <button className="btn btn-outline mt-2" onClick={handleExportRgpd} disabled={exporting}>
             {exporting ? "Export en cours…" : "📥 Télécharger mes données"}
@@ -317,8 +323,8 @@ const Profile = () => {
           <div className="bg-white rounded-lg max-w-md w-full p-6 space-y-4">
             <h3 className="text-xl font-bold text-red-600">Supprimer définitivement votre compte ?</h3>
             <p className="text-sm">
-              Cette action est <strong>irréversible</strong>. Toutes vos données (annonces, contrats, messages…)
-              seront supprimées. Tapez <strong>SUPPRIMER</strong> pour confirmer.
+              Cette action est <strong>irréversible</strong>. Toutes vos données (annonces, contrats, messages…) seront
+              supprimées. Tapez <strong>SUPPRIMER</strong> pour confirmer.
             </p>
             <input
               type="text"

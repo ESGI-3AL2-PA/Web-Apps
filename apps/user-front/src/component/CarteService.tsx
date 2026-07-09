@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useAuth } from "@repo/hooks";
 import type { CreateListingDto, ListingResponseDto } from "@repo/contracts";
 import { updateListing, deleteListing } from "../api-service/listings.service";
-import { createContract, viewContractPdf } from "../api-service/contracts.service";
+import { createContract, fetchContractPdf } from "../api-service/contracts.service";
 import ListingForm from "./ListingForm";
 
 // Carte interactive utilisée PARTOUT (Annonces + Mes annonces).
@@ -63,9 +63,11 @@ const CarteService = ({ annonce, onChanged }: CarteServiceProps) => {
     setTaking(true);
     setActionError(null);
     try {
+      // The caller is the beneficiary (payer); the listing author is the provider. The
+      // escrowed price is derived server-side from the listing, never sent by the client.
       const created = await createContract({
         listingId: annonce.id,
-        price: annonce.price,
+        providerId: annonce.authorId,
       });
       setContractId(created.id);
       // Trigger un refetch côté parent pour que `userHasContract` repasse à true
@@ -73,9 +75,7 @@ const CarteService = ({ annonce, onChanged }: CarteServiceProps) => {
       // affectées si plusieurs listings, mais surtout celui-ci).
       onChanged?.();
     } catch {
-      setActionError(
-        "Impossible de créer le contrat (déjà pris, c'est votre annonce, ou annonce introuvable).",
-      );
+      setActionError("Impossible de créer le contrat (déjà pris, c'est votre annonce, ou annonce introuvable).");
     } finally {
       setTaking(false);
     }
@@ -86,7 +86,11 @@ const CarteService = ({ annonce, onChanged }: CarteServiceProps) => {
     setViewing(true);
     setActionError(null);
     try {
-      await viewContractPdf(contractId);
+      // The api proxies the signed PDF from Documenso as a Blob; open it in a new tab.
+      const blob = await fetchContractPdf(contractId);
+      const url = URL.createObjectURL(blob);
+      window.open(url, "_blank", "noopener");
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
     } catch {
       setActionError("Impossible d'ouvrir le PDF");
     } finally {
@@ -114,9 +118,7 @@ const CarteService = ({ annonce, onChanged }: CarteServiceProps) => {
           opacity: alreadyTaken ? 0.78 : 1,
         }}
       >
-        <h2 style={{ fontSize: 16, fontWeight: 600, color: "#6366f1", margin: 0 }}>
-          {annonce.title}
-        </h2>
+        <h2 style={{ fontSize: 16, fontWeight: 600, color: "#6366f1", margin: 0 }}>{annonce.title}</h2>
         <p
           style={{
             color: "#444",
@@ -219,11 +221,7 @@ const CarteService = ({ annonce, onChanged }: CarteServiceProps) => {
             </div>
 
             {isEditing ? (
-              <ListingForm
-                initialValues={annonce}
-                onSubmit={handleUpdate}
-                submitLabel="Mettre à jour"
-              />
+              <ListingForm initialValues={annonce} onSubmit={handleUpdate} submitLabel="Mettre à jour" />
             ) : (
               <>
                 <div style={{ marginBottom: 12 }}>
@@ -338,7 +336,7 @@ const CarteService = ({ annonce, onChanged }: CarteServiceProps) => {
                         }}
                       >
                         <p style={{ margin: "0 0 8px 0", color: "#065f46", fontSize: 13 }}>
-                          ✓ Contrat créé. Tu peux maintenant l'ouvrir pour le consulter et le signer.
+                          ✓ Contrat créé. Tu peux maintenant l&apos;ouvrir pour le consulter et le signer.
                         </p>
                         <button
                           type="button"

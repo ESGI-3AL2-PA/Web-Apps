@@ -11,9 +11,7 @@ type PaginatedIncidents = PaginatedResponseDto<typeof IncidentResponseDtoSchema>
 
 // GET /incidents — paginated list (filters: status, severity, districtId, reporterId, …)
 // (Backend filtre selon le rôle ; un user lambda ne voit que ses incidents.)
-export async function getIncidents(
-  filters: IncidentQueryDto = {} as IncidentQueryDto,
-): Promise<PaginatedIncidents> {
+export async function getIncidents(filters: IncidentQueryDto = {} as IncidentQueryDto): Promise<PaginatedIncidents> {
   try {
     const res = await api.get<PaginatedIncidents>("/incidents", { params: filters });
     if (!res.data) {

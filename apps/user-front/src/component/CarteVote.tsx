@@ -144,7 +144,7 @@ const CarteVote = ({ vote, onChanged }: CarteVoteProps) => {
         }}
       >
         <h2 style={{ fontSize: 15, fontWeight: 600, color: "#6366f1", margin: 0 }}>{localVote.question}</h2>
-        <p style={{ color: "#666", margin: 0, fontSize: 12 }}>Jusqu'au {formatDate(localVote.endDate)}</p>
+        <p style={{ color: "#666", margin: 0, fontSize: 12 }}>Jusqu&apos;au {formatDate(localVote.endDate)}</p>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 4 }}>
           <span style={{ background: "#f3f4f6", borderRadius: 6, padding: "2px 7px", fontSize: 12 }}>
             {total} réponse{total > 1 ? "s" : ""}
@@ -361,7 +361,7 @@ const CarteVote = ({ vote, onChanged }: CarteVoteProps) => {
             <div style={{ borderTop: "1px solid #eee", paddingTop: 12 }}>
               <h3 style={{ fontSize: 14, fontWeight: 600, margin: "0 0 10px 0" }}>Résultats</h3>
               {total === 0 ? (
-                <p style={{ color: "#666", fontSize: 13 }}>Aucun vote pour l'instant.</p>
+                <p style={{ color: "#666", fontSize: 13 }}>Aucun vote pour l&apos;instant.</p>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   {localVote.options.map((opt) => {

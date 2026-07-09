@@ -4,7 +4,7 @@ const Points = () => {
   const { user, isLoading, isAuthenticated } = useAuth();
 
   if (isLoading) return <p>Chargement des données…</p>;
-  if (!isAuthenticated) return <p>Vous n'êtes pas connecté</p>;
+  if (!isAuthenticated) return <p>Vous n&apos;êtes pas connecté</p>;
 
   return (
     <div className="card card-lg sm:max-w-sm bg-[#DA7758] p-5 mt-10 text-white">

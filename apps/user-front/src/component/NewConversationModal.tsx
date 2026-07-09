@@ -82,7 +82,7 @@ const NewConversationModal = ({ onClose, onCreated }: NewConversationModalProps)
             htmlFor="new-conversation-participant"
             style={{ fontSize: 13, color: "#374151", display: "block", marginBottom: 6 }}
           >
-            ID de l'utilisateur à contacter :
+            ID de l&apos;utilisateur à contacter :
           </label>
           <input
             id="new-conversation-participant"
