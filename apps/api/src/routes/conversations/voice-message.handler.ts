@@ -1,12 +1,10 @@
-import path from "path";
-import fs from "fs";
 import type { Request, Response, NextFunction } from "express";
 import { resolve } from "../../repositories/container.js";
 import type { IConversationRepository } from "../../repositories/Conversation/conversation.repository.js";
 
 // ~5 Mo décodés. base64 gonfle d'environ 4/3, donc 5 Mo ≈ 6.7M caractères.
 const MAX_AUDIO_BASE64_LENGTH = 7_000_000;
-import { saveAudioFromBase64, buildAudioPath } from "../../services/media-storage.service.js";
+import { saveAudioFromBase64, getAudioStream, AUDIO_MIME } from "../../services/media-storage.service.js";
 import { broadcastNewMessage } from "../../sockets/io.js";
 
 // POST /conversations/:id/messages/voice — body JSON { audioBase64: string }
@@ -100,14 +98,15 @@ export const audioStreamHandler = async (req: Request, res: Response, next: Next
       return;
     }
 
-    const absolute = path.resolve(buildAudioPath(messageId));
-    if (!fs.existsSync(absolute)) {
+    const stream = await getAudioStream(messageId);
+    if (!stream) {
       res.status(404).json({ message: "Audio file missing" });
       return;
     }
 
-    res.setHeader("Content-Type", "audio/webm");
-    res.sendFile(absolute);
+    res.setHeader("Content-Type", AUDIO_MIME);
+    stream.on("error", (err) => next(err));
+    stream.pipe(res);
   } catch (err) {
     next(err);
   }
