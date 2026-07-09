@@ -213,7 +213,15 @@ const CarteVote = ({ vote, onChanged }: CarteVoteProps) => {
               <button
                 type="button"
                 onClick={closeModal}
-                style={{ fontSize: 24, lineHeight: 1, background: "none", border: "none", cursor: "pointer" }}
+                style={{
+                  fontSize: 24,
+                  lineHeight: 1,
+                  minWidth: 44,
+                  minHeight: 44,
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                }}
                 aria-label="Fermer"
               >
                 ×

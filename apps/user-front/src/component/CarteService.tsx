@@ -210,6 +210,8 @@ const CarteService = ({ annonce, onChanged }: CarteServiceProps) => {
                 style={{
                   fontSize: 24,
                   lineHeight: 1,
+                  minWidth: 44,
+                  minHeight: 44,
                   background: "none",
                   border: "none",
                   cursor: "pointer",

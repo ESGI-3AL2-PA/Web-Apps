@@ -72,7 +72,15 @@ const NewConversationModal = ({ onClose, onCreated }: NewConversationModalProps)
             type="button"
             onClick={onClose}
             aria-label="Fermer"
-            style={{ fontSize: 22, lineHeight: 1, background: "none", border: "none", cursor: "pointer" }}
+            style={{
+              fontSize: 22,
+              lineHeight: 1,
+              minWidth: 44,
+              minHeight: 44,
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+            }}
           >
             <span aria-hidden="true">×</span>
           </button>
