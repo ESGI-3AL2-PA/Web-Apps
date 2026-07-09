@@ -941,6 +941,14 @@ const seedGraph = async (graph: Neo4jGraphRepository): Promise<void> => {
 };
 
 const main = async () => {
+  // Guard: this wipes+repopulates demo data. Never run it against a production
+  // database, where it would insert fake accounts (including an admin) and delete
+  // rows by seed id. Set SEED_ALLOW_PRODUCTION=true to override intentionally.
+  if (process.env.NODE_ENV === "production" && process.env.SEED_ALLOW_PRODUCTION !== "true") {
+    console.error("❌  Refusing to seed with NODE_ENV=production (set SEED_ALLOW_PRODUCTION=true to override).");
+    process.exit(1);
+  }
+
   console.log("🌱  Seeding databases (Mongo + Neo4j)...");
 
   let mongoOk = false;
