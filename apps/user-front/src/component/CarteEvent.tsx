@@ -97,7 +97,7 @@ const CarteEvent = ({ event, onChanged }: CarteEventProps) => {
           cursor: "pointer",
         }}
       >
-        <h2 style={{ fontSize: 16, fontWeight: 600, color: "#6366f1", margin: 0 }}>{event.title}</h2>
+        <h2 style={{ fontSize: 16, fontWeight: 600, color: "#4f46e5", margin: 0 }}>{event.title}</h2>
         <p style={{ color: "#444", margin: 0, fontSize: 13 }}>{formatDate(event.eventDate)}</p>
         <p
           style={{

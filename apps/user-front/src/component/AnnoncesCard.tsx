@@ -18,7 +18,7 @@ const AnnoncesCard = ({ annonce }: AnnonceCardProps) => {
         border: "1px solid #eee",
       }}
     >
-      <h2 style={{ fontSize: 16, fontWeight: 600, color: "#6366f1", margin: 0 }}>{annonce.title}</h2>
+      <h2 style={{ fontSize: 16, fontWeight: 600, color: "#4f46e5", margin: 0 }}>{annonce.title}</h2>
       <p
         style={{
           color: "#444",

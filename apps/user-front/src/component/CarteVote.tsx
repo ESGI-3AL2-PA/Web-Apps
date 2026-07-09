@@ -143,7 +143,7 @@ const CarteVote = ({ vote, onChanged }: CarteVoteProps) => {
           cursor: "pointer",
         }}
       >
-        <h2 style={{ fontSize: 15, fontWeight: 600, color: "#6366f1", margin: 0 }}>{localVote.question}</h2>
+        <h2 style={{ fontSize: 15, fontWeight: 600, color: "#4f46e5", margin: 0 }}>{localVote.question}</h2>
         <p style={{ color: "#666", margin: 0, fontSize: 12 }}>Jusqu&apos;au {formatDate(localVote.endDate)}</p>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 4 }}>
           <span style={{ background: "#f3f4f6", borderRadius: 6, padding: "2px 7px", fontSize: 12 }}>
