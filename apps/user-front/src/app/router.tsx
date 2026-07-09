@@ -10,6 +10,7 @@ import Contrat from "../pages/service/Contrat";
 import DashBoard from "../pages/dashboard/DashBoard";
 import CreateService from "../pages/service/CreateService";
 import Votes from "../pages/Votes";
+import Profile from "../pages/Profile";
 
 export const router = createBrowserRouter([
   {
@@ -34,6 +35,7 @@ export const router = createBrowserRouter([
       { path: "/evenement", element: <EvenementPage /> },
       { path: "/messagerie", element: <MessageriePage /> },
       { path: "/votes", element: <Votes /> },
+      { path: "/profile", element: <Profile /> },
     ],
   },
   {
