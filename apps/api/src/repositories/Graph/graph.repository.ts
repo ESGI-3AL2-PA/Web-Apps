@@ -53,6 +53,11 @@ export interface TagNode {
 }
 
 export interface IGraphRepository {
+  // ─── Projection maintenance ───────────────────────────────────────────────
+  /** Wipe the entire projection (MATCH (n) DETACH DELETE n) — used by the
+   *  reconciliation job before replaying the graph from Mongo. */
+  reset(): Promise<void>;
+
   // ─── Nodes (upsert + delete) ──────────────────────────────────────────────
   upsertUser(node: UserNode): Promise<void>;
   deleteUser(id: string): Promise<void>;

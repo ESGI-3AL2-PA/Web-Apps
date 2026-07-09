@@ -163,6 +163,13 @@ export class MongoEventRepository implements IEventRepository {
     await this.interactions.deleteMany({ userId });
   }
 
+  async getAllInteractions(): Promise<
+    { eventId: string; userId: string; kind: "attendance" | "interest"; rating?: number; score?: number }[]
+  > {
+    const docs = await this.interactions.find({}).toArray();
+    return docs.map((d) => ({ eventId: d.eventId, userId: d.userId, kind: d.kind, rating: d.rating, score: d.score }));
+  }
+
   async deleteByCreator(creatorId: string): Promise<void> {
     await this.collection.deleteMany({ creatorId });
   }

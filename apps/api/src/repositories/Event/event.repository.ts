@@ -43,6 +43,11 @@ export interface IEventRepository {
   /** Remove all interaction rows (attendance/interest) for a user — used on account deletion. */
   deleteUserInteractions(userId: string): Promise<void>;
 
+  /** All attendance/interest rows — used by the graph reconciliation job. */
+  getAllInteractions(): Promise<
+    { eventId: string; userId: string; kind: "attendance" | "interest"; rating?: number; score?: number }[]
+  >;
+
   /** Delete every event created by a user (account deletion). */
   deleteByCreator(creatorId: string): Promise<void>;
 

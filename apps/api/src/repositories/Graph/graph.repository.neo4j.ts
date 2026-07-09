@@ -30,6 +30,12 @@ export class Neo4jGraphRepository implements IGraphRepository {
     }
   }
 
+  // ─── Projection maintenance ───────────────────────────────────────────────
+
+  async reset(): Promise<void> {
+    await this.run(`MATCH (n) DETACH DELETE n`);
+  }
+
   // ─── Nodes ──────────────────────────────────────────────────────────────
 
   async upsertUser(node: UserNode): Promise<void> {
