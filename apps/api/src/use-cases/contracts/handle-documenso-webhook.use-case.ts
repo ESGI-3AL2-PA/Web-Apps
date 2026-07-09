@@ -1,6 +1,8 @@
+import type { ClientSession } from "mongodb";
 import type { Contract } from "../../entities/contract.entity.js";
 import type { IContractRepository } from "../../repositories/Contract/contract.repository.js";
 import type { ITransactionRepository } from "../../repositories/Transaction/transaction.repository.js";
+import { runInTransaction } from "../../repositories/tx.js";
 import { mapDocumensoStatus } from "../../services/documenso.service.js";
 
 // Shape of the Documenso webhook body we consume. Documenso sends the full
@@ -16,15 +18,12 @@ const credit = async (
   transactionRepository: ITransactionRepository,
   contract: Contract,
   userId: string,
+  session?: ClientSession,
 ): Promise<void> => {
   if (contract.price <= 0) return;
-  await transactionRepository.adjustBalance(userId, contract.price);
-  // The balance move above already settled the escrow; the ledger row is an audit
-  // record. Don't let its failure bubble up — that would 500 the webhook and trigger
-  // a Documenso retry, but the atomic complete/reject gate has already fired so the
-  // retry can't re-credit. Log instead so the missing entry can be reconciled.
-  await transactionRepository
-    .createTransactions([
+  await transactionRepository.adjustBalance(userId, contract.price, session);
+  const ledgerWrite = transactionRepository.createTransactions(
+    [
       {
         userId,
         districtId: contract.districtId,
@@ -33,8 +32,21 @@ const credit = async (
         refId: contract.id,
         refType: "contract",
       },
-    ])
-    .catch((err) => console.error(`[contracts] escrow-settle ledger write failed for ${contract.id}:`, err));
+    ],
+    session,
+  );
+  if (session) {
+    // Inside a transaction: the status gate + balance move + ledger row commit or roll
+    // back together, so a ledger failure can't leave the escrow settled without a record.
+    await ledgerWrite;
+  } else {
+    // Sequential fallback (standalone Mongo, no transactions): the balance move already
+    // settled the escrow and the atomic gate fired, so keep the ledger write best-effort
+    // — a failure here must not 500 the webhook and cause a re-credit on retry.
+    await ledgerWrite.catch((err) =>
+      console.error(`[contracts] escrow-settle ledger write failed for ${contract.id}:`, err),
+    );
+  }
 };
 
 // Maps an inbound Documenso event to a contract status transition. Idempotent: the
@@ -57,16 +69,24 @@ export const handleDocumensoWebhookUseCase = (
     if (signatureStatus === null) return contract;
 
     if (signatureStatus === "completed") {
-      // Both parties signed — release the escrow to the provider (once).
-      const completed = await contractRepository.completeContract(contract.id);
-      if (completed) await credit(transactionRepository, completed, completed.providerId);
+      // Both parties signed — atomically transition and release the escrow to the
+      // provider (once). Gate + balance + ledger commit together.
+      const completed = await runInTransaction(async (session) => {
+        const c = await contractRepository.completeContract(contract.id, session);
+        if (c) await credit(transactionRepository, c, c.providerId, session);
+        return c;
+      });
       return completed ?? contract;
     }
 
     if (signatureStatus === "rejected") {
-      // A party declined — refund the escrow to the beneficiary (once) and flag it.
-      const rejected = await contractRepository.rejectContract(contract.id);
-      if (rejected) await credit(transactionRepository, rejected, rejected.beneficiaryId);
+      // A party declined — atomically transition and refund the escrow to the
+      // beneficiary (once).
+      const rejected = await runInTransaction(async (session) => {
+        const c = await contractRepository.rejectContract(contract.id, session);
+        if (c) await credit(transactionRepository, c, c.beneficiaryId, session);
+        return c;
+      });
       return rejected ?? contract;
     }
 

@@ -1,3 +1,4 @@
+import type { ClientSession } from "mongodb";
 import type { Contract, ContractSignatureStatus } from "../../entities/contract.entity.js";
 
 export interface IContractRepository {
@@ -31,8 +32,8 @@ export interface IContractRepository {
   // once (clearing signing URLs). Return the updated contract when this call made
   // the transition, null otherwise — lets the webhook release/refund the escrow
   // exactly once.
-  completeContract(id: string): Promise<Contract | null>;
-  rejectContract(id: string): Promise<Contract | null>;
+  completeContract(id: string, session?: ClientSession): Promise<Contract | null>;
+  rejectContract(id: string, session?: ClientSession): Promise<Contract | null>;
 
   // Atomically apply a non-terminal status (pending/draft) only while the contract is
   // still non-terminal, so a late/duplicate webhook can't regress a completed/rejected
@@ -54,5 +55,5 @@ export interface IContractRepository {
 
   // Deletes and returns the removed contract (atomically, with its state at
   // deletion) so a caller can refund a still-held escrow. Null if it didn't exist.
-  deleteContract(id: string): Promise<Contract | null>;
+  deleteContract(id: string, session?: ClientSession): Promise<Contract | null>;
 }

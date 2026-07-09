@@ -1,5 +1,5 @@
 import { randomUUID } from "crypto";
-import type { Collection, Db, Filter } from "mongodb";
+import type { ClientSession, Collection, Db, Filter } from "mongodb";
 import type { Contract, ContractSignatureStatus } from "../../entities/contract.entity.js";
 import type { IContractRepository } from "./contract.repository.js";
 
@@ -89,18 +89,18 @@ export class MongoContractRepository implements IContractRepository {
     return doc ? this.toContract(doc) : null;
   }
 
-  async completeContract(id: string): Promise<Contract | null> {
+  async completeContract(id: string, session?: ClientSession): Promise<Contract | null> {
     // The {$nin} guard + $set are one atomic update, so concurrent webhooks can't
     // both transition (and double-release), and a rejected contract can't complete.
     const result = await this.collection.findOneAndUpdate(
       { _id: id, signatureStatus: { $nin: ["completed", "rejected"] } },
       { $set: { signatureStatus: "completed", providerSigningUrl: null, beneficiarySigningUrl: null } },
-      { returnDocument: "after" },
+      { returnDocument: "after", session },
     );
     return result ? this.toContract(result) : null;
   }
 
-  async rejectContract(id: string): Promise<Contract | null> {
+  async rejectContract(id: string, session?: ClientSession): Promise<Contract | null> {
     const result = await this.collection.findOneAndUpdate(
       { _id: id, signatureStatus: { $nin: ["completed", "rejected"] } },
       {
@@ -110,7 +110,7 @@ export class MongoContractRepository implements IContractRepository {
           beneficiarySigningUrl: null,
         },
       },
-      { returnDocument: "after" },
+      { returnDocument: "after", session },
     );
     return result ? this.toContract(result) : null;
   }
@@ -156,10 +156,10 @@ export class MongoContractRepository implements IContractRepository {
     return result ? this.toContract(result) : null;
   }
 
-  async deleteContract(id: string): Promise<Contract | null> {
+  async deleteContract(id: string, session?: ClientSession): Promise<Contract | null> {
     // findOneAndDelete returns the removed doc with its state at deletion, so the
     // caller can atomically decide whether to refund a still-held escrow.
-    const result = await this.collection.findOneAndDelete({ _id: id });
+    const result = await this.collection.findOneAndDelete({ _id: id }, { session });
     return result ? this.toContract(result) : null;
   }
 

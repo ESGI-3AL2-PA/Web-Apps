@@ -9,6 +9,9 @@ export const connectDB = async (): Promise<Db> => {
   return client.db(dbName);
 };
 
+// Exposed so the transaction helper can start sessions for multi-document writes.
+export const getMongoClient = (): MongoClient => client;
+
 export const closeDB = async (): Promise<void> => {
   await client.close();
 };
