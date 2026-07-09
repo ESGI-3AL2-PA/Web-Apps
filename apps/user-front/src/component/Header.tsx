@@ -1,11 +1,12 @@
 import logo from "../../public/Logo-connectedNeighbours.png";
 import { useEffect, useRef, useState } from "react";
 import { Link, NavLink } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@repo/hooks";
 import { getUserBalance } from "../api-service/transactions.service";
 
 const Header = () => {
-  const [lang, setLang] = useState("FR");
+  const { t, i18n } = useTranslation();
   const { user, logout } = useAuth();
   const [points, setPoints] = useState<number | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -63,27 +64,27 @@ const Header = () => {
         <ul className="menu menu-horizontal gap-1 text-[18px]">
           <li>
             <NavLink to="/" className={({ isActive }) => (isActive ? "active font-medium" : "font-medium")}>
-              DashBoard
+              {t("nav.dashboard")}
             </NavLink>
           </li>
           <li>
             <NavLink to="/service" className={({ isActive }) => (isActive ? "active font-medium" : "font-medium")}>
-              Service
+              {t("nav.services")}
             </NavLink>
           </li>
           <li>
             <NavLink to="/evenement" className={({ isActive }) => (isActive ? "active font-medium" : "font-medium")}>
-              Evenement
+              {t("nav.events")}
             </NavLink>
           </li>
           <li>
             <NavLink to="/messagerie" className={({ isActive }) => (isActive ? "active font-medium" : "font-medium")}>
-              Messagerie
+              {t("nav.messaging")}
             </NavLink>
           </li>
           <li>
             <NavLink to="/votes" className={({ isActive }) => (isActive ? "active font-medium" : "font-medium")}>
-              Votes
+              {t("nav.votes")}
             </NavLink>
           </li>
         </ul>
@@ -91,15 +92,16 @@ const Header = () => {
 
       <div className="navbar-end gap-2">
         <select
-          value={lang}
-          onChange={(e) => setLang(e.target.value)}
+          value={i18n.resolvedLanguage}
+          onChange={(e) => i18n.changeLanguage(e.target.value)}
+          aria-label={t("header.language")}
           className="select select-sm select-bordered w-20"
         >
           <option value="fr">FR</option>
           <option value="en">EN</option>
         </select>
 
-        <button type="button" className="btn btn-ghost btn-circle" aria-label="Notifications">
+        <button type="button" className="btn btn-ghost btn-circle" aria-label={t("header.notifications")}>
           <div className="indicator">
             <span aria-hidden="true">🔔</span>
             <span className="badge badge-xs badge-primary indicator-item" aria-hidden="true"></span>
@@ -131,12 +133,12 @@ const Header = () => {
               )}
               <li>
                 <Link to="/profile" onClick={() => setMenuOpen(false)}>
-                  👤 Mon profil
+                  👤 {t("header.profile")}
                 </Link>
               </li>
               <li>
                 <button onClick={handleLogout} className="text-red-600">
-                  🚪 Déconnexion
+                  🚪 {t("header.logout")}
                 </button>
               </li>
             </ul>

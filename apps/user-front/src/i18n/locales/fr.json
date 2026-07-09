@@ -1,0 +1,172 @@
+{
+  "nav": {
+    "dashboard": "Tableau de bord",
+    "services": "Services",
+    "events": "Événements",
+    "messaging": "Messagerie",
+    "votes": "Votes"
+  },
+  "header": {
+    "openMenu": "Ouvrir le menu",
+    "language": "Langue",
+    "notifications": "Notifications",
+    "account": "Mon compte",
+    "profile": "Mon profil",
+    "logout": "Se déconnecter",
+    "adminSpace": "Espace admin",
+    "toDark": "Passer en thème sombre",
+    "toLight": "Passer en thème clair"
+  },
+  "dashboard": {
+    "balance": "Mon solde",
+    "points": "points",
+    "given": "Donné",
+    "received": "Reçu",
+    "exchanged": "Échangé"
+  },
+  "service": {
+    "title": "Services entre voisins",
+    "activeCount_one": "{{count}} annonce active",
+    "activeCount_other": "{{count}} annonces actives",
+    "typeTitle": "Type d'annonce",
+    "categoryTitle": "Catégorie",
+    "pointsTitle": "Points",
+    "maxLabel": "Max :",
+    "maxNone": "aucun",
+    "maxPts": "{{count}} pts",
+    "showFilters": "Filtres",
+    "hideFilters": "Masquer les filtres",
+    "searchPlaceholder": "Rechercher une annonce…",
+    "searchLabel": "Rechercher une annonce",
+    "maxPriceLabel": "Prix maximum",
+    "create": "+ Créer une annonce",
+    "tabs": {
+      "listings": "Annonces",
+      "myListings": "Mes annonces",
+      "myContracts": "Mes contrats"
+    },
+    "type": {
+      "all": "Tout",
+      "offer": "Offre",
+      "request": "Demande"
+    }
+  },
+  "listing": {
+    "points": "{{count}} pts",
+    "type": {
+      "offer": "Offre",
+      "request": "Demande"
+    },
+    "status": {
+      "active": "Active",
+      "closed": "Clôturée",
+      "expired": "Expirée"
+    }
+  },
+  "annonces": {
+    "loadError": "Impossible de charger les annonces.",
+    "retry": "Réessayer",
+    "empty": "Aucune annonce ne correspond à votre recherche.",
+    "prev": "Précédent",
+    "next": "Suivant",
+    "page": "Page {{page}} / {{total}}"
+  },
+  "createListing": {
+    "title": "Créer une annonce",
+    "fieldTitle": "Titre",
+    "description": "Description",
+    "type": "Type",
+    "typeOffer": "Offre",
+    "typeRequest": "Demande",
+    "price": "Prix (points)",
+    "tags": "Tags (séparés par des virgules)",
+    "tagsPlaceholder": "Jardinage, Bricolage",
+    "error": "La création de l'annonce a échoué. Réessayez.",
+    "cancel": "Annuler",
+    "submit": "Créer",
+    "submitting": "Création…"
+  },
+  "notifications": {
+    "title": "Notifications",
+    "empty": "Aucune notification.",
+    "markAllRead": "Tout marquer comme lu",
+    "delete": "Supprimer"
+  },
+  "myListings": {
+    "delete": "Supprimer",
+    "confirmDelete": "Supprimer cette annonce ?",
+    "empty": "Vous n'avez pas encore d'annonce.",
+    "loadError": "Impossible de charger vos annonces."
+  },
+  "contracts": {
+    "empty": "Vous n'avez aucun contrat.",
+    "loadError": "Impossible de charger vos contrats.",
+    "role": {
+      "provider": "Prestataire",
+      "beneficiary": "Bénéficiaire"
+    },
+    "status": {
+      "draft": "Brouillon",
+      "sent": "Envoyé",
+      "partially_signed": "Partiellement signé",
+      "signed": "Signé",
+      "expired": "Expiré",
+      "declined": "Refusé"
+    },
+    "disputedBadge": "Litige en cours",
+    "dispute": "Signaler un litige",
+    "disputeReason": "Motif du litige",
+    "disputeSubmit": "Envoyer",
+    "cancel": "Annuler",
+    "disputeError": "L'envoi du litige a échoué."
+  },
+  "votes": {
+    "loadError": "Impossible de charger les votes.",
+    "empty": "Aucun vote pour le moment.",
+    "submit": "Voter",
+    "voted": "Merci pour votre vote !",
+    "results": "Résultats",
+    "totalResponses_one": "{{count}} réponse",
+    "totalResponses_other": "{{count}} réponses",
+    "status": {
+      "draft": "Brouillon",
+      "open": "Ouvert",
+      "closed": "Clôturé"
+    }
+  },
+  "events": {
+    "loadError": "Impossible de charger les événements.",
+    "empty": "Aucun événement pour le moment.",
+    "seats": "{{remaining}} / {{total}} places",
+    "register": "S'inscrire",
+    "unregister": "Se désinscrire",
+    "full": "Complet",
+    "status": {
+      "upcoming": "À venir",
+      "ongoing": "En cours",
+      "completed": "Terminé",
+      "cancelled": "Annulé"
+    }
+  },
+  "messaging": {
+    "title": "Messages",
+    "open": "Ouvrir la messagerie",
+    "close": "Fermer",
+    "minimize": "Réduire",
+    "empty": "Aucune conversation.",
+    "select": "Sélectionnez une conversation pour afficher les messages.",
+    "conversation": "Conversation",
+    "placeholder": "Écrivez un message…",
+    "send": "Envoyer",
+    "back": "Retour",
+    "loadError": "Impossible de charger les conversations."
+  },
+  "comingSoon": "Cette fonctionnalité arrive bientôt.",
+  "notFound": {
+    "title404": "404",
+    "titleError": "Oups",
+    "msg404": "Cette page n'existe pas.",
+    "msgError": "Une erreur est survenue.",
+    "home": "Retour à l'accueil"
+  }
+}
