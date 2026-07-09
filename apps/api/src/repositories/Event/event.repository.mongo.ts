@@ -5,19 +5,35 @@ import type { IEventRepository } from "./event.repository.js";
 
 type EventDoc = Omit<Event, "id"> & { _id: string };
 
+// Per-user attendance/interest signals — the durable source of truth, mirrored
+// into Neo4j (best-effort) for the recommendation engine.
+type InteractionDoc = {
+  eventId: string;
+  userId: string;
+  kind: "attendance" | "interest";
+  rating?: number;
+  score?: number;
+  at: string;
+};
+
 // Default event duration: within 4h of start = "ongoing", after = "completed".
 const FOUR_HOURS_MS = 4 * 60 * 60 * 1000;
 
 export class MongoEventRepository implements IEventRepository {
   private collection: Collection<EventDoc>;
+  private interactions: Collection<InteractionDoc>;
 
   constructor(db: Db) {
     this.collection = db.collection("events");
+    this.interactions = db.collection("event_interactions");
   }
 
   async ensureIndexes(): Promise<void> {
     // Backs district-scoped list filtering.
     await this.collection.createIndex({ districtId: 1 });
+    // One interaction row per (event, user, kind) — makes record* an idempotent upsert.
+    await this.interactions.createIndex({ eventId: 1, userId: 1, kind: 1 }, { unique: true });
+    await this.interactions.createIndex({ userId: 1 });
   }
 
   async getEvents(params: {
@@ -125,6 +141,26 @@ export class MongoEventRepository implements IEventRepository {
       { returnDocument: "after" },
     );
     return result ? this.toEvent(result) : null;
+  }
+
+  async recordAttendance(eventId: string, userId: string, rating?: number): Promise<void> {
+    await this.interactions.updateOne(
+      { eventId, userId, kind: "attendance" },
+      { $set: { rating, at: new Date().toISOString() } },
+      { upsert: true },
+    );
+  }
+
+  async recordInterest(eventId: string, userId: string, score: number): Promise<void> {
+    await this.interactions.updateOne(
+      { eventId, userId, kind: "interest" },
+      { $set: { score, at: new Date().toISOString() } },
+      { upsert: true },
+    );
+  }
+
+  async deleteUserInteractions(userId: string): Promise<void> {
+    await this.interactions.deleteMany({ userId });
   }
 
   private toEvent(doc: EventDoc): Event {

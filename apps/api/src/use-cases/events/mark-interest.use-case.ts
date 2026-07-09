@@ -10,6 +10,10 @@ export const markInterestUseCase = (eventRepository: IEventRepository, graphRepo
     const event = await eventRepository.getEventById(eventId);
     if (!event) return false;
 
+    // Mongo is the source of truth; the Neo4j edge is a best-effort projection. Persist
+    // durably first so the interest signal isn't lost when the graph is unavailable.
+    await eventRepository.recordInterest(eventId, userId, scoreDelta);
+
     await syncGraph(`linkUserInterestedInEvent(${userId}->${eventId})`, () =>
       graphRepository.linkUserInterestedInEvent(userId, eventId, scoreDelta),
     );

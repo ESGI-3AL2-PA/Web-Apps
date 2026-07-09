@@ -32,4 +32,14 @@ export interface IEventRepository {
   addRegistrant(id: string, userId: string): Promise<Event | null>;
 
   removeRegistrant(id: string, userId: string): Promise<Event | null>;
+
+  /** Record (upsert) a user's attendance + optional rating for an event. Source of truth;
+   *  the Neo4j edge is a projection synced best-effort by the caller. */
+  recordAttendance(eventId: string, userId: string, rating?: number): Promise<void>;
+
+  /** Record (upsert) a user's 👍/👎 interest signal for an event. Source of truth. */
+  recordInterest(eventId: string, userId: string, score: number): Promise<void>;
+
+  /** Remove all interaction rows (attendance/interest) for a user — used on account deletion. */
+  deleteUserInteractions(userId: string): Promise<void>;
 }
