@@ -1010,4 +1010,4 @@ const main = async () => {
 // want to know which IDs the seed touches.
 export { allSeededIds, ids };
 
-main();
+void main();

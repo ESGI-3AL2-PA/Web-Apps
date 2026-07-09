@@ -46,7 +46,7 @@ export const setupSocketIo = (httpServer: HttpServer): Server => {
     const { userId } = socket.data;
 
     // Chaque user a sa propre "room" pour qu'on puisse lui broadcast facilement.
-    socket.join(`user:${userId}`);
+    void socket.join(`user:${userId}`);
 
     // Track présence.
     const wasOffline = !onlineSockets.has(userId);
