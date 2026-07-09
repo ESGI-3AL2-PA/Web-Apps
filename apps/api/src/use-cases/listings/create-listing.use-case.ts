@@ -4,10 +4,7 @@ import type { IListingRepository } from "../../repositories/Listing/listing.repo
 import type { IGraphRepository } from "../../repositories/Graph/graph.repository.js";
 import { syncGraph } from "../../repositories/Graph/graph.sync.js";
 
-export const createListingUseCase = (
-  listingRepository: IListingRepository,
-  graphRepository: IGraphRepository,
-) => {
+export const createListingUseCase = (listingRepository: IListingRepository, graphRepository: IGraphRepository) => {
   return async (data: CreateListingDto & { authorId: string; districtId: string }): Promise<Listing> => {
     const listing = await listingRepository.createListing({
       ...data,

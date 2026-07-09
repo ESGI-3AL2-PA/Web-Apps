@@ -81,12 +81,7 @@ export interface IGraphRepository {
   // ─── Events ───────────────────────────────────────────────────────────────
   linkUserCreatedEvent(userId: string, eventId: string): Promise<void>;
   linkDistrictContainsEvent(districtId: string, eventId: string): Promise<void>;
-  linkUserRegisteredForEvent(
-    userId: string,
-    eventId: string,
-    registrationDate: string,
-    status: string,
-  ): Promise<void>;
+  linkUserRegisteredForEvent(userId: string, eventId: string, registrationDate: string, status: string): Promise<void>;
   unlinkUserRegisteredForEvent(userId: string, eventId: string): Promise<void>;
   linkUserAttendedEvent(userId: string, eventId: string, rating?: number): Promise<void>;
   linkEventTagged(eventId: string, tagName: string): Promise<void>;
@@ -119,7 +114,12 @@ export interface IGraphRepository {
   linkListingTagged(listingId: string, tagName: string): Promise<void>;
 
   // ─── Services (generated from a paid listing → contract) ──────────────────
-  linkListingGeneratesService(listingId: string, serviceId: string, pointsAmount: number, status: string): Promise<void>;
+  linkListingGeneratesService(
+    listingId: string,
+    serviceId: string,
+    pointsAmount: number,
+    status: string,
+  ): Promise<void>;
   linkUserOffersService(userId: string, serviceId: string, serviceDate: string): Promise<void>;
   linkUserBenefitsFromService(userId: string, serviceId: string, serviceDate: string, status: string): Promise<void>;
 

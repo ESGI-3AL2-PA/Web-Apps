@@ -57,9 +57,7 @@ const FilterBar = ({ selectedTag, onChange }: FilterBarProps) => {
               <span className="text-base-content capitalize">{tag.name}</span>
             </label>
           ))}
-          {tags.length === 0 && (
-            <span className="text-xs text-base-content/70">Aucun tag disponible</span>
-          )}
+          {tags.length === 0 && <span className="text-xs text-base-content/70">Aucun tag disponible</span>}
         </div>
       )}
     </div>

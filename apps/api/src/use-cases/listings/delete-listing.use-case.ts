@@ -2,10 +2,7 @@ import type { IListingRepository } from "../../repositories/Listing/listing.repo
 import type { IGraphRepository } from "../../repositories/Graph/graph.repository.js";
 import { syncGraph } from "../../repositories/Graph/graph.sync.js";
 
-export const deleteListingUseCase = (
-  listingRepository: IListingRepository,
-  graphRepository: IGraphRepository,
-) => {
+export const deleteListingUseCase = (listingRepository: IListingRepository, graphRepository: IGraphRepository) => {
   return async (params: { id: string }): Promise<boolean> => {
     const deleted = await listingRepository.deleteListing(params.id);
     if (deleted) {
