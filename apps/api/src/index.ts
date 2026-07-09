@@ -230,13 +230,13 @@ Promise.all([connectDB(), connectNeo4j()])
     httpServer.listen(port, () => {
       const localUrl = `http://localhost:${port}`;
 
-      console.log("");
-      console.log(" 🚀  API Server Running !");
-      console.log("");
-      console.log(` ➜  Local:   \x1b[36m${localUrl}\x1b[0m`);
-      console.log(` ➜  Socket:  \x1b[36mws://localhost:${port}\x1b[0m`);
-      console.log("");
-      console.log(`\x1b[33m⚡ Ready to accept connections\x1b[0m`);
+      console.warn("");
+      console.warn(" 🚀  API Server Running !");
+      console.warn("");
+      console.warn(` ➜  Local:   \x1b[36m${localUrl}\x1b[0m`);
+      console.warn(` ➜  Socket:  \x1b[36mws://localhost:${port}\x1b[0m`);
+      console.warn("");
+      console.warn(`\x1b[33m⚡ Ready to accept connections\x1b[0m`);
     });
     setupGracefulShutdown(httpServer, async () => {
       await Promise.all([closeDB(), closeNeo4j()]);
