@@ -129,7 +129,12 @@ const AudioRecorder = ({ onSubmit, onCancel }: AudioRecorderProps) => {
             >
               <span aria-hidden="true">⏹</span>
             </button>
-            <span role="status" style={{ fontSize: 13, color: "#7f1d1d" }}>
+            {/* Announce the start once; the ticking counter itself is not a live
+                region, otherwise a polite status re-reads "…1s …2s" every second. */}
+            <span role="status" className="sr-only">
+              Enregistrement en cours
+            </span>
+            <span aria-hidden="true" style={{ fontSize: 13, color: "#7f1d1d" }}>
               ● Enregistrement… {elapsedSec}s
             </span>
           </>
