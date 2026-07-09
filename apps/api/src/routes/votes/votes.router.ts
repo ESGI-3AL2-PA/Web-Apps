@@ -19,24 +19,50 @@ const s = initServer();
 
 export const votesRouter = s.router(votesContract, {
   getVotes: async ({ query, req }) => {
-    const scope = resolveListDistrictScope(req.user!, query.districtId);
-    if ("empty" in scope) {
-      return { status: 200, body: { data: [], total: 0, page: query.page, limit: query.limit } };
+    const user = req.user!;
+    const empty = { status: 200 as const, body: { data: [], total: 0, page: query.page, limit: query.limit } };
+    let districtId: string | undefined;
+    if (user.role === "user") {
+      // Un résident ne liste que les votes de SON quartier — on ignore le districtId
+      // fourni par le client (sinon énumération inter-quartiers).
+      const userRepo: IUserRepository = resolve("user");
+      const caller = await userRepo.getUserById(user.sub);
+      if (!caller) return empty;
+      districtId = caller.districtId;
+    } else {
+      const scope = resolveListDistrictScope(user, query.districtId);
+      if ("empty" in scope) return empty;
+      districtId = scope.districtId;
     }
     // On passe l'ID du user authentifié pour que la repo peuple
     // `userHasVoted` / `myChosenOptions` sur chaque vote renvoyé.
     const result = await getVotesUseCase(resolve("vote"))({
       ...query,
-      districtId: scope.districtId,
-      currentUserId: req.user?.sub,
+      districtId,
+      currentUserId: user.sub,
     });
     return { status: 200, body: result };
   },
 
   getVoteById: async ({ params: { id }, req }) => {
-    const vote = await getVoteByIdUseCase(resolve("vote"))({ id, currentUserId: req.user?.sub });
+    const user = req.user!;
+    const vote = await getVoteByIdUseCase(resolve("vote"))({ id, currentUserId: user.sub });
     if (!vote) {
       return { status: 404, body: { message: "Vote not found" } };
+    }
+    // Visibilité par quartier : un résident ne voit que les votes concernant son
+    // quartier, un admin ceux de son adminDistrictId ; superAdmin voit tout. On
+    // renvoie 404 (et non 403) pour ne pas divulguer l'existence d'un vote voisin.
+    if (user.role === "user") {
+      const userRepo: IUserRepository = resolve("user");
+      const caller = await userRepo.getUserById(user.sub);
+      if (!caller || !vote.districtIds.includes(caller.districtId)) {
+        return { status: 404, body: { message: "Vote not found" } };
+      }
+    } else if (user.role === "admin") {
+      if (!user.adminDistrictId || !vote.districtIds.includes(user.adminDistrictId)) {
+        return { status: 404, body: { message: "Vote not found" } };
+      }
     }
     return { status: 200, body: vote };
   },
