@@ -33,4 +33,8 @@ export interface IConversationRepository {
   attachMedia(id: string, mediaUrl: string, type: Message["type"]): Promise<Message | null>;
 
   deleteMessage(id: string): Promise<void>;
+
+  /** Delete every message sent by a user (account deletion). Returns the ids of the
+   *  deleted audio messages so the caller can remove their media files. */
+  deleteUserMessages(userId: string): Promise<string[]>;
 }

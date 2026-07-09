@@ -28,4 +28,7 @@ export interface IListingRepository {
   deleteListing(id: string): Promise<boolean>;
 
   countActiveListings(districtId?: string): Promise<number>;
+
+  /** Delete every listing authored by a user (account deletion). */
+  deleteByAuthor(authorId: string): Promise<void>;
 }

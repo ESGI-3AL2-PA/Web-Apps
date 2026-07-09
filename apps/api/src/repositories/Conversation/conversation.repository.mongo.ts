@@ -122,6 +122,15 @@ export class MongoConversationRepository implements IConversationRepository {
     await this.messages.deleteOne({ _id: id });
   }
 
+  async deleteUserMessages(userId: string): Promise<string[]> {
+    const audioDocs = await this.messages
+      .find({ senderId: userId, type: "audio" }, { projection: { _id: 1 } })
+      .toArray();
+    const audioIds = audioDocs.map((d) => d._id);
+    await this.messages.deleteMany({ senderId: userId });
+    return audioIds;
+  }
+
   private toConversation(doc: ConversationDoc): Conversation {
     const { _id, ...rest } = doc;
     return { id: _id, ...rest };

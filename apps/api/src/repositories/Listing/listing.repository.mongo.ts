@@ -95,6 +95,10 @@ export class MongoListingRepository implements IListingRepository {
     return this.collection.countDocuments(filter);
   }
 
+  async deleteByAuthor(authorId: string): Promise<void> {
+    await this.collection.deleteMany({ authorId });
+  }
+
   private toListing(doc: ListingDoc): Listing {
     const { _id, ...rest } = doc;
     return { id: _id, ...rest };

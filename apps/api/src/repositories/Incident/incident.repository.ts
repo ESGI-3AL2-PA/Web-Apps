@@ -32,4 +32,7 @@ export interface IIncidentRepository {
     byStatus: Record<string, number>;
     byCategory: Record<string, number>;
   }>;
+
+  /** Delete every incident reported by a user (account deletion). */
+  deleteByReporter(reporterId: string): Promise<void>;
 }

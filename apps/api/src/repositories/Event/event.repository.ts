@@ -42,4 +42,10 @@ export interface IEventRepository {
 
   /** Remove all interaction rows (attendance/interest) for a user — used on account deletion. */
   deleteUserInteractions(userId: string): Promise<void>;
+
+  /** Delete every event created by a user (account deletion). */
+  deleteByCreator(creatorId: string): Promise<void>;
+
+  /** Remove a user from the registrant list of every event they joined (account deletion). */
+  removeUserFromAllEvents(userId: string): Promise<void>;
 }

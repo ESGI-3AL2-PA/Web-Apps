@@ -65,7 +65,17 @@ export const usersRouter = s.router(usersContract, {
     // Route scope already restricts this to the caller's own id; the use-case adds the
     // superAdmin guardrail. Graph projection cleanup (DETACH DELETE) happens in the use-case.
     try {
-      const deleted = await deleteUserUseCase(resolve("user"), resolve("graph"))({ id });
+      const deleted = await deleteUserUseCase({
+        userRepository: resolve("user"),
+        graphRepository: resolve("graph"),
+        conversationRepository: resolve("conversation"),
+        voteRepository: resolve("vote"),
+        notificationRepository: resolve("notification"),
+        listingRepository: resolve("listing"),
+        eventRepository: resolve("event"),
+        incidentRepository: resolve("incident"),
+        transactionRepository: resolve("transaction"),
+      })({ id });
       if (!deleted) {
         return { status: 404, body: { message: "User not found" } };
       }

@@ -323,8 +323,9 @@ const Profile = () => {
           <div className="bg-white rounded-lg max-w-md w-full p-6 space-y-4">
             <h3 className="text-xl font-bold text-red-600">Supprimer définitivement votre compte ?</h3>
             <p className="text-sm">
-              Cette action est <strong>irréversible</strong>. Toutes vos données (annonces, contrats, messages…) seront
-              supprimées. Tapez <strong>SUPPRIMER</strong> pour confirmer.
+              Cette action est <strong>irréversible</strong>. Vos annonces, messages, votes, événements et signalements
+              seront supprimés. Vos contrats signés sont conservés pour des raisons légales (comptabilité). Tapez{" "}
+              <strong>SUPPRIMER</strong> pour confirmer.
             </p>
             <input
               type="text"

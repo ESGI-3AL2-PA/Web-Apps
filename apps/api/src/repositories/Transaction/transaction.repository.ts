@@ -27,4 +27,8 @@ export interface ITransactionRepository {
   tryDebit(userId: string, amount: number): Promise<boolean>;
 
   getBalance(userId: string): Promise<number | null>;
+
+  /** Sever the identity link on a deleted user's ledger rows while retaining the
+   *  financial record (accounting retention exception, Art. 17(3)). */
+  pseudonymiseUser(userId: string): Promise<void>;
 }

@@ -29,6 +29,9 @@ export interface IVoteRepository {
 
   clearUserResponses(voteId: string, userId: string): Promise<string[]>;
 
+  /** Delete every vote response cast by a user, across all votes (account deletion). */
+  deleteUserResponses(userId: string): Promise<void>;
+
   getResults(voteId: string): Promise<{ totalResponses: number; results: { option: string; count: number }[] }>;
 
   hasUserVoted(voteId: string, userId: string): Promise<boolean>;

@@ -141,6 +141,19 @@ export class MongoVoteRepository implements IVoteRepository {
     return options;
   }
 
+  async deleteUserResponses(userId: string): Promise<void> {
+    const existing = await this.responses.find({ userId }).toArray();
+    if (existing.length === 0) return;
+    await this.responses.deleteMany({ userId });
+    // Décrémente les compteurs de résultats pour chaque (vote, option) retiré.
+    for (const r of existing) {
+      await this.votes.updateOne(
+        { _id: r.voteId, "results.option": r.chosenOption },
+        { $inc: { "results.$.count": -1 } },
+      );
+    }
+  }
+
   async getResults(voteId: string): Promise<{ totalResponses: number; results: { option: string; count: number }[] }> {
     const [totalResponses, agg] = await Promise.all([
       this.responses.countDocuments({ voteId }),

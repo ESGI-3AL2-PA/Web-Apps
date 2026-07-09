@@ -82,6 +82,10 @@ export class MongoNotificationRepository implements INotificationRepository {
     return result.deletedCount === 1;
   }
 
+  async deleteByRecipient(userId: string): Promise<void> {
+    await this.collection.deleteMany({ recipientId: userId });
+  }
+
   private toNotification(doc: NotificationDoc): Notification {
     const { _id, ...rest } = doc;
     return { id: _id, ...rest };

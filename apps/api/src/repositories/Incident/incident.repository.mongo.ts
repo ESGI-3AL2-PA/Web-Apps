@@ -121,6 +121,10 @@ export class MongoIncidentRepository implements IIncidentRepository {
     }, {});
   }
 
+  async deleteByReporter(reporterId: string): Promise<void> {
+    await this.collection.deleteMany({ reporterId });
+  }
+
   private toIncident(doc: IncidentDoc): Incident {
     const { _id, ...rest } = doc;
     return { id: _id, ...rest };

@@ -163,6 +163,18 @@ export class MongoEventRepository implements IEventRepository {
     await this.interactions.deleteMany({ userId });
   }
 
+  async deleteByCreator(creatorId: string): Promise<void> {
+    await this.collection.deleteMany({ creatorId });
+  }
+
+  async removeUserFromAllEvents(userId: string): Promise<void> {
+    // Free the seat everywhere they were registered.
+    await this.collection.updateMany(
+      { registrants: userId },
+      { $pull: { registrants: userId }, $inc: { remainingSeats: 1 } },
+    );
+  }
+
   private toEvent(doc: EventDoc): Event {
     const { _id, ...rest } = doc;
     return { id: _id, ...rest };

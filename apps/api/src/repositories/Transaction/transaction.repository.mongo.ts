@@ -91,6 +91,11 @@ export class MongoTransactionRepository implements ITransactionRepository {
     return user.balance ?? 0;
   }
 
+  async pseudonymiseUser(userId: string): Promise<void> {
+    // Keep the ledger rows (accounting retention) but sever the identity link.
+    await this.transactions.updateMany({ userId }, { $set: { userId: "[deleted]" } });
+  }
+
   private toTransaction(doc: TransactionDoc): Transaction {
     const { _id, ...rest } = doc;
     return { id: _id, ...rest };
