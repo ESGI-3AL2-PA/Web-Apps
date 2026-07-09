@@ -23,7 +23,7 @@ const smtpTransport = smtpHost
 const resend = apiKey ? new Resend(apiKey) : null;
 
 const logFallback = (subject: string, to: string, body: string) => {
-  console.log(`\n📧  [email-fallback] To: ${to}\n    Subject: ${subject}\n    ${body.replace(/\n/g, "\n    ")}\n`);
+  console.warn(`\n📧  [email-fallback] To: ${to}\n    Subject: ${subject}\n    ${body.replace(/\n/g, "\n    ")}\n`);
 };
 
 const send = async (to: string, subject: string, html: string, text: string) => {
@@ -32,6 +32,12 @@ const send = async (to: string, subject: string, html: string, text: string) => 
     return;
   }
   if (!resend) {
+    // The fallback logs the full verification/reset link (a bearer secret). That is
+    // acceptable for local dev but MUST NOT happen in production, so fail closed there
+    // rather than leaking account-takeover tokens into the logs.
+    if (process.env.NODE_ENV === "production") {
+      throw new Error("No email transport configured (set SMTP_HOST or RESEND_API_KEY)");
+    }
     logFallback(subject, to, text);
     return;
   }
