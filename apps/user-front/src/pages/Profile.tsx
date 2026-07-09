@@ -330,6 +330,7 @@ const Profile = () => {
               type="text"
               className="input input-bordered w-full"
               placeholder="SUPPRIMER"
+              aria-label="Tapez SUPPRIMER pour confirmer la suppression du compte"
               value={deleteInput}
               onChange={(e) => setDeleteInput(e.target.value)}
             />

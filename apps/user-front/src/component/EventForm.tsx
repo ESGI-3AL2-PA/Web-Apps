@@ -143,8 +143,16 @@ const EventForm = ({ initialValues, onSubmit, submitLabel }: EventFormProps) => 
         {submitting ? "Envoi…" : submitLabel}
       </button>
 
-      {success && <p className="text-green-700">{success}</p>}
-      {error && <p className="text-red-600">{error}</p>}
+      {success && (
+        <p role="status" className="text-green-700">
+          {success}
+        </p>
+      )}
+      {error && (
+        <p role="alert" className="text-red-600">
+          {error}
+        </p>
+      )}
     </form>
   );
 };

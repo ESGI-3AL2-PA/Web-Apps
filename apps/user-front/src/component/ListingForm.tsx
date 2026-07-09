@@ -80,8 +80,9 @@ const ListingForm = ({ initialValues, onSubmit, submitLabel }: ListingFormProps)
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="flex flex-col gap-1">
-        <label>Titre de l&apos;annonce</label>
+        <label htmlFor="listing-title">Titre de l&apos;annonce</label>
         <input
+          id="listing-title"
           className="border border-black rounded px-2 py-1"
           type="text"
           name="title"
@@ -92,8 +93,9 @@ const ListingForm = ({ initialValues, onSubmit, submitLabel }: ListingFormProps)
       </div>
 
       <div className="flex flex-col gap-1">
-        <label>Description</label>
+        <label htmlFor="listing-description">Description</label>
         <input
+          id="listing-description"
           className="border border-black rounded px-2 py-1"
           type="text"
           name="description"
@@ -104,8 +106,9 @@ const ListingForm = ({ initialValues, onSubmit, submitLabel }: ListingFormProps)
       </div>
 
       <div className="flex flex-col gap-1">
-        <label>Type</label>
+        <label htmlFor="listing-type">Type</label>
         <select
+          id="listing-type"
           className="border border-black rounded px-2 py-1"
           name="type"
           value={formData.type}
@@ -118,11 +121,14 @@ const ListingForm = ({ initialValues, onSubmit, submitLabel }: ListingFormProps)
       </div>
 
       <div className="flex flex-col gap-1">
-        <label>Catégorie</label>
+        <label htmlFor="listing-category">Catégorie</label>
         {tagsError ? (
-          <span className="text-xs text-red-600">{tagsError}</span>
+          <span role="alert" className="text-xs text-red-600">
+            {tagsError}
+          </span>
         ) : (
           <select
+            id="listing-category"
             className="border border-black rounded px-2 py-1"
             name="category"
             value={category}
@@ -140,8 +146,9 @@ const ListingForm = ({ initialValues, onSubmit, submitLabel }: ListingFormProps)
       </div>
 
       <div className="flex flex-col gap-1">
-        <label>Point demandé</label>
+        <label htmlFor="listing-price">Point demandé</label>
         <input
+          id="listing-price"
           className="border border-black rounded px-2 py-1"
           type="number"
           name="price"
@@ -156,8 +163,16 @@ const ListingForm = ({ initialValues, onSubmit, submitLabel }: ListingFormProps)
         {submitting ? "Envoi…" : submitLabel}
       </button>
 
-      {success && <p className="text-green-600">{success}</p>}
-      {error && <p className="text-red-500">{error}</p>}
+      {success && (
+        <p role="status" className="text-green-600">
+          {success}
+        </p>
+      )}
+      {error && (
+        <p role="alert" className="text-red-500">
+          {error}
+        </p>
+      )}
     </form>
   );
 };
