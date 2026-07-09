@@ -99,10 +99,10 @@ const Header = () => {
           <option value="en">EN</option>
         </select>
 
-        <button className="btn btn-ghost btn-circle">
+        <button type="button" className="btn btn-ghost btn-circle" aria-label="Notifications">
           <div className="indicator">
-            🔔
-            <span className="badge badge-xs badge-primary indicator-item"></span>
+            <span aria-hidden="true">🔔</span>
+            <span className="badge badge-xs badge-primary indicator-item" aria-hidden="true"></span>
           </div>
         </button>
 
