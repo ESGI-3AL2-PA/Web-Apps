@@ -119,7 +119,9 @@ export const createContractUseCase = (
             userId: data.beneficiaryId,
             districtId: data.districtId,
             type: "transfer_out",
-            amount: data.price,
+            // Signed = effect on this row's own balance: an escrow hold debits the
+            // payer, so it's negative (matching create-transaction's transfer_out).
+            amount: -data.price,
             refId: contract.id,
             refType: "contract",
           },
