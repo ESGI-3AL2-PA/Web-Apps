@@ -23,7 +23,14 @@ export const VoteResponseDtoSchema = z
     options: z.array(z.string()).openapi({ description: "Available options" }),
     voteType: VoteTypeSchema.openapi({ description: "single_choice or multiple_choice" }),
     status: VoteStatusSchema.openapi({ description: "Current vote status" }),
-    results: z.array(VoteResultEntrySchema).openapi({ description: "Aggregated results" }),
+    results: z.array(VoteResultEntrySchema).openapi({
+      description: "Aggregated results — per-option counts are zeroed until the caller has voted or the vote is closed",
+    }),
+    totalResponses: z
+      .number()
+      .int()
+      .optional()
+      .openapi({ description: "Total number of responses — always visible, even before the breakdown is revealed" }),
     startDate: z.string().datetime().openapi({ description: "Vote start date" }),
     endDate: z.string().datetime().openapi({ description: "Vote end date" }),
     userHasVoted: z.boolean().optional().openapi({ description: "True if the current user has already voted" }),

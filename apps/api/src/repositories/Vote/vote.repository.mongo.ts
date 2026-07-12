@@ -63,30 +63,38 @@ export class MongoVoteRepository implements IVoteRepository {
   }
 
   private async enrichWithUserVotes(docs: VoteDoc[], currentUserId?: string): Promise<Vote[]> {
-    if (!currentUserId || docs.length === 0) {
-      return docs.map(this.toVote);
-    }
-
-    const voteIds = docs.map((d) => d._id);
-    const userResponses = await this.responses.find({ userId: currentUserId, voteId: { $in: voteIds } }).toArray();
-
-    // Group options by voteId
+    // Group the caller's chosen options by voteId (empty map if unauthenticated).
     const byVoteId = new Map<string, string[]>();
-    for (const r of userResponses) {
-      const arr = byVoteId.get(r.voteId) ?? [];
-      arr.push(r.chosenOption);
-      byVoteId.set(r.voteId, arr);
+    if (currentUserId && docs.length > 0) {
+      const voteIds = docs.map((d) => d._id);
+      const userResponses = await this.responses.find({ userId: currentUserId, voteId: { $in: voteIds } }).toArray();
+      for (const r of userResponses) {
+        const arr = byVoteId.get(r.voteId) ?? [];
+        arr.push(r.chosenOption);
+        byVoteId.set(r.voteId, arr);
+      }
     }
 
     return docs.map((d) => {
       const myOptions = byVoteId.get(d._id) ?? [];
+      const userHasVoted = myOptions.length > 0;
       const base = this.toVote(d);
+      // Résultats aveugles : tant que l'user n'a pas voté et que le scrutin est
+      // ouvert, on renvoie `totalResponses` mais on masque le détail par option
+      // (compteurs mis à zéro) — sinon le classement fuite avant le vote.
+      const revealBreakdown = userHasVoted || this.isVoteClosed(d);
       return {
         ...base,
-        userHasVoted: myOptions.length > 0,
-        myChosenOptions: myOptions.length > 0 ? myOptions : undefined,
+        results: revealBreakdown ? base.results : base.results.map((r) => ({ ...r, count: 0 })),
+        userHasVoted,
+        myChosenOptions: userHasVoted ? myOptions : undefined,
       };
     });
+  }
+
+  // Un vote est clos si son statut n'est plus "open" ou si sa deadline est passée.
+  private isVoteClosed(doc: VoteDoc): boolean {
+    return doc.status !== "open" || new Date(doc.endDate).getTime() < Date.now();
   }
 
   async createVote(data: Omit<Vote, "id" | "results">): Promise<Vote> {
@@ -185,7 +193,8 @@ export class MongoVoteRepository implements IVoteRepository {
 
   private toVote(doc: VoteDoc): Vote {
     const { _id, ...rest } = doc;
-    return { id: _id, ...rest };
+    const totalResponses = rest.results.reduce((sum, r) => sum + r.count, 0);
+    return { id: _id, ...rest, totalResponses };
   }
 
   private toVoteResponse(doc: VoteResponseDoc): VoteResponseEntity {

@@ -150,7 +150,22 @@ export const votesRouter = s.router(votesContract, {
     }
   },
 
-  getVoteResults: async ({ params: { id } }) => {
+  getVoteResults: async ({ params: { id }, req }) => {
+    const user = req.user!;
+    // Même règle de visibilité que la carte : un résident ne voit le détail
+    // qu'après avoir voté (ou une fois le scrutin clos). Les admins voient tout.
+    // Gate ici aussi, sinon un GET direct court-circuite le masquage côté carte.
+    const isAdmin = user.role === "admin" || user.role === "superAdmin";
+    if (!isAdmin) {
+      const vote = await getVoteByIdUseCase(resolve("vote"))({ id, currentUserId: user.sub });
+      if (!vote) {
+        return { status: 404, body: { message: "Vote not found" } };
+      }
+      const isClosed = vote.status !== "open" || new Date(vote.endDate).getTime() < Date.now();
+      if (!vote.userHasVoted && !isClosed) {
+        return { status: 403, body: { message: "Les résultats seront visibles après votre vote" } };
+      }
+    }
     const results = await getVoteResultsUseCase(resolve("vote"))(id);
     if (!results) {
       return { status: 404, body: { message: "Vote not found" } };

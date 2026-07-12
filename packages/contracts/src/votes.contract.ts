@@ -119,6 +119,7 @@ export const votesContract = c.router({
     pathParams: VoteParamsDtoSchema,
     responses: {
       200: VoteResultsResponseDtoSchema,
+      403: ForbiddenErrorSchema,
       404: NotFoundErrorSchema,
     },
     summary: "Get aggregated results for a vote",

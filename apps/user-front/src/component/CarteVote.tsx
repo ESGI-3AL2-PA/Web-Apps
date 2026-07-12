@@ -45,7 +45,9 @@ const CarteVote = ({ vote, onChanged }: CarteVoteProps) => {
   const [chosenSingle, setChosenSingle] = useState<string>("");
   const [chosenMulti, setChosenMulti] = useState<Set<string>>(new Set());
 
-  const total = useMemo(() => localVote.results.reduce((sum, r) => sum + r.count, 0), [localVote.results]);
+  // Le total est renvoyé à part par le backend : les compteurs par option sont
+  // masqués (mis à zéro) tant qu'on n'a pas voté, mais le nombre de réponses reste.
+  const total = localVote.totalResponses ?? 0;
 
   // ── Calcul deadline expirée ──────────────────────────────────────────
   const isExpired = useMemo(() => {
@@ -366,9 +368,17 @@ const CarteVote = ({ vote, onChanged }: CarteVoteProps) => {
             )}
 
             {/* ── Résultats — barres horizontales, options votées surlignées ─ */}
+            {/* Masqués tant qu'on n'a pas voté (et que le scrutin est ouvert) : le */}
+            {/* backend renvoie déjà des compteurs à zéro, mais on cache aussi la section */}
+            {/* pour ne pas afficher « 0 (0%) » partout et éviter d'influencer le vote. */}
             <div style={{ borderTop: "1px solid #eee", paddingTop: 12 }}>
               <h3 style={{ fontSize: 14, fontWeight: 600, margin: "0 0 10px 0" }}>Résultats</h3>
-              {total === 0 ? (
+              {!userHasVoted && !isClosed ? (
+                <p style={{ color: "#666", fontSize: 13 }}>
+                  Les résultats seront visibles après votre vote
+                  {total > 0 ? ` · ${total} réponse${total > 1 ? "s" : ""}` : ""}.
+                </p>
+              ) : total === 0 ? (
                 <p style={{ color: "#666", fontSize: 13 }}>Aucun vote pour l&apos;instant.</p>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
