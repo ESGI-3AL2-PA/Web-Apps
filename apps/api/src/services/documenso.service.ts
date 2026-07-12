@@ -190,9 +190,18 @@ class HttpDocumensoService implements IDocumensoService {
   }
 
   async resendDocument(documentId: number): Promise<void> {
+    // Documenso's resend targets specific recipients by id — an empty list mails
+    // nobody. Fetch the document and re-invite every signer who hasn't signed yet
+    // (fall back to all signers if the status field is absent).
+    const doc = await this.request<{
+      recipients?: Array<{ id: number; role?: string; signingStatus?: string }>;
+    }>(`/documents/${documentId}`);
+    const signers = (doc.recipients ?? []).filter((r) => (r.role ?? "SIGNER") === "SIGNER");
+    const pending = signers.filter((r) => (r.signingStatus ?? "NOT_SIGNED").toUpperCase() !== "SIGNED");
+    const recipients = (pending.length > 0 ? pending : signers).map((r) => r.id);
     await this.request(`/documents/${documentId}/resend`, {
       method: "POST",
-      body: JSON.stringify({ recipients: [] }),
+      body: JSON.stringify({ recipients }),
     });
   }
 
