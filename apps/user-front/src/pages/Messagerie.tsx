@@ -9,6 +9,7 @@ import {
   sendVoiceMessage,
 } from "../api-service/conversations.service";
 import CarteConversation from "../component/CarteConversation";
+import ConversationHeader from "../component/ConversationHeader";
 import MessageBubble from "../component/MessageBubble";
 import MessageComposer from "../component/MessageComposer";
 import NewConversationModal from "../component/NewConversationModal";
@@ -220,19 +221,7 @@ const Messagerie = () => {
           </div>
         ) : (
           <>
-            <div
-              style={{
-                padding: 14,
-                borderBottom: "1px solid #e5e7eb",
-                background: "#fff",
-              }}
-            >
-              <h2 style={{ fontSize: 15, fontWeight: 600, margin: 0 }}>
-                {activeConv.type === "group" && activeConv.name
-                  ? activeConv.name
-                  : `${activeConv.participants.length} participants`}
-              </h2>
-            </div>
+            <ConversationHeader conversation={activeConv} />
             <div
               role="log"
               aria-live="polite"
