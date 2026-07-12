@@ -38,6 +38,7 @@ await satan.close(); // on shutdown
 | op       | returns                           |
 | -------- | --------------------------------- |
 | `FIND`   | array of documents (`_id` → `id`) |
+| `COUNT`  | `{ count }`                       |
 | `INSERT` | `{ insertedId }`                  |
 | `UPDATE` | `{ matchedCount, modifiedCount }` |
 | `DELETE` | `{ deletedCount }`                |
@@ -49,13 +50,16 @@ worker restarts on crash unless `autoRestart: false`.
 
 ```
 FIND <coll> [WHERE <expr>] [SELECT f, …] [ORDER BY f [ASC|DESC], …] [SKIP n] [LIMIT n]
+COUNT <coll> [WHERE <expr>]
 INSERT INTO <coll> SET f = v, …
 UPDATE <coll> SET f = v, … [WHERE <expr>]
 DELETE FROM <coll> [WHERE <expr>]
 ```
 
 `<expr>`: `AND` / `OR` / `NOT` with parentheses; conditions use `= != < > <= >=`,
-`LIKE "a*b?"` (`*` = any chars, `?` = one char), `IN (…)`, `EXISTS`. Values are
+`LIKE "a*b?"` (anchored, case-sensitive; `*` = any chars, `?` = one char),
+`ILIKE "a*b?"` (same, case-insensitive), `CONTAINS "text"` (case-insensitive
+literal substring — the search-box operator), `IN (…)`, `EXISTS`. Values are
 strings, numbers, `TRUE`, `FALSE`, `NULL`. Field paths may be dotted
 (`profile.address.city`). Keywords are case-insensitive.
 

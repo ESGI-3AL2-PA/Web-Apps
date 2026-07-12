@@ -28,6 +28,8 @@ def translate(ast: Dict[str, Any]) -> Dict[str, Any]:
     t = ast["type"]
     if t == "find":
         return _translate_find(ast)
+    if t == "count":
+        return _translate_count(ast)
     if t == "insert":
         return _translate_insert(ast)
     if t == "update":
@@ -58,6 +60,14 @@ def _translate_find(ast: Dict[str, Any]) -> Dict[str, Any]:
     if "skip" in ast:
         out["skip"] = ast["skip"]
     return out
+
+
+def _translate_count(ast: Dict[str, Any]) -> Dict[str, Any]:
+    return {
+        "op": "countDocuments",
+        "collection": ast["collection"],
+        "filter": _translate_where(ast.get("where")),
+    }
 
 
 def _translate_insert(ast: Dict[str, Any]) -> Dict[str, Any]:
@@ -116,16 +126,24 @@ def _translate_where(node):
     if op in ("ne", "lt", "gt", "lte", "gte"):
         return {node["field"]: {f"${op}": node["value"]}}
 
-    if op == "like":
+    if op in ("like", "ilike"):
         # Wildcards SATAN QL : * = "n'importe quels caractères", ? = un caractère
         # On échappe le reste pour éviter qu'un . ou un ( soient interprétés
-        # comme du regex.
+        # comme du regex. ILIKE = LIKE insensible à la casse ($options: "i").
         regex = (
             "^"
             + re.escape(node["value"]).replace(r"\*", ".*").replace(r"\?", ".")
             + "$"
         )
-        return {node["field"]: {"$regex": regex}}
+        spec = {"$regex": regex}
+        if op == "ilike":
+            spec["$options"] = "i"
+        return {node["field"]: spec}
+
+    if op == "contains":
+        # Sous-chaîne littérale, insensible à la casse : on échappe entièrement
+        # la valeur (pas de wildcard) et on ne l'ancre pas.
+        return {node["field"]: {"$regex": re.escape(node["value"]), "$options": "i"}}
 
     if op == "in":
         return {node["field"]: {"$in": node["value"]}}

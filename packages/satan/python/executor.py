@@ -32,6 +32,9 @@ def execute(db, op: Dict[str, Any]) -> Any:
             cursor = cursor.limit(op["limit"])
         return [_map_id(doc) for doc in cursor]
 
+    if kind == "countDocuments":
+        return {"count": collection.count_documents(op.get("filter") or {})}
+
     if kind == "insertOne":
         result = collection.insert_one(op["document"])
         return {"insertedId": result.inserted_id}

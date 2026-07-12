@@ -67,6 +67,33 @@ CASES = [
         },
     ),
     ("FIND users", {"op": "find", "collection": "users", "filter": {}}),
+    # -- COUNT -------------------------------------------------------------
+    (
+        'COUNT listings WHERE status = "active" AND districtId = "d1"',
+        {
+            "op": "countDocuments",
+            "collection": "listings",
+            "filter": {"$and": [{"status": "active"}, {"districtId": "d1"}]},
+        },
+    ),
+    ("COUNT users", {"op": "countDocuments", "collection": "users", "filter": {}}),
+    # -- ILIKE / CONTAINS --------------------------------------------------
+    (
+        'FIND tags WHERE name ILIKE "Baby*"',
+        {
+            "op": "find",
+            "collection": "tags",
+            "filter": {"name": {"$regex": "^Baby.*$", "$options": "i"}},
+        },
+    ),
+    (
+        'FIND users WHERE firstName CONTAINS "a.b"',
+        {
+            "op": "find",
+            "collection": "users",
+            "filter": {"firstName": {"$regex": r"a\.b", "$options": "i"}},
+        },
+    ),
     # -- INSERT ------------------------------------------------------------
     (
         'INSERT INTO users SET name = "John", email = "john@ex.com", age = 30',

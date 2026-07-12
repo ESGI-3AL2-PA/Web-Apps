@@ -5,9 +5,9 @@ Tokenise une requête SATAN QL en flux de tokens consommé ensuite par
 parser.py. Les mots-clés sont reconnus en case-insensitive (FIND == find).
 
 Tokens produits :
-    - Mots-clés : FIND, INSERT, INTO, UPDATE, DELETE, FROM, WHERE, SET,
-      SELECT, ORDER, BY, LIMIT, SKIP, AND, OR, NOT, LIKE, IN, EXISTS,
-      ASC, DESC, TRUE, FALSE, NULL
+    - Mots-clés : FIND, COUNT, INSERT, INTO, UPDATE, DELETE, FROM, WHERE, SET,
+      SELECT, ORDER, BY, LIMIT, SKIP, AND, OR, NOT, LIKE, ILIKE, CONTAINS, IN,
+      EXISTS, ASC, DESC, TRUE, FALSE, NULL
     - IDENT     : identifiant (avec support des chemins pointés type
                   profile.address.city pour les champs MongoDB imbriqués)
     - STRING    : chaîne entre guillemets doubles, séquences \\n, \\" gérées
@@ -25,6 +25,7 @@ import ply.lex as lex
 # Map "MOT" -> nom de token PLY. La résolution se fait dans t_IDENT.
 reserved = {
     "FIND": "FIND",
+    "COUNT": "COUNT",
     "INSERT": "INSERT",
     "INTO": "INTO",
     "UPDATE": "UPDATE",
@@ -41,6 +42,8 @@ reserved = {
     "OR": "OR",
     "NOT": "NOT",
     "LIKE": "LIKE",
+    "ILIKE": "ILIKE",
+    "CONTAINS": "CONTAINS",
     "IN": "IN",
     "EXISTS": "EXISTS",
     "ASC": "ASC",

@@ -33,6 +33,10 @@ async function main(): Promise<void> {
   assert.ok(Array.isArray(rows), "FIND should return an array");
   console.warn(`✓ FIND users LIMIT 1 → ${rows.length} row(s)`);
 
+  const counted = await client.query("COUNT users");
+  assert.ok(typeof counted?.count === "number", "COUNT should return { count }");
+  console.warn(`✓ COUNT users → ${counted.count}`);
+
   await assert.rejects(() => client.query("FIND WHERE"), SatanQueryError);
   console.warn("✓ malformed query rejects with SatanQueryError");
 

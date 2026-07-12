@@ -12,6 +12,8 @@ Statements pris en charge (CRUD) :
         [SKIP <n>]
         [LIMIT <n>]
 
+    COUNT <collection> [WHERE <expr>]
+
     INSERT INTO <collection> SET <field> = <value>, ...
 
     UPDATE <collection> SET <field> = <value>, ... [WHERE <expr>]
@@ -20,13 +22,16 @@ Statements pris en charge (CRUD) :
 
 Une <expr> est une combinaison de conditions reliées par AND / OR / NOT
 (avec parenthèses), où chaque condition est l'une de :
-    field <op> value      (op ∈ =, !=, <, >, <=, >=)
-    field LIKE "pattern"
+    field <op> value          (op ∈ =, !=, <, >, <=, >=)
+    field LIKE "pattern"      (ancré, sensible à la casse, wildcards * et ?)
+    field ILIKE "pattern"     (comme LIKE, insensible à la casse)
+    field CONTAINS "text"     (sous-chaîne littérale, insensible à la casse)
     field IN (val, val, …)
     field EXISTS
 
 Format de l'AST :
     {"type": "find",   "collection": str, "where"?, "select"?, "order"?, "limit"?, "skip"?}
+    {"type": "count",  "collection": str, "where": <expr>|None}
     {"type": "insert", "collection": str, "values": [{"field": ..., "value": ...}, ...]}
     {"type": "update", "collection": str, "values": [...], "where": <expr>|None}
     {"type": "delete", "collection": str, "where": <expr>|None}
@@ -35,7 +40,8 @@ Une expression :
     {"op": "and"|"or",  "left": <expr>, "right": <expr>}
     {"op": "not", "expr": <expr>}
     {"op": "eq"|"ne"|"lt"|"gt"|"lte"|"gte", "field": str, "value": Any}
-    {"op": "like",   "field": str, "value": str}    # wildcards * et ?
+    {"op": "like"|"ilike", "field": str, "value": str}  # wildcards * et ?
+    {"op": "contains", "field": str, "value": str}      # sous-chaîne littérale
     {"op": "in",     "field": str, "value": [Any, ...]}
     {"op": "exists", "field": str}
 """
@@ -61,6 +67,7 @@ precedence = (
 # ---------------------------------------------------------------------------
 def p_statement(p):
     """statement : find_stmt
+                 | count_stmt
                  | insert_stmt
                  | update_stmt
                  | delete_stmt"""
@@ -110,6 +117,14 @@ def p_find_clause_limit(p):
 def p_find_clause_skip(p):
     "find_clause : SKIP NUMBER"
     p[0] = {"skip": p[2]}
+
+
+# ---------------------------------------------------------------------------
+# COUNT
+# ---------------------------------------------------------------------------
+def p_count_stmt(p):
+    "count_stmt : COUNT IDENT opt_where"
+    p[0] = {"type": "count", "collection": p[2], "where": p[3]}
 
 
 # ---------------------------------------------------------------------------
@@ -240,6 +255,16 @@ def p_condition_compare(p):
 def p_condition_like(p):
     "condition : IDENT LIKE STRING"
     p[0] = {"op": "like", "field": p[1], "value": p[3]}
+
+
+def p_condition_ilike(p):
+    "condition : IDENT ILIKE STRING"
+    p[0] = {"op": "ilike", "field": p[1], "value": p[3]}
+
+
+def p_condition_contains(p):
+    "condition : IDENT CONTAINS STRING"
+    p[0] = {"op": "contains", "field": p[1], "value": p[3]}
 
 
 def p_condition_in(p):
