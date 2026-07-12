@@ -84,13 +84,8 @@ export default function Header() {
       {/* Row 1 — logo · deposer · search · account actions */}
       <div className="mx-auto flex max-w-6xl items-center gap-4 px-4 py-2.5">
         <Link to="/" className="flex shrink-0 select-none items-center gap-2 text-xl font-extrabold tracking-tight">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[color:var(--color-brand)] text-white">
-            CN
-          </span>
-          <span className="hidden md:inline">
-            <span className="text-neutral-900">Connected</span>
-            <span className="text-[color:var(--color-brand)]">NeighBours</span>
-          </span>
+          <img src="/Logo-connectedNeighbours.png" alt="Connected NeighBours" className="h-9 w-9" />
+          <span className="hidden text-[color:var(--color-ink)] md:inline">Connected NeighBours</span>
         </Link>
 
         <Link
