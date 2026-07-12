@@ -28,7 +28,7 @@ services:
       DOCUMENSO_TEMPLATE_ID: ${DOCUMENSO_TEMPLATE_ID:-}
       DOCUMENSO_WEBHOOK_SECRET: ${DOCUMENSO_WEBHOOK_SECRET:-}
       DOCUMENSO_SIGNING_LANGUAGE: ${DOCUMENSO_SIGNING_LANGUAGE:-fr}
-      CONTRACTS_SIGN_REDIRECT_URL: ${CONTRACTS_SIGN_REDIRECT_URL:-http://localhost:5000/mes-contrats}
+      CONTRACTS_SIGN_REDIRECT_URL: ${CONTRACTS_SIGN_REDIRECT_URL:-http://localhost:${USER_PORT:-5000}/mes-contrats}
     # No hard dependency on `documenso` (contracts profile): the api calls it lazily
     # per contract request and 502s if it's absent, so core can run without it.
     depends_on:
@@ -72,7 +72,7 @@ services:
     environment:
       NODE_ENV: development
       ADMIN_PORT: 4000 # container-internal port; host side is ${ADMIN_PORT}
-      VITE_AUTH_SERVICE_URL: http://localhost:3001
+      VITE_AUTH_SERVICE_URL: http://localhost:${AUTH_PORT:-3001}
     depends_on:
       - auth-service
 
@@ -91,8 +91,9 @@ services:
     environment:
       NODE_ENV: development
       USER_PORT: 5000 # container-internal port; host side is ${USER_PORT}
-      VITE_AUTH_SERVICE_URL: http://localhost:3001
-      VITE_API_URL: http://localhost:3000
+      VITE_AUTH_SERVICE_URL: http://localhost:${AUTH_PORT:-3001}
+      VITE_API_URL: http://localhost:${API_PORT:-3000}
+      VITE_ADMIN_URL: http://localhost:${ADMIN_PORT:-4000}
     depends_on:
       - api
       - auth-service

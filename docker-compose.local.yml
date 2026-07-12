@@ -175,6 +175,9 @@ services:
       API_PORT: 3000
       MONGODB_URL: mongodb://root:root@mongodb:27017
       MONGODB_DB: db
+      NEO4J_URL: bolt://neo4j:7687
+      NEO4J_USER: neo4j
+      NEO4J_PASSWORD: password
       AUTH_JWKS_URL: http://auth-service:3001/.well-known/jwks.json
       # Documenso reached in-network; secrets come from .env (created once in the UI).
       DOCUMENSO_URL: http://documenso:3030
@@ -182,7 +185,7 @@ services:
       DOCUMENSO_TEMPLATE_ID: ${DOCUMENSO_TEMPLATE_ID:-}
       DOCUMENSO_WEBHOOK_SECRET: ${DOCUMENSO_WEBHOOK_SECRET:-}
       DOCUMENSO_SIGNING_LANGUAGE: ${DOCUMENSO_SIGNING_LANGUAGE:-fr}
-      CONTRACTS_SIGN_REDIRECT_URL: ${CONTRACTS_SIGN_REDIRECT_URL:-http://localhost:5000/mes-contrats}
+      CONTRACTS_SIGN_REDIRECT_URL: ${CONTRACTS_SIGN_REDIRECT_URL:-http://localhost:${USER_PORT:-5000}/mes-contrats}
       # Voice-message storage in MinIO (bucket created by minio-createbucket).
       MESSAGES_MINIO_ENDPOINT: http://minio:9000
       MESSAGES_MINIO_BUCKET: messages
@@ -207,16 +210,15 @@ services:
       - .:/app
       - /app/node_modules
       - /app/apps/auth-service/node_modules
-      # Stable RS256 keys (scripts/gen-auth-keys.sh) so restarts don't rotate them.
-      - ./docker/auth:/run/auth-keys:ro
     environment:
       NODE_ENV: development
       AUTH_PORT: 3001
       MONGODB_URL: mongodb://root:root@mongodb:27017
       MONGODB_DB: db
       API_URL: http://api:3000
-      AUTH_PRIVATE_KEY_FILE: /run/auth-keys/private.pem
-      AUTH_PUBLIC_KEY_FILE: /run/auth-keys/public.pem
+      # No AUTH_*_KEY[_FILE] set → auth-service generates ephemeral RS256 keys on boot.
+      # Fine for dev (keys rotate on restart; the api's JWKS set refetches on the next
+      # verification miss). Provide stable keys via AUTH_*_KEY_FILE for prod.
       # Dev email → mailpit (SMTP branch of email.service.ts). Verification/reset
       # links are read from mailpit's UI (:8025). MFA is opt-in, so no auth bypasses.
       SMTP_HOST: mailpit
@@ -241,7 +243,7 @@ services:
     environment:
       NODE_ENV: development
       ADMIN_PORT: 4000
-      VITE_AUTH_SERVICE_URL: http://localhost:3001
+      VITE_AUTH_SERVICE_URL: http://localhost:${AUTH_PORT:-3001}
     depends_on:
       - auth-service
 
@@ -260,8 +262,9 @@ services:
     environment:
       NODE_ENV: development
       USER_PORT: 5000
-      VITE_AUTH_SERVICE_URL: http://localhost:3001
-      VITE_API_URL: http://localhost:3000
+      VITE_AUTH_SERVICE_URL: http://localhost:${AUTH_PORT:-3001}
+      VITE_API_URL: http://localhost:${API_PORT:-3000}
+      VITE_ADMIN_URL: http://localhost:${ADMIN_PORT:-4000}
     depends_on:
       - api
       - auth-service
