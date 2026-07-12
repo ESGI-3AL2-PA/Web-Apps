@@ -1,12 +1,12 @@
 FROM node:25-alpine AS base
 WORKDIR /app
 
-# @repo/satan shells out to python3 with the `ply` package to parse SATAN QL.
-# A self-contained venv sidesteps Alpine's PEP-668 externally-managed guard and
-# doesn't depend on the community `py3-ply` package being present.
+# @repo/satan shells out to python3 with `ply` (parse SATAN QL) and `pymongo`
+# (run it against Mongo). A self-contained venv sidesteps Alpine's PEP-668
+# externally-managed guard.
 RUN apk add --no-cache python3 \
   && python3 -m venv /opt/satan-venv \
-  && /opt/satan-venv/bin/pip install --no-cache-dir ply==3.11
+  && /opt/satan-venv/bin/pip install --no-cache-dir "ply==3.11" "pymongo>=4.6,<5"
 ENV SATAN_PYTHON=/opt/satan-venv/bin/python
 
 # Dependencies

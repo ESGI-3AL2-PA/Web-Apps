@@ -1,51 +1,15 @@
 /**
- * Types describing the worker's output — a structured subset of MongoDB
- * operations. The Node client does NOT execute the query: it only translates
- * and returns this descriptor, leaving the repository / use-case layer to drive
- * the Mongo driver.
+ * Wire types for the worker protocol. The worker executes the query against
+ * Mongo and returns the result, so the Node side is Mongo-agnostic — the op
+ * descriptor / driver shapes live entirely in Python.
  */
 
-export type MongoFilter = Record<string, unknown>;
-export type MongoDocument = Record<string, unknown>;
-
-export interface MongoFindOp {
-  op: "find";
-  collection: string;
-  filter: MongoFilter;
-  projection?: Record<string, 1>;
-  sort?: Array<[string, 1 | -1]>;
-  limit?: number;
-  skip?: number;
-}
-
-export interface MongoInsertOp {
-  op: "insertOne";
-  collection: string;
-  document: MongoDocument;
-}
-
-export interface MongoUpdateOp {
-  op: "updateMany";
-  collection: string;
-  filter: MongoFilter;
-  update: { $set: MongoDocument };
-}
-
-export interface MongoDeleteOp {
-  op: "deleteMany";
-  collection: string;
-  filter: MongoFilter;
-}
-
-export type SatanOp = MongoFindOp | MongoInsertOp | MongoUpdateOp | MongoDeleteOp;
-
-/**
- * Raw shape emitted by worker.py on stdout (ndjson).
- */
-export interface SatanResponse<T = SatanOp> {
+/** Raw shape emitted by worker.py on stdout (ndjson). `result` is whatever the
+ *  executed query returned (documents / driver counts). */
+export interface SatanResponse {
   id: string;
   ok: boolean;
-  result?: T;
+  result?: unknown;
   error?: string;
   trace?: string;
 }

@@ -47,9 +47,8 @@ import { requireAuth } from "./middleware/auth.middleware.js";
 import { authorize } from "./middleware/authorize.middleware.js";
 import { connectDB, closeDB } from "./repositories/mongodb.connector.js";
 import { connectNeo4j, closeNeo4j } from "./repositories/neo4j.connector.js";
-import { connectSatan, closeSatan } from "./repositories/satan/satan.connector.js";
+import { connectSatan, closeSatan } from "./repositories/satan.connector.js";
 import type { SatanClient } from "@repo/satan";
-import type { Db } from "mongodb";
 import { setupGracefulShutdown } from "./shutdown.js";
 import { initContainer } from "./repositories/container.js";
 import { generateOpenApi } from "@ts-rest/open-api";
@@ -228,13 +227,13 @@ app.use(errorHandler);
 // SATAN-backed repositories. If it can't start (e.g. python/`ply` missing) we
 // log and fall back to the Mongo repos rather than refusing to boot. Skip
 // entirely when SATAN_REPOS=false.
-const maybeConnectSatan = async (db: Db): Promise<SatanClient | undefined> => {
+const maybeConnectSatan = async (): Promise<SatanClient | undefined> => {
   if (process.env.SATAN_REPOS === "false") {
     console.warn("😈 SATAN repositories disabled (SATAN_REPOS=false) — using Mongo repositories");
     return undefined;
   }
   try {
-    const client = await connectSatan(db);
+    const client = await connectSatan();
     console.warn("😈 SATAN repositories active");
     return client;
   } catch (err) {
@@ -245,7 +244,7 @@ const maybeConnectSatan = async (db: Db): Promise<SatanClient | undefined> => {
 
 Promise.all([connectDB(), connectNeo4j()])
   .then(async ([db, neo4jDriver]) => {
-    const satan = await maybeConnectSatan(db);
+    const satan = await maybeConnectSatan();
     initContainer(db, neo4jDriver, satan);
 
     // Création d'un http.Server manuel pour pouvoir y attacher Socket.io.

@@ -1,10 +1,11 @@
 /**
- * End-to-end smoke test: spawns the real Python worker through SatanClient and
- * asserts each CRUD op translates as expected, plus a malformed-query rejection.
+ * Smoke test for @repo/satan. The worker executes against Mongo, so this needs a
+ * database: set MONGODB_URL (and optionally MONGODB_DB) to run it, otherwise it
+ * skips. Parse/translate is covered Mongo-free by python/test_satan.py.
  *
- * Run (after `npm run build -w @repo/satan`) with a Python that has `ply`:
- *   SATAN_PYTHON=packages/satan/.venv/bin/python \
- *     npx tsx packages/satan/smoke.mts
+ * Run (after `npm run build -w @repo/satan`, with a Python that has ply+pymongo):
+ *   MONGODB_URL=mongodb://root:root@localhost:27017 MONGODB_DB=db \
+ *     SATAN_PYTHON=packages/satan/.venv/bin/python npx tsx packages/satan/smoke.mts
  *
  * Not part of the shipped build (excluded from tsconfig `include`).
  */
@@ -13,49 +14,29 @@ import assert from "node:assert/strict";
 
 import { createSatanClient, SatanQueryError } from "./dist/index.js";
 
+const mongoUrl = process.env.MONGODB_URL;
+if (!mongoUrl) {
+  console.warn("skip: set MONGODB_URL to run the @repo/satan smoke test");
+  process.exit(0);
+}
+
 const client = createSatanClient({
+  mongoUrl,
+  mongoDb: process.env.MONGODB_DB ?? "db",
   pythonBin: process.env.SATAN_PYTHON ?? "python3",
   autoRestart: false,
 });
 client.on("stderr", (line: string) => process.stderr.write(`[worker] ${line}`));
 
 async function main(): Promise<void> {
-  const find = await client.compile(
-    'FIND users WHERE role = "admin" AND name LIKE "Jo*" LIMIT 10 ORDER BY createdAt DESC',
-  );
-  assert.deepEqual(find, {
-    op: "find",
-    collection: "users",
-    filter: { $and: [{ role: "admin" }, { name: { $regex: "^Jo.*$" } }] },
-    limit: 10,
-    sort: [["createdAt", -1]],
-  });
+  const rows = await client.query("FIND users LIMIT 1");
+  assert.ok(Array.isArray(rows), "FIND should return an array");
+  console.warn(`✓ FIND users LIMIT 1 → ${rows.length} row(s)`);
 
-  const insert = await client.compile('INSERT INTO users SET name = "John", age = 30');
-  assert.deepEqual(insert, {
-    op: "insertOne",
-    collection: "users",
-    document: { name: "John", age: 30 },
-  });
+  await assert.rejects(() => client.query("FIND WHERE"), SatanQueryError);
+  console.warn("✓ malformed query rejects with SatanQueryError");
 
-  const update = await client.compile("UPDATE products SET price = 9.99 WHERE id = 5");
-  assert.deepEqual(update, {
-    op: "updateMany",
-    collection: "products",
-    filter: { id: 5 },
-    update: { $set: { price: 9.99 } },
-  });
-
-  const del = await client.compile('DELETE FROM users WHERE role = "guest"');
-  assert.deepEqual(del, {
-    op: "deleteMany",
-    collection: "users",
-    filter: { role: "guest" },
-  });
-
-  await assert.rejects(() => client.compile("FIND WHERE"), SatanQueryError);
-
-  console.warn("✓ all SATAN QL smoke assertions passed");
+  console.warn("✓ @repo/satan smoke passed");
 }
 
 main()

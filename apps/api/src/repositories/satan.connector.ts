@@ -1,20 +1,24 @@
 import { createSatanClient, type SatanClient } from "@repo/satan";
-import type { Db } from "mongodb";
 
 let client: SatanClient | null = null;
 
 /**
  * Spawns the persistent SATAN QL worker and verifies it before the app serves
- * traffic — mirrors `neo4j.connector.ts`. The verify is a translation-only
- * query (no Mongo touch) that proves the Python worker + `ply` are alive; a
- * timeout turns a missing interpreter/`ply` into a clear boot error instead of
- * a hang on the first real request.
+ * traffic — mirrors `neo4j.connector.ts`. The worker owns the Mongo connection
+ * (we only forward MONGODB_URL / MONGODB_DB to it); the verify runs a real
+ * `FIND` so it proves the whole chain — python + ply + pymongo + Mongo
+ * reachability — in one shot, and a timeout turns a missing dep into a clear
+ * boot error instead of a hang on the first real request.
  */
-export const connectSatan = async (db: Db): Promise<SatanClient> => {
+export const connectSatan = async (): Promise<SatanClient> => {
   if (client) return client;
 
   const pythonBin = process.env.SATAN_PYTHON ?? "python3";
-  const c = createSatanClient({ db, pythonBin });
+  const c = createSatanClient({
+    pythonBin,
+    mongoUrl: process.env.MONGODB_URL,
+    mongoDb: process.env.MONGODB_DB,
+  });
 
   const stderr: string[] = [];
   c.on("stderr", (line: string) => {
@@ -22,8 +26,7 @@ export const connectSatan = async (db: Db): Promise<SatanClient> => {
     if (process.env.SATAN_DEBUG) console.error(`[satan] ${line}`);
   });
 
-  // Translation-only verify (no Mongo touch) — proves the worker + ply are alive.
-  const verify = c.compile("FIND _healthcheck");
+  const verify = c.query("FIND _healthcheck");
   verify.catch(() => {}); // swallow a late rejection if the timeout wins the race
 
   let timer: NodeJS.Timeout | undefined;
@@ -32,8 +35,8 @@ export const connectSatan = async (db: Db): Promise<SatanClient> => {
       () =>
         reject(
           new Error(
-            `SATAN worker did not respond within 5s. Is 'ply' installed for '${pythonBin}'? ` +
-              `Set SATAN_PYTHON to a python with ply.` +
+            `SATAN worker did not respond within 5s. Are 'ply' and 'pymongo' installed for ` +
+              `'${pythonBin}', and is Mongo reachable? Set SATAN_PYTHON to a python with both.` +
               (stderr.length ? ` Worker stderr: ${stderr.join("").slice(0, 500)}` : ""),
           ),
         ),

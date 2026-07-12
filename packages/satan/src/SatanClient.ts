@@ -1,54 +1,49 @@
 /**
- * SatanClient — Node ↔ worker.py bridge + Mongo execution.
+ * SatanClient — thin Node ↔ worker.py bridge.
+ *
+ * The Python worker parses, translates AND runs the query against MongoDB and
+ * returns the result; this client only spawns/keeps that process alive and
+ * relays queries. It does NOT touch Mongo — it never imports the driver. Point
+ * the worker at a database with `mongoUrl` / `mongoDb` (forwarded as env vars).
  *
  * Lifecycle:
- *   - The first `query()`/`compile()` spawns ONE persistent Python process.
- *   - `compile(ql)` sends a JSON line to the worker and returns the translated
- *     `SatanOp` (correlated by UUID).
- *   - `query(ql)` compiles then RUNS the op against the Mongo `Db` passed to the
- *     client, returning the result (find → docs with `_id` mapped to `id`,
- *     writes → the driver's counts / inserted id).
- *   - If the process dies, every pending request is rejected and the worker is
- *     restarted automatically (unless `autoRestart: false` or `close()` ran).
- *
- * Best-effort, low-expectation query language: `query` returns `any`.
+ *   - The first `query()` spawns ONE persistent Python process.
+ *   - `query(ql)` writes a JSON line to stdin and resolves the worker's result.
+ *   - If the process dies, pending requests reject and the worker restarts
+ *     automatically (unless `autoRestart: false` or `close()` ran).
  */
 
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { EventEmitter } from "node:events";
 import path from "node:path";
-import type { Db, Document, Filter, OptionalUnlessRequiredId, Sort } from "mongodb";
 
-import { type SatanOp, SatanQueryError, type SatanResponse } from "./types";
+import { SatanQueryError, type SatanResponse } from "./types";
 
 interface PendingRequest {
-  resolve: (value: SatanOp) => void;
+  resolve: (value: unknown) => void;
   reject: (reason: Error) => void;
 }
 
 export interface SatanClientOptions {
-  /** Mongo Db that `query()` runs the translated op against. Omit for a
-   *  translate-only client (`compile()` still works, `query()` will throw). */
-  db?: Db;
+  /** Mongo connection string the worker runs queries against (forwarded to the
+   *  subprocess as MONGODB_URL). Omit to let the worker use its own env/default. */
+  mongoUrl?: string;
+  /** Mongo database name (forwarded as MONGODB_DB). */
+  mongoDb?: string;
   /** Python binary to use (default: "python3"). */
   pythonBin?: string;
   /** Absolute path to worker.py (default: ../python/worker.py relative to dist/). */
   workerPath?: string;
   /** cwd of the child process. */
   cwd?: string;
-  /** env of the child process. */
+  /** env of the child process (defaults to inheriting process.env). */
   env?: NodeJS.ProcessEnv;
   /** Restart the worker automatically if it crashes (default: true). */
   autoRestart?: boolean;
   /** Informational callback fired on each crash, BEFORE the restart. */
   onCrash?: (code: number | null, signal: NodeJS.Signals | null) => void;
 }
-
-const mapId = (doc: Document): Document => {
-  const { _id, ...rest } = doc;
-  return { id: _id, ...rest };
-};
 
 /**
  * Emits:
@@ -62,26 +57,32 @@ export class SatanClient extends EventEmitter {
   private buffer = "";
   private closed = false;
 
-  private readonly db?: Db;
   private readonly pythonBin: string;
   private readonly workerPath: string;
   private readonly cwd?: string;
-  private readonly env?: NodeJS.ProcessEnv;
+  private readonly childEnv?: NodeJS.ProcessEnv;
   private autoRestart: boolean;
   private readonly onCrash?: SatanClientOptions["onCrash"];
 
   constructor(opts: SatanClientOptions = {}) {
     super();
-    this.db = opts.db;
     this.pythonBin = opts.pythonBin ?? "python3";
     // Default assumes the shipped layout:
     //   packages/satan/dist/SatanClient.js   (this file, after build)
     //   packages/satan/python/worker.py
     this.workerPath = opts.workerPath ?? path.resolve(__dirname, "..", "python", "worker.py");
     this.cwd = opts.cwd;
-    this.env = opts.env;
     this.autoRestart = opts.autoRestart ?? true;
     this.onCrash = opts.onCrash;
+
+    // Forward the Mongo target to the worker via env (strings only — no driver).
+    if (opts.mongoUrl || opts.mongoDb || opts.env) {
+      this.childEnv = {
+        ...(opts.env ?? process.env),
+        ...(opts.mongoUrl ? { MONGODB_URL: opts.mongoUrl } : {}),
+        ...(opts.mongoDb ? { MONGODB_DB: opts.mongoDb } : {}),
+      };
+    }
   }
 
   /** Starts the worker if it isn't already running. Idempotent. */
@@ -90,7 +91,7 @@ export class SatanClient extends EventEmitter {
 
     const proc = spawn(this.pythonBin, [this.workerPath], {
       cwd: this.cwd,
-      env: this.env,
+      env: this.childEnv,
       stdio: ["pipe", "pipe", "pipe"],
     });
     this.proc = proc;
@@ -119,24 +120,14 @@ export class SatanClient extends EventEmitter {
   }
 
   /**
-   * Runs a SATAN QL query against the configured Mongo `Db` and returns the
-   * result: `find` → the matching documents (with `_id` renamed to `id`),
-   * `INSERT` → `{ insertedId }`, `UPDATE` → `{ matchedCount, modifiedCount }`,
-   * `DELETE` → `{ deletedCount }`.
-   * @throws SatanQueryError if parsing/translation fails or no `db` was set.
+   * Runs a SATAN QL query through the worker and resolves its result:
+   * `FIND` → the matching documents (with `_id` renamed to `id`), `INSERT` →
+   * `{ insertedId }`, `UPDATE` → `{ matchedCount, modifiedCount }`, `DELETE` →
+   * `{ deletedCount }`.
+   * @throws SatanQueryError if the worker rejects the query.
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  async query(ql: string): Promise<any> {
-    const op = await this.compile(ql);
-    return this.execute(op);
-  }
-
-  /**
-   * Translates a SATAN QL query to its `SatanOp` descriptor WITHOUT touching
-   * Mongo. Useful for tests, dry-runs, or driving another store.
-   * @throws SatanQueryError if the parser/translator rejects the query.
-   */
-  compile(ql: string): Promise<SatanOp> {
+  query(ql: string): Promise<any> {
     if (this.closed) {
       return Promise.reject(new SatanQueryError("SatanClient already closed"));
     }
@@ -145,7 +136,7 @@ export class SatanClient extends EventEmitter {
     const id = randomUUID();
     const payload = JSON.stringify({ id, query: ql }) + "\n";
 
-    return new Promise<SatanOp>((resolve, reject) => {
+    return new Promise((resolve, reject) => {
       this.pending.set(id, { resolve, reject });
       this.proc!.stdin.write(payload, (err) => {
         if (err) {
@@ -171,38 +162,6 @@ export class SatanClient extends EventEmitter {
   // -------------------------------------------------------------------------
   // Internal
   // -------------------------------------------------------------------------
-  private async execute(op: SatanOp): Promise<unknown> {
-    if (!this.db) {
-      throw new SatanQueryError("SatanClient.query() needs a Mongo Db — pass { db } to createSatanClient()");
-    }
-    const collection = this.db.collection(op.collection);
-    switch (op.op) {
-      case "find": {
-        const docs = await collection
-          .find(op.filter as Filter<Document>, {
-            projection: op.projection,
-            sort: op.sort ? (Object.fromEntries(op.sort) as Sort) : undefined,
-            limit: op.limit,
-            skip: op.skip,
-          })
-          .toArray();
-        return docs.map(mapId);
-      }
-      case "insertOne": {
-        const result = await collection.insertOne(op.document as OptionalUnlessRequiredId<Document>);
-        return { insertedId: result.insertedId };
-      }
-      case "updateMany": {
-        const result = await collection.updateMany(op.filter as Filter<Document>, op.update);
-        return { matchedCount: result.matchedCount, modifiedCount: result.modifiedCount };
-      }
-      case "deleteMany": {
-        const result = await collection.deleteMany(op.filter as Filter<Document>);
-        return { deletedCount: result.deletedCount };
-      }
-    }
-  }
-
   private onStdout(chunk: string): void {
     this.buffer += chunk;
     let nl: number;
@@ -223,8 +182,8 @@ export class SatanClient extends EventEmitter {
       if (!pending) continue; // orphan response, ignored
       this.pending.delete(resp.id);
 
-      if (resp.ok && resp.result) {
-        pending.resolve(resp.result as SatanOp);
+      if (resp.ok) {
+        pending.resolve(resp.result);
       } else {
         pending.reject(new SatanQueryError(resp.error ?? "Unknown SATAN error", resp.trace));
       }
