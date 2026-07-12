@@ -17,6 +17,15 @@ import { getVoteResultsUseCase } from "../../use-cases/votes/get-vote-results.us
 
 const s = initServer();
 
+// Le quartier de résidence d'un user n'est pas dans le JWT (seul adminDistrictId
+// y figure) — on le charge. Retourne null si le compte n'existe plus. Factorisé
+// car trois handlers en avaient besoin (list / get / create) avec la même logique.
+const callerDistrictId = async (userId: string): Promise<string | null> => {
+  const userRepo: IUserRepository = resolve("user");
+  const caller = await userRepo.getUserById(userId);
+  return caller?.districtId ?? null;
+};
+
 export const votesRouter = s.router(votesContract, {
   getVotes: async ({ query, req }) => {
     const user = req.user!;
@@ -25,10 +34,9 @@ export const votesRouter = s.router(votesContract, {
     if (user.role === "user") {
       // Un résident ne liste que les votes de SON quartier — on ignore le districtId
       // fourni par le client (sinon énumération inter-quartiers).
-      const userRepo: IUserRepository = resolve("user");
-      const caller = await userRepo.getUserById(user.sub);
-      if (!caller) return empty;
-      districtId = caller.districtId;
+      const resident = await callerDistrictId(user.sub);
+      if (!resident) return empty;
+      districtId = resident;
     } else {
       const scope = resolveListDistrictScope(user, query.districtId);
       if ("empty" in scope) return empty;
@@ -54,9 +62,8 @@ export const votesRouter = s.router(votesContract, {
     // quartier, un admin ceux de son adminDistrictId ; superAdmin voit tout. On
     // renvoie 404 (et non 403) pour ne pas divulguer l'existence d'un vote voisin.
     if (user.role === "user") {
-      const userRepo: IUserRepository = resolve("user");
-      const caller = await userRepo.getUserById(user.sub);
-      if (!caller || !vote.districtIds.includes(caller.districtId)) {
+      const resident = await callerDistrictId(user.sub);
+      if (!resident || !vote.districtIds.includes(resident)) {
         return { status: 404, body: { message: "Vote not found" } };
       }
     } else if (user.role === "admin") {
@@ -79,9 +86,8 @@ export const votesRouter = s.router(votesContract, {
         return { status: 403, body: { message: "Vous ne pouvez créer un vote que pour votre quartier" } };
       }
     } else {
-      const userRepo: IUserRepository = resolve("user");
-      const caller = await userRepo.getUserById(user.sub);
-      if (!caller || districtIds.length === 0 || !districtIds.every((d) => d === caller.districtId)) {
+      const resident = await callerDistrictId(user.sub);
+      if (!resident || districtIds.length === 0 || !districtIds.every((d) => d === resident)) {
         return { status: 403, body: { message: "Vous ne pouvez proposer un vote que pour votre quartier" } };
       }
     }
@@ -135,15 +141,10 @@ export const votesRouter = s.router(votesContract, {
         return { status: 403, body: { message: err.message } };
       }
       // Les erreurs de validation métier (single_choice avec plusieurs options,
-      // option inexistante, etc.) sont remontées en 400. L'auth/scope reste
-      // géré en amont par le middleware contract-metadata.
+      // option inexistante, vote clos, deadline dépassée) sont remontées en 400.
+      // L'auth/scope reste géré en amont par le middleware contract-metadata.
       if (err instanceof InvalidVoteSubmissionError) {
-        // Le contract n'expose pas (encore) un 400 pour cette route. On force
-        // un 200 avec un payload "erreur" minimal ; à raffiner si tu veux un
-        // vrai 400 (faut ajouter la response 400 au contract votesContract).
-        // Pour l'instant on rejette via 404 pour que le front bascule en
-        // catch et affiche le message générique.
-        return { status: 404, body: { message: err.message } };
+        return { status: 400, body: { message: err.message } };
       }
       throw err;
     }

@@ -9,6 +9,7 @@ import {
   VoteQueryDtoSchema,
   VoteResponseDtoSchema,
   VoteResultsResponseDtoSchema,
+  BadRequestErrorSchema,
   NotFoundErrorSchema,
   ForbiddenErrorSchema,
   PaginatedResponseDtoSchema,
@@ -104,6 +105,7 @@ export const votesContract = c.router({
     body: SubmitVoteResponseDtoSchema,
     responses: {
       200: VoteResponseDtoSchema,
+      400: BadRequestErrorSchema,
       403: ForbiddenErrorSchema,
       404: NotFoundErrorSchema,
     },

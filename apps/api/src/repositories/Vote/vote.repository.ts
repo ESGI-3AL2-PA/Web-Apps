@@ -1,3 +1,4 @@
+import type { ClientSession } from "mongodb";
 import type { Vote, VoteResponseEntity } from "../../entities/vote.entity.js";
 
 export interface IVoteRepository {
@@ -25,9 +26,12 @@ export interface IVoteRepository {
 
   deleteVote(id: string): Promise<boolean>;
 
-  submitResponse(data: Omit<VoteResponseEntity, "id" | "votedAt">): Promise<VoteResponseEntity>;
+  submitResponse(
+    data: Omit<VoteResponseEntity, "id" | "votedAt">,
+    session?: ClientSession,
+  ): Promise<VoteResponseEntity>;
 
-  clearUserResponses(voteId: string, userId: string): Promise<string[]>;
+  clearUserResponses(voteId: string, userId: string, session?: ClientSession): Promise<string[]>;
 
   /** Delete every vote response cast by a user, across all votes (account deletion). */
   deleteUserResponses(userId: string): Promise<void>;

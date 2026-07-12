@@ -4,6 +4,7 @@ import type { IVoteRepository } from "../../repositories/Vote/vote.repository.js
 import type { IUserRepository } from "../../repositories/User/user.repository.js";
 import type { IGraphRepository } from "../../repositories/Graph/graph.repository.js";
 import { syncGraph } from "../../repositories/Graph/graph.sync.js";
+import { runInTransaction } from "../../repositories/tx.js";
 
 export class InvalidVoteSubmissionError extends Error {
   constructor(reason: string) {
@@ -68,11 +69,16 @@ export const submitVoteResponseUseCase = (
         throw new InvalidVoteSubmissionError(`Option invalide: "${opt}"`);
       }
     }
-    await voteRepository.clearUserResponses(voteId, userId);
-
-    for (const option of incomingOptions) {
-      await voteRepository.submitResponse({ voteId, userId, chosenOption: option });
-    }
+    // Remplacer le bulletin précédent doit être atomique : sans transaction, un
+    // échec entre le clear et la ré-insertion effacerait le vote antérieur sans
+    // rien réenregistrer. Sur Mongo standalone (dev), runInTransaction retombe en
+    // séquentiel — même risque résiduel qu'avant, mais atomique en réplica-set.
+    await runInTransaction(async (session) => {
+      await voteRepository.clearUserResponses(voteId, userId, session);
+      for (const option of incomingOptions) {
+        await voteRepository.submitResponse({ voteId, userId, chosenOption: option }, session);
+      }
+    });
 
     const now = new Date().toISOString();
     for (const option of incomingOptions) {

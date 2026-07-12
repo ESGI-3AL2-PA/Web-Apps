@@ -1,5 +1,5 @@
 import { randomUUID } from "crypto";
-import type { Collection, Db, Filter } from "mongodb";
+import type { ClientSession, Collection, Db, Filter } from "mongodb";
 import type { Vote, VoteResponseEntity, VoteStatus } from "../../entities/vote.entity.js";
 import type { IVoteRepository } from "./vote.repository.js";
 
@@ -112,30 +112,38 @@ export class MongoVoteRepository implements IVoteRepository {
     return voteResult.deletedCount === 1;
   }
 
-  async submitResponse(data: Omit<VoteResponseEntity, "id" | "votedAt">): Promise<VoteResponseEntity> {
+  async submitResponse(
+    data: Omit<VoteResponseEntity, "id" | "votedAt">,
+    session?: ClientSession,
+  ): Promise<VoteResponseEntity> {
     const now = new Date().toISOString();
     const doc: VoteResponseDoc = { ...data, _id: randomUUID(), votedAt: now };
-    await this.responses.insertOne(doc);
+    await this.responses.insertOne(doc, { session });
 
     // Increment the matching option in the vote's cached results
     await this.votes.updateOne(
       { _id: data.voteId, "results.option": data.chosenOption },
       { $inc: { "results.$.count": 1 } },
+      { session },
     );
 
     return this.toVoteResponse(doc);
   }
 
-  async clearUserResponses(voteId: string, userId: string): Promise<string[]> {
-    const existing = await this.responses.find({ voteId, userId }).toArray();
+  async clearUserResponses(voteId: string, userId: string, session?: ClientSession): Promise<string[]> {
+    const existing = await this.responses.find({ voteId, userId }, { session }).toArray();
     if (existing.length === 0) return [];
 
     const options = existing.map((r) => r.chosenOption);
-    await this.responses.deleteMany({ voteId, userId });
+    await this.responses.deleteMany({ voteId, userId }, { session });
 
     // Décrémente les compteurs pour chaque option précédemment votée.
     for (const option of options) {
-      await this.votes.updateOne({ _id: voteId, "results.option": option }, { $inc: { "results.$.count": -1 } });
+      await this.votes.updateOne(
+        { _id: voteId, "results.option": option },
+        { $inc: { "results.$.count": -1 } },
+        { session },
+      );
     }
 
     return options;
