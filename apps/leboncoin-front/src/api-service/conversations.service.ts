@@ -36,7 +36,8 @@ export async function getMessages(
   filters: MessageQueryDto = {} as MessageQueryDto,
 ): Promise<MessageResponseDto[]> {
   const res = await api.get<PaginatedMessages>(`/conversations/${conversationId}/messages`, { params: filters });
-  return res.data.data;
+  // The API returns the most recent messages first; the thread reads oldest→newest top-to-bottom.
+  return res.data.data.slice().sort((a, b) => a.createdAt.localeCompare(b.createdAt));
 }
 
 // POST /conversations/:id/messages — send a text message
