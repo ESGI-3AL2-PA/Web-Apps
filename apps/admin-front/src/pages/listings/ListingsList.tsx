@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useAuth } from "@repo/hooks";
 import type { ListingResponseDto, ListingStatus, ListingType } from "@repo/contracts";
 import { useScopedList } from "../../hooks/useScopedList";
@@ -7,7 +7,7 @@ import { DataTable, type Column } from "../../components/DataTable";
 import { Pagination } from "../../components/Pagination";
 import { Toolbar } from "../../components/Toolbar";
 import { StatusBadge } from "../../components/StatusBadge";
-import { ShortId } from "../../components/ShortId";
+import { UserName } from "../../components/UserName";
 import { FormModal } from "../../components/FormModal";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { useToast } from "../../components/Toast";
@@ -33,7 +33,7 @@ export default function ListingsList() {
     { header: "Type", cell: (l) => <StatusBadge value={l.type} /> },
     { header: "Status", cell: (l) => <StatusBadge value={l.status} /> },
     { header: "Price", cell: (l) => formatTokens(l.price) },
-    { header: "Author", cell: (l) => <ShortId value={l.authorId} /> },
+    { header: "Author", cell: (l) => <UserName id={l.authorId} /> },
     { header: "Created", cell: (l) => formatDate(l.createdAt) },
   ];
 
@@ -88,7 +88,7 @@ export default function ListingsList() {
             <Info label="Type" value={viewing.type} />
             <Info label="Status" value={viewing.status} />
             <Info label="Price" value={formatTokens(viewing.price)} />
-            <Info label="Author" value={viewing.authorId} />
+            <Info label="Author" value={<UserName id={viewing.authorId} />} />
             <Info label="District" value={scope.districtName ?? viewing.districtId} />
             <Info label="Tags" value={viewing.tags?.join(", ") || "—"} />
             <Info label="Created" value={formatDate(viewing.createdAt)} />
@@ -123,7 +123,7 @@ export default function ListingsList() {
   );
 }
 
-function Info({ label, value }: { label: string; value: string }) {
+function Info({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div>
       <p className="text-xs text-base-content/50">{label}</p>

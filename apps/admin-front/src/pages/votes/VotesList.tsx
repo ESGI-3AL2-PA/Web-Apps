@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useAuth } from "@repo/hooks";
 import type { VoteResponseDto, VoteResultsResponseDto, VoteStatus } from "@repo/contracts";
 import { useScopedList } from "../../hooks/useScopedList";
@@ -7,6 +7,7 @@ import { DataTable, type Column } from "../../components/DataTable";
 import { Pagination } from "../../components/Pagination";
 import { Toolbar } from "../../components/Toolbar";
 import { StatusBadge } from "../../components/StatusBadge";
+import { UserName } from "../../components/UserName";
 import { FormModal } from "../../components/FormModal";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { useToast } from "../../components/Toast";
@@ -119,7 +120,7 @@ function VoteView({ vote, onClose }: { vote: VoteResponseDto; onClose: () => voi
         </div>
         <Info label="Type" value={vote.voteType} />
         <Info label="Status" value={vote.status} />
-        <Info label="Creator" value={vote.creatorId} />
+        <Info label="Creator" value={<UserName id={vote.creatorId} />} />
         <Info label="Districts" value={String(vote.districtIds.length)} />
         <Info label="Start" value={formatDate(vote.startDate)} />
         <Info label="End" value={formatDate(vote.endDate)} />
@@ -151,7 +152,7 @@ function VoteView({ vote, onClose }: { vote: VoteResponseDto; onClose: () => voi
   );
 }
 
-function Info({ label, value }: { label: string; value: string }) {
+function Info({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div>
       <p className="text-xs text-base-content/50">{label}</p>
