@@ -147,13 +147,6 @@ export default function Header() {
                 >
                   {t("header.myListings")}
                 </Link>
-                <Link
-                  to="/messages"
-                  onClick={() => setMenuOpen(false)}
-                  className="block px-4 py-2 text-sm text-neutral-700 hover:bg-[color:var(--color-brand-soft)]"
-                >
-                  {t("header.messages")}
-                </Link>
                 <button
                   onClick={() => {
                     setMenuOpen(false);
@@ -182,6 +175,14 @@ export default function Header() {
       {/* Row 2 — category bar (district tags) */}
       <div className="border-t border-neutral-100">
         <nav className="mx-auto flex max-w-6xl items-center gap-5 overflow-x-auto px-4 py-2 text-sm font-medium whitespace-nowrap text-neutral-700">
+          {/* Events / polls live in the icon nav on desktop; surface them here on mobile. */}
+          <Link to="/evenements" className="shrink-0 hover:text-[color:var(--color-brand)] md:hidden">
+            {t("header.events")}
+          </Link>
+          <Link to="/sondages" className="shrink-0 hover:text-[color:var(--color-brand)] md:hidden">
+            {t("header.polls")}
+          </Link>
+          <span className="h-4 w-px shrink-0 bg-neutral-200 md:hidden" aria-hidden />
           <Link to="/recherche" className="shrink-0 hover:text-[color:var(--color-brand)]">
             {t("header.allListings")}
           </Link>
