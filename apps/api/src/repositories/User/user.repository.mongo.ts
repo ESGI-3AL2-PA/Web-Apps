@@ -15,13 +15,19 @@ export class MongoUserRepository implements IUserRepository {
     await this.collection.createIndex({ districtId: 1 });
   }
 
-  async getUsers(params: { search?: string; districtId?: string; page?: number; limit?: number }): Promise<{
+  async getUsers(params: {
+    search?: string;
+    districtId?: string;
+    role?: string;
+    page?: number;
+    limit?: number;
+  }): Promise<{
     data: User[];
     total: number;
     page: number;
     limit: number;
   }> {
-    const { search, districtId, page = 1, limit = 10 } = params;
+    const { search, districtId, role, page = 1, limit = 10 } = params;
 
     const filter: Filter<Omit<User, "id"> & { _id: string }> = {};
     if (search) {
@@ -35,6 +41,7 @@ export class MongoUserRepository implements IUserRepository {
       ];
     }
     if (districtId) filter.districtId = districtId;
+    if (role) filter.role = role as User["role"];
 
     const [total, docs] = await Promise.all([
       this.collection.countDocuments(filter),

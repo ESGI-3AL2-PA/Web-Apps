@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useAuth } from "@repo/hooks";
 import type { EventResponseDto, EventStatus } from "@repo/contracts";
 import { useScopedList } from "../../hooks/useScopedList";
@@ -7,6 +7,7 @@ import { DataTable, type Column } from "../../components/DataTable";
 import { Pagination } from "../../components/Pagination";
 import { Toolbar } from "../../components/Toolbar";
 import { StatusBadge } from "../../components/StatusBadge";
+import { UserName } from "../../components/UserName";
 import { FormModal } from "../../components/FormModal";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { useToast } from "../../components/Toast";
@@ -77,7 +78,7 @@ export default function EventsList() {
           <div className="grid grid-cols-2 gap-3 text-sm">
             <Info label="Status" value={viewing.status} />
             <Info label="Location" value={viewing.location} />
-            <Info label="Creator" value={viewing.creatorId} />
+            <Info label="Creator" value={<UserName id={viewing.creatorId} />} />
             <Info label="District" value={scope.districtName ?? viewing.districtId} />
             <Info label="Seats" value={`${viewing.remainingSeats} / ${viewing.totalSeats}`} />
             <Info label="Registrants" value={String(viewing.registrants.length)} />
@@ -113,7 +114,7 @@ export default function EventsList() {
   );
 }
 
-function Info({ label, value }: { label: string; value: string }) {
+function Info({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div>
       <p className="text-xs text-base-content/50">{label}</p>

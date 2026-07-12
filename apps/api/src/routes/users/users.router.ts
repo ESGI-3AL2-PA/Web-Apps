@@ -18,12 +18,12 @@ const toDto = ({ passwordHash: _passwordHash, totpSecret: _totpSecret, ...rest }
 const s = initServer();
 
 export const usersRouter = s.router(usersContract, {
-  getUsers: async ({ query: { page, limit, search, districtId }, req }) => {
+  getUsers: async ({ query: { page, limit, search, districtId, role }, req }) => {
     const scope = resolveListDistrictScope(req.user!, districtId);
     if ("empty" in scope) {
       return { status: 200, body: { data: [], total: 0, page, limit } };
     }
-    const result = await getUsersUseCase(resolve("user"))({ search, districtId: scope.districtId, page, limit });
+    const result = await getUsersUseCase(resolve("user"))({ search, districtId: scope.districtId, role, page, limit });
     return { status: 200, body: { ...result, data: result.data.map(toDto) } };
   },
 

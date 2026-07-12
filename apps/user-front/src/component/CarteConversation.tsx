@@ -47,7 +47,7 @@ const CarteConversation = ({ conversation, active, unreadCount = 0, onClick }: C
     let cancelled = false;
     getUserPublic(oid)
       .then((u) => !cancelled && setOtherName(`${u.firstName} ${u.lastName}`))
-      .catch(() => !cancelled && setOtherName(oid.slice(0, 8)));
+      .catch(() => !cancelled && setOtherName("Utilisateur"));
     return () => {
       cancelled = true;
     };

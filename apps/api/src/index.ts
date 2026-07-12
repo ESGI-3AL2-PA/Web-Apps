@@ -24,6 +24,7 @@ import {
 
 import { usersRouter } from "./routes/users/users.router.js";
 import { userPublicHandler } from "./routes/users/users-public.handler.js";
+import { userSearchHandler } from "./routes/users/users-search.handler.js";
 import { listingsRouter } from "./routes/listings/listings.router.js";
 import { eventsRouter } from "./routes/events/events.router.js";
 import { contractsRouter } from "./routes/contracts/contracts.router.js";
@@ -165,6 +166,7 @@ app.post("/contracts/webhook", documensoWebhookHandler);
 // Everything below /health, /openapi.json and /docs requires a valid access token.
 // requireAuth verifies the JWT (iss/aud) and sets req.user.
 app.use(requireAuth);
+app.get("/users/public/search", userSearchHandler);
 app.get("/users/:id/public", userPublicHandler);
 app.post("/conversations/:id/messages/voice", voiceMessageHandler);
 app.get("/messages/:id/audio", audioStreamHandler);

@@ -11,6 +11,7 @@ import {
   UpdateIncidentDtoSchema,
   NotFoundErrorSchema,
   ForbiddenErrorSchema,
+  BadRequestErrorSchema,
   PaginatedResponseDtoSchema,
 } from "./DTO";
 import { auth } from "./auth-meta";
@@ -70,6 +71,7 @@ export const incidentsContract = c.router({
     body: UpdateIncidentDtoSchema,
     responses: {
       200: IncidentResponseDtoSchema,
+      400: BadRequestErrorSchema,
       403: ForbiddenErrorSchema,
       404: NotFoundErrorSchema,
     },

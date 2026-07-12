@@ -6,7 +6,8 @@ import { DataTable, type Column } from "../../components/DataTable";
 import { Pagination } from "../../components/Pagination";
 import { Toolbar } from "../../components/Toolbar";
 import { StatusBadge } from "../../components/StatusBadge";
-import { ShortId } from "../../components/ShortId";
+import { UserName } from "../../components/UserName";
+import { UserAutocomplete } from "../../components/UserAutocomplete";
 import { FormModal } from "../../components/FormModal";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { Field } from "../../components/Field";
@@ -28,7 +29,7 @@ export default function IncidentsList() {
     { header: "Category", cell: (i) => i.category },
     { header: "Description", cell: (i) => <span className="line-clamp-1 max-w-xs">{i.description}</span> },
     { header: "Status", cell: (i) => <StatusBadge value={i.status} /> },
-    { header: "Assigned", cell: (i) => <ShortId value={i.assignedTo} /> },
+    { header: "Assigned", cell: (i) => <UserName id={i.assignedTo} /> },
     { header: "Created", cell: (i) => formatDate(i.createdAt) },
   ];
 
@@ -182,7 +183,7 @@ function IncidentEdit({
         <div>
           <p className="text-xs text-base-content/50">Reporter</p>
           <p>
-            <ShortId value={incident.reporterId} />
+            <UserName id={incident.reporterId} />
           </p>
         </div>
         <div className="col-span-2">
@@ -201,8 +202,8 @@ function IncidentEdit({
             ))}
           </select>
         </Field>
-        <Field label="Assigned to (user ID)">
-          <input className="input" value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)} />
+        <Field label="Assigned to" hint="Only admins can be assigned.">
+          <UserAutocomplete value={assignedTo} onChange={setAssignedTo} role="admin" />
         </Field>
       </div>
       <Field label="History note" hint="Appended to the timeline on save.">
@@ -222,7 +223,7 @@ function IncidentEdit({
               </div>
               {h.note && <p className="text-sm mt-0.5">{h.note}</p>}
               <p className="text-xs text-base-content/50">
-                by <ShortId value={h.updatedBy} />
+                by <UserName id={h.updatedBy} />
               </p>
             </li>
           ))}
