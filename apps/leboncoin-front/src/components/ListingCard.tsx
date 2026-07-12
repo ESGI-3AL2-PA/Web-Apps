@@ -1,8 +1,10 @@
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import type { ListingResponseDto } from "@repo/contracts";
 import { formatPrice, formatRelative, placeholderColor, typeLabel } from "../lib/format";
 
 export default function ListingCard({ listing }: { listing: ListingResponseDto }) {
+  const { t } = useTranslation();
   const cover = listing.images?.[0];
 
   return (
@@ -33,7 +35,7 @@ export default function ListingCard({ listing }: { listing: ListingResponseDto }
         <span className="text-base font-bold text-neutral-900">{formatPrice(listing.price)}</span>
         <span className="line-clamp-2 text-sm text-neutral-700">{listing.title}</span>
         <div className="mt-auto flex items-center justify-between pt-1 text-[11px] text-neutral-400">
-          <span className="truncate">{listing.tags?.[0] ?? "Divers"}</span>
+          <span className="truncate">{listing.tags?.[0] ?? t("common.misc")}</span>
           <span className="shrink-0">{formatRelative(listing.createdAt)}</span>
         </div>
       </div>

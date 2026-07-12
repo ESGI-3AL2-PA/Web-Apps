@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@repo/hooks";
 import type { TagResponseDto } from "@repo/contracts";
 import { getTags } from "../api-service/tags.service";
@@ -53,6 +54,7 @@ function IconAction({ to, label, children }: { to: string; label: string; childr
 
 export default function Header() {
   const navigate = useNavigate();
+  const { t, i18n } = useTranslation();
   const { user, logout } = useAuth();
   const [q, setQ] = useState("");
   const [tags, setTags] = useState<TagResponseDto[]>([]);
@@ -84,15 +86,15 @@ export default function Header() {
       {/* Row 1 — logo · deposer · search · account actions */}
       <div className="mx-auto flex max-w-6xl items-center gap-4 px-4 py-2.5">
         <Link to="/" className="flex shrink-0 select-none items-center gap-2 text-xl font-extrabold tracking-tight">
-          <img src="/Logo-connectedNeighbours.png" alt="Connected NeighBours" className="h-9 w-9" />
-          <span className="hidden text-[color:var(--color-ink)] md:inline">Connected NeighBours</span>
+          <img src="/Logo-connectedNeighbours.png" alt={t("header.brand")} className="h-9 w-9" />
+          <span className="hidden text-[color:var(--color-ink)] md:inline">{t("header.brand")}</span>
         </Link>
 
         <Link
           to="/deposer"
           className="hidden shrink-0 rounded-lg bg-[color:var(--color-brand)] px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-[color:var(--color-brand-dark)] sm:inline-block"
         >
-          + Déposer une annonce
+          {t("header.deposit")}
         </Link>
 
         <form onSubmit={onSearch} className="min-w-0 flex-1">
@@ -100,12 +102,12 @@ export default function Header() {
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="Rechercher sur Connected NeighBours"
+              placeholder={t("header.searchPlaceholder")}
               className="h-9 min-w-0 flex-1 bg-transparent px-3 text-sm outline-none placeholder:text-neutral-500"
             />
             <button
               type="submit"
-              aria-label="Rechercher"
+              aria-label={t("header.search")}
               className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-[color:var(--color-brand)] text-white hover:bg-[color:var(--color-brand-dark)]"
             >
               <SearchIcon />
@@ -114,13 +116,13 @@ export default function Header() {
         </form>
 
         <nav className="hidden shrink-0 items-center gap-1 md:flex">
-          <IconAction to="/evenements" label="Événements">
+          <IconAction to="/evenements" label={t("header.events")}>
             <CalendarIcon />
           </IconAction>
-          <IconAction to="/sondages" label="Sondages">
+          <IconAction to="/sondages" label={t("header.polls")}>
             <PollIcon />
           </IconAction>
-          <IconAction to="/messages" label="Messages">
+          <IconAction to="/messages" label={t("header.messages")}>
             <ChatIcon />
           </IconAction>
 
@@ -132,7 +134,9 @@ export default function Header() {
               <span className="flex h-[22px] w-[22px] items-center justify-center rounded-full bg-[color:var(--color-brand)] text-xs font-bold text-white">
                 {user?.firstName?.charAt(0) ?? "?"}
               </span>
-              <span className="max-w-[70px] truncate text-xs font-medium">{user?.firstName ?? "Compte"}</span>
+              <span className="max-w-[70px] truncate text-xs font-medium">
+                {user?.firstName ?? t("header.account")}
+              </span>
             </button>
             {menuOpen && (
               <div className="absolute right-0 mt-2 w-48 overflow-hidden rounded-lg border border-neutral-200 bg-white py-1 shadow-lg">
@@ -141,14 +145,14 @@ export default function Header() {
                   onClick={() => setMenuOpen(false)}
                   className="block px-4 py-2 text-sm text-neutral-700 hover:bg-[color:var(--color-brand-soft)]"
                 >
-                  Mes annonces
+                  {t("header.myListings")}
                 </Link>
                 <Link
                   to="/messages"
                   onClick={() => setMenuOpen(false)}
                   className="block px-4 py-2 text-sm text-neutral-700 hover:bg-[color:var(--color-brand-soft)]"
                 >
-                  Messages
+                  {t("header.messages")}
                 </Link>
                 <button
                   onClick={() => {
@@ -157,11 +161,21 @@ export default function Header() {
                   }}
                   className="block w-full px-4 py-2 text-left text-sm text-neutral-700 hover:bg-[color:var(--color-brand-soft)]"
                 >
-                  Déconnexion
+                  {t("header.logout")}
                 </button>
               </div>
             )}
           </div>
+
+          <select
+            value={i18n.resolvedLanguage}
+            onChange={(e) => i18n.changeLanguage(e.target.value)}
+            aria-label={t("common.language")}
+            className="ml-1 rounded-md border border-neutral-300 bg-white px-1.5 py-1 text-xs font-semibold text-neutral-600"
+          >
+            <option value="fr">FR</option>
+            <option value="en">EN</option>
+          </select>
         </nav>
       </div>
 
@@ -169,7 +183,7 @@ export default function Header() {
       <div className="border-t border-neutral-100">
         <nav className="mx-auto flex max-w-6xl items-center gap-5 overflow-x-auto px-4 py-2 text-sm font-medium whitespace-nowrap text-neutral-700">
           <Link to="/recherche" className="shrink-0 hover:text-[color:var(--color-brand)]">
-            Toutes les annonces
+            {t("header.allListings")}
           </Link>
           {tags.map((tag) => (
             <Link

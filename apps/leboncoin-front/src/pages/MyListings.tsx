@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@repo/hooks";
 import type { ListingResponseDto } from "@repo/contracts";
 import { deleteListing, getListings } from "../api-service/listings.service";
 import { formatPrice, formatRelative, typeLabel } from "../lib/format";
 
 export default function MyListings() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const [listings, setListings] = useState<ListingResponseDto[]>([]);
   const [loading, setLoading] = useState(true);
@@ -22,27 +24,27 @@ export default function MyListings() {
   useEffect(load, [load]);
 
   const onDelete = async (id: string) => {
-    if (!confirm("Supprimer cette annonce ?")) return;
-    await deleteListing(id).catch(() => alert("Suppression impossible."));
+    if (!confirm(t("myListings.confirmDelete"))) return;
+    await deleteListing(id).catch(() => alert(t("myListings.deleteError")));
     setListings((prev) => prev.filter((l) => l.id !== id));
   };
 
   return (
     <div>
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-extrabold text-neutral-900">Mes annonces</h1>
+        <h1 className="text-2xl font-extrabold text-neutral-900">{t("myListings.title")}</h1>
         <Link
           to="/deposer"
           className="rounded-lg bg-[color:var(--color-brand)] px-4 py-2 font-semibold text-white hover:bg-[color:var(--color-brand-dark)]"
         >
-          + Déposer
+          {t("myListings.deposit")}
         </Link>
       </div>
 
       {loading ? (
-        <p className="text-neutral-500">Chargement…</p>
+        <p className="text-neutral-500">{t("common.loading")}</p>
       ) : listings.length === 0 ? (
-        <p className="text-neutral-500">Vous n'avez pas encore d'annonce.</p>
+        <p className="text-neutral-500">{t("myListings.empty")}</p>
       ) : (
         <ul className="space-y-3">
           {listings.map((l) => (
@@ -65,7 +67,7 @@ export default function MyListings() {
                 onClick={() => onDelete(l.id)}
                 className="rounded-lg border border-red-200 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50"
               >
-                Supprimer
+                {t("myListings.delete")}
               </button>
             </li>
           ))}

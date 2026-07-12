@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import type { CreateListingDto, TagResponseDto } from "@repo/contracts";
 import { createListing } from "../api-service/listings.service";
 import { getTags } from "../api-service/tags.service";
@@ -7,6 +8,7 @@ import { uploadImages } from "../api-service/uploads.service";
 
 export default function PostListing() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [tags, setTags] = useState<TagResponseDto[]>([]);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -48,7 +50,7 @@ export default function PostListing() {
       const created = await createListing(body);
       navigate(`/annonce/${created.id}`);
     } catch {
-      setError("La publication a échoué. Vérifiez les champs et réessayez.");
+      setError(t("post.error"));
     } finally {
       setSubmitting(false);
     }
@@ -59,30 +61,30 @@ export default function PostListing() {
 
   return (
     <div className="mx-auto max-w-2xl">
-      <h1 className="mb-6 text-2xl font-extrabold text-neutral-900">Déposer une annonce</h1>
+      <h1 className="mb-6 text-2xl font-extrabold text-neutral-900">{t("post.title")}</h1>
       <form onSubmit={onSubmit} className="space-y-5 rounded-xl border border-neutral-200 bg-white p-6">
         <div>
-          <label className="mb-1 block text-sm font-semibold text-neutral-700">Titre</label>
+          <label className="mb-1 block text-sm font-semibold text-neutral-700">{t("post.fieldTitle")}</label>
           <input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             required
             maxLength={300}
             className={field}
-            placeholder="Ex. Vélo de ville en bon état"
+            placeholder={t("post.titlePlaceholder")}
           />
         </div>
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="mb-1 block text-sm font-semibold text-neutral-700">Type</label>
+            <label className="mb-1 block text-sm font-semibold text-neutral-700">{t("post.type")}</label>
             <select value={type} onChange={(e) => setType(e.target.value as "offer" | "request")} className={field}>
-              <option value="offer">Offre</option>
-              <option value="request">Demande</option>
+              <option value="offer">{t("type.offer")}</option>
+              <option value="request">{t("type.request")}</option>
             </select>
           </div>
           <div>
-            <label className="mb-1 block text-sm font-semibold text-neutral-700">Prix (points)</label>
+            <label className="mb-1 block text-sm font-semibold text-neutral-700">{t("post.pricePoints")}</label>
             <input
               value={price}
               onChange={(e) => setPrice(e.target.value)}
@@ -96,9 +98,9 @@ export default function PostListing() {
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-semibold text-neutral-700">Catégorie</label>
+          <label className="mb-1 block text-sm font-semibold text-neutral-700">{t("post.category")}</label>
           <select value={tag} onChange={(e) => setTag(e.target.value)} className={field}>
-            <option value="">— Choisir une catégorie —</option>
+            <option value="">{t("post.chooseCategory")}</option>
             {tags.map((t) => (
               <option key={t.id} value={t.name}>
                 {t.name}
@@ -108,19 +110,19 @@ export default function PostListing() {
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-semibold text-neutral-700">Description</label>
+          <label className="mb-1 block text-sm font-semibold text-neutral-700">{t("post.description")}</label>
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             required
             rows={5}
             className={field}
-            placeholder="Décrivez votre annonce…"
+            placeholder={t("post.descriptionPlaceholder")}
           />
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-semibold text-neutral-700">Photos (max 8)</label>
+          <label className="mb-1 block text-sm font-semibold text-neutral-700">{t("post.photos")}</label>
           <input type="file" accept="image/*" multiple onChange={(e) => onFiles(e.target.files)} className="text-sm" />
           {previews.length > 0 && (
             <div className="mt-3 flex flex-wrap gap-2">
@@ -143,7 +145,7 @@ export default function PostListing() {
           disabled={submitting}
           className="w-full rounded-lg bg-[color:var(--color-brand)] py-3 font-semibold text-white hover:bg-[color:var(--color-brand-dark)] disabled:opacity-60"
         >
-          {submitting ? "Publication…" : "Publier l'annonce"}
+          {submitting ? t("post.submitting") : t("post.submit")}
         </button>
       </form>
     </div>

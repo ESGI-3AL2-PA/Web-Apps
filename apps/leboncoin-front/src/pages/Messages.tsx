@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@repo/hooks";
 import type { ConversationResponseDto, MessageResponseDto } from "@repo/contracts";
 import { getConversations, getMessages, sendMessage } from "../api-service/conversations.service";
@@ -10,6 +11,7 @@ import { formatRelative } from "../lib/format";
 export default function Messages() {
   const { conversationId } = useParams();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const { user } = useAuth();
   const { socket } = useSocket();
   const [conversations, setConversations] = useState<ConversationResponseDto[]>([]);
@@ -87,9 +89,9 @@ export default function Messages() {
     <div className="grid h-[70vh] grid-cols-1 gap-4 md:grid-cols-[280px_1fr]">
       {/* Conversation list */}
       <aside className="overflow-y-auto rounded-xl border border-neutral-200 bg-white">
-        <h2 className="border-b border-neutral-100 p-4 text-lg font-bold text-neutral-900">Messages</h2>
+        <h2 className="border-b border-neutral-100 p-4 text-lg font-bold text-neutral-900">{t("messages.title")}</h2>
         {conversations.length === 0 ? (
-          <p className="p-4 text-sm text-neutral-500">Aucune conversation.</p>
+          <p className="p-4 text-sm text-neutral-500">{t("messages.noConversations")}</p>
         ) : (
           <ul>
             {conversations.map((c) => (
@@ -103,7 +105,9 @@ export default function Messages() {
                   <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[color:var(--color-brand-soft)] text-sm font-bold text-[color:var(--color-brand-dark)]">
                     {(names[c.id] ?? "?").charAt(0)}
                   </div>
-                  <span className="truncate text-sm font-medium text-neutral-800">{names[c.id] ?? "Conversation"}</span>
+                  <span className="truncate text-sm font-medium text-neutral-800">
+                    {names[c.id] ?? t("messages.conversation")}
+                  </span>
                 </button>
               </li>
             ))}
@@ -114,7 +118,7 @@ export default function Messages() {
       {/* Thread */}
       <section className="flex flex-col overflow-hidden rounded-xl border border-neutral-200 bg-white">
         {!conversationId ? (
-          <div className="flex flex-1 items-center justify-center text-neutral-400">Sélectionnez une conversation</div>
+          <div className="flex flex-1 items-center justify-center text-neutral-400">{t("messages.select")}</div>
         ) : (
           <>
             <div className="flex-1 space-y-2 overflow-y-auto p-4">
@@ -141,14 +145,14 @@ export default function Messages() {
               <input
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
-                placeholder="Votre message…"
+                placeholder={t("messages.placeholder")}
                 className="h-10 flex-1 rounded-lg border border-neutral-300 px-3 text-sm outline-none focus:border-[color:var(--color-brand)]"
               />
               <button
                 type="submit"
                 className="rounded-lg bg-[color:var(--color-brand)] px-4 text-sm font-semibold text-white hover:bg-[color:var(--color-brand-dark)]"
               >
-                Envoyer
+                {t("messages.send")}
               </button>
             </form>
           </>

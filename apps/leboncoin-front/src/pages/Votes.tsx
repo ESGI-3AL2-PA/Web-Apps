@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { VoteResponseDto } from "@repo/contracts";
 import { getVotes, submitVote } from "../api-service/votes.service";
 
 function PollResults({ vote }: { vote: VoteResponseDto }) {
+  const { t } = useTranslation();
   const total = vote.totalResponses ?? vote.results.reduce((s, r) => s + r.count, 0);
   return (
     <div className="mt-3 space-y-2">
@@ -23,12 +25,13 @@ function PollResults({ vote }: { vote: VoteResponseDto }) {
           </div>
         );
       })}
-      <p className="pt-1 text-xs text-neutral-400">{total} réponse(s)</p>
+      <p className="pt-1 text-xs text-neutral-400">{t("votes.responses", { count: total })}</p>
     </div>
   );
 }
 
 function PollCard({ vote, onVoted }: { vote: VoteResponseDto; onVoted: (v: VoteResponseDto) => void }) {
+  const { t } = useTranslation();
   const [selected, setSelected] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const voted = vote.userHasVoted || vote.status === "closed";
@@ -41,7 +44,7 @@ function PollCard({ vote, onVoted }: { vote: VoteResponseDto; onVoted: (v: VoteR
       const updated = await submitVote(vote.id, multi ? { chosenOptions: options } : { chosenOption: options[0] });
       onVoted(updated);
     } catch {
-      alert("Vote impossible (sondage fermé ou déjà voté).");
+      alert(t("votes.error"));
     } finally {
       setBusy(false);
     }
@@ -51,9 +54,9 @@ function PollCard({ vote, onVoted }: { vote: VoteResponseDto; onVoted: (v: VoteR
     <article className="rounded-xl border border-neutral-200 bg-white p-5">
       <div className="mb-1 flex items-center gap-2">
         <span className="rounded-full bg-[color:var(--color-brand-soft)] px-2.5 py-0.5 text-xs font-semibold text-[color:var(--color-brand-dark)]">
-          {vote.status === "closed" ? "Clôturé" : "Ouvert"}
+          {vote.status === "closed" ? t("votes.closed") : t("votes.open")}
         </span>
-        {multi && <span className="text-xs text-neutral-400">choix multiple</span>}
+        {multi && <span className="text-xs text-neutral-400">{t("votes.multipleChoice")}</span>}
       </div>
       <h2 className="text-lg font-bold text-neutral-900">{vote.question}</h2>
 
@@ -78,7 +81,7 @@ function PollCard({ vote, onVoted }: { vote: VoteResponseDto; onVoted: (v: VoteR
             disabled={busy || selected.length === 0}
             className="mt-1 rounded-lg bg-[color:var(--color-brand)] px-4 py-2 text-sm font-semibold text-white hover:bg-[color:var(--color-brand-dark)] disabled:opacity-50"
           >
-            Voter
+            {t("votes.vote")}
           </button>
         </div>
       ) : (
@@ -100,6 +103,7 @@ function PollCard({ vote, onVoted }: { vote: VoteResponseDto; onVoted: (v: VoteR
 }
 
 export default function Votes() {
+  const { t } = useTranslation();
   const [votes, setVotes] = useState<VoteResponseDto[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -119,14 +123,14 @@ export default function Votes() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-extrabold text-neutral-900">Sondages du quartier</h1>
-        <p className="text-neutral-500">Donnez votre avis sur la vie de votre quartier.</p>
+        <h1 className="text-2xl font-extrabold text-neutral-900">{t("votes.title")}</h1>
+        <p className="text-neutral-500">{t("votes.subtitle")}</p>
       </div>
 
       {loading ? (
-        <p className="text-neutral-500">Chargement…</p>
+        <p className="text-neutral-500">{t("common.loading")}</p>
       ) : votes.length === 0 ? (
-        <p className="text-neutral-500">Aucun sondage en cours.</p>
+        <p className="text-neutral-500">{t("votes.empty")}</p>
       ) : (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {votes.map((v) => (

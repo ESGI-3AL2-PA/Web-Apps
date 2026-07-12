@@ -1,0 +1,126 @@
+{
+  "common": {
+    "loading": "Chargement…",
+    "language": "Langue",
+    "misc": "Divers"
+  },
+  "relative": {
+    "now": "à l'instant",
+    "minutes": "il y a {{count}} min",
+    "hours": "il y a {{count}} h",
+    "days": "il y a {{count}} j"
+  },
+  "type": {
+    "offer": "Offre",
+    "request": "Demande",
+    "offers": "Offres",
+    "requests": "Demandes",
+    "all": "Tout"
+  },
+  "header": {
+    "brand": "Connected NeighBours",
+    "deposit": "+ Déposer une annonce",
+    "searchPlaceholder": "Rechercher sur Connected NeighBours",
+    "search": "Rechercher",
+    "events": "Événements",
+    "polls": "Sondages",
+    "messages": "Messages",
+    "account": "Compte",
+    "myListings": "Mes annonces",
+    "logout": "Déconnexion",
+    "allListings": "Toutes les annonces"
+  },
+  "home": {
+    "categories": "Catégories",
+    "upcomingEvents": "Événements à venir",
+    "seeAll": "Tout voir",
+    "noEvents": "Aucun événement prévu.",
+    "neighbourhoodPolls": "Sondages du quartier",
+    "participate": "Participer",
+    "noPolls": "Aucun sondage en cours.",
+    "recentListings": "Annonces récentes",
+    "empty": "Aucune annonce pour le moment. Soyez le premier à en déposer une !"
+  },
+  "search": {
+    "type": "Type",
+    "category": "Catégorie",
+    "allCategories": "Toutes",
+    "allListings": "Toutes les annonces",
+    "results_one": "{{count}} résultat",
+    "results_other": "{{count}} résultats",
+    "empty": "Aucune annonce ne correspond à votre recherche."
+  },
+  "detail": {
+    "back": "← Retour aux annonces",
+    "publishedOn": "Publiée le {{date}}",
+    "contactSeller": "Contacter le vendeur",
+    "contacting": "…",
+    "contactError": "Impossible de contacter le vendeur pour le moment.",
+    "manageListing": "Gérer mon annonce",
+    "notFound": "Annonce introuvable.",
+    "seller": "Vendeur",
+    "description": "Description"
+  },
+  "post": {
+    "title": "Déposer une annonce",
+    "fieldTitle": "Titre",
+    "titlePlaceholder": "Ex. Vélo de ville en bon état",
+    "type": "Type",
+    "pricePoints": "Prix (points)",
+    "category": "Catégorie",
+    "chooseCategory": "— Choisir une catégorie —",
+    "description": "Description",
+    "descriptionPlaceholder": "Décrivez votre annonce…",
+    "photos": "Photos (max 8)",
+    "error": "La publication a échoué. Vérifiez les champs et réessayez.",
+    "submit": "Publier l'annonce",
+    "submitting": "Publication…"
+  },
+  "myListings": {
+    "title": "Mes annonces",
+    "deposit": "+ Déposer",
+    "empty": "Vous n'avez pas encore d'annonce.",
+    "delete": "Supprimer",
+    "confirmDelete": "Supprimer cette annonce ?",
+    "deleteError": "Suppression impossible."
+  },
+  "messages": {
+    "title": "Messages",
+    "noConversations": "Aucune conversation.",
+    "conversation": "Conversation",
+    "select": "Sélectionnez une conversation",
+    "placeholder": "Votre message…",
+    "send": "Envoyer"
+  },
+  "events": {
+    "title": "Événements du quartier",
+    "subtitle": "Rencontrez vos voisins et participez à la vie locale.",
+    "empty": "Aucun événement prévu pour le moment.",
+    "seats_one": "{{count}} place",
+    "seats_other": "{{count}} places",
+    "actionError": "Action impossible (plus de place ou événement fermé).",
+    "status": {
+      "upcoming": "À venir",
+      "ongoing": "En cours",
+      "completed": "Terminé",
+      "cancelled": "Annulé"
+    },
+    "finished": "Terminé",
+    "full": "Complet",
+    "unregister": "Se désinscrire",
+    "participate": "Participer"
+  },
+  "votes": {
+    "title": "Sondages du quartier",
+    "subtitle": "Donnez votre avis sur la vie de votre quartier.",
+    "empty": "Aucun sondage en cours.",
+    "closed": "Clôturé",
+    "open": "Ouvert",
+    "multipleChoice": "choix multiple",
+    "vote": "Voter",
+    "error": "Vote impossible (sondage fermé ou déjà voté).",
+    "responses_one": "{{count}} réponse",
+    "responses_other": "{{count}} réponses"
+  },
+  "footer": "Connected NeighBours — petites annonces entre voisins · les prix sont exprimés en points (tokens)"
+}

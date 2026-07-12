@@ -1,0 +1,126 @@
+{
+  "common": {
+    "loading": "Loading…",
+    "language": "Language",
+    "misc": "Misc"
+  },
+  "relative": {
+    "now": "just now",
+    "minutes": "{{count}} min ago",
+    "hours": "{{count}} h ago",
+    "days": "{{count}} d ago"
+  },
+  "type": {
+    "offer": "Offer",
+    "request": "Request",
+    "offers": "Offers",
+    "requests": "Requests",
+    "all": "All"
+  },
+  "header": {
+    "brand": "Connected NeighBours",
+    "deposit": "+ Post an ad",
+    "searchPlaceholder": "Search on Connected NeighBours",
+    "search": "Search",
+    "events": "Events",
+    "polls": "Polls",
+    "messages": "Messages",
+    "account": "Account",
+    "myListings": "My ads",
+    "logout": "Log out",
+    "allListings": "All ads"
+  },
+  "home": {
+    "categories": "Categories",
+    "upcomingEvents": "Upcoming events",
+    "seeAll": "See all",
+    "noEvents": "No upcoming events.",
+    "neighbourhoodPolls": "Neighbourhood polls",
+    "participate": "Take part",
+    "noPolls": "No open polls.",
+    "recentListings": "Recent ads",
+    "empty": "No ads yet. Be the first to post one!"
+  },
+  "search": {
+    "type": "Type",
+    "category": "Category",
+    "allCategories": "All",
+    "allListings": "All ads",
+    "results_one": "{{count}} result",
+    "results_other": "{{count}} results",
+    "empty": "No ad matches your search."
+  },
+  "detail": {
+    "back": "← Back to ads",
+    "publishedOn": "Posted on {{date}}",
+    "contactSeller": "Contact the seller",
+    "contacting": "…",
+    "contactError": "Unable to contact the seller right now.",
+    "manageListing": "Manage my ad",
+    "notFound": "Ad not found.",
+    "seller": "Seller",
+    "description": "Description"
+  },
+  "post": {
+    "title": "Post an ad",
+    "fieldTitle": "Title",
+    "titlePlaceholder": "e.g. City bike in good condition",
+    "type": "Type",
+    "pricePoints": "Price (points)",
+    "category": "Category",
+    "chooseCategory": "— Choose a category —",
+    "description": "Description",
+    "descriptionPlaceholder": "Describe your ad…",
+    "photos": "Photos (max 8)",
+    "error": "Posting failed. Check the fields and try again.",
+    "submit": "Publish the ad",
+    "submitting": "Publishing…"
+  },
+  "myListings": {
+    "title": "My ads",
+    "deposit": "+ Post",
+    "empty": "You don't have any ads yet.",
+    "delete": "Delete",
+    "confirmDelete": "Delete this ad?",
+    "deleteError": "Could not delete."
+  },
+  "messages": {
+    "title": "Messages",
+    "noConversations": "No conversations.",
+    "conversation": "Conversation",
+    "select": "Select a conversation",
+    "placeholder": "Your message…",
+    "send": "Send"
+  },
+  "events": {
+    "title": "Neighbourhood events",
+    "subtitle": "Meet your neighbours and take part in local life.",
+    "empty": "No events planned yet.",
+    "seats_one": "{{count}} seat",
+    "seats_other": "{{count}} seats",
+    "actionError": "Action failed (no seats left or event closed).",
+    "status": {
+      "upcoming": "Upcoming",
+      "ongoing": "Ongoing",
+      "completed": "Completed",
+      "cancelled": "Cancelled"
+    },
+    "finished": "Finished",
+    "full": "Full",
+    "unregister": "Cancel registration",
+    "participate": "Take part"
+  },
+  "votes": {
+    "title": "Neighbourhood polls",
+    "subtitle": "Share your opinion on life in your neighbourhood.",
+    "empty": "No open polls.",
+    "closed": "Closed",
+    "open": "Open",
+    "multipleChoice": "multiple choice",
+    "vote": "Vote",
+    "error": "Vote failed (poll closed or already voted).",
+    "responses_one": "{{count}} response",
+    "responses_other": "{{count}} responses"
+  },
+  "footer": "Connected NeighBours — neighbourhood classifieds · prices are shown in points (tokens)"
+}

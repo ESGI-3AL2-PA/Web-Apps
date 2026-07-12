@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import type { ListingQueryDto, ListingResponseDto, TagResponseDto } from "@repo/contracts";
 import { getListings } from "../api-service/listings.service";
 import { getTags } from "../api-service/tags.service";
 import ListingCard from "../components/ListingCard";
 
 export default function Search() {
+  const { t } = useTranslation();
   const [params, setParams] = useSearchParams();
   const [listings, setListings] = useState<ListingResponseDto[]>([]);
   const [total, setTotal] = useState(0);
@@ -56,12 +58,12 @@ export default function Search() {
     <div className="grid grid-cols-1 gap-6 md:grid-cols-[220px_1fr]">
       <aside className="space-y-6">
         <div>
-          <h3 className="mb-2 text-sm font-bold uppercase tracking-wide text-neutral-500">Type</h3>
+          <h3 className="mb-2 text-sm font-bold uppercase tracking-wide text-neutral-500">{t("search.type")}</h3>
           <div className="flex flex-col gap-1 text-sm">
             {[
-              { v: "", label: "Tout" },
-              { v: "offer", label: "Offres" },
-              { v: "request", label: "Demandes" },
+              { v: "", label: t("type.all") },
+              { v: "offer", label: t("type.offers") },
+              { v: "request", label: t("type.requests") },
             ].map((o) => (
               <button
                 key={o.v}
@@ -78,13 +80,13 @@ export default function Search() {
           </div>
         </div>
         <div>
-          <h3 className="mb-2 text-sm font-bold uppercase tracking-wide text-neutral-500">Catégorie</h3>
+          <h3 className="mb-2 text-sm font-bold uppercase tracking-wide text-neutral-500">{t("search.category")}</h3>
           <div className="flex flex-col gap-1 text-sm">
             <button
               onClick={() => setFilter("tag", "")}
               className={`rounded px-2 py-1 text-left ${!tag ? "bg-[color:var(--color-brand-soft)] font-semibold text-[color:var(--color-brand-dark)]" : "hover:bg-neutral-100"}`}
             >
-              Toutes
+              {t("search.allCategories")}
             </button>
             {tags.map((t) => (
               <button
@@ -105,15 +107,13 @@ export default function Search() {
 
       <section>
         <div className="mb-4 flex items-baseline justify-between">
-          <h1 className="text-xl font-bold text-neutral-900">{search ? `« ${search} »` : "Toutes les annonces"}</h1>
-          <span className="text-sm text-neutral-500">
-            {total} résultat{total > 1 ? "s" : ""}
-          </span>
+          <h1 className="text-xl font-bold text-neutral-900">{search ? `« ${search} »` : t("search.allListings")}</h1>
+          <span className="text-sm text-neutral-500">{t("search.results", { count: total })}</span>
         </div>
         {loading ? (
-          <p className="text-neutral-500">Chargement…</p>
+          <p className="text-neutral-500">{t("common.loading")}</p>
         ) : listings.length === 0 ? (
-          <p className="text-neutral-500">Aucune annonce ne correspond à votre recherche.</p>
+          <p className="text-neutral-500">{t("search.empty")}</p>
         ) : (
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
             {listings.map((l) => (

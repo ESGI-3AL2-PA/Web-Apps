@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import type { EventResponseDto, ListingResponseDto, TagResponseDto, VoteResponseDto } from "@repo/contracts";
 import { getListings } from "../api-service/listings.service";
 import { getTags } from "../api-service/tags.service";
@@ -10,6 +11,7 @@ import { formatDateTime } from "../lib/format";
 
 export default function Home() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [listings, setListings] = useState<ListingResponseDto[]>([]);
   const [tags, setTags] = useState<TagResponseDto[]>([]);
   const [events, setEvents] = useState<EventResponseDto[]>([]);
@@ -37,7 +39,7 @@ export default function Home() {
     <div className="space-y-8">
       {tags.length > 0 && (
         <section>
-          <h2 className="mb-3 text-lg font-bold text-neutral-900">Catégories</h2>
+          <h2 className="mb-3 text-lg font-bold text-neutral-900">{t("home.categories")}</h2>
           <div className="flex flex-wrap gap-2">
             {tags.map((tag) => (
               <button
@@ -57,13 +59,13 @@ export default function Home() {
           {/* Événements à venir */}
           <div className="rounded-xl border border-neutral-200 bg-white p-5">
             <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-lg font-bold text-neutral-900">Événements à venir</h2>
+              <h2 className="text-lg font-bold text-neutral-900">{t("home.upcomingEvents")}</h2>
               <Link to="/evenements" className="text-sm font-medium text-[color:var(--color-brand)] hover:underline">
-                Tout voir
+                {t("home.seeAll")}
               </Link>
             </div>
             {events.length === 0 ? (
-              <p className="text-sm text-neutral-500">Aucun événement prévu.</p>
+              <p className="text-sm text-neutral-500">{t("home.noEvents")}</p>
             ) : (
               <ul className="space-y-2">
                 {events.map((ev) => (
@@ -87,13 +89,13 @@ export default function Home() {
           {/* Sondages du quartier */}
           <div className="rounded-xl border border-neutral-200 bg-white p-5">
             <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-lg font-bold text-neutral-900">Sondages du quartier</h2>
+              <h2 className="text-lg font-bold text-neutral-900">{t("home.neighbourhoodPolls")}</h2>
               <Link to="/sondages" className="text-sm font-medium text-[color:var(--color-brand)] hover:underline">
-                Participer
+                {t("home.participate")}
               </Link>
             </div>
             {votes.length === 0 ? (
-              <p className="text-sm text-neutral-500">Aucun sondage en cours.</p>
+              <p className="text-sm text-neutral-500">{t("home.noPolls")}</p>
             ) : (
               <ul className="space-y-2">
                 {votes.map((v) => (
@@ -115,15 +117,15 @@ export default function Home() {
 
       <section>
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-lg font-bold text-neutral-900">Annonces récentes</h2>
+          <h2 className="text-lg font-bold text-neutral-900">{t("home.recentListings")}</h2>
           <Link to="/recherche" className="text-sm font-medium text-[color:var(--color-brand)] hover:underline">
-            Tout voir
+            {t("home.seeAll")}
           </Link>
         </div>
         {loading ? (
-          <p className="text-neutral-500">Chargement…</p>
+          <p className="text-neutral-500">{t("common.loading")}</p>
         ) : listings.length === 0 ? (
-          <p className="text-neutral-500">Aucune annonce pour le moment. Soyez le premier à en déposer une !</p>
+          <p className="text-neutral-500">{t("home.empty")}</p>
         ) : (
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
             {listings.map((l) => (
