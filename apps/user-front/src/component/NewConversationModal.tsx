@@ -1,29 +1,28 @@
 import { useState } from "react";
 import { useAuth } from "@repo/hooks";
 import { createConversation } from "../api-service/conversations.service";
+import type { UserPublic } from "../api-service/users.service";
+import UserAutocomplete from "./UserAutocomplete";
 
 type NewConversationModalProps = {
   onClose: () => void;
   onCreated: (conversationId: string) => void;
 };
 
-// On demande à l'user de saisir directement l'ID de l'autre participant.
-// (Une vraie recherche user nécessiterait un endpoint /users/search côté backend.)
 const NewConversationModal = ({ onClose, onCreated }: NewConversationModalProps) => {
   const { user } = useAuth();
-  const [participantId, setParticipantId] = useState<string>("");
+  const [target, setTarget] = useState<UserPublic | null>(null);
   const [busy, setBusy] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user?.id) return;
-    const target = participantId.trim();
     if (!target) {
-      setError("Saisis un ID utilisateur");
+      setError("Choisis un voisin");
       return;
     }
-    if (target === user.id) {
+    if (target.id === user.id) {
       setError("Tu ne peux pas démarrer une conversation avec toi-même");
       return;
     }
@@ -31,7 +30,7 @@ const NewConversationModal = ({ onClose, onCreated }: NewConversationModalProps)
     setError(null);
     try {
       const created = await createConversation({
-        participants: [user.id, target],
+        participants: [user.id, target.id],
         type: "direct",
       });
       onCreated(created.id);
@@ -90,25 +89,9 @@ const NewConversationModal = ({ onClose, onCreated }: NewConversationModalProps)
             htmlFor="new-conversation-participant"
             style={{ fontSize: 13, color: "#374151", display: "block", marginBottom: 6 }}
           >
-            ID de l&apos;utilisateur à contacter :
+            Voisin à contacter :
           </label>
-          <input
-            id="new-conversation-participant"
-            type="text"
-            value={participantId}
-            onChange={(e) => setParticipantId(e.target.value)}
-            placeholder="seed-user-alice"
-            style={{
-              width: "100%",
-              padding: 8,
-              border: "1px solid #d1d5db",
-              borderRadius: 6,
-              fontSize: 14,
-            }}
-          />
-          <p style={{ fontSize: 11, color: "#888", marginTop: 6 }}>
-            Astuce dev : essaie <code>seed-user-alice</code>, <code>seed-user-bob</code>, etc.
-          </p>
+          <UserAutocomplete id="new-conversation-participant" selected={target} onSelect={setTarget} autoFocus />
           {error && <p style={{ color: "red", fontSize: 13, marginTop: 8 }}>{error}</p>}
           <div style={{ display: "flex", gap: 8, marginTop: 16, justifyContent: "flex-end" }}>
             <button

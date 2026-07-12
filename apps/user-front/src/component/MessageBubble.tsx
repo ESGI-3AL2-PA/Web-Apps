@@ -26,7 +26,7 @@ const MessageBubble = ({ message, isMine, showSender }: MessageBubbleProps) => {
     let cancelled = false;
     getUserPublic(message.senderId)
       .then((u) => !cancelled && setSenderName(`${u.firstName} ${u.lastName}`))
-      .catch(() => !cancelled && setSenderName(message.senderId.slice(0, 8)));
+      .catch(() => !cancelled && setSenderName("Utilisateur"));
     return () => {
       cancelled = true;
     };

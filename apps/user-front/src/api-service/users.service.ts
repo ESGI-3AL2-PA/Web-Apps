@@ -37,6 +37,12 @@ export async function getUserPublic(id: string): Promise<UserPublic> {
   return p;
 }
 
+// GET /users/public/search?q= — recherche par nom, scopée au quartier de l'appelant.
+export async function searchUsersPublic(q: string): Promise<UserPublic[]> {
+  const res = await api.get<UserPublic[]>("/users/public/search", { params: { q } });
+  return res.data ?? [];
+}
+
 // PATCH /users/:id — self or admin
 export async function updateUser(id: string, data: UpdateUserDto): Promise<UserResponseDto> {
   try {

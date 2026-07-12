@@ -13,9 +13,7 @@ type Party = { id: string; label: string };
 // /users/:id/public, caché côté service). L'utilisateur courant est marqué « Vous ».
 const ConversationHeader = ({ conversation }: ConversationHeaderProps) => {
   const { user } = useAuth();
-  const [parties, setParties] = useState<Party[]>(
-    conversation.participants.map((id) => ({ id, label: id.slice(0, 8) })),
-  );
+  const [parties, setParties] = useState<Party[]>(conversation.participants.map((id) => ({ id, label: "…" })));
 
   useEffect(() => {
     let cancelled = false;
@@ -26,7 +24,7 @@ const ConversationHeader = ({ conversation }: ConversationHeaderProps) => {
           const u = await getUserPublic(id);
           return { id, label: `${u.firstName} ${u.lastName}` };
         } catch {
-          return { id, label: id.slice(0, 8) };
+          return { id, label: "Utilisateur" };
         }
       }),
     ).then((resolved) => {
