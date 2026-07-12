@@ -18,6 +18,7 @@ if [[ -f "${out_dir}/cert.p12" ]]; then
 fi
 
 docker run --rm -v "${out_dir}:/work" --entrypoint sh alpine/openssl -c '
+  cd /work &&
   openssl req -x509 -newkey rsa:2048 -keyout key.pem -out cert.pem -days 3650 -nodes \
     -subj "/CN=Documenso Dev/O=Local" &&
   openssl pkcs12 -export -legacy -out cert.p12 -inkey key.pem -in cert.pem -passout pass: &&
