@@ -1,9 +1,14 @@
 import { quote, type SatanClient } from "@repo/satan";
 import type { Event } from "../../entities/event.entity.js";
 import type { IEventRepository } from "./event.repository.js";
+import { containsAny, eq, paginate, where } from "../satan.helpers.js";
 
-/** SATAN QL for id / `IN`-batch lookups and the plain deletes (incl. the
- *  `event_interactions` sub-collection); Mongo for lists, guarded seat updates,
+/** Window for the date-derived "ongoing" status — mirrors the Mongo repo. */
+const FOUR_HOURS_MS = 4 * 60 * 60 * 1000;
+
+/** SATAN QL for id / `IN`-batch lookups, the plain deletes (incl. the
+ *  `event_interactions` sub-collection) and the paginated list (COUNT + FIND
+ *  with the date-derived status filter); Mongo for guarded seat updates,
  *  upserts, `$pull` and the interaction scan. */
 export class SatanEventRepository implements IEventRepository {
   constructor(
@@ -35,12 +40,36 @@ export class SatanEventRepository implements IEventRepository {
     await this.satan.query(`DELETE FROM event_interactions WHERE userId = ${quote(userId)}`);
   }
 
-  // --- delegated to Mongo ---
+  getEvents(params: Parameters<IEventRepository["getEvents"]>[0]) {
+    const { search, status, districtId, creatorId, registrantId, page = 1, limit = 20 } = params;
+    const conditions: Array<string | false | null | undefined> = [
+      // Title-only search — matching description/location caused false positives.
+      search && containsAny(["title"], search),
+      districtId && eq("districtId", districtId),
+      creatorId && eq("creatorId", creatorId),
+      registrantId && eq("registrants", registrantId),
+    ];
+    // Date-derived status (see computeStatus in the use-case); "cancelled" stays explicit.
+    if (status === "cancelled") {
+      conditions.push(eq("status", "cancelled"));
+    } else if (status) {
+      conditions.push(`status != ${quote("cancelled")}`);
+      const nowIso = new Date().toISOString();
+      const fourHoursAgoIso = new Date(Date.now() - FOUR_HOURS_MS).toISOString();
+      if (status === "upcoming") {
+        conditions.push(`eventDate > ${quote(nowIso)}`);
+      } else if (status === "ongoing") {
+        conditions.push(`eventDate > ${quote(fourHoursAgoIso)} AND eventDate <= ${quote(nowIso)}`);
+      } else if (status === "completed") {
+        conditions.push(`eventDate <= ${quote(fourHoursAgoIso)}`);
+      }
+    }
+    return paginate<Event>(this.satan, "events", where(conditions), { page, limit });
+  }
+
+  // --- delegated to Mongo (guarded/upsert/$pull writes and the interaction scan) ---
   ensureIndexes(): Promise<void> {
     return this.mongo.ensureIndexes();
-  }
-  getEvents(params: Parameters<IEventRepository["getEvents"]>[0]) {
-    return this.mongo.getEvents(params);
   }
   createEvent(data: Omit<Event, "id" | "createdAt">): Promise<Event> {
     return this.mongo.createEvent(data);

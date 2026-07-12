@@ -1,8 +1,10 @@
 import { quote, type SatanClient } from "@repo/satan";
 import type { Notification } from "../../entities/notification.entity.js";
 import type { INotificationRepository } from "./notification.repository.js";
+import { eq, paginate, where } from "../satan.helpers.js";
 
-/** SATAN QL for id lookup and the two deletes. */
+/** SATAN QL for id lookup, the two deletes and the paginated list (COUNT + FIND,
+ *  newest first). */
 export class SatanNotificationRepository implements INotificationRepository {
   constructor(
     private readonly mongo: INotificationRepository,
@@ -25,12 +27,20 @@ export class SatanNotificationRepository implements INotificationRepository {
     await this.satan.query(`DELETE FROM notifications WHERE recipientId = ${quote(userId)}`);
   }
 
-  // --- delegated to Mongo ---
+  getNotifications(params: Parameters<INotificationRepository["getNotifications"]>[0]) {
+    const { recipientId, districtId, type, read, page = 1, limit = 20 } = params;
+    const clause = where([
+      recipientId && eq("recipientId", recipientId),
+      districtId && eq("districtId", districtId),
+      type && eq("type", type),
+      read !== undefined && eq("read", read),
+    ]);
+    return paginate<Notification>(this.satan, "notifications", clause, { page, limit, sort: "createdAt DESC" });
+  }
+
+  // --- delegated to Mongo (server-generated fields) ---
   ensureIndexes(): Promise<void> {
     return this.mongo.ensureIndexes();
-  }
-  getNotifications(params: Parameters<INotificationRepository["getNotifications"]>[0]) {
-    return this.mongo.getNotifications(params);
   }
   createNotification(data: Omit<Notification, "id" | "createdAt" | "read">): Promise<Notification> {
     return this.mongo.createNotification(data);

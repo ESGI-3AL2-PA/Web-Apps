@@ -1,12 +1,13 @@
 import { quote, type SatanClient } from "@repo/satan";
 import type { User } from "../../entities/user.entity.js";
 import type { IUserRepository } from "./user.repository.js";
+import { containsAny, eq, paginate, where } from "../satan.helpers.js";
 
 /**
- * SATAN-QL-backed user repository. Simple key lookups, the scalar `setBanned`
- * transition and the id delete go through SATAN QL (`satan.query`); anything
- * needing a count + `$or` regex (getUsers) or server-generated fields
- * (create/update) delegates to the wrapped Mongo repository.
+ * SATAN-QL-backed user repository. Key lookups, the paginated `getUsers` list
+ * (COUNT + CONTAINS search), the scalar `setBanned` transition and the id delete
+ * all go through SATAN QL (`satan.query`); only the server-generated
+ * create/update delegate to the wrapped Mongo repository.
  */
 export class SatanUserRepository implements IUserRepository {
   constructor(
@@ -38,12 +39,19 @@ export class SatanUserRepository implements IUserRepository {
     return res.deletedCount > 0;
   }
 
-  // --- delegated to Mongo (count + $or regex / server-generated fields) ---
+  getUsers(params: { search?: string; districtId?: string; role?: string; page?: number; limit?: number }) {
+    const { search, districtId, role, page = 1, limit = 10 } = params;
+    const clause = where([
+      search && containsAny(["firstName", "lastName", "email"], search),
+      districtId && eq("districtId", districtId),
+      role && eq("role", role),
+    ]);
+    return paginate<User>(this.satan, "users", clause, { page, limit });
+  }
+
+  // --- delegated to Mongo (server-generated fields) ---
   ensureIndexes(): Promise<void> {
     return this.mongo.ensureIndexes();
-  }
-  getUsers(params: { search?: string; districtId?: string; role?: string; page?: number; limit?: number }) {
-    return this.mongo.getUsers(params);
   }
   createUser(data: Omit<User, "id" | "createdAt" | "updatedAt">): Promise<User> {
     return this.mongo.createUser(data);

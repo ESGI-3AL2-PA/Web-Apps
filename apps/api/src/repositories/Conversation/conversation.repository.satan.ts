@@ -1,10 +1,12 @@
 import { quote, type SatanClient } from "@repo/satan";
 import type { Conversation, Message } from "../../entities/conversation.entity.js";
 import type { IConversationRepository } from "./conversation.repository.js";
+import { eq, paginate, where } from "../satan.helpers.js";
 
-/** SATAN QL for the two id lookups and the single-message delete; Mongo for the
- *  order-insensitive pair match, paginated lists, the two-collection message
- *  create and the read-then-delete cascade. */
+/** SATAN QL for the two id lookups, the single-message delete and the two
+ *  paginated lists (COUNT + FIND, newest first); Mongo for the order-insensitive
+ *  pair match, the two-collection message create and the read-then-delete
+ *  cascade. */
 export class SatanConversationRepository implements IConversationRepository {
   constructor(
     private readonly mongo: IConversationRepository,
@@ -25,21 +27,30 @@ export class SatanConversationRepository implements IConversationRepository {
     await this.satan.query(`DELETE FROM messages WHERE _id = ${quote(id)}`);
   }
 
-  // --- delegated to Mongo ---
+  getConversations(params: Parameters<IConversationRepository["getConversations"]>[0]) {
+    const { participantId, districtId, page = 1, limit = 20 } = params;
+    const clause = where([
+      participantId && eq("participants", participantId),
+      districtId && eq("districtId", districtId),
+    ]);
+    return paginate<Conversation>(this.satan, "conversations", clause, { page, limit, sort: "lastMessageAt DESC" });
+  }
+
+  getMessages(conversationId: string, params: { page?: number; limit?: number }) {
+    const { page = 1, limit = 50 } = params;
+    const clause = where([eq("conversationId", conversationId)]);
+    return paginate<Message>(this.satan, "messages", clause, { page, limit, sort: "createdAt DESC" });
+  }
+
+  // --- delegated to Mongo (pair match / two-collection writes / cascade) ---
   ensureIndexes(): Promise<void> {
     return this.mongo.ensureIndexes();
-  }
-  getConversations(params: Parameters<IConversationRepository["getConversations"]>[0]) {
-    return this.mongo.getConversations(params);
   }
   findDirectConversation(participantIds: string[]): Promise<Conversation | null> {
     return this.mongo.findDirectConversation(participantIds);
   }
   createConversation(data: Omit<Conversation, "id" | "createdAt" | "lastMessageAt">): Promise<Conversation> {
     return this.mongo.createConversation(data);
-  }
-  getMessages(conversationId: string, params: { page?: number; limit?: number }) {
-    return this.mongo.getMessages(conversationId, params);
   }
   createMessage(data: Omit<Message, "id" | "createdAt" | "read">): Promise<Message> {
     return this.mongo.createMessage(data);

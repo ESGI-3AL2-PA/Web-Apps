@@ -2,10 +2,11 @@
  * End-to-end endpoint verification for the SATAN-backed repositories.
  *
  * Logs in against the auth-service, then walks the api's routes — the SATAN-QL
- * paths (getById across entities, balance projection, setBanned update, id
- * deletes) strictly, and the Mongo-fallback lists/aggregations as smoke. Prints
- * a PASS/FAIL/SKIP table and, when OUT is set, writes a JSON summary so the same
- * run can be compared with SATAN_REPOS=true vs false (parity).
+ * paths (getById across entities, the paginated COUNT+FIND lists incl. CONTAINS
+ * search, balance projection, setBanned update, id deletes) strictly, and the
+ * remaining Mongo-fallback aggregations as smoke. Prints a PASS/FAIL/SKIP table
+ * and, when OUT is set, writes a JSON summary (getById + full list bodies) so the
+ * same run can be compared with SATAN_REPOS=true vs false (parity).
  *
  * Usage:
  *   API_URL=http://localhost:3100 AUTH_URL=http://localhost:3001 \
@@ -105,6 +106,34 @@ async function main() {
     );
   }
 
+  // --- SATAN paginated lists (COUNT + FIND, incl. CONTAINS search) ---
+  // Captured in full so the SATAN-on vs -off runs can be diffed for parity.
+  const listBodies: Record<string, unknown> = {};
+  const listProbes: [string, string][] = [
+    ["/users?page=1&limit=5", "users:page"],
+    ["/users?search=a&limit=5", "users:search"],
+    ["/listings?page=1&limit=5", "listings:page"],
+    ["/listings?search=e&limit=5", "listings:search"],
+    ["/events?page=1&limit=5", "events:page"],
+    ["/events?status=upcoming&limit=5", "events:upcoming"],
+    ["/incidents?page=1&limit=5", "incidents:page"],
+    ["/incidents?search=a&limit=5", "incidents:search"],
+    ["/tags?page=1&limit=5", "tags:page"],
+    ["/tags?search=a&limit=5", "tags:search"],
+    ["/districts?page=1&limit=5", "districts:page"],
+    ["/districts?search=a&limit=5", "districts:search"],
+    ["/contracts?page=1&limit=5", "contracts:page"],
+    ["/district-admins?page=1&limit=5", "district-admins:page"],
+    ["/notifications?page=1&limit=5", "notifications:page"],
+  ];
+  for (const [path, label] of listProbes) {
+    const r = await req("GET", path, su);
+    listBodies[label] = r.json;
+    const body = r.json as { data?: unknown; total?: unknown };
+    const ok = r.status === 200 && Array.isArray(body?.data) && typeof body?.total === "number";
+    record(`GET ${path} (SATAN list)`, ok ? "PASS" : "FAIL", `HTTP ${r.status}`);
+  }
+
   // --- SATAN getBalance (projection) ---
   const bal = await req("GET", "/users/seed-user-alice/balance", su);
   record(
@@ -171,7 +200,7 @@ async function main() {
   );
 
   if (process.env.OUT) {
-    writeFileSync(process.env.OUT, JSON.stringify({ results, byIdBodies }, null, 2));
+    writeFileSync(process.env.OUT, JSON.stringify({ results, byIdBodies, listBodies }, null, 2));
     console.warn(`summary → ${process.env.OUT}`);
   }
   process.exit(fail > 0 ? 1 : 0);

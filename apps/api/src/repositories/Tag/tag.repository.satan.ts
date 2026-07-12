@@ -1,8 +1,10 @@
 import { quote, type SatanClient } from "@repo/satan";
 import type { Tag } from "../../entities/tag.entity.js";
 import type { ITagRepository } from "./tag.repository.js";
+import { containsAny, eq, paginate, where } from "../satan.helpers.js";
 
-/** SATAN QL for id lookup, the `IN`-list name lookup and the id delete. */
+/** SATAN QL for id lookup, the `IN`-list name lookup, the id delete and the
+ *  paginated list (COUNT + CONTAINS search). */
 export class SatanTagRepository implements ITagRepository {
   constructor(
     private readonly mongo: ITagRepository,
@@ -25,12 +27,18 @@ export class SatanTagRepository implements ITagRepository {
     return res.deletedCount > 0;
   }
 
-  // --- delegated to Mongo ---
+  getTags(params: Parameters<ITagRepository["getTags"]>[0]) {
+    const { search, districtId, page = 1, limit = 20 } = params;
+    const clause = where([
+      search && containsAny(["name", "description"], search),
+      districtId && eq("districtId", districtId),
+    ]);
+    return paginate<Tag>(this.satan, "tags", clause, { page, limit });
+  }
+
+  // --- delegated to Mongo (server-generated fields) ---
   ensureIndexes(): Promise<void> {
     return this.mongo.ensureIndexes();
-  }
-  getTags(params: Parameters<ITagRepository["getTags"]>[0]) {
-    return this.mongo.getTags(params);
   }
   createTag(data: Omit<Tag, "id">): Promise<Tag> {
     return this.mongo.createTag(data);

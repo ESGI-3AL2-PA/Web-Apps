@@ -2,10 +2,11 @@ import { quote, type SatanClient } from "@repo/satan";
 import type { ClientSession } from "mongodb";
 import type { Contract, ContractSignatureStatus } from "../../entities/contract.entity.js";
 import type { IContractRepository } from "./contract.repository.js";
+import { eq, paginate, where } from "../satan.helpers.js";
 
-/** SATAN QL for the id lookup only — the rest are atomic guarded transitions,
- *  return-the-removed-doc deletes, session-scoped writes or paginated lists that
- *  a scalar find/insert/update/delete language can't express. */
+/** SATAN QL for the id lookup and the paginated list (COUNT + FIND, party match
+ *  via OR); Mongo for the atomic guarded transitions, return-the-removed-doc
+ *  deletes and session-scoped writes a scalar language can't express. */
 export class SatanContractRepository implements IContractRepository {
   constructor(
     private readonly mongo: IContractRepository,
@@ -17,12 +18,33 @@ export class SatanContractRepository implements IContractRepository {
     return rows[0] ?? null;
   }
 
-  // --- delegated to Mongo ---
+  getContracts(params: Parameters<IContractRepository["getContracts"]>[0]) {
+    const {
+      listingId,
+      districtId,
+      providerId,
+      beneficiaryId,
+      partyId,
+      signatureStatus,
+      disputed,
+      page = 1,
+      limit = 20,
+    } = params;
+    const clause = where([
+      listingId && eq("listingId", listingId),
+      districtId && eq("districtId", districtId),
+      providerId && eq("providerId", providerId),
+      beneficiaryId && eq("beneficiaryId", beneficiaryId),
+      partyId && `(providerId = ${quote(partyId)} OR beneficiaryId = ${quote(partyId)})`,
+      signatureStatus && eq("signatureStatus", signatureStatus),
+      disputed !== undefined && eq("disputed", disputed),
+    ]);
+    return paginate<Contract>(this.satan, "contracts", clause, { page, limit });
+  }
+
+  // --- delegated to Mongo (atomic transitions / session-scoped writes) ---
   ensureIndexes(): Promise<void> {
     return this.mongo.ensureIndexes();
-  }
-  getContracts(params: Parameters<IContractRepository["getContracts"]>[0]) {
-    return this.mongo.getContracts(params);
   }
   getContractByDocumensoDocumentId(documentId: number): Promise<Contract | null> {
     return this.mongo.getContractByDocumensoDocumentId(documentId);

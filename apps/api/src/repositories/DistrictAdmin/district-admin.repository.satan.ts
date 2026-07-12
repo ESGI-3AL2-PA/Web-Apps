@@ -1,9 +1,10 @@
 import { quote, type SatanClient } from "@repo/satan";
 import type { DistrictAdmin } from "../../entities/district-admin.entity.js";
 import type { IDistrictAdminRepository } from "./district-admin.repository.js";
+import { eq, paginate, where } from "../satan.helpers.js";
 
-/** SATAN QL for the id lookup, the (districtId, userId) existence check and the
- *  id delete. */
+/** SATAN QL for the id lookup, the (districtId, userId) existence check, the id
+ *  delete and the paginated list (COUNT + FIND). */
 export class SatanDistrictAdminRepository implements IDistrictAdminRepository {
   constructor(
     private readonly mongo: IDistrictAdminRepository,
@@ -29,12 +30,15 @@ export class SatanDistrictAdminRepository implements IDistrictAdminRepository {
     return res.deletedCount > 0;
   }
 
-  // --- delegated to Mongo ---
+  listDistrictAdmins(params: Parameters<IDistrictAdminRepository["listDistrictAdmins"]>[0]) {
+    const { districtId, userId, page = 1, limit = 20 } = params;
+    const clause = where([districtId && eq("districtId", districtId), userId && eq("userId", userId)]);
+    return paginate<DistrictAdmin>(this.satan, "district_admins", clause, { page, limit });
+  }
+
+  // --- delegated to Mongo (server-generated fields) ---
   ensureIndexes(): Promise<void> {
     return this.mongo.ensureIndexes();
-  }
-  listDistrictAdmins(params: Parameters<IDistrictAdminRepository["listDistrictAdmins"]>[0]) {
-    return this.mongo.listDistrictAdmins(params);
   }
   createDistrictAdmin(data: Omit<DistrictAdmin, "id" | "createdAt">): Promise<DistrictAdmin> {
     return this.mongo.createDistrictAdmin(data);

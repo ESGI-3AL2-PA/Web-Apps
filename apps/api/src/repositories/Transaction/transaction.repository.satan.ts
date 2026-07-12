@@ -2,10 +2,12 @@ import { quote, type SatanClient } from "@repo/satan";
 import type { ClientSession } from "mongodb";
 import type { Transaction } from "../../entities/transaction.entity.js";
 import type { ITransactionRepository } from "./transaction.repository.js";
+import { eq, paginate, where } from "../satan.helpers.js";
 
-/** SATAN QL for the projected balance read and the pseudonymise `updateMany`;
- *  Mongo for the ledger list, bulk inserts and the atomic guarded balance ops
- *  (which run inside multi-document transactions). */
+/** SATAN QL for the projected balance read, the pseudonymise `updateMany` and
+ *  the paginated ledger list (COUNT + FIND, newest first); Mongo for the bulk
+ *  inserts and the atomic guarded balance ops (which run inside multi-document
+ *  transactions). */
 export class SatanTransactionRepository implements ITransactionRepository {
   constructor(
     private readonly mongo: ITransactionRepository,
@@ -23,12 +25,20 @@ export class SatanTransactionRepository implements ITransactionRepository {
     await this.satan.query(`UPDATE transactions SET userId = ${quote("[deleted]")} WHERE userId = ${quote(userId)}`);
   }
 
-  // --- delegated to Mongo ---
+  getTransactions(params: Parameters<ITransactionRepository["getTransactions"]>[0]) {
+    const { userId, districtId, type, refType, page = 1, limit = 20 } = params;
+    const clause = where([
+      userId && eq("userId", userId),
+      districtId && eq("districtId", districtId),
+      type && eq("type", type),
+      refType && eq("refType", refType),
+    ]);
+    return paginate<Transaction>(this.satan, "transactions", clause, { page, limit, sort: "createdAt DESC" });
+  }
+
+  // --- delegated to Mongo (transactional / bulk writes) ---
   ensureIndexes(): Promise<void> {
     return this.mongo.ensureIndexes();
-  }
-  getTransactions(params: Parameters<ITransactionRepository["getTransactions"]>[0]) {
-    return this.mongo.getTransactions(params);
   }
   createTransactions(
     entries: Omit<Transaction, "id" | "createdAt">[],
