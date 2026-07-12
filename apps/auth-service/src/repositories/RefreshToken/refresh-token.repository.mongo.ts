@@ -26,6 +26,23 @@ export class MongoRefreshTokenRepository implements IRefreshTokenRepository {
     return doc ? this.toEntity(doc) : null;
   }
 
+  async findActiveByUserId(userId: string): Promise<RefreshToken[]> {
+    const now = new Date().toISOString();
+    const docs = await this.collection
+      .find({ userId, revokedAt: null, expiresAt: { $gt: now } })
+      .sort({ lastUsedAt: -1, createdAt: -1 })
+      .toArray();
+    return docs.map((d) => this.toEntity(d));
+  }
+
+  async revokeById(id: string, userId: string): Promise<boolean> {
+    const result = await this.collection.updateOne(
+      { _id: id, userId, revokedAt: null },
+      { $set: { revokedAt: new Date().toISOString() } },
+    );
+    return result.modifiedCount === 1;
+  }
+
   async revokeByTokenHash(tokenHash: string): Promise<boolean> {
     const result = await this.collection.updateOne(
       { tokenHash, revokedAt: null },

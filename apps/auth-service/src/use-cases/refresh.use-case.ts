@@ -62,7 +62,11 @@ export const refreshUseCase = (
       tokenHash: newTokenHash,
       expiresAt: expiresAt.toISOString(),
       revokedAt: null,
-      createdAt: now.toISOString(),
+      // Preserve the session's origin across rotation; only lastUsedAt moves.
+      createdAt: stored.createdAt,
+      userAgent: stored.userAgent,
+      ip: stored.ip,
+      lastUsedAt: now.toISOString(),
     });
 
     return { accessToken, refreshToken: newRawRefreshToken };

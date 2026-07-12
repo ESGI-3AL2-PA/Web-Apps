@@ -126,6 +126,10 @@ app.use(
   "/auth/totp",
   rateLimit({ windowMs: 60_000, limit: 10, standardHeaders: "draft-7", legacyHeaders: false, message: limiterMessage }),
 );
+app.use(
+  "/auth/sessions",
+  rateLimit({ windowMs: 60_000, limit: 30, standardHeaders: "draft-7", legacyHeaders: false, message: limiterMessage }),
+);
 
 // Auth endpoints (ts-rest)
 createExpressEndpoints({ ...authContract }, { ...authRouter }, app);

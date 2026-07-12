@@ -21,6 +21,8 @@ import {
   TotpEnrollResponseSchema,
   TotpCodeRequestSchema,
   TotpDisableRequestSchema,
+  SessionListResponseDtoSchema,
+  SessionParamsDtoSchema,
 } from "./DTO";
 
 const c = initContract();
@@ -145,6 +147,40 @@ export const authContract = c.router({
       404: AuthMessageResponseDtoSchema,
     },
     summary: "Set a new password using the token from the reset link. Revokes all sessions.",
+  },
+
+  sessions: {
+    method: "GET",
+    path: "/auth/sessions",
+    responses: {
+      200: SessionListResponseDtoSchema,
+      401: UnauthorizedErrorSchema,
+    },
+    summary: "List the caller's active sessions (Bearer). The current session is flagged.",
+  },
+
+  revokeSession: {
+    method: "POST",
+    path: "/auth/sessions/:id/revoke",
+    pathParams: SessionParamsDtoSchema,
+    body: c.noBody(),
+    responses: {
+      200: AuthMessageResponseDtoSchema,
+      401: UnauthorizedErrorSchema,
+      404: AuthMessageResponseDtoSchema,
+    },
+    summary: "Revoke one of the caller's own sessions by id (Bearer).",
+  },
+
+  revokeOtherSessions: {
+    method: "POST",
+    path: "/auth/sessions/revoke-others",
+    body: c.noBody(),
+    responses: {
+      200: AuthMessageResponseDtoSchema,
+      401: UnauthorizedErrorSchema,
+    },
+    summary: "Revoke every session except the current one (Bearer). Log out everywhere else.",
   },
 
   totpEnroll: {

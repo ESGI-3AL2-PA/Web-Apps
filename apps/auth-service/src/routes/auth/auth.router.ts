@@ -1,4 +1,4 @@
-import { randomBytes, timingSafeEqual } from "crypto";
+import { createHash, randomBytes, timingSafeEqual } from "crypto";
 import { initServer } from "@ts-rest/express";
 import { jwtVerify } from "jose";
 import type { Request } from "express";
@@ -18,6 +18,9 @@ import { resetPasswordUseCase } from "../../use-cases/reset-password.use-case.js
 import { enrollTotpUseCase } from "../../use-cases/enroll-totp.use-case.js";
 import { confirmTotpUseCase } from "../../use-cases/confirm-totp.use-case.js";
 import { disableTotpUseCase } from "../../use-cases/disable-totp.use-case.js";
+import { listSessionsUseCase } from "../../use-cases/list-sessions.use-case.js";
+import { revokeSessionUseCase } from "../../use-cases/revoke-session.use-case.js";
+import { revokeOtherSessionsUseCase } from "../../use-cases/revoke-other-sessions.use-case.js";
 
 const REFRESH_COOKIE = "refresh_token";
 const CSRF_COOKIE = "csrf_token";
@@ -43,6 +46,19 @@ const CSRF_COOKIE_OPTIONS = {
 };
 
 const generateCsrf = () => randomBytes(32).toString("hex");
+
+// Session origin captured on login and stored on the refresh token.
+const sessionContext = (req: Request) => ({
+  userAgent: typeof req.headers["user-agent"] === "string" ? req.headers["user-agent"].slice(0, 400) : null,
+  ip: req.ip ?? null,
+});
+
+// sha256 of the caller's own refresh cookie (travels on /auth paths), used to
+// flag / exempt the session making the request. Null when no cookie is present.
+const currentSessionHash = (req: Request): string | null => {
+  const raw = req.cookies?.[REFRESH_COOKIE];
+  return typeof raw === "string" ? createHash("sha256").update(raw).digest("hex") : null;
+};
 
 const csrfValid = (cookieToken: unknown, headerToken: unknown): boolean => {
   if (typeof cookieToken !== "string" || typeof headerToken !== "string") return false;
@@ -70,15 +86,18 @@ const verifyBearer = async (req: Request): Promise<string | null> => {
 const s = initServer();
 
 export const authRouter = s.router(authContract, {
-  login: async ({ body, res }) => {
+  login: async ({ body, req, res }) => {
     const result = await loginUseCase(
       resolve("userReader"),
       resolve("refreshToken"),
       resolve("districtAdmin"),
-    )({
-      email: body.email,
-      password: body.password,
-    });
+    )(
+      {
+        email: body.email,
+        password: body.password,
+      },
+      sessionContext(req),
+    );
 
     if (result.kind === "invalid-credentials") {
       return { status: 401 as const, body: { message: "Invalid email or password" } };
@@ -103,12 +122,12 @@ export const authRouter = s.router(authContract, {
     };
   },
 
-  loginMfa: async ({ body, res }) => {
-    const result = await loginMfaUseCase(
-      resolve("userReader"),
-      resolve("refreshToken"),
-      resolve("districtAdmin"),
-    )(body.mfa_token, body.code);
+  loginMfa: async ({ body, req, res }) => {
+    const result = await loginMfaUseCase(resolve("userReader"), resolve("refreshToken"), resolve("districtAdmin"))(
+      body.mfa_token,
+      body.code,
+      sessionContext(req),
+    );
     if (result.kind !== "ok") {
       return { status: 401 as const, body: { message: "MFA verification failed" } };
     }
@@ -253,6 +272,36 @@ export const authRouter = s.router(authContract, {
   csrf: async ({ req }) => {
     const token = req.cookies?.[CSRF_COOKIE];
     return { status: 200 as const, body: { csrf_token: typeof token === "string" ? token : "" } };
+  },
+
+  sessions: async ({ req }) => {
+    const userId = await verifyBearer(req);
+    if (!userId) {
+      return { status: 401 as const, body: { message: "Missing or invalid access token" } };
+    }
+    const sessions = await listSessionsUseCase(resolve("refreshToken"))(userId, currentSessionHash(req));
+    return { status: 200 as const, body: sessions };
+  },
+
+  revokeSession: async ({ req, params }) => {
+    const userId = await verifyBearer(req);
+    if (!userId) {
+      return { status: 401 as const, body: { message: "Missing or invalid access token" } };
+    }
+    const revoked = await revokeSessionUseCase(resolve("refreshToken"))(userId, params.id);
+    if (!revoked) {
+      return { status: 404 as const, body: { message: "Session not found" } };
+    }
+    return { status: 200 as const, body: { message: "Session revoked" } };
+  },
+
+  revokeOtherSessions: async ({ req }) => {
+    const userId = await verifyBearer(req);
+    if (!userId) {
+      return { status: 401 as const, body: { message: "Missing or invalid access token" } };
+    }
+    await revokeOtherSessionsUseCase(resolve("refreshToken"))(userId, currentSessionHash(req));
+    return { status: 200 as const, body: { message: "Other sessions revoked" } };
   },
 
   totpEnroll: async ({ req }) => {
