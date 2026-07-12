@@ -1,5 +1,5 @@
+import { quote, type SatanClient } from "@repo/satan";
 import type { Event } from "../../entities/event.entity.js";
-import type { SatanQueryRunner } from "../satan/satan-runner.js";
 import type { IEventRepository } from "./event.repository.js";
 
 /** SATAN QL for id / `IN`-batch lookups and the plain deletes (incl. the
@@ -8,30 +8,31 @@ import type { IEventRepository } from "./event.repository.js";
 export class SatanEventRepository implements IEventRepository {
   constructor(
     private readonly mongo: IEventRepository,
-    private readonly satan: SatanQueryRunner,
+    private readonly satan: SatanClient,
   ) {}
 
-  getEventById(id: string): Promise<Event | null> {
-    return this.satan.findOne<Event>(`FIND events WHERE _id = ${this.satan.q(id)}`);
+  async getEventById(id: string): Promise<Event | null> {
+    const rows = (await this.satan.query(`FIND events WHERE _id = ${quote(id)}`)) as Event[];
+    return rows[0] ?? null;
   }
 
-  getEventsByIds(ids: string[]): Promise<Event[]> {
-    if (ids.length === 0) return Promise.resolve([]);
-    const list = ids.map((id) => this.satan.q(id)).join(", ");
-    return this.satan.find<Event>(`FIND events WHERE _id IN (${list})`);
+  async getEventsByIds(ids: string[]): Promise<Event[]> {
+    if (ids.length === 0) return [];
+    const list = ids.map((id) => quote(id)).join(", ");
+    return (await this.satan.query(`FIND events WHERE _id IN (${list})`)) as Event[];
   }
 
   async deleteEvent(id: string): Promise<boolean> {
-    const deleted = await this.satan.delete(`DELETE FROM events WHERE _id = ${this.satan.q(id)}`);
-    return deleted > 0;
+    const res = (await this.satan.query(`DELETE FROM events WHERE _id = ${quote(id)}`)) as { deletedCount: number };
+    return res.deletedCount > 0;
   }
 
   async deleteByCreator(creatorId: string): Promise<void> {
-    await this.satan.delete(`DELETE FROM events WHERE creatorId = ${this.satan.q(creatorId)}`);
+    await this.satan.query(`DELETE FROM events WHERE creatorId = ${quote(creatorId)}`);
   }
 
   async deleteUserInteractions(userId: string): Promise<void> {
-    await this.satan.delete(`DELETE FROM event_interactions WHERE userId = ${this.satan.q(userId)}`);
+    await this.satan.query(`DELETE FROM event_interactions WHERE userId = ${quote(userId)}`);
   }
 
   // --- delegated to Mongo ---

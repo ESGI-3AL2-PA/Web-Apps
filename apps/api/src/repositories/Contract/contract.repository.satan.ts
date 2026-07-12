@@ -1,6 +1,6 @@
+import { quote, type SatanClient } from "@repo/satan";
 import type { ClientSession } from "mongodb";
 import type { Contract, ContractSignatureStatus } from "../../entities/contract.entity.js";
-import type { SatanQueryRunner } from "../satan/satan-runner.js";
 import type { IContractRepository } from "./contract.repository.js";
 
 /** SATAN QL for the id lookup only — the rest are atomic guarded transitions,
@@ -9,11 +9,12 @@ import type { IContractRepository } from "./contract.repository.js";
 export class SatanContractRepository implements IContractRepository {
   constructor(
     private readonly mongo: IContractRepository,
-    private readonly satan: SatanQueryRunner,
+    private readonly satan: SatanClient,
   ) {}
 
-  getContractById(id: string): Promise<Contract | null> {
-    return this.satan.findOne<Contract>(`FIND contracts WHERE _id = ${this.satan.q(id)}`);
+  async getContractById(id: string): Promise<Contract | null> {
+    const rows = (await this.satan.query(`FIND contracts WHERE _id = ${quote(id)}`)) as Contract[];
+    return rows[0] ?? null;
   }
 
   // --- delegated to Mongo ---

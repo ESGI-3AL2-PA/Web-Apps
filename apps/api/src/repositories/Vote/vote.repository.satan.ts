@@ -1,6 +1,6 @@
+import { quote, type SatanClient } from "@repo/satan";
 import type { ClientSession } from "mongodb";
 import type { Vote, VoteResponseEntity } from "../../entities/vote.entity.js";
-import type { SatanQueryRunner } from "../satan/satan-runner.js";
 import type { IVoteRepository } from "./vote.repository.js";
 
 /** SATAN QL for the (voteId, userId) has-voted existence check. Reads enrich
@@ -9,14 +9,14 @@ import type { IVoteRepository } from "./vote.repository.js";
 export class SatanVoteRepository implements IVoteRepository {
   constructor(
     private readonly mongo: IVoteRepository,
-    private readonly satan: SatanQueryRunner,
+    private readonly satan: SatanClient,
   ) {}
 
   async hasUserVoted(voteId: string, userId: string): Promise<boolean> {
-    const doc = await this.satan.findOne<{ id: string }>(
-      `FIND vote_responses WHERE voteId = ${this.satan.q(voteId)} AND userId = ${this.satan.q(userId)}`,
-    );
-    return doc !== null;
+    const rows = (await this.satan.query(
+      `FIND vote_responses WHERE voteId = ${quote(voteId)} AND userId = ${quote(userId)}`,
+    )) as unknown[];
+    return rows.length > 0;
   }
 
   // --- delegated to Mongo ---

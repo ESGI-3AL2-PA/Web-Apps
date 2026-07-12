@@ -1,25 +1,28 @@
+import { quote, type SatanClient } from "@repo/satan";
 import type { Notification } from "../../entities/notification.entity.js";
-import type { SatanQueryRunner } from "../satan/satan-runner.js";
 import type { INotificationRepository } from "./notification.repository.js";
 
 /** SATAN QL for id lookup and the two deletes. */
 export class SatanNotificationRepository implements INotificationRepository {
   constructor(
     private readonly mongo: INotificationRepository,
-    private readonly satan: SatanQueryRunner,
+    private readonly satan: SatanClient,
   ) {}
 
-  getNotificationById(id: string): Promise<Notification | null> {
-    return this.satan.findOne<Notification>(`FIND notifications WHERE _id = ${this.satan.q(id)}`);
+  async getNotificationById(id: string): Promise<Notification | null> {
+    const rows = (await this.satan.query(`FIND notifications WHERE _id = ${quote(id)}`)) as Notification[];
+    return rows[0] ?? null;
   }
 
   async deleteNotification(id: string): Promise<boolean> {
-    const deleted = await this.satan.delete(`DELETE FROM notifications WHERE _id = ${this.satan.q(id)}`);
-    return deleted > 0;
+    const res = (await this.satan.query(`DELETE FROM notifications WHERE _id = ${quote(id)}`)) as {
+      deletedCount: number;
+    };
+    return res.deletedCount > 0;
   }
 
   async deleteByRecipient(userId: string): Promise<void> {
-    await this.satan.delete(`DELETE FROM notifications WHERE recipientId = ${this.satan.q(userId)}`);
+    await this.satan.query(`DELETE FROM notifications WHERE recipientId = ${quote(userId)}`);
   }
 
   // --- delegated to Mongo ---

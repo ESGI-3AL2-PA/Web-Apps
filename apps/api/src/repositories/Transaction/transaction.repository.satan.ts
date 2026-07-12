@@ -1,6 +1,6 @@
+import { quote, type SatanClient } from "@repo/satan";
 import type { ClientSession } from "mongodb";
 import type { Transaction } from "../../entities/transaction.entity.js";
-import type { SatanQueryRunner } from "../satan/satan-runner.js";
 import type { ITransactionRepository } from "./transaction.repository.js";
 
 /** SATAN QL for the projected balance read and the pseudonymise `updateMany`;
@@ -9,20 +9,18 @@ import type { ITransactionRepository } from "./transaction.repository.js";
 export class SatanTransactionRepository implements ITransactionRepository {
   constructor(
     private readonly mongo: ITransactionRepository,
-    private readonly satan: SatanQueryRunner,
+    private readonly satan: SatanClient,
   ) {}
 
   async getBalance(userId: string): Promise<number | null> {
-    const doc = await this.satan.findOne<{ id: string; balance?: number }>(
-      `FIND users WHERE _id = ${this.satan.q(userId)} SELECT balance`,
-    );
-    return doc?.balance ?? null;
+    const rows = (await this.satan.query(`FIND users WHERE _id = ${quote(userId)} SELECT balance`)) as {
+      balance?: number;
+    }[];
+    return rows[0]?.balance ?? null;
   }
 
   async pseudonymiseUser(userId: string): Promise<void> {
-    await this.satan.update(
-      `UPDATE transactions SET userId = ${this.satan.q("[deleted]")} WHERE userId = ${this.satan.q(userId)}`,
-    );
+    await this.satan.query(`UPDATE transactions SET userId = ${quote("[deleted]")} WHERE userId = ${quote(userId)}`);
   }
 
   // --- delegated to Mongo ---

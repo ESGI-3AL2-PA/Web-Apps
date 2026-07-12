@@ -20,7 +20,7 @@ const client = createSatanClient({
 client.on("stderr", (line: string) => process.stderr.write(`[worker] ${line}`));
 
 async function main(): Promise<void> {
-  const find = await client.query(
+  const find = await client.compile(
     'FIND users WHERE role = "admin" AND name LIKE "Jo*" LIMIT 10 ORDER BY createdAt DESC',
   );
   assert.deepEqual(find, {
@@ -31,14 +31,14 @@ async function main(): Promise<void> {
     sort: [["createdAt", -1]],
   });
 
-  const insert = await client.query('INSERT INTO users SET name = "John", age = 30');
+  const insert = await client.compile('INSERT INTO users SET name = "John", age = 30');
   assert.deepEqual(insert, {
     op: "insertOne",
     collection: "users",
     document: { name: "John", age: 30 },
   });
 
-  const update = await client.query("UPDATE products SET price = 9.99 WHERE id = 5");
+  const update = await client.compile("UPDATE products SET price = 9.99 WHERE id = 5");
   assert.deepEqual(update, {
     op: "updateMany",
     collection: "products",
@@ -46,14 +46,14 @@ async function main(): Promise<void> {
     update: { $set: { price: 9.99 } },
   });
 
-  const del = await client.query('DELETE FROM users WHERE role = "guest"');
+  const del = await client.compile('DELETE FROM users WHERE role = "guest"');
   assert.deepEqual(del, {
     op: "deleteMany",
     collection: "users",
     filter: { role: "guest" },
   });
 
-  await assert.rejects(() => client.query("FIND WHERE"), SatanQueryError);
+  await assert.rejects(() => client.compile("FIND WHERE"), SatanQueryError);
 
   console.warn("✓ all SATAN QL smoke assertions passed");
 }

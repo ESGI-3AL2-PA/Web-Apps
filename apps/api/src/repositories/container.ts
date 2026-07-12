@@ -1,7 +1,6 @@
 import type { Db } from "mongodb";
 import type { Driver } from "neo4j-driver";
 import type { SatanClient } from "@repo/satan";
-import { SatanQueryRunner } from "./satan/satan-runner.js";
 
 import type { IUserRepository } from "./User/user.repository.js";
 import type { IListingRepository } from "./Listing/listing.repository.js";
@@ -84,21 +83,20 @@ export const initContainer = (db: Db, neo4jDriver: Driver, satan?: SatanClient) 
   };
 
   const useSatan = satan && process.env.SATAN_REPOS !== "false";
-  const run = satan ? new SatanQueryRunner(satan, db) : null;
 
   repositories = {
-    user: useSatan ? new SatanUserRepository(mongo.user, run!) : mongo.user,
-    listing: useSatan ? new SatanListingRepository(mongo.listing, run!) : mongo.listing,
-    contract: useSatan ? new SatanContractRepository(mongo.contract, run!) : mongo.contract,
-    event: useSatan ? new SatanEventRepository(mongo.event, run!) : mongo.event,
-    incident: useSatan ? new SatanIncidentRepository(mongo.incident, run!) : mongo.incident,
-    district: useSatan ? new SatanDistrictRepository(mongo.district, run!) : mongo.district,
-    districtAdmin: useSatan ? new SatanDistrictAdminRepository(mongo.districtAdmin, run!) : mongo.districtAdmin,
-    tag: useSatan ? new SatanTagRepository(mongo.tag, run!) : mongo.tag,
-    vote: useSatan ? new SatanVoteRepository(mongo.vote, run!) : mongo.vote,
-    conversation: useSatan ? new SatanConversationRepository(mongo.conversation, run!) : mongo.conversation,
-    notification: useSatan ? new SatanNotificationRepository(mongo.notification, run!) : mongo.notification,
-    transaction: useSatan ? new SatanTransactionRepository(mongo.transaction, run!) : mongo.transaction,
+    user: useSatan ? new SatanUserRepository(mongo.user, satan) : mongo.user,
+    listing: useSatan ? new SatanListingRepository(mongo.listing, satan) : mongo.listing,
+    contract: useSatan ? new SatanContractRepository(mongo.contract, satan) : mongo.contract,
+    event: useSatan ? new SatanEventRepository(mongo.event, satan) : mongo.event,
+    incident: useSatan ? new SatanIncidentRepository(mongo.incident, satan) : mongo.incident,
+    district: useSatan ? new SatanDistrictRepository(mongo.district, satan) : mongo.district,
+    districtAdmin: useSatan ? new SatanDistrictAdminRepository(mongo.districtAdmin, satan) : mongo.districtAdmin,
+    tag: useSatan ? new SatanTagRepository(mongo.tag, satan) : mongo.tag,
+    vote: useSatan ? new SatanVoteRepository(mongo.vote, satan) : mongo.vote,
+    conversation: useSatan ? new SatanConversationRepository(mongo.conversation, satan) : mongo.conversation,
+    notification: useSatan ? new SatanNotificationRepository(mongo.notification, satan) : mongo.notification,
+    transaction: useSatan ? new SatanTransactionRepository(mongo.transaction, satan) : mongo.transaction,
     graph: new Neo4jGraphRepository(neo4jDriver),
   };
 

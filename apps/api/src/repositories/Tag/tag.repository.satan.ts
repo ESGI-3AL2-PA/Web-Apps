@@ -1,27 +1,28 @@
+import { quote, type SatanClient } from "@repo/satan";
 import type { Tag } from "../../entities/tag.entity.js";
-import type { SatanQueryRunner } from "../satan/satan-runner.js";
 import type { ITagRepository } from "./tag.repository.js";
 
 /** SATAN QL for id lookup, the `IN`-list name lookup and the id delete. */
 export class SatanTagRepository implements ITagRepository {
   constructor(
     private readonly mongo: ITagRepository,
-    private readonly satan: SatanQueryRunner,
+    private readonly satan: SatanClient,
   ) {}
 
-  getTagById(id: string): Promise<Tag | null> {
-    return this.satan.findOne<Tag>(`FIND tags WHERE _id = ${this.satan.q(id)}`);
+  async getTagById(id: string): Promise<Tag | null> {
+    const rows = (await this.satan.query(`FIND tags WHERE _id = ${quote(id)}`)) as Tag[];
+    return rows[0] ?? null;
   }
 
-  getTagsByNames(districtId: string, names: string[]): Promise<Tag[]> {
-    if (names.length === 0) return Promise.resolve([]);
-    const list = names.map((n) => this.satan.q(n)).join(", ");
-    return this.satan.find<Tag>(`FIND tags WHERE districtId = ${this.satan.q(districtId)} AND name IN (${list})`);
+  async getTagsByNames(districtId: string, names: string[]): Promise<Tag[]> {
+    if (names.length === 0) return [];
+    const list = names.map((n) => quote(n)).join(", ");
+    return (await this.satan.query(`FIND tags WHERE districtId = ${quote(districtId)} AND name IN (${list})`)) as Tag[];
   }
 
   async deleteTag(id: string): Promise<boolean> {
-    const deleted = await this.satan.delete(`DELETE FROM tags WHERE _id = ${this.satan.q(id)}`);
-    return deleted > 0;
+    const res = (await this.satan.query(`DELETE FROM tags WHERE _id = ${quote(id)}`)) as { deletedCount: number };
+    return res.deletedCount > 0;
   }
 
   // --- delegated to Mongo ---

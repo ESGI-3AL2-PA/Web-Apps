@@ -1,5 +1,5 @@
+import { quote, type SatanClient } from "@repo/satan";
 import type { Listing } from "../../entities/listing.entity.js";
-import type { SatanQueryRunner } from "../satan/satan-runner.js";
 import type { IListingRepository } from "./listing.repository.js";
 
 /** SATAN QL for the id lookup + deletes; Mongo for the paginated/regex list,
@@ -7,20 +7,21 @@ import type { IListingRepository } from "./listing.repository.js";
 export class SatanListingRepository implements IListingRepository {
   constructor(
     private readonly mongo: IListingRepository,
-    private readonly satan: SatanQueryRunner,
+    private readonly satan: SatanClient,
   ) {}
 
-  getListingById(id: string): Promise<Listing | null> {
-    return this.satan.findOne<Listing>(`FIND listings WHERE _id = ${this.satan.q(id)}`);
+  async getListingById(id: string): Promise<Listing | null> {
+    const rows = (await this.satan.query(`FIND listings WHERE _id = ${quote(id)}`)) as Listing[];
+    return rows[0] ?? null;
   }
 
   async deleteListing(id: string): Promise<boolean> {
-    const deleted = await this.satan.delete(`DELETE FROM listings WHERE _id = ${this.satan.q(id)}`);
-    return deleted > 0;
+    const res = (await this.satan.query(`DELETE FROM listings WHERE _id = ${quote(id)}`)) as { deletedCount: number };
+    return res.deletedCount > 0;
   }
 
   async deleteByAuthor(authorId: string): Promise<void> {
-    await this.satan.delete(`DELETE FROM listings WHERE authorId = ${this.satan.q(authorId)}`);
+    await this.satan.query(`DELETE FROM listings WHERE authorId = ${quote(authorId)}`);
   }
 
   // --- delegated to Mongo ---

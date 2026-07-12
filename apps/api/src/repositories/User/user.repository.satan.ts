@@ -1,39 +1,41 @@
+import { quote, type SatanClient } from "@repo/satan";
 import type { User } from "../../entities/user.entity.js";
-import type { SatanQueryRunner } from "../satan/satan-runner.js";
 import type { IUserRepository } from "./user.repository.js";
 
 /**
  * SATAN-QL-backed user repository. Simple key lookups, the scalar `setBanned`
- * transition and the id delete go through SATAN QL; anything needing a count +
- * `$or` regex (getUsers) or server-generated fields (create/update) delegates to
- * the wrapped Mongo repository.
+ * transition and the id delete go through SATAN QL (`satan.query`); anything
+ * needing a count + `$or` regex (getUsers) or server-generated fields
+ * (create/update) delegates to the wrapped Mongo repository.
  */
 export class SatanUserRepository implements IUserRepository {
   constructor(
     private readonly mongo: IUserRepository,
-    private readonly satan: SatanQueryRunner,
+    private readonly satan: SatanClient,
   ) {}
 
-  getUserById(id: string): Promise<User | null> {
-    return this.satan.findOne<User>(`FIND users WHERE _id = ${this.satan.q(id)}`);
+  async getUserById(id: string): Promise<User | null> {
+    const rows = (await this.satan.query(`FIND users WHERE _id = ${quote(id)}`)) as User[];
+    return rows[0] ?? null;
   }
 
-  getUserByEmail(email: string): Promise<User | null> {
-    return this.satan.findOne<User>(`FIND users WHERE email = ${this.satan.q(email)}`);
+  async getUserByEmail(email: string): Promise<User | null> {
+    const rows = (await this.satan.query(`FIND users WHERE email = ${quote(email)}`)) as User[];
+    return rows[0] ?? null;
   }
 
-  setBanned(id: string, banned: boolean): Promise<User | null> {
+  async setBanned(id: string, banned: boolean): Promise<User | null> {
     const now = new Date().toISOString();
-    return this.satan.updateReturning<User>(
-      "users",
-      id,
-      `UPDATE users SET banned = ${this.satan.q(banned)}, updatedAt = ${this.satan.q(now)} WHERE _id = ${this.satan.q(id)}`,
+    await this.satan.query(
+      `UPDATE users SET banned = ${quote(banned)}, updatedAt = ${quote(now)} WHERE _id = ${quote(id)}`,
     );
+    const rows = (await this.satan.query(`FIND users WHERE _id = ${quote(id)}`)) as User[];
+    return rows[0] ?? null;
   }
 
   async deleteUser(id: string): Promise<boolean> {
-    const deleted = await this.satan.delete(`DELETE FROM users WHERE _id = ${this.satan.q(id)}`);
-    return deleted > 0;
+    const res = (await this.satan.query(`DELETE FROM users WHERE _id = ${quote(id)}`)) as { deletedCount: number };
+    return res.deletedCount > 0;
   }
 
   // --- delegated to Mongo (count + $or regex / server-generated fields) ---

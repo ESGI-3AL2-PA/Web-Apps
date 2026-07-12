@@ -6,37 +6,39 @@ once and keeps alive, talking newline-delimited JSON over stdin/stdout.
 
 > SATAN = **S**ananes **A**byssal **T**orment **A**nalysis **N**etwork
 
-This package **only translates** SATAN QL into a serializable Mongo op
-descriptor — it never touches the Mongo driver. The consumer (e.g. `apps/api`)
-executes the descriptor.
+Best-effort, low-expectation query language: give it a Mongo `Db` and it runs
+your SATAN QL against it. `query()` returns `any`.
 
 ## Usage
 
 ```ts
-import { createSatanClient } from "@repo/satan";
+import { createSatanClient, quote } from "@repo/satan";
 
-const satan = createSatanClient(); // spawns python3 python/worker.py, kept alive
+const satan = createSatanClient({ db }); // db: a mongodb Db; spawns the worker, kept alive
 
-const op = await satan.query('FIND users WHERE role = "admin" LIMIT 10');
-// → { op: "find", collection: "users", filter: { role: "admin" }, limit: 10 }
+// query() translates AND runs the query, returning results:
+const users = await satan.query('FIND users WHERE role = "admin" LIMIT 10');
+// → [{ id, email, role, ... }, ...]   (find: docs, with _id renamed to id)
 
-// ...drive the Mongo driver from `op` in the repository layer...
+// build queries safely with quote():
+const one = await satan.query(`FIND users WHERE _id = ${quote(id)}`);
 
 await satan.close(); // on shutdown
 ```
 
-`query()` returns a `SatanOp`:
+`query(ql)` returns, by op:
 
-| `op`         | Fields                                                  |
-| ------------ | ------------------------------------------------------- |
-| `find`       | `collection, filter, projection?, sort?, limit?, skip?` |
-| `insertOne`  | `collection, document`                                  |
-| `updateMany` | `collection, filter, update: { $set }`                  |
-| `deleteMany` | `collection, filter`                                    |
+| op       | returns                           |
+| -------- | --------------------------------- |
+| `FIND`   | array of documents (`_id` → `id`) |
+| `INSERT` | `{ insertedId }`                  |
+| `UPDATE` | `{ matchedCount, modifiedCount }` |
+| `DELETE` | `{ deletedCount }`                |
 
-A rejected query throws `SatanQueryError` (with the Python trace on
-`.pythonTrace`). The worker restarts automatically on crash unless
-`autoRestart: false`.
+Need the raw translation without touching Mongo? `compile(ql)` returns the
+`SatanOp` descriptor (`{ op, collection, filter, ... }`) — used by the smoke
+test and the boot healthcheck. A rejected query throws `SatanQueryError` (Python
+trace on `.pythonTrace`). The worker restarts on crash unless `autoRestart: false`.
 
 ## Query language
 

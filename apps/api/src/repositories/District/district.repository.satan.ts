@@ -1,5 +1,5 @@
+import { quote, type SatanClient } from "@repo/satan";
 import type { District, GeoJson } from "../../entities/district.entity.js";
-import type { SatanQueryRunner } from "../satan/satan-runner.js";
 import type { IDistrictRepository, UpdateDistrictData } from "./district.repository.js";
 
 /** SATAN QL for id lookup and delete; Mongo for the geo query, the list and the
@@ -7,16 +7,17 @@ import type { IDistrictRepository, UpdateDistrictData } from "./district.reposit
 export class SatanDistrictRepository implements IDistrictRepository {
   constructor(
     private readonly mongo: IDistrictRepository,
-    private readonly satan: SatanQueryRunner,
+    private readonly satan: SatanClient,
   ) {}
 
-  getDistrictById(id: string): Promise<District | null> {
-    return this.satan.findOne<District>(`FIND districts WHERE _id = ${this.satan.q(id)}`);
+  async getDistrictById(id: string): Promise<District | null> {
+    const rows = (await this.satan.query(`FIND districts WHERE _id = ${quote(id)}`)) as District[];
+    return rows[0] ?? null;
   }
 
   async deleteDistrict(id: string): Promise<boolean> {
-    const deleted = await this.satan.delete(`DELETE FROM districts WHERE _id = ${this.satan.q(id)}`);
-    return deleted > 0;
+    const res = (await this.satan.query(`DELETE FROM districts WHERE _id = ${quote(id)}`)) as { deletedCount: number };
+    return res.deletedCount > 0;
   }
 
   // --- delegated to Mongo ---

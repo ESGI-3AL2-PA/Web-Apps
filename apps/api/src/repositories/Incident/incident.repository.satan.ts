@@ -1,5 +1,5 @@
+import { quote, type SatanClient } from "@repo/satan";
 import type { Incident } from "../../entities/incident.entity.js";
-import type { SatanQueryRunner } from "../satan/satan-runner.js";
 import type { IIncidentRepository } from "./incident.repository.js";
 
 /** SATAN QL for id lookup and deletes; Mongo for list, the `$group` stats and
@@ -7,20 +7,21 @@ import type { IIncidentRepository } from "./incident.repository.js";
 export class SatanIncidentRepository implements IIncidentRepository {
   constructor(
     private readonly mongo: IIncidentRepository,
-    private readonly satan: SatanQueryRunner,
+    private readonly satan: SatanClient,
   ) {}
 
-  getIncidentById(id: string): Promise<Incident | null> {
-    return this.satan.findOne<Incident>(`FIND incidents WHERE _id = ${this.satan.q(id)}`);
+  async getIncidentById(id: string): Promise<Incident | null> {
+    const rows = (await this.satan.query(`FIND incidents WHERE _id = ${quote(id)}`)) as Incident[];
+    return rows[0] ?? null;
   }
 
   async deleteIncident(id: string): Promise<boolean> {
-    const deleted = await this.satan.delete(`DELETE FROM incidents WHERE _id = ${this.satan.q(id)}`);
-    return deleted > 0;
+    const res = (await this.satan.query(`DELETE FROM incidents WHERE _id = ${quote(id)}`)) as { deletedCount: number };
+    return res.deletedCount > 0;
   }
 
   async deleteByReporter(reporterId: string): Promise<void> {
-    await this.satan.delete(`DELETE FROM incidents WHERE reporterId = ${this.satan.q(reporterId)}`);
+    await this.satan.query(`DELETE FROM incidents WHERE reporterId = ${quote(reporterId)}`);
   }
 
   // --- delegated to Mongo ---

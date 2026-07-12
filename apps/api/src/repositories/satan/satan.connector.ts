@@ -1,4 +1,5 @@
 import { createSatanClient, type SatanClient } from "@repo/satan";
+import type { Db } from "mongodb";
 
 let client: SatanClient | null = null;
 
@@ -9,11 +10,11 @@ let client: SatanClient | null = null;
  * timeout turns a missing interpreter/`ply` into a clear boot error instead of
  * a hang on the first real request.
  */
-export const connectSatan = async (): Promise<SatanClient> => {
+export const connectSatan = async (db: Db): Promise<SatanClient> => {
   if (client) return client;
 
   const pythonBin = process.env.SATAN_PYTHON ?? "python3";
-  const c = createSatanClient({ pythonBin });
+  const c = createSatanClient({ db, pythonBin });
 
   const stderr: string[] = [];
   c.on("stderr", (line: string) => {
@@ -21,7 +22,8 @@ export const connectSatan = async (): Promise<SatanClient> => {
     if (process.env.SATAN_DEBUG) console.error(`[satan] ${line}`);
   });
 
-  const verify = c.query("FIND _healthcheck");
+  // Translation-only verify (no Mongo touch) — proves the worker + ply are alive.
+  const verify = c.compile("FIND _healthcheck");
   verify.catch(() => {}); // swallow a late rejection if the timeout wins the race
 
   let timer: NodeJS.Timeout | undefined;

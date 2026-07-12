@@ -1,5 +1,5 @@
+import { quote, type SatanClient } from "@repo/satan";
 import type { Conversation, Message } from "../../entities/conversation.entity.js";
-import type { SatanQueryRunner } from "../satan/satan-runner.js";
 import type { IConversationRepository } from "./conversation.repository.js";
 
 /** SATAN QL for the two id lookups and the single-message delete; Mongo for the
@@ -8,19 +8,21 @@ import type { IConversationRepository } from "./conversation.repository.js";
 export class SatanConversationRepository implements IConversationRepository {
   constructor(
     private readonly mongo: IConversationRepository,
-    private readonly satan: SatanQueryRunner,
+    private readonly satan: SatanClient,
   ) {}
 
-  getConversationById(id: string): Promise<Conversation | null> {
-    return this.satan.findOne<Conversation>(`FIND conversations WHERE _id = ${this.satan.q(id)}`);
+  async getConversationById(id: string): Promise<Conversation | null> {
+    const rows = (await this.satan.query(`FIND conversations WHERE _id = ${quote(id)}`)) as Conversation[];
+    return rows[0] ?? null;
   }
 
-  getMessageById(id: string): Promise<Message | null> {
-    return this.satan.findOne<Message>(`FIND messages WHERE _id = ${this.satan.q(id)}`);
+  async getMessageById(id: string): Promise<Message | null> {
+    const rows = (await this.satan.query(`FIND messages WHERE _id = ${quote(id)}`)) as Message[];
+    return rows[0] ?? null;
   }
 
   async deleteMessage(id: string): Promise<void> {
-    await this.satan.delete(`DELETE FROM messages WHERE _id = ${this.satan.q(id)}`);
+    await this.satan.query(`DELETE FROM messages WHERE _id = ${quote(id)}`);
   }
 
   // --- delegated to Mongo ---
