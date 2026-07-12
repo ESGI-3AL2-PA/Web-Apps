@@ -11,6 +11,7 @@
  * collections are left untouched.
  */
 
+import argon2 from "argon2";
 import { connectDB } from "../repositories/mongodb.connector.js";
 import { connectNeo4j, closeNeo4j } from "../repositories/neo4j.connector.js";
 import { Neo4jGraphRepository } from "../repositories/Graph/graph.repository.neo4j.js";
@@ -158,14 +159,17 @@ const districts = [
   },
 ];
 
-// Placeholder password hash — real auth will replace this with bcrypt/argon2 output
-const placeholderHash = "$placeholder$not-a-real-hash$change-me";
+// All seeded users share one known dev password so the demo accounts can log in.
+// Override with SEED_PASSWORD. Only ever used by this local/dev seed script.
+const seedPassword = process.env.SEED_PASSWORD ?? "Password123!";
+const passwordHash = await argon2.hash(seedPassword);
 
 const users = [
   {
     _id: ids.users.admin,
     email: "admin@connected-neighbours.local",
-    passwordHash: placeholderHash,
+    passwordHash,
+    emailVerified: true,
     firstName: "Admin",
     lastName: "Root",
     phone: "0600000001",
@@ -179,7 +183,8 @@ const users = [
   {
     _id: ids.users.alice,
     email: "alice@example.com",
-    passwordHash: placeholderHash,
+    passwordHash,
+    emailVerified: true,
     firstName: "Alice",
     lastName: "Martin",
     phone: "0612345678",
@@ -193,7 +198,8 @@ const users = [
   {
     _id: ids.users.bob,
     email: "bob@example.com",
-    passwordHash: placeholderHash,
+    passwordHash,
+    emailVerified: true,
     firstName: "Bob",
     lastName: "Durand",
     phone: "0623456789",
@@ -207,7 +213,8 @@ const users = [
   {
     _id: ids.users.charlie,
     email: "charlie@example.com",
-    passwordHash: placeholderHash,
+    passwordHash,
+    emailVerified: true,
     firstName: "Charlie",
     lastName: "Dubois",
     phone: "0634567890",
@@ -221,7 +228,8 @@ const users = [
   {
     _id: ids.users.diana,
     email: "diana@example.com",
-    passwordHash: placeholderHash,
+    passwordHash,
+    emailVerified: true,
     firstName: "Diana",
     lastName: "Leroy",
     phone: "0645678901",
@@ -973,6 +981,7 @@ const main = async () => {
     console.log("\n📄  Mongo");
     await seedCollection(db, "districts", districts);
     await seedCollection(db, "users", users);
+    console.warn(`  🔑 seeded users share password "${seedPassword}" (e.g. alice@example.com)`);
     await seedCollection(db, "tags", tags);
     await seedCollection(db, "listings", listings);
     await seedCollection(db, "contracts", contracts);
