@@ -32,7 +32,7 @@ export const districtAdminsRouter = s.router(districtAdminsContract, {
 
   createDistrictAdmin: async ({ body }) => {
     try {
-      const created = await createDistrictAdminUseCase(resolve("districtAdmin"))(body);
+      const created = await createDistrictAdminUseCase(resolve("districtAdmin"), resolve("user"))(body);
       return { status: 201, body: created };
     } catch (err) {
       if (err instanceof DistrictAdminAlreadyExistsError) {
@@ -43,7 +43,7 @@ export const districtAdminsRouter = s.router(districtAdminsContract, {
   },
 
   deleteDistrictAdmin: async ({ params: { id } }) => {
-    const deleted = await deleteDistrictAdminUseCase(resolve("districtAdmin"))({ id });
+    const deleted = await deleteDistrictAdminUseCase(resolve("districtAdmin"), resolve("user"))({ id });
     if (!deleted) {
       return { status: 404, body: { message: "District-admin assignment not found" } };
     }
