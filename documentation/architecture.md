@@ -78,9 +78,7 @@ The API follows **Clean Architecture** with three concentric layers: routes → 
 - Layer 1 — Routes (thin controllers)
 - Layer 2 — Use Cases (business logic)
 - Layer 3 — Repositories (data access)
--
-
----
+- ***
 
 ## Frontend Apps
 
