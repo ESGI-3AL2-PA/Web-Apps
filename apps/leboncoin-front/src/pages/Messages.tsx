@@ -15,29 +15,37 @@ export default function Messages() {
   const { user } = useAuth();
   const { socket } = useSocket();
   const [conversations, setConversations] = useState<ConversationResponseDto[]>([]);
-  const [names, setNames] = useState<Record<string, string>>({});
+  const [userNames, setUserNames] = useState<Record<string, string>>({});
   const [messages, setMessages] = useState<MessageResponseDto[]>([]);
   const [draft, setDraft] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  // Load the conversation list + resolve the other participant's name.
+  // Load the conversation list + resolve every participant's name (needed for groups too).
   useEffect(() => {
     if (!user) return;
     getConversations({ participantId: user.id } as never)
       .then(async (convs) => {
         setConversations(convs);
+        const ids = [...new Set(convs.flatMap((c) => c.participants))].filter((id) => id && id !== user.id);
         const entries = await Promise.all(
-          convs.map(async (c) => {
-            const otherId = c.participants.find((p) => p !== user.id);
-            if (!otherId) return null;
-            const u = await getUserPublic(otherId).catch(() => null);
-            return u ? ([c.id, `${u.firstName} ${u.lastName}`] as const) : null;
+          ids.map(async (id) => {
+            const u = await getUserPublic(id).catch(() => null);
+            return u ? ([id, `${u.firstName} ${u.lastName}`] as const) : null;
           }),
         );
-        setNames(Object.fromEntries(entries.filter(Boolean) as (readonly [string, string])[]));
+        setUserNames(Object.fromEntries(entries.filter(Boolean) as (readonly [string, string])[]));
       })
       .catch(() => setConversations([]));
   }, [user]);
+
+  // A conversation's display title: its name for groups, otherwise the other participant.
+  const titleOf = (c: ConversationResponseDto): string => {
+    if (c.type === "group") return c.name?.trim() || t("messages.group");
+    const otherId = c.participants.find((p) => p !== user?.id);
+    return (otherId && userNames[otherId]) || t("messages.conversation");
+  };
+  const nameOf = (id: string): string => (id === user?.id ? t("messages.you") : (userNames[id] ?? "…"));
+  const active = conversations.find((c) => c.id === conversationId);
 
   // Load messages of the selected conversation.
   useEffect(() => {
@@ -103,11 +111,9 @@ export default function Messages() {
                   }`}
                 >
                   <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[color:var(--color-brand-soft)] text-sm font-bold text-[color:var(--color-brand-dark)]">
-                    {(names[c.id] ?? "?").charAt(0)}
+                    {c.type === "group" ? "👥" : titleOf(c).charAt(0).toUpperCase()}
                   </div>
-                  <span className="truncate text-sm font-medium text-neutral-800">
-                    {names[c.id] ?? t("messages.conversation")}
-                  </span>
+                  <span className="truncate text-sm font-medium text-neutral-800">{titleOf(c)}</span>
                 </button>
               </li>
             ))}
@@ -121,6 +127,20 @@ export default function Messages() {
           <div className="flex flex-1 items-center justify-center text-neutral-400">{t("messages.select")}</div>
         ) : (
           <>
+            {active && (
+              <header className="border-b border-neutral-100 px-4 py-3">
+                <div className="flex items-center gap-2">
+                  {active.type === "group" && <span>👥</span>}
+                  <h2 className="truncate font-bold text-neutral-900">{titleOf(active)}</h2>
+                </div>
+                {active.type === "group" && (
+                  <p className="mt-0.5 truncate text-xs text-neutral-500">
+                    {t("messages.participantCount", { count: active.participants.length })} ·{" "}
+                    {active.participants.map(nameOf).join(", ")}
+                  </p>
+                )}
+              </header>
+            )}
             <div className="flex-1 space-y-2 overflow-y-auto p-4">
               {messages.map((m) => {
                 const mine = m.senderId === user?.id;
@@ -131,6 +151,11 @@ export default function Messages() {
                         mine ? "bg-[color:var(--color-brand)] text-white" : "bg-neutral-100 text-neutral-800"
                       }`}
                     >
+                      {!mine && active?.type === "group" && (
+                        <p className="mb-0.5 text-[11px] font-semibold text-[color:var(--color-brand-dark)]">
+                          {nameOf(m.senderId)}
+                        </p>
+                      )}
                       <p className="whitespace-pre-wrap">{m.content}</p>
                       <p className={`mt-0.5 text-[10px] ${mine ? "text-white/70" : "text-neutral-400"}`}>
                         {formatRelative(m.createdAt)}

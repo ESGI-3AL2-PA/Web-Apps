@@ -88,6 +88,10 @@
     "title": "Messages",
     "noConversations": "Aucune conversation.",
     "conversation": "Conversation",
+    "group": "Groupe",
+    "you": "Vous",
+    "participantCount_one": "{{count}} participant",
+    "participantCount_other": "{{count}} participants",
     "select": "Sélectionnez une conversation",
     "placeholder": "Votre message…",
     "send": "Envoyer"
