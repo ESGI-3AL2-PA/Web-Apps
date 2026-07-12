@@ -5,10 +5,12 @@ import { useAuth } from "@repo/hooks";
 import type { ListingResponseDto } from "@repo/contracts";
 import { deleteListing, getListings } from "../api-service/listings.service";
 import { formatPrice, formatRelative, typeLabel } from "../lib/format";
+import { useDialog } from "../components/DialogProvider";
 
 export default function MyListings() {
   const { t } = useTranslation();
   const { user } = useAuth();
+  const { confirm, alert } = useDialog();
   const [listings, setListings] = useState<ListingResponseDto[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -24,9 +26,19 @@ export default function MyListings() {
   useEffect(load, [load]);
 
   const onDelete = async (id: string) => {
-    if (!confirm(t("myListings.confirmDelete"))) return;
-    await deleteListing(id).catch(() => alert(t("myListings.deleteError")));
-    setListings((prev) => prev.filter((l) => l.id !== id));
+    const ok = await confirm({
+      title: t("myListings.title"),
+      message: t("myListings.confirmDelete"),
+      confirmLabel: t("myListings.delete"),
+      tone: "danger",
+    });
+    if (!ok) return;
+    try {
+      await deleteListing(id);
+      setListings((prev) => prev.filter((l) => l.id !== id));
+    } catch {
+      await alert({ message: t("myListings.deleteError") });
+    }
   };
 
   return (

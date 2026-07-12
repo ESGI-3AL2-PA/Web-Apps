@@ -7,12 +7,14 @@ import { getListingById } from "../api-service/listings.service";
 import { getUserPublic, type UserPublic } from "../api-service/users.service";
 import { createConversation, getConversations } from "../api-service/conversations.service";
 import { formatDate, formatPrice, placeholderColor, typeLabel } from "../lib/format";
+import { useDialog } from "../components/DialogProvider";
 
 export default function ListingDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { user } = useAuth();
+  const { alert } = useDialog();
   const [listing, setListing] = useState<ListingResponseDto | null>(null);
   const [seller, setSeller] = useState<UserPublic | null>(null);
   const [active, setActive] = useState(0);
@@ -45,7 +47,7 @@ export default function ListingDetail() {
         existing ?? (await createConversation({ participants: [user.id, listing.authorId], type: "direct" }));
       navigate(`/messages/${conv.id}`);
     } catch {
-      alert(t("detail.contactError"));
+      await alert({ message: t("detail.contactError") });
     } finally {
       setContacting(false);
     }

@@ -2,7 +2,10 @@
   "common": {
     "loading": "Loading…",
     "language": "Language",
-    "misc": "Misc"
+    "misc": "Misc",
+    "confirm": "Confirm",
+    "cancel": "Cancel",
+    "ok": "OK"
   },
   "relative": {
     "now": "just now",
@@ -38,6 +41,7 @@
       "title": "Password",
       "desc": "We'll email you a secure link to choose a new password.",
       "action": "Send reset link",
+      "confirm": "Send a password reset link to your email address?",
       "sent": "Reset link sent — check your inbox."
     },
     "sessions": {

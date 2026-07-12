@@ -5,6 +5,7 @@ import type { SessionResponseDto } from "@repo/contracts";
 import { getSessions, revokeOtherSessions, revokeSession } from "../api-service/sessions.service";
 import { deleteAccount, exportMyData, requestPasswordReset } from "../api-service/account.service";
 import { formatRelative } from "../lib/format";
+import { useDialog } from "../components/DialogProvider";
 
 // Best-effort, presentation-only parse of the stored user-agent string.
 function describeDevice(ua: string | null, fallback: string): string {
@@ -45,6 +46,7 @@ function Card({ title, description, children }: { title: string; description?: s
 export default function Settings() {
   const { t } = useTranslation();
   const { user, logout, getAccessToken, refresh } = useAuth();
+  const { confirm } = useDialog();
 
   const [sessions, setSessions] = useState<SessionResponseDto[]>([]);
   const [loadingSessions, setLoadingSessions] = useState(true);
@@ -75,6 +77,12 @@ export default function Settings() {
 
   const onResetPassword = async () => {
     if (!user) return;
+    const ok = await confirm({
+      title: t("settings.password.title"),
+      message: t("settings.password.confirm"),
+      confirmLabel: t("settings.password.action"),
+    });
+    if (!ok) return;
     setBusy("password");
     try {
       await requestPasswordReset(user.email);
@@ -124,7 +132,14 @@ export default function Settings() {
   };
 
   const onDelete = async () => {
-    if (!user || !confirm(t("settings.danger.confirm"))) return;
+    if (!user) return;
+    const ok = await confirm({
+      title: t("settings.danger.title"),
+      message: t("settings.danger.confirm"),
+      confirmLabel: t("settings.danger.action"),
+      tone: "danger",
+    });
+    if (!ok) return;
     setBusy("delete");
     try {
       await deleteAccount(user.id);

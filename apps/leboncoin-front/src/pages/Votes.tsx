@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { VoteResponseDto } from "@repo/contracts";
 import { getVotes, submitVote } from "../api-service/votes.service";
+import { useDialog } from "../components/DialogProvider";
 
 function PollResults({ vote }: { vote: VoteResponseDto }) {
   const { t } = useTranslation();
@@ -32,6 +33,7 @@ function PollResults({ vote }: { vote: VoteResponseDto }) {
 
 function PollCard({ vote, onVoted }: { vote: VoteResponseDto; onVoted: (v: VoteResponseDto) => void }) {
   const { t } = useTranslation();
+  const { alert } = useDialog();
   const [selected, setSelected] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const voted = vote.userHasVoted || vote.status === "closed";
@@ -44,7 +46,7 @@ function PollCard({ vote, onVoted }: { vote: VoteResponseDto; onVoted: (v: VoteR
       const updated = await submitVote(vote.id, multi ? { chosenOptions: options } : { chosenOption: options[0] });
       onVoted(updated);
     } catch {
-      alert(t("votes.error"));
+      await alert({ message: t("votes.error") });
     } finally {
       setBusy(false);
     }

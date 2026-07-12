@@ -4,10 +4,12 @@ import { useAuth } from "@repo/hooks";
 import type { EventResponseDto } from "@repo/contracts";
 import { getEvents, registerToEvent, unregisterFromEvent } from "../api-service/events.service";
 import { formatDateTime } from "../lib/format";
+import { useDialog } from "../components/DialogProvider";
 
 export default function Events() {
   const { t } = useTranslation();
   const { user } = useAuth();
+  const { alert } = useDialog();
   const [events, setEvents] = useState<EventResponseDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
@@ -30,7 +32,7 @@ export default function Events() {
       const updated = isRegistered ? await unregisterFromEvent(ev.id) : await registerToEvent(ev.id);
       setEvents((prev) => prev.map((e) => (e.id === ev.id ? updated : e)));
     } catch {
-      alert(t("events.actionError"));
+      await alert({ message: t("events.actionError") });
     } finally {
       setBusy(null);
     }

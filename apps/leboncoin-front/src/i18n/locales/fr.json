@@ -2,7 +2,10 @@
   "common": {
     "loading": "Chargement…",
     "language": "Langue",
-    "misc": "Divers"
+    "misc": "Divers",
+    "confirm": "Confirmer",
+    "cancel": "Annuler",
+    "ok": "OK"
   },
   "relative": {
     "now": "à l'instant",
@@ -38,6 +41,7 @@
       "title": "Mot de passe",
       "desc": "Nous vous enverrons un lien sécurisé par e-mail pour choisir un nouveau mot de passe.",
       "action": "Envoyer le lien de réinitialisation",
+      "confirm": "Envoyer un lien de réinitialisation à votre adresse e-mail ?",
       "sent": "Lien envoyé — vérifiez votre boîte de réception."
     },
     "sessions": {
