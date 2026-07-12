@@ -202,8 +202,8 @@ function IncidentEdit({
             ))}
           </select>
         </Field>
-        <Field label="Assigned to">
-          <UserAutocomplete value={assignedTo} onChange={setAssignedTo} />
+        <Field label="Assigned to" hint="Only admins can be assigned.">
+          <UserAutocomplete value={assignedTo} onChange={setAssignedTo} role="admin" />
         </Field>
       </div>
       <Field label="History note" hint="Appended to the timeline on save.">

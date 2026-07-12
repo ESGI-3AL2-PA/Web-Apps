@@ -7,11 +7,13 @@ type UserAutocompleteProps = {
   value: string;
   onChange: (userId: string) => void;
   placeholder?: string;
+  // Restrict candidates to a single role (e.g. "admin" for incident assignment).
+  role?: "user" | "admin" | "superAdmin";
 };
 
 // Name-based user picker backed by GET /users (district-scoped server-side). Resolves the
 // initial value's id to a name, then lets the admin search by name and pick — writes the id back.
-export function UserAutocomplete({ value, onChange, placeholder }: UserAutocompleteProps) {
+export function UserAutocomplete({ value, onChange, placeholder, role }: UserAutocompleteProps) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<UserResponseDto[]>([]);
   const [open, setOpen] = useState(false);
@@ -44,7 +46,7 @@ export function UserAutocomplete({ value, onChange, placeholder }: UserAutocompl
     let cancelled = false;
     setLoading(true);
     const t = setTimeout(() => {
-      listUsers({ search: q, limit: 10 })
+      listUsers({ search: q, limit: 10, ...(role ? { role } : {}) })
         .then((res) => !cancelled && setResults(res.data))
         .catch(() => !cancelled && setResults([]))
         .finally(() => !cancelled && setLoading(false));
@@ -53,7 +55,7 @@ export function UserAutocomplete({ value, onChange, placeholder }: UserAutocompl
       cancelled = true;
       clearTimeout(t);
     };
-  }, [query, open]);
+  }, [query, open, role]);
 
   useEffect(() => {
     const onDocClick = (e: MouseEvent) => {
