@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { TagResponseDto } from "@repo/contracts";
 import { getTags } from "../api-service/tags.service";
 
@@ -33,6 +33,20 @@ const FilterBar = ({ selectedTag, onChange }: FilterBarProps) => {
     };
   }, []);
 
+  // Filtering keys off the tag name, and the catalogue can hold several tags that
+  // share a name (per-district duplicates), so collapse to one entry per name.
+  const uniqueTags = useMemo(() => {
+    const seen = new Set<string>();
+    return tags
+      .filter((tag) => {
+        const key = tag.name.trim().toLowerCase();
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      })
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [tags]);
+
   const toggle = (tagName: string) => {
     onChange(selectedTag === tagName ? "" : tagName);
   };
@@ -46,7 +60,7 @@ const FilterBar = ({ selectedTag, onChange }: FilterBarProps) => {
 
       {!loading && !error && (
         <div className="flex flex-col gap-2">
-          {tags.map((tag) => (
+          {uniqueTags.map((tag) => (
             <label key={tag.id} className="flex items-center gap-2 cursor-pointer">
               <input
                 type="checkbox"
