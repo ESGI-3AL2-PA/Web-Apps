@@ -101,6 +101,7 @@ export class MongoListingRepository implements IListingRepository {
 
   private toListing(doc: ListingDoc): Listing {
     const { _id, ...rest } = doc;
-    return { id: _id, ...rest };
+    // Default `images` for documents created before the field existed.
+    return { id: _id, ...rest, images: rest.images ?? [] };
   }
 }

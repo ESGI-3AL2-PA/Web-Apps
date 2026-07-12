@@ -41,6 +41,7 @@ import { transactionsRouter } from "./routes/transactions/transactions.router.js
 import { createServer } from "http";
 import { setupSocketIo, closeSocketIo } from "./sockets/io.js";
 import { voiceMessageHandler, audioStreamHandler } from "./routes/conversations/voice-message.handler.js";
+import { imageUploadHandler, imageStreamHandler } from "./routes/listings/image-upload.handler.js";
 import { recommendationsRouter } from "./routes/recommendations/recommendations.router.js";
 import { errorHandler, NotFoundError } from "./middleware/error-handler.js";
 import { requireAuth } from "./middleware/auth.middleware.js";
@@ -130,7 +131,7 @@ const openApiDocument = generateOpenApi(
   },
 );
 
-const allowedOrigins = (process.env.CORS_ORIGINS ?? "http://localhost:4000,http://localhost:5000")
+const allowedOrigins = (process.env.CORS_ORIGINS ?? "http://localhost:4000,http://localhost:5000,http://localhost:7000")
   .split(",")
   .map((s) => s.trim())
   .filter(Boolean);
@@ -165,6 +166,10 @@ app.use(
 // (verified inside the handler), not our JWT, so it must sit ABOVE requireAuth.
 app.post("/contracts/webhook", documensoWebhookHandler);
 
+// Listing images are public-read (keys are unguessable UUIDs) so plain <img src>
+// tags can load them without an Authorization header. Sits ABOVE requireAuth.
+app.get("/uploads/images/:key", imageStreamHandler);
+
 // Everything below /health, /openapi.json and /docs requires a valid access token.
 // requireAuth verifies the JWT (iss/aud) and sets req.user.
 app.use(requireAuth);
@@ -188,6 +193,10 @@ app.use(makeLimiter(120));
 // front never talks to Documenso/S3 directly). Raw handler — does its own party/
 // admin authorization. Registered before the ts-rest contract routes.
 app.get("/contracts/:id/pdf", makeLimiter(30), contractPdfHandler);
+
+// Listing image upload (base64 → MinIO). Tighter cap: writes to object storage.
+// The matching public GET stream is registered above requireAuth.
+app.post("/uploads/images", makeLimiter(30), imageUploadHandler);
 
 // Authorization is declared per-route in the contract `metadata.auth` and enforced
 // by this single global middleware (reads req.tsRestRoute, loads records for

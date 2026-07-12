@@ -20,6 +20,7 @@ export const ListingResponseDtoSchema = z
       .array(z.string())
       .optional()
       .openapi({ description: "Tag names attached to this listing", example: ["gardening", "weekend-help"] }),
+    images: z.array(z.string()).optional().openapi({ description: "URLs of images attached to this listing" }),
     userHasContract: z
       .boolean()
       .optional()
@@ -44,6 +45,11 @@ export const CreateListingDtoSchema = z
       .array(z.string())
       .optional()
       .openapi({ description: "Tag names attached to this listing", example: ["gardening"] }),
+    images: z
+      .array(z.string().url())
+      .max(8)
+      .optional()
+      .openapi({ description: "URLs of images attached to this listing (max 8)" }),
     expiresAt: z.string().datetime().optional(),
   })
   .openapi({ title: "CreateListing" });
@@ -57,6 +63,7 @@ export const UpdateListingDtoSchema = z
     price: z.number().int().min(0).optional(),
     status: ListingStatusSchema.optional(),
     tags: z.array(z.string()).optional(),
+    images: z.array(z.string().url()).max(8).optional(),
     expiresAt: z.string().datetime().optional(),
   })
   .openapi({ title: "UpdateListing" });

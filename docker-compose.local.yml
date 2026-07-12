@@ -153,6 +153,7 @@ services:
         until mc alias set local http://minio:9000 minioadmin minioadmin; do sleep 1; done;
         mc mb --ignore-existing local/documenso;
         mc mb --ignore-existing local/messages;
+        mc mb --ignore-existing local/listings;
         exit 0;
 
   # ── Application services (dev target, hot-reload via bind mount) ─────────────
@@ -191,6 +192,10 @@ services:
       MESSAGES_MINIO_BUCKET: messages
       MESSAGES_MINIO_ACCESS_KEY: minioadmin
       MESSAGES_MINIO_SECRET_KEY: minioadmin
+      LISTINGS_MINIO_ENDPOINT: http://minio:9000
+      LISTINGS_MINIO_BUCKET: listings
+      LISTINGS_MINIO_ACCESS_KEY: minioadmin
+      LISTINGS_MINIO_SECRET_KEY: minioadmin
     # No hard dependency on `documenso` (contracts profile): the api calls it lazily
     # per contract request and 502s if it's absent, so core can run without it.
     depends_on:
