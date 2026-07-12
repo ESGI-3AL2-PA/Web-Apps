@@ -36,14 +36,10 @@ export const tagsContract = c.router({
       404: NotFoundErrorSchema,
     },
     summary: "Get a single tag by ID",
-    metadata: auth({
-      audience: "api",
-      scope: {
-        resource: "tag",
-        districtField: "districtId",
-        bypassRoles: ["superAdmin"],
-      },
-    }),
+    // Reads are open to any authenticated user — the tag list (getTags) is
+    // unscoped, so scoping single-tag reads by district only produced a 403 for
+    // every non-admin (whose adminDistrictId is null) with no security benefit.
+    metadata: auth({ audience: "api" }),
   },
 
   createTag: {
