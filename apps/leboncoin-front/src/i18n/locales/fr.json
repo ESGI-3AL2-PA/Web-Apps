@@ -125,6 +125,5 @@
     "error": "Vote impossible (sondage fermé ou déjà voté).",
     "responses_one": "{{count}} réponse",
     "responses_other": "{{count}} réponses"
-  },
-  "footer": "Connected NeighBours — petites annonces entre voisins · les prix sont exprimés en points (tokens)"
+  }
 }

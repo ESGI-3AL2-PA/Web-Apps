@@ -125,6 +125,5 @@
     "error": "Vote failed (poll closed or already voted).",
     "responses_one": "{{count}} response",
     "responses_other": "{{count}} responses"
-  },
-  "footer": "Connected NeighBours — neighbourhood classifieds · prices are shown in points (tokens)"
+  }
 }
