@@ -19,6 +19,7 @@
   },
   "header": {
     "brand": "Connected NeighBours",
+    "home": "Accueil",
     "deposit": "+ Déposer une annonce",
     "searchPlaceholder": "Rechercher sur Connected NeighBours",
     "search": "Rechercher",
@@ -46,6 +47,7 @@
     "category": "Catégorie",
     "allCategories": "Toutes",
     "allListings": "Toutes les annonces",
+    "filters": "Filtres",
     "results_one": "{{count}} résultat",
     "results_other": "{{count}} résultats",
     "empty": "Aucune annonce ne correspond à votre recherche."
@@ -93,6 +95,7 @@
     "participantCount_one": "{{count}} participant",
     "participantCount_other": "{{count}} participants",
     "select": "Sélectionnez une conversation",
+    "back": "Retour",
     "placeholder": "Votre message…",
     "send": "Envoyer"
   },

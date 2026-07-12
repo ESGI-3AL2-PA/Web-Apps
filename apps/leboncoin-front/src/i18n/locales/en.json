@@ -19,6 +19,7 @@
   },
   "header": {
     "brand": "Connected NeighBours",
+    "home": "Home",
     "deposit": "+ Post an ad",
     "searchPlaceholder": "Search on Connected NeighBours",
     "search": "Search",
@@ -46,6 +47,7 @@
     "category": "Category",
     "allCategories": "All",
     "allListings": "All ads",
+    "filters": "Filters",
     "results_one": "{{count}} result",
     "results_other": "{{count}} results",
     "empty": "No ad matches your search."
@@ -93,6 +95,7 @@
     "participantCount_one": "{{count}} participant",
     "participantCount_other": "{{count}} participants",
     "select": "Select a conversation",
+    "back": "Back",
     "placeholder": "Your message…",
     "send": "Send"
   },

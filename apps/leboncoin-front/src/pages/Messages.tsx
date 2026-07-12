@@ -94,9 +94,13 @@ export default function Messages() {
   };
 
   return (
-    <div className="grid h-[70vh] grid-cols-1 gap-4 md:grid-cols-[280px_1fr]">
+    <div className="grid h-[calc(100dvh-13rem)] grid-cols-1 gap-4 md:h-[70vh] md:grid-cols-[280px_1fr]">
       {/* Conversation list */}
-      <aside className="overflow-y-auto rounded-xl border border-neutral-200 bg-white">
+      <aside
+        className={`overflow-y-auto rounded-xl border border-neutral-200 bg-white ${
+          conversationId ? "hidden md:block" : ""
+        }`}
+      >
         <h2 className="border-b border-neutral-100 p-4 text-lg font-bold text-neutral-900">{t("messages.title")}</h2>
         {conversations.length === 0 ? (
           <p className="p-4 text-sm text-neutral-500">{t("messages.noConversations")}</p>
@@ -122,7 +126,11 @@ export default function Messages() {
       </aside>
 
       {/* Thread */}
-      <section className="flex flex-col overflow-hidden rounded-xl border border-neutral-200 bg-white">
+      <section
+        className={`flex-col overflow-hidden rounded-xl border border-neutral-200 bg-white ${
+          conversationId ? "flex" : "hidden md:flex"
+        }`}
+      >
         {!conversationId ? (
           <div className="flex flex-1 items-center justify-center text-neutral-400">{t("messages.select")}</div>
         ) : (
@@ -130,6 +138,15 @@ export default function Messages() {
             {active && (
               <header className="border-b border-neutral-100 px-4 py-3">
                 <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => navigate("/messages")}
+                    aria-label={t("messages.back")}
+                    className="-ml-1 shrink-0 rounded-md p-1 text-neutral-500 hover:bg-neutral-100 md:hidden"
+                  >
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="m15 18-6-6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </button>
                   {active.type === "group" && <span>👥</span>}
                   <h2 className="truncate font-bold text-neutral-900">{titleOf(active)}</h2>
                 </div>
