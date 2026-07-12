@@ -13,7 +13,6 @@
   "dependencies": {
     "@repo/config": "*",
     "@repo/hooks": "*",
-    "@repo/ui": "*",
     "@tailwindcss/postcss": "^4.2.2",
     "@tailwindcss/vite": "^4.2.2",
     "autoprefixer": "^10.4.27",

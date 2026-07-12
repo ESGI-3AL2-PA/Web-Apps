@@ -38,10 +38,4 @@ export const router = createBrowserRouter([
       { path: "/profile", element: <Profile /> },
     ],
   },
-  {
-    path: "/auth",
-    children: [
-      // Public auth routes (if needed in future)
-    ],
-  },
 ]);
