@@ -1,4 +1,4 @@
-import { randomBytes, createHash } from "crypto";
+import { randomBytes, createHash, randomUUID } from "crypto";
 import { SignJWT } from "jose";
 import type { UserRecord } from "../repositories/User/user-reader.repository.js";
 import type { IRefreshTokenRepository } from "../repositories/RefreshToken/refresh-token.repository.js";
@@ -68,6 +68,7 @@ export const issueTokensForUser = async (
     expiresAt: expiresAt.toISOString(),
     revokedAt: null,
     createdAt: now.toISOString(),
+    sessionId: randomUUID(),
     userAgent: context?.userAgent ?? null,
     ip: context?.ip ?? null,
     lastUsedAt: now.toISOString(),

@@ -10,5 +10,8 @@ export interface IRefreshTokenRepository {
   revokeByTokenHash(tokenHash: string): Promise<boolean>;
   // Revoke one session by id, scoped to its owner. Returns false if not found/not theirs.
   revokeById(id: string, userId: string): Promise<boolean>;
+  // Revoke a whole session family (all rotations of one login). `userId` scopes it
+  // to the caller when the call is user-initiated; omit for internal reuse-detection.
+  revokeBySessionId(sessionId: string, userId?: string): Promise<boolean>;
   revokeAllForUser(userId: string): Promise<void>;
 }

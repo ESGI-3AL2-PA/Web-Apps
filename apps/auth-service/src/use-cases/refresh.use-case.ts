@@ -20,9 +20,15 @@ export const refreshUseCase = (
     const stored = await refreshTokenRepo.findActiveByTokenHash(tokenHash);
     if (!stored) {
       // The token isn't active. If it once existed (now revoked), this is a replay
-      // of an already-rotated token → treat as theft and revoke the whole family.
+      // of an already-rotated token → treat as theft and revoke that session's
+      // family only. Scoping to the family (not the whole user) keeps the user's
+      // other devices logged in — revoking everything would let one stale token on
+      // one device cascade into logging the account out everywhere.
       const seen = await refreshTokenRepo.findByTokenHash(tokenHash);
-      if (seen) await refreshTokenRepo.revokeAllForUser(seen.userId);
+      if (seen) {
+        if (seen.sessionId) await refreshTokenRepo.revokeBySessionId(seen.sessionId);
+        else await refreshTokenRepo.revokeAllForUser(seen.userId);
+      }
       return null;
     }
 
@@ -62,8 +68,9 @@ export const refreshUseCase = (
       tokenHash: newTokenHash,
       expiresAt: expiresAt.toISOString(),
       revokedAt: null,
-      // Preserve the session's origin across rotation; only lastUsedAt moves.
+      // Preserve the session's identity/origin across rotation; only lastUsedAt moves.
       createdAt: stored.createdAt,
+      sessionId: stored.sessionId,
       userAgent: stored.userAgent,
       ip: stored.ip,
       lastUsedAt: now.toISOString(),

@@ -43,6 +43,18 @@ export class MongoRefreshTokenRepository implements IRefreshTokenRepository {
     return result.modifiedCount === 1;
   }
 
+  async revokeBySessionId(sessionId: string, userId?: string): Promise<boolean> {
+    // Match by family id, or by token _id as a fallback so sessions created before
+    // the sessionId field existed (null family) are still revocable by their id.
+    const filter = {
+      $or: [{ sessionId }, { _id: sessionId }],
+      revokedAt: null,
+      ...(userId ? { userId } : {}),
+    };
+    const result = await this.collection.updateMany(filter, { $set: { revokedAt: new Date().toISOString() } });
+    return result.modifiedCount > 0;
+  }
+
   async revokeByTokenHash(tokenHash: string): Promise<boolean> {
     const result = await this.collection.updateOne(
       { tokenHash, revokedAt: null },

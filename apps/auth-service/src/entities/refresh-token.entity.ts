@@ -7,6 +7,11 @@ export const RefreshTokenSchema = z.object({
   expiresAt: z.string().datetime(),
   revokedAt: z.string().datetime().nullable(),
   createdAt: z.string().datetime(),
+  // Stable family id for a login session. Minted at login, carried across every
+  // rotation, so all rotated tokens of one device share it. Reuse detection and
+  // the "active sessions" view revoke/identify by family, not by the whole user.
+  // Nullable for rows created before this field existed.
+  sessionId: z.string().nullable().default(null),
   // Session identity, captured at login and carried across rotations so a
   // session stays recognizable in the "active sessions" view. Nullable for
   // rows created before these fields existed.
