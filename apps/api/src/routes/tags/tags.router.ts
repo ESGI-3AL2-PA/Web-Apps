@@ -33,12 +33,12 @@ export const tagsRouter = s.router(tagsContract, {
     if (!districtId) {
       return { status: 400, body: { message: "districtId required" } };
     }
-    const newTag = await createTagUseCase(resolve("tag"))({ ...body, districtId });
+    const newTag = await createTagUseCase(resolve("tag"), resolve("graph"))({ ...body, districtId });
     return { status: 201, body: newTag };
   },
 
   updateTag: async ({ params: { id }, body }) => {
-    const tag = await updateTagUseCase(resolve("tag"))(id, body);
+    const tag = await updateTagUseCase(resolve("tag"), resolve("graph"))(id, body);
     if (!tag) {
       return { status: 404, body: { message: "Tag not found" } };
     }
@@ -46,7 +46,7 @@ export const tagsRouter = s.router(tagsContract, {
   },
 
   deleteTag: async ({ params: { id } }) => {
-    const deleted = await deleteTagUseCase(resolve("tag"))({ id });
+    const deleted = await deleteTagUseCase(resolve("tag"), resolve("graph"))({ id });
     if (!deleted) {
       return { status: 404, body: { message: "Tag not found" } };
     }

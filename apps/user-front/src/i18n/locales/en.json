@@ -1,0 +1,172 @@
+{
+  "nav": {
+    "dashboard": "Dashboard",
+    "services": "Services",
+    "events": "Events",
+    "messaging": "Messages",
+    "votes": "Votes"
+  },
+  "header": {
+    "openMenu": "Open menu",
+    "language": "Language",
+    "notifications": "Notifications",
+    "account": "My account",
+    "profile": "My profile",
+    "logout": "Sign out",
+    "adminSpace": "Admin space",
+    "toDark": "Switch to dark theme",
+    "toLight": "Switch to light theme"
+  },
+  "dashboard": {
+    "balance": "My balance",
+    "points": "points",
+    "given": "Given",
+    "received": "Received",
+    "exchanged": "Exchanged"
+  },
+  "service": {
+    "title": "Neighbour services",
+    "activeCount_one": "{{count}} active listing",
+    "activeCount_other": "{{count}} active listings",
+    "typeTitle": "Listing type",
+    "categoryTitle": "Category",
+    "pointsTitle": "Points",
+    "maxLabel": "Max:",
+    "maxNone": "none",
+    "maxPts": "{{count}} pts",
+    "showFilters": "Filters",
+    "hideFilters": "Hide filters",
+    "searchPlaceholder": "Search a listing…",
+    "searchLabel": "Search a listing",
+    "maxPriceLabel": "Maximum price",
+    "create": "+ Create a listing",
+    "tabs": {
+      "listings": "Listings",
+      "myListings": "My listings",
+      "myContracts": "My contracts"
+    },
+    "type": {
+      "all": "All",
+      "offer": "Offer",
+      "request": "Request"
+    }
+  },
+  "listing": {
+    "points": "{{count}} pts",
+    "type": {
+      "offer": "Offer",
+      "request": "Request"
+    },
+    "status": {
+      "active": "Active",
+      "closed": "Closed",
+      "expired": "Expired"
+    }
+  },
+  "annonces": {
+    "loadError": "Could not load listings.",
+    "retry": "Retry",
+    "empty": "No listing matches your search.",
+    "prev": "Previous",
+    "next": "Next",
+    "page": "Page {{page}} / {{total}}"
+  },
+  "createListing": {
+    "title": "Create a listing",
+    "fieldTitle": "Title",
+    "description": "Description",
+    "type": "Type",
+    "typeOffer": "Offer",
+    "typeRequest": "Request",
+    "price": "Price (points)",
+    "tags": "Tags (comma-separated)",
+    "tagsPlaceholder": "Gardening, DIY",
+    "error": "Creating the listing failed. Try again.",
+    "cancel": "Cancel",
+    "submit": "Create",
+    "submitting": "Creating…"
+  },
+  "notifications": {
+    "title": "Notifications",
+    "empty": "No notifications.",
+    "markAllRead": "Mark all as read",
+    "delete": "Delete"
+  },
+  "myListings": {
+    "delete": "Delete",
+    "confirmDelete": "Delete this listing?",
+    "empty": "You don't have any listing yet.",
+    "loadError": "Could not load your listings."
+  },
+  "contracts": {
+    "empty": "You have no contracts.",
+    "loadError": "Could not load your contracts.",
+    "role": {
+      "provider": "Provider",
+      "beneficiary": "Beneficiary"
+    },
+    "status": {
+      "draft": "Draft",
+      "sent": "Sent",
+      "partially_signed": "Partially signed",
+      "signed": "Signed",
+      "expired": "Expired",
+      "declined": "Declined"
+    },
+    "disputedBadge": "Dispute in progress",
+    "dispute": "Report a dispute",
+    "disputeReason": "Dispute reason",
+    "disputeSubmit": "Send",
+    "cancel": "Cancel",
+    "disputeError": "Submitting the dispute failed."
+  },
+  "votes": {
+    "loadError": "Could not load votes.",
+    "empty": "No votes yet.",
+    "submit": "Vote",
+    "voted": "Thanks for voting!",
+    "results": "Results",
+    "totalResponses_one": "{{count}} response",
+    "totalResponses_other": "{{count}} responses",
+    "status": {
+      "draft": "Draft",
+      "open": "Open",
+      "closed": "Closed"
+    }
+  },
+  "events": {
+    "loadError": "Could not load events.",
+    "empty": "No events yet.",
+    "seats": "{{remaining}} / {{total}} seats",
+    "register": "Register",
+    "unregister": "Unregister",
+    "full": "Full",
+    "status": {
+      "upcoming": "Upcoming",
+      "ongoing": "Ongoing",
+      "completed": "Completed",
+      "cancelled": "Cancelled"
+    }
+  },
+  "messaging": {
+    "title": "Messages",
+    "open": "Open messages",
+    "close": "Close",
+    "minimize": "Minimize",
+    "empty": "No conversations.",
+    "select": "Select a conversation to view messages.",
+    "conversation": "Conversation",
+    "placeholder": "Write a message…",
+    "send": "Send",
+    "back": "Back",
+    "loadError": "Could not load conversations."
+  },
+  "comingSoon": "This feature is coming soon.",
+  "notFound": {
+    "title404": "404",
+    "titleError": "Oops",
+    "msg404": "This page does not exist.",
+    "msgError": "Something went wrong.",
+    "home": "Back to home"
+  }
+}

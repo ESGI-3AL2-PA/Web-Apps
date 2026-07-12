@@ -142,15 +142,15 @@ connectDB()
     const server = app.listen(port, () => {
       const localUrl = `http://localhost:${port}`;
 
-      console.log("");
-      console.log(" 🔐  Auth Service Running !");
-      console.log("");
-      console.log(` ➜  Local:   \x1b[36m${localUrl}\x1b[0m`);
-      console.log(` ➜  Login:   \x1b[36m${localUrl}/login\x1b[0m`);
-      console.log(` ➜  Register:\x1b[36m${localUrl}/register\x1b[0m`);
-      console.log(` ➜  JWKS:    \x1b[36m${localUrl}/.well-known/jwks.json\x1b[0m`);
-      console.log("");
-      console.log(`\x1b[33m⚡ Ready to accept connections\x1b[0m`);
+      console.warn("");
+      console.warn(" 🔐  Auth Service Running !");
+      console.warn("");
+      console.warn(` ➜  Local:   \x1b[36m${localUrl}\x1b[0m`);
+      console.warn(` ➜  Login:   \x1b[36m${localUrl}/login\x1b[0m`);
+      console.warn(` ➜  Register:\x1b[36m${localUrl}/register\x1b[0m`);
+      console.warn(` ➜  JWKS:    \x1b[36m${localUrl}/.well-known/jwks.json\x1b[0m`);
+      console.warn("");
+      console.warn(`\x1b[33m⚡ Ready to accept connections\x1b[0m`);
     });
     setupGracefulShutdown(server, closeDB);
   })

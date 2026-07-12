@@ -9,6 +9,7 @@ export interface IListingRepository {
     status?: string;
     districtId?: string;
     authorId?: string;
+    tag?: string;
     page?: number;
     limit?: number;
   }): Promise<{
@@ -25,4 +26,9 @@ export interface IListingRepository {
   updateListing(id: string, data: Partial<Omit<Listing, "id" | "createdAt">>): Promise<Listing | null>;
 
   deleteListing(id: string): Promise<boolean>;
+
+  countActiveListings(districtId?: string): Promise<number>;
+
+  /** Delete every listing authored by a user (account deletion). */
+  deleteByAuthor(authorId: string): Promise<void>;
 }

@@ -1,5 +1,5 @@
 import { randomUUID } from "crypto";
-import type { Collection, Db, Filter } from "mongodb";
+import type { ClientSession, Collection, Db, Filter } from "mongodb";
 import type { Vote, VoteResponseEntity, VoteStatus } from "../../entities/vote.entity.js";
 import type { IVoteRepository } from "./vote.repository.js";
 
@@ -25,6 +25,7 @@ export class MongoVoteRepository implements IVoteRepository {
     status?: string;
     districtId?: string;
     creatorId?: string;
+    currentUserId?: string;
     page?: number;
     limit?: number;
   }): Promise<{
@@ -33,7 +34,7 @@ export class MongoVoteRepository implements IVoteRepository {
     page: number;
     limit: number;
   }> {
-    const { search, status, districtId, creatorId, page = 1, limit = 20 } = params;
+    const { search, status, districtId, creatorId, currentUserId, page = 1, limit = 20 } = params;
 
     const filter: Filter<VoteDoc> = {};
     if (search) filter.question = { $regex: search, $options: "i" };
@@ -50,12 +51,50 @@ export class MongoVoteRepository implements IVoteRepository {
         .toArray(),
     ]);
 
-    return { data: docs.map(this.toVote), total, page, limit };
+    const data = await this.enrichWithUserVotes(docs, currentUserId);
+    return { data, total, page, limit };
   }
 
-  async getVoteById(id: string): Promise<Vote | null> {
+  async getVoteById(id: string, currentUserId?: string): Promise<Vote | null> {
     const doc = await this.votes.findOne({ _id: id });
-    return doc ? this.toVote(doc) : null;
+    if (!doc) return null;
+    const [enriched] = await this.enrichWithUserVotes([doc], currentUserId);
+    return enriched ?? null;
+  }
+
+  private async enrichWithUserVotes(docs: VoteDoc[], currentUserId?: string): Promise<Vote[]> {
+    // Group the caller's chosen options by voteId (empty map if unauthenticated).
+    const byVoteId = new Map<string, string[]>();
+    if (currentUserId && docs.length > 0) {
+      const voteIds = docs.map((d) => d._id);
+      const userResponses = await this.responses.find({ userId: currentUserId, voteId: { $in: voteIds } }).toArray();
+      for (const r of userResponses) {
+        const arr = byVoteId.get(r.voteId) ?? [];
+        arr.push(r.chosenOption);
+        byVoteId.set(r.voteId, arr);
+      }
+    }
+
+    return docs.map((d) => {
+      const myOptions = byVoteId.get(d._id) ?? [];
+      const userHasVoted = myOptions.length > 0;
+      const base = this.toVote(d);
+      // Résultats aveugles : tant que l'user n'a pas voté et que le scrutin est
+      // ouvert, on renvoie `totalResponses` mais on masque le détail par option
+      // (compteurs mis à zéro) — sinon le classement fuite avant le vote.
+      const revealBreakdown = userHasVoted || this.isVoteClosed(d);
+      return {
+        ...base,
+        results: revealBreakdown ? base.results : base.results.map((r) => ({ ...r, count: 0 })),
+        userHasVoted,
+        myChosenOptions: userHasVoted ? myOptions : undefined,
+      };
+    });
+  }
+
+  // Un vote est clos si son statut n'est plus "open" ou si sa deadline est passée.
+  private isVoteClosed(doc: VoteDoc): boolean {
+    return doc.status !== "open" || new Date(doc.endDate).getTime() < Date.now();
   }
 
   async createVote(data: Omit<Vote, "id" | "results">): Promise<Vote> {
@@ -81,18 +120,54 @@ export class MongoVoteRepository implements IVoteRepository {
     return voteResult.deletedCount === 1;
   }
 
-  async submitResponse(data: Omit<VoteResponseEntity, "id" | "votedAt">): Promise<VoteResponseEntity> {
+  async submitResponse(
+    data: Omit<VoteResponseEntity, "id" | "votedAt">,
+    session?: ClientSession,
+  ): Promise<VoteResponseEntity> {
     const now = new Date().toISOString();
     const doc: VoteResponseDoc = { ...data, _id: randomUUID(), votedAt: now };
-    await this.responses.insertOne(doc);
+    await this.responses.insertOne(doc, { session });
 
     // Increment the matching option in the vote's cached results
     await this.votes.updateOne(
       { _id: data.voteId, "results.option": data.chosenOption },
       { $inc: { "results.$.count": 1 } },
+      { session },
     );
 
     return this.toVoteResponse(doc);
+  }
+
+  async clearUserResponses(voteId: string, userId: string, session?: ClientSession): Promise<string[]> {
+    const existing = await this.responses.find({ voteId, userId }, { session }).toArray();
+    if (existing.length === 0) return [];
+
+    const options = existing.map((r) => r.chosenOption);
+    await this.responses.deleteMany({ voteId, userId }, { session });
+
+    // Décrémente les compteurs pour chaque option précédemment votée.
+    for (const option of options) {
+      await this.votes.updateOne(
+        { _id: voteId, "results.option": option },
+        { $inc: { "results.$.count": -1 } },
+        { session },
+      );
+    }
+
+    return options;
+  }
+
+  async deleteUserResponses(userId: string): Promise<void> {
+    const existing = await this.responses.find({ userId }).toArray();
+    if (existing.length === 0) return;
+    await this.responses.deleteMany({ userId });
+    // Décrémente les compteurs de résultats pour chaque (vote, option) retiré.
+    for (const r of existing) {
+      await this.votes.updateOne(
+        { _id: r.voteId, "results.option": r.chosenOption },
+        { $inc: { "results.$.count": -1 } },
+      );
+    }
   }
 
   async getResults(voteId: string): Promise<{ totalResponses: number; results: { option: string; count: number }[] }> {
@@ -118,7 +193,8 @@ export class MongoVoteRepository implements IVoteRepository {
 
   private toVote(doc: VoteDoc): Vote {
     const { _id, ...rest } = doc;
-    return { id: _id, ...rest };
+    const totalResponses = rest.results.reduce((sum, r) => sum + r.count, 0);
+    return { id: _id, ...rest, totalResponses };
   }
 
   private toVoteResponse(doc: VoteResponseDoc): VoteResponseEntity {

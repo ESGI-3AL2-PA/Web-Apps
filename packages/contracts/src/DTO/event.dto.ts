@@ -64,6 +64,10 @@ export const EventQueryDtoSchema = z
     districtId: z.string().optional(),
     creatorId: z.string().optional(),
     status: EventStatusSchema.optional(),
+    registrantId: z
+      .string()
+      .optional()
+      .openapi({ description: "Filter events where this user is registered (member of `registrants[]`)" }),
   })
   .openapi("EventQuery");
 export type EventQueryDto = z.infer<typeof EventQueryDtoSchema>;
@@ -74,3 +78,17 @@ export const AttendEventDtoSchema = z
   })
   .openapi({ title: "AttendEvent" });
 export type AttendEventDto = z.infer<typeof AttendEventDtoSchema>;
+
+// Interest signal for the Neo4j reco engine: 👍 = 1, 👎 = -1. Clamped to ±1 so a
+// client can't inflate the accumulating reco score with an arbitrary magnitude.
+export const MarkInterestDtoSchema = z
+  .object({
+    rating: z.union([z.literal(1), z.literal(-1)]),
+  })
+  .openapi({ title: "MarkInterest" });
+export type MarkInterestDto = z.infer<typeof MarkInterestDtoSchema>;
+
+export const MarkInterestResponseDtoSchema = z
+  .object({ success: z.boolean() })
+  .openapi({ title: "MarkInterestResponse" });
+export type MarkInterestResponseDto = z.infer<typeof MarkInterestResponseDtoSchema>;

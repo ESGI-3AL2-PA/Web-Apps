@@ -23,6 +23,10 @@ export const VoteSchema = z.object({
   results: z.array(VoteResultEntrySchema),
   startDate: z.string().datetime(),
   endDate: z.string().datetime(),
+  // Champs dérivés ajoutés à la lecture (enrichWithUserVotes), pas stockés.
+  totalResponses: z.number().int().optional(),
+  userHasVoted: z.boolean().optional(),
+  myChosenOptions: z.array(z.string()).optional(),
 });
 export type Vote = z.infer<typeof VoteSchema>;
 

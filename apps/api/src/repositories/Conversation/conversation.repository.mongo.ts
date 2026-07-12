@@ -55,6 +55,15 @@ export class MongoConversationRepository implements IConversationRepository {
     return doc ? this.toConversation(doc) : null;
   }
 
+  async findDirectConversation(participantIds: string[]): Promise<Conversation | null> {
+    // Order-independent exact match on the pair: same set, same size, direct type.
+    const doc = await this.conversations.findOne({
+      type: "direct",
+      participants: { $all: participantIds, $size: participantIds.length },
+    });
+    return doc ? this.toConversation(doc) : null;
+  }
+
   async createConversation(data: Omit<Conversation, "id" | "createdAt" | "lastMessageAt">): Promise<Conversation> {
     const now = new Date().toISOString();
     const doc: ConversationDoc = { ...data, _id: randomUUID(), createdAt: now };
@@ -116,6 +125,19 @@ export class MongoConversationRepository implements IConversationRepository {
       { returnDocument: "after" },
     );
     return result ? this.toMessage(result) : null;
+  }
+
+  async deleteMessage(id: string): Promise<void> {
+    await this.messages.deleteOne({ _id: id });
+  }
+
+  async deleteUserMessages(userId: string): Promise<string[]> {
+    const audioDocs = await this.messages
+      .find({ senderId: userId, type: "audio" }, { projection: { _id: 1 } })
+      .toArray();
+    const audioIds = audioDocs.map((d) => d._id);
+    await this.messages.deleteMany({ senderId: userId });
+    return audioIds;
   }
 
   private toConversation(doc: ConversationDoc): Conversation {

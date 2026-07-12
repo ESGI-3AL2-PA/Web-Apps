@@ -26,4 +26,7 @@ export interface INotificationRepository {
   markAllRead(recipientId: string): Promise<number>;
 
   deleteNotification(id: string): Promise<boolean>;
+
+  /** Delete every notification addressed to a user (account deletion). */
+  deleteByRecipient(userId: string): Promise<void>;
 }

@@ -15,7 +15,7 @@ const COLORS: Record<string, string> = {
   cancelled: "badge-error",
   // vote
   draft: "badge-neutral",
-  // contract / opensign
+  // contract / signature
   sent: "badge-info",
   partially_signed: "badge-warning",
   signed: "badge-success",

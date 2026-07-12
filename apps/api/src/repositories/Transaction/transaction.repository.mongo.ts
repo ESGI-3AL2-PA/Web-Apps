@@ -1,5 +1,5 @@
 import { randomUUID } from "crypto";
-import type { Collection, Db, Filter } from "mongodb";
+import type { ClientSession, Collection, Db, Filter } from "mongodb";
 import type { Transaction, TransactionRefType, TransactionType } from "../../entities/transaction.entity.js";
 import type { ITransactionRepository } from "./transaction.repository.js";
 
@@ -54,7 +54,10 @@ export class MongoTransactionRepository implements ITransactionRepository {
     return { data: docs.map(this.toTransaction), total, page, limit };
   }
 
-  async createTransactions(entries: Omit<Transaction, "id" | "createdAt">[]): Promise<Transaction[]> {
+  async createTransactions(
+    entries: Omit<Transaction, "id" | "createdAt">[],
+    session?: ClientSession,
+  ): Promise<Transaction[]> {
     const now = new Date().toISOString();
     const docs: TransactionDoc[] = entries.map((e) => ({
       ...e,
@@ -62,25 +65,26 @@ export class MongoTransactionRepository implements ITransactionRepository {
       createdAt: now,
     }));
     if (docs.length === 0) return [];
-    await this.transactions.insertMany(docs);
+    await this.transactions.insertMany(docs, { session });
     return docs.map(this.toTransaction);
   }
 
-  async adjustBalance(userId: string, delta: number): Promise<number | null> {
+  async adjustBalance(userId: string, delta: number, session?: ClientSession): Promise<number | null> {
     const result = await this.users.findOneAndUpdate(
       { _id: userId },
       { $inc: { balance: delta } },
-      { returnDocument: "after" },
+      { returnDocument: "after", session },
     );
     return result ? (result.balance ?? 0) : null;
   }
 
-  async tryDebit(userId: string, amount: number): Promise<boolean> {
+  async tryDebit(userId: string, amount: number, session?: ClientSession): Promise<boolean> {
     // The {$gte} guard and the {$inc} run as a single atomic document update,
     // so two concurrent debits can't both pass the balance check.
     const result = await this.users.findOneAndUpdate(
       { _id: userId, balance: { $gte: amount } },
       { $inc: { balance: -amount } },
+      { session },
     );
     return result !== null;
   }
@@ -89,6 +93,11 @@ export class MongoTransactionRepository implements ITransactionRepository {
     const user = await this.users.findOne({ _id: userId }, { projection: { balance: 1 } });
     if (!user) return null;
     return user.balance ?? 0;
+  }
+
+  async pseudonymiseUser(userId: string): Promise<void> {
+    // Keep the ledger rows (accounting retention) but sever the identity link.
+    await this.transactions.updateMany({ userId }, { $set: { userId: "[deleted]" } });
   }
 
   private toTransaction(doc: TransactionDoc): Transaction {

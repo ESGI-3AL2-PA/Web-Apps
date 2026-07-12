@@ -15,23 +15,33 @@ export class MongoUserRepository implements IUserRepository {
     await this.collection.createIndex({ districtId: 1 });
   }
 
-  async getUsers(params: { search?: string; districtId?: string; page?: number; limit?: number }): Promise<{
+  async getUsers(params: {
+    search?: string;
+    districtId?: string;
+    role?: string;
+    page?: number;
+    limit?: number;
+  }): Promise<{
     data: User[];
     total: number;
     page: number;
     limit: number;
   }> {
-    const { search, districtId, page = 1, limit = 10 } = params;
+    const { search, districtId, role, page = 1, limit = 10 } = params;
 
     const filter: Filter<Omit<User, "id"> & { _id: string }> = {};
     if (search) {
+      // Escape regex metacharacters so the raw search string can't inject an
+      // evil-regex (catastrophic backtracking / full-scan DoS).
+      const safe = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
       filter.$or = [
-        { firstName: { $regex: search, $options: "i" } },
-        { lastName: { $regex: search, $options: "i" } },
-        { email: { $regex: search, $options: "i" } },
+        { firstName: { $regex: safe, $options: "i" } },
+        { lastName: { $regex: safe, $options: "i" } },
+        { email: { $regex: safe, $options: "i" } },
       ];
     }
     if (districtId) filter.districtId = districtId;
+    if (role) filter.role = role as User["role"];
 
     const [total, docs] = await Promise.all([
       this.collection.countDocuments(filter),

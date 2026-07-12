@@ -89,6 +89,7 @@ export const UserQueryDtoSchema = z
     limit: z.coerce.number().int().min(1).max(100).optional().default(20),
     search: z.string().optional(),
     districtId: z.string().optional().openapi({ description: "Filter users by their residence district" }),
+    role: z.enum(["user", "admin", "superAdmin"]).optional().openapi({ description: "Filter users by role" }),
   })
   .openapi({ title: "UserQuery" });
 export type UserQueryDto = z.infer<typeof UserQueryDtoSchema>;

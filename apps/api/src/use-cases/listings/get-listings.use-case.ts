@@ -7,6 +7,7 @@ export const getListingsUseCase = (listingRepository: IListingRepository) => {
     status?: string;
     districtId?: string;
     authorId?: string;
+    tag?: string;
     page?: number;
     limit?: number;
   }) => {

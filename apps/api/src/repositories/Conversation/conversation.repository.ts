@@ -12,6 +12,10 @@ export interface IConversationRepository {
 
   getConversationById(id: string): Promise<Conversation | null>;
 
+  /** Find the existing 1:1 conversation between exactly this pair of participants,
+   *  regardless of order. Used to dedupe direct conversations on create. */
+  findDirectConversation(participantIds: string[]): Promise<Conversation | null>;
+
   createConversation(data: Omit<Conversation, "id" | "createdAt" | "lastMessageAt">): Promise<Conversation>;
 
   getMessages(
@@ -31,4 +35,10 @@ export interface IConversationRepository {
   markMessageRead(id: string): Promise<Message | null>;
 
   attachMedia(id: string, mediaUrl: string, type: Message["type"]): Promise<Message | null>;
+
+  deleteMessage(id: string): Promise<void>;
+
+  /** Delete every message sent by a user (account deletion). Returns the ids of the
+   *  deleted audio messages so the caller can remove their media files. */
+  deleteUserMessages(userId: string): Promise<string[]>;
 }

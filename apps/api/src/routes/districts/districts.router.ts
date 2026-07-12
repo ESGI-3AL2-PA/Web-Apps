@@ -25,13 +25,13 @@ export const districtsRouter = s.router(districtsContract, {
   },
 
   createDistrict: async ({ body }) => {
-    const newDistrict = await createDistrictUseCase(resolve("district"))(body);
+    const newDistrict = await createDistrictUseCase(resolve("district"), resolve("graph"))(body);
     await seedDefaultTagsUseCase(resolve("tag"))(newDistrict.id);
     return { status: 201, body: newDistrict };
   },
 
   updateDistrict: async ({ params: { id }, body }) => {
-    const district = await updateDistrictUseCase(resolve("district"))(id, body);
+    const district = await updateDistrictUseCase(resolve("district"), resolve("graph"))(id, body);
     if (!district) {
       return { status: 404, body: { message: "District not found" } };
     }
@@ -39,7 +39,7 @@ export const districtsRouter = s.router(districtsContract, {
   },
 
   deleteDistrict: async ({ params: { id } }) => {
-    const deleted = await deleteDistrictUseCase(resolve("district"))({ id });
+    const deleted = await deleteDistrictUseCase(resolve("district"), resolve("graph"))({ id });
     if (!deleted) {
       return { status: 404, body: { message: "District not found" } };
     }

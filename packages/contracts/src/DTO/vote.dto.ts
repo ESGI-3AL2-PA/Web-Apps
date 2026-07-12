@@ -23,9 +23,21 @@ export const VoteResponseDtoSchema = z
     options: z.array(z.string()).openapi({ description: "Available options" }),
     voteType: VoteTypeSchema.openapi({ description: "single_choice or multiple_choice" }),
     status: VoteStatusSchema.openapi({ description: "Current vote status" }),
-    results: z.array(VoteResultEntrySchema).openapi({ description: "Aggregated results" }),
+    results: z.array(VoteResultEntrySchema).openapi({
+      description: "Aggregated results — per-option counts are zeroed until the caller has voted or the vote is closed",
+    }),
+    totalResponses: z
+      .number()
+      .int()
+      .optional()
+      .openapi({ description: "Total number of responses — always visible, even before the breakdown is revealed" }),
     startDate: z.string().datetime().openapi({ description: "Vote start date" }),
     endDate: z.string().datetime().openapi({ description: "Vote end date" }),
+    userHasVoted: z.boolean().optional().openapi({ description: "True if the current user has already voted" }),
+    myChosenOptions: z
+      .array(z.string())
+      .optional()
+      .openapi({ description: "Options chosen by the current user (empty if not yet voted)" }),
   })
   .openapi({ title: "VoteResponse" });
 export type VoteResponseDto = z.infer<typeof VoteResponseDtoSchema>;
@@ -71,7 +83,11 @@ export type VoteQueryDto = z.infer<typeof VoteQueryDtoSchema>;
 
 export const SubmitVoteResponseDtoSchema = z
   .object({
-    chosenOption: z.string().openapi({ description: "Option chosen by the user" }),
+    chosenOption: z.string().optional().openapi({ description: "Option unique (single_choice)" }),
+    chosenOptions: z.array(z.string()).optional().openapi({ description: "Options multiples (multiple_choice)" }),
+  })
+  .refine((data) => Boolean(data.chosenOption) || Boolean(data.chosenOptions && data.chosenOptions.length > 0), {
+    message: "chosenOption ou chosenOptions est requis",
   })
   .openapi({ title: "SubmitVoteResponse" });
 export type SubmitVoteResponseDto = z.infer<typeof SubmitVoteResponseDtoSchema>;

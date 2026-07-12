@@ -1,3 +1,4 @@
+import { readFileSync } from "fs";
 import { generateKeyPair, exportJWK, importPKCS8, importSPKI, type CryptoKey, type KeyObject } from "jose";
 
 type KeyLike = CryptoKey | KeyObject;
@@ -6,9 +7,15 @@ let privateKey: KeyLike;
 let publicKey: KeyLike;
 let jwks: { keys: object[] };
 
+// The PEM can be provided inline (AUTH_*_KEY) or via a mounted file (AUTH_*_KEY_FILE).
+// The file form lets dev keep stable keys on disk without committing them, so
+// restarts don't rotate keys and invalidate the api's JWKS cache.
+const readPem = (inline?: string, file?: string): string | undefined =>
+  inline || (file ? readFileSync(file, "utf8") : undefined);
+
 export const initKeys = async () => {
-  const privPem = process.env.AUTH_PRIVATE_KEY;
-  const pubPem = process.env.AUTH_PUBLIC_KEY;
+  const privPem = readPem(process.env.AUTH_PRIVATE_KEY, process.env.AUTH_PRIVATE_KEY_FILE);
+  const pubPem = readPem(process.env.AUTH_PUBLIC_KEY, process.env.AUTH_PUBLIC_KEY_FILE);
 
   if (privPem && pubPem) {
     privateKey = await importPKCS8(privPem, "RS256");

@@ -143,14 +143,47 @@ export function AuthProvider({ children, authServiceUrl }: AuthProviderProps) {
     }
   }, [AUTH_SERVICE_URL, bootstrapCsrf]);
 
-  // Attempt silent refresh on mount
+  // Seed a token handed back in the URL (auth-service redirects to
+  // `?access_token=…` after login), then fall back to a silent refresh. Consuming
+  // the URL token means a hard load / deep link lands authenticated instead of
+  // bouncing to the login form; stripping it keeps the token out of history,
+  // Referer headers and server logs.
   useEffect(() => {
-    refresh().finally(() => setIsLoading(false));
-  }, [refresh]);
+    const url = new URL(window.location.href);
+    const urlToken = url.searchParams.get("access_token");
+
+    const boot = async () => {
+      if (!urlToken) {
+        await refresh();
+        return;
+      }
+      accessTokenRef.current = urlToken;
+      try {
+        const infoRes = await fetch(`${AUTH_SERVICE_URL}/auth/userinfo`, {
+          headers: { Authorization: `Bearer ${urlToken}` },
+        });
+        if (infoRes.ok) {
+          setUser(await infoRes.json());
+        } else {
+          // Stale/invalid token in the URL — try the refresh cookie instead.
+          accessTokenRef.current = null;
+          await refresh();
+        }
+      } finally {
+        url.searchParams.delete("access_token");
+        window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
+      }
+    };
+
+    boot().finally(() => setIsLoading(false));
+  }, [refresh, AUTH_SERVICE_URL]);
 
   const value: AuthContextType = {
     user,
-    isAuthenticated: !!accessTokenRef.current,
+    // Derive from reactive state, not the token ref: a ref update never triggers a
+    // re-render, so `isAuthenticated` would only recompute incidentally. `setUser`
+    // co-fires with every token change (set on login/refresh, cleared on logout).
+    isAuthenticated: !!user,
     isLoading,
     authServiceUrl,
     login,

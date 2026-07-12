@@ -17,10 +17,7 @@ export function getJwtExpiry(token: string): number | null {
 /**
  * Returns true if the token expires within `thresholdSeconds` from now.
  */
-export function isTokenExpiringSoon(
-  token: string,
-  thresholdSeconds = 60,
-): boolean {
+export function isTokenExpiringSoon(token: string, thresholdSeconds = 60): boolean {
   const exp = getJwtExpiry(token);
   if (exp === null) return true;
   return exp - Date.now() / 1000 < thresholdSeconds;

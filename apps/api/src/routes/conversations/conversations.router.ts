@@ -2,7 +2,6 @@ import { initServer } from "@ts-rest/express";
 import { conversationsContract } from "@repo/contracts";
 import { resolve } from "../../repositories/container.js";
 import type { IUserRepository } from "../../repositories/User/user.repository.js";
-import { resolveListDistrictScope } from "../../middleware/district-scope.js";
 import { getConversationsUseCase } from "../../use-cases/conversations/get-conversations.use-case.js";
 import { getConversationByIdUseCase } from "../../use-cases/conversations/get-conversation-by-id.use-case.js";
 import { createConversationUseCase } from "../../use-cases/conversations/create-conversation.use-case.js";
@@ -10,6 +9,7 @@ import { getMessagesUseCase } from "../../use-cases/conversations/get-messages.u
 import { sendMessageUseCase } from "../../use-cases/conversations/send-message.use-case.js";
 import { markMessageReadUseCase } from "../../use-cases/conversations/mark-message-read.use-case.js";
 import { attachMediaUseCase } from "../../use-cases/conversations/attach-media.use-case.js";
+import { broadcastNewMessage } from "../../sockets/io.js";
 
 const s = initServer();
 
@@ -17,23 +17,13 @@ const s = initServer();
 // the contract-metadata middleware (404-on-deny).
 export const conversationsRouter = s.router(conversationsContract, {
   getConversations: async ({ query, req }) => {
-    // Regular users only see their own conversations; admins/superAdmins are district-scoped
-    // (an admin bound to no district sees nothing, superAdmin may filter freely).
-    if (req.user!.role === "user") {
-      const result = await getConversationsUseCase(resolve("conversation"))({
-        ...query,
-        participantId: req.user!.sub,
-      });
-      return { status: 200, body: result };
-    }
-
-    const scope = resolveListDistrictScope(req.user!, query.districtId);
-    if ("empty" in scope) {
-      return { status: 200, body: { data: [], total: 0, page: query.page, limit: query.limit } };
-    }
+    // Conversations are private to their participants — every role (including admin/
+    // superAdmin) only lists conversations it takes part in. The detail and message
+    // routes enforce the same participant check, so the list and the detail agree
+    // (no more "listed but 404 on open" for non-participant staff).
     const result = await getConversationsUseCase(resolve("conversation"))({
       ...query,
-      districtId: scope.districtId,
+      participantId: req.user!.sub,
     });
     return { status: 200, body: result };
   },
@@ -69,11 +59,13 @@ export const conversationsRouter = s.router(conversationsContract, {
   },
 
   sendMessage: async ({ params: { id }, body, req }) => {
-    const message = await sendMessageUseCase(resolve("conversation"))(id, req.user!.sub, body);
-    if (!message) {
+    const result = await sendMessageUseCase(resolve("conversation"))(id, req.user!.sub, body);
+    if (!result) {
       return { status: 404, body: { message: "Conversation not found" } };
     }
-    return { status: 201, body: message };
+    // Push aux autres participants connectés (eux refetcheront automatiquement).
+    broadcastNewMessage(result.participants, result.message);
+    return { status: 201, body: result.message };
   },
 
   markMessageRead: async ({ params: { id } }) => {

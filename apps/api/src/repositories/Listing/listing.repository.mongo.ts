@@ -23,6 +23,7 @@ export class MongoListingRepository implements IListingRepository {
     status?: string;
     districtId?: string;
     authorId?: string;
+    tag?: string;
     page?: number;
     limit?: number;
   }): Promise<{
@@ -31,7 +32,7 @@ export class MongoListingRepository implements IListingRepository {
     page: number;
     limit: number;
   }> {
-    const { search, type, status, districtId, authorId, page = 1, limit = 20 } = params;
+    const { search, type, status, districtId, authorId, tag, page = 1, limit = 20 } = params;
 
     const filter: Filter<ListingDoc> = {};
 
@@ -42,6 +43,13 @@ export class MongoListingRepository implements IListingRepository {
     if (status) filter.status = status as ListingStatus;
     if (districtId) filter.districtId = districtId;
     if (authorId) filter.authorId = authorId;
+    // Match case-insensitive sur l'array `tags` : "Babysitting" matche
+    // "babysitting" et inversement. On échappe les caractères regex pour
+    // éviter toute injection (`.`, `*`, `+`, etc. dans un nom de tag).
+    if (tag) {
+      const escaped = tag.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      filter.tags = { $regex: new RegExp(`^${escaped}$`, "i") };
+    }
 
     const [total, docs] = await Promise.all([
       this.collection.countDocuments(filter),
@@ -79,6 +87,16 @@ export class MongoListingRepository implements IListingRepository {
   async deleteListing(id: string): Promise<boolean> {
     const result = await this.collection.deleteOne({ _id: id });
     return result.deletedCount === 1;
+  }
+
+  async countActiveListings(districtId?: string): Promise<number> {
+    const filter: Filter<ListingDoc> = { status: "active" };
+    if (districtId) filter.districtId = districtId;
+    return this.collection.countDocuments(filter);
+  }
+
+  async deleteByAuthor(authorId: string): Promise<void> {
+    await this.collection.deleteMany({ authorId });
   }
 
   private toListing(doc: ListingDoc): Listing {

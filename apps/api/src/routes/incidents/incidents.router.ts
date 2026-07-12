@@ -39,7 +39,10 @@ export const incidentsRouter = s.router(incidentsContract, {
   },
 
   createIncident: async ({ body, req }) => {
-    const newIncident = await createIncidentUseCase(resolve("incident"))({
+    const newIncident = await createIncidentUseCase(
+      resolve("incident"),
+      resolve("graph"),
+    )({
       ...body,
       reporterId: req.user!.sub,
     });
@@ -48,15 +51,22 @@ export const incidentsRouter = s.router(incidentsContract, {
 
   updateIncident: async ({ params: { id }, body, req }) => {
     // Reporter/admin authorization is enforced by the contract-metadata middleware.
-    const incident = await updateIncidentUseCase(resolve("incident"))(id, body, req.user!.sub);
-    if (!incident) {
+    const result = await updateIncidentUseCase(resolve("incident"), resolve("user"), resolve("graph"))(
+      id,
+      body,
+      req.user!.sub,
+    );
+    if (result.kind === "not-found") {
       return { status: 404, body: { message: "Incident not found" } };
     }
-    return { status: 200, body: incident };
+    if (result.kind === "invalid-assignee") {
+      return { status: 400, body: { message: "An incident can only be assigned to an admin" } };
+    }
+    return { status: 200, body: result.incident };
   },
 
   deleteIncident: async ({ params: { id } }) => {
-    const deleted = await deleteIncidentUseCase(resolve("incident"))({ id });
+    const deleted = await deleteIncidentUseCase(resolve("incident"), resolve("graph"))({ id });
     if (!deleted) {
       return { status: 404, body: { message: "Incident not found" } };
     }

@@ -97,9 +97,17 @@ export const usersContract = c.router({
     body: c.noBody(),
     responses: {
       204: z.undefined(),
+      403: ForbiddenErrorSchema,
       404: NotFoundErrorSchema,
     },
-    summary: "Delete a user (admin only)",
-    metadata: auth({ audience: "api", roles: ["admin", "superAdmin"] }),
+    // Self-service account deletion (GDPR erasure): a user may delete ONLY their own
+    // account — selfParam:"id", no superAdmin bypass (admins can't delete others via
+    // this route; banning is the moderation tool). superAdmin accounts are protected
+    // by a use-case guardrail. notFoundOnDeny hides other users' existence (404 not 403).
+    summary: "Delete your own account. superAdmin accounts cannot be deleted.",
+    metadata: auth({
+      audience: "api",
+      scope: { resource: "user", selfParam: "id", notFoundOnDeny: true },
+    }),
   },
 });

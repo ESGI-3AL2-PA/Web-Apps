@@ -13,6 +13,26 @@ export async function getUser(id: string): Promise<UserResponseDto> {
   return res.data;
 }
 
+export type UserPublic = { id: string; firstName: string; lastName: string };
+
+// Cache local (promesses) pour ne pas re-fetch le même user à chaque cellule de tableau.
+const publicCache = new Map<string, Promise<UserPublic>>();
+
+// GET /users/:id/public — nom/prénom uniquement, accessible à tout admin authentifié.
+export function getUserPublic(id: string): Promise<UserPublic> {
+  const cached = publicCache.get(id);
+  if (cached) return cached;
+  const p = api
+    .get<UserPublic>(`/users/${id}/public`)
+    .then((res) => res.data)
+    .catch((err) => {
+      publicCache.delete(id);
+      throw err;
+    });
+  publicCache.set(id, p);
+  return p;
+}
+
 export async function updateUser(id: string, body: UpdateUserDto): Promise<UserResponseDto> {
   const res = await api.patch<UserResponseDto>(`/users/${id}`, body);
   return res.data;
@@ -21,10 +41,6 @@ export async function updateUser(id: string, body: UpdateUserDto): Promise<UserR
 export async function banUser(id: string, banned: boolean): Promise<UserResponseDto> {
   const res = await api.patch<UserResponseDto>(`/users/${id}/ban`, { banned });
   return res.data;
-}
-
-export async function deleteUser(id: string): Promise<void> {
-  await api.delete(`/users/${id}`);
 }
 
 // Triggers the auth-service's password-reset email flow for a stuck user. Public endpoint (always

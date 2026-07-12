@@ -2,6 +2,7 @@ import { useEffect, type ReactNode } from "react";
 import { AuthProvider, useAuth } from "@repo/hooks";
 import { config } from "@repo/config";
 import { setupInterceptors } from "../api-service/api";
+import { SocketProvider } from "../sockets/SocketProvider";
 
 const AUTH_SERVICE_URL = config.authServiceUrl;
 
@@ -18,7 +19,9 @@ function InterceptorSetup({ children }: { children: ReactNode }) {
 export default function Providers({ children }: { children: ReactNode }) {
   return (
     <AuthProvider authServiceUrl={AUTH_SERVICE_URL}>
-      <InterceptorSetup>{children}</InterceptorSetup>
+      <InterceptorSetup>
+        <SocketProvider>{children}</SocketProvider>
+      </InterceptorSetup>
     </AuthProvider>
   );
 }

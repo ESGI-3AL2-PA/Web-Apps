@@ -1,5 +1,5 @@
 import { z } from "../zod";
-import { GeoJsonSchema } from "./geoJson.dto";
+import { GeoJsonSchema, GeoJsonInputSchema } from "./geoJson.dto";
 
 export const DistrictResponseDtoSchema = z
   .object({
@@ -13,7 +13,7 @@ export type DistrictResponseDto = z.infer<typeof DistrictResponseDtoSchema>;
 export const CreateDistrictDtoSchema = z
   .object({
     name: z.string().min(1).max(200).openapi({ description: "District name", example: "Montmartre" }),
-    geoJson: GeoJsonSchema.optional(),
+    geoJson: GeoJsonInputSchema.optional(),
   })
   .openapi({ title: "CreateDistrict" });
 export type CreateDistrictDto = z.infer<typeof CreateDistrictDtoSchema>;
@@ -22,7 +22,7 @@ export const UpdateDistrictDtoSchema = z
   .object({
     name: z.string().min(1).max(200).optional().openapi({ description: "District name", example: "Montmartre" }),
     // null clears an existing boundary; omitted/undefined leaves it untouched.
-    geoJson: GeoJsonSchema.nullable().optional(),
+    geoJson: GeoJsonInputSchema.nullable().optional(),
   })
   .openapi({ title: "UpdateDistrict" });
 export type UpdateDistrictDto = z.infer<typeof UpdateDistrictDtoSchema>;

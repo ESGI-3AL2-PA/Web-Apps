@@ -1,14 +1,18 @@
-import React from 'react'
-import ReactDOM from 'react-dom/client'
-import { RouterProvider } from 'react-router-dom'
-import { router } from './app/router'
-import Providers from './app/providers'
+import React from "react";
+import ReactDOM from "react-dom/client";
+import { RouterProvider } from "react-router-dom";
+import { AuthProvider } from "@repo/hooks";
+import { config } from "@repo/config";
+import Providers from "./app/providers";
+import { router } from "./app/router";
+import "./i18n"; // initialise i18next (fr/en) before first render
 
-
-ReactDOM.createRoot(document.getElementById('app')!).render(
+ReactDOM.createRoot(document.getElementById("app")!).render(
   <React.StrictMode>
-    <Providers>
-      <RouterProvider router={router} />
-    </Providers>
-  </React.StrictMode>
-)
+    <AuthProvider authServiceUrl={config.authServiceUrl}>
+      <Providers>
+        <RouterProvider router={router} />
+      </Providers>
+    </AuthProvider>
+  </React.StrictMode>,
+);
