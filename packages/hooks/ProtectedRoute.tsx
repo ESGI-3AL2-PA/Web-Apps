@@ -4,6 +4,8 @@ import { useAuth } from "./useAuth";
 interface ProtectedRouteProps {
   children: ReactNode;
   roles?: string[];
+  /** When set, a role that fails the `roles` check is redirected here instead of seeing the 403 page. */
+  forbiddenRedirect?: string;
 }
 
 // Framework-neutral inline styles: this component is shared across fronts that don't share a CSS
@@ -37,7 +39,7 @@ function Spinner() {
   );
 }
 
-export function ProtectedRoute({ children, roles }: ProtectedRouteProps) {
+export function ProtectedRoute({ children, roles, forbiddenRedirect }: ProtectedRouteProps) {
   const { isAuthenticated, isLoading, user, authServiceUrl, logout } = useAuth();
 
   if (isLoading) {
@@ -53,6 +55,10 @@ export function ProtectedRoute({ children, roles }: ProtectedRouteProps) {
     // Authenticated but identity not yet resolved — wait rather than flash content.
     if (!user) return <Spinner />;
     if (!roles.includes(user.role)) {
+      if (forbiddenRedirect) {
+        window.location.href = forbiddenRedirect;
+        return <Spinner />;
+      }
       return (
         <div style={center}>
           <h1 style={{ fontSize: "1.5rem", margin: 0 }}>403 — Forbidden</h1>

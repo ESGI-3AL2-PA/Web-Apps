@@ -1,5 +1,6 @@
 import { createBrowserRouter, Navigate } from "react-router-dom";
 import { ProtectedRoute } from "@repo/hooks";
+import { config } from "@repo/config";
 import MainLayout from "../layouts/MainLayouts";
 import ServiceLayout from "../pages/service/ServiceLayout";
 import EvenementPage from "../pages/Evenement";
@@ -15,7 +16,7 @@ import Profile from "../pages/Profile";
 export const router = createBrowserRouter([
   {
     element: (
-      <ProtectedRoute>
+      <ProtectedRoute roles={["user", "admin"]} forbiddenRedirect={config.adminUrl}>
         <MainLayout />
       </ProtectedRoute>
     ),
