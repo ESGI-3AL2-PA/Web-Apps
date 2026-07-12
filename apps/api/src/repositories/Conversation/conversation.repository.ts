@@ -12,6 +12,10 @@ export interface IConversationRepository {
 
   getConversationById(id: string): Promise<Conversation | null>;
 
+  /** Find the existing 1:1 conversation between exactly this pair of participants,
+   *  regardless of order. Used to dedupe direct conversations on create. */
+  findDirectConversation(participantIds: string[]): Promise<Conversation | null>;
+
   createConversation(data: Omit<Conversation, "id" | "createdAt" | "lastMessageAt">): Promise<Conversation>;
 
   getMessages(
