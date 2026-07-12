@@ -35,19 +35,6 @@ export default function Home() {
 
   return (
     <div className="space-y-8">
-      <section className="rounded-2xl bg-gradient-to-r from-[color:var(--color-brand)] to-indigo-400 px-6 py-10 text-white">
-        <h1 className="text-3xl font-extrabold">Vos petites annonces entre voisins</h1>
-        <p className="mt-2 max-w-xl text-white/90">
-          Achetez, vendez et rendez service près de chez vous. Déposez votre annonce en quelques secondes.
-        </p>
-        <Link
-          to="/deposer"
-          className="mt-5 inline-block rounded-lg bg-white px-5 py-2.5 font-semibold text-[color:var(--color-brand-dark)] shadow hover:bg-neutral-50"
-        >
-          Déposer une annonce
-        </Link>
-      </section>
-
       {tags.length > 0 && (
         <section>
           <h2 className="mb-3 text-lg font-bold text-neutral-900">Catégories</h2>
