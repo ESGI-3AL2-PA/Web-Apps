@@ -4,7 +4,7 @@ import type { IListingRepository } from "./listing.repository.js";
 import { containsAny, eq, paginate, where } from "../satan.helpers.js";
 
 /** SATAN QL for the id lookup, deletes, the paginated list (CONTAINS search +
- *  ILIKE tag match) and the active-count (COUNT); Mongo only for the
+ *  IEQ tag match) and the active-count (COUNT); Mongo only for the
  *  server-generated create/update. */
 export class SatanListingRepository implements IListingRepository {
   constructor(
@@ -34,9 +34,11 @@ export class SatanListingRepository implements IListingRepository {
       status && eq("status", status),
       districtId && eq("districtId", districtId),
       authorId && eq("authorId", authorId),
-      // `tags` is an array; ILIKE anchors the match (case-insensitive), so it
-      // matches an element equal to `tag` — mirrors the Mongo `^tag$/i` regex.
-      tag && `tags ILIKE ${quote(tag)}`,
+      // `tags` is an array; IEQ is a literal case-insensitive equality (escaped,
+      // anchored), so it matches an element equal to `tag` — mirrors the Mongo
+      // `^tag$/i` regex. NB: uses IEQ, not ILIKE, so `*`/`?` in `tag` stay
+      // literal rather than becoming regex wildcards (no injection / ReDoS).
+      tag && `tags IEQ ${quote(tag)}`,
     ]);
     return paginate<Listing>(this.satan, "listings", clause, { page, limit });
   }

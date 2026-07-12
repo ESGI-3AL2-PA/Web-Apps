@@ -69,12 +69,16 @@ export const ListingQueryDtoSchema = z
   .object({
     page: z.coerce.number().int().min(1).optional().default(1),
     limit: z.coerce.number().int().min(1).max(100).optional().default(20),
-    search: z.string().optional(),
+    search: z.string().max(200).optional(),
     type: ListingTypeSchema.optional(),
     status: ListingStatusSchema.optional(),
     districtId: z.string().optional(),
     authorId: z.string().optional(),
-    tag: z.string().optional().openapi({ description: "Filter listings by a single tag name (Mongo array match)" }),
+    tag: z
+      .string()
+      .max(200)
+      .optional()
+      .openapi({ description: "Filter listings by a single tag name (Mongo array match)" }),
   })
   .openapi({ title: "ListingQuery" });
 export type ListingQueryDto = z.infer<typeof ListingQueryDtoSchema>;
