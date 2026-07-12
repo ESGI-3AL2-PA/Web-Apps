@@ -10,6 +10,7 @@ import MyListings from "../pages/MyListings";
 import Messages from "../pages/Messages";
 import Events from "../pages/Events";
 import Votes from "../pages/Votes";
+import Settings from "../pages/Settings";
 
 export const router = createBrowserRouter([
   {
@@ -24,6 +25,7 @@ export const router = createBrowserRouter([
       { path: "/annonce/:id", element: <ListingDetail /> },
       { path: "/deposer", element: <PostListing /> },
       { path: "/mes-annonces", element: <MyListings /> },
+      { path: "/parametres", element: <Settings /> },
       { path: "/evenements", element: <Events /> },
       { path: "/sondages", element: <Votes /> },
       { path: "/messages", element: <Messages /> },

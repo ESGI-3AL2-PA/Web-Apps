@@ -147,6 +147,13 @@ export default function Header() {
                 >
                   {t("header.myListings")}
                 </Link>
+                <Link
+                  to="/parametres"
+                  onClick={() => setMenuOpen(false)}
+                  className="block px-4 py-2 text-sm text-neutral-700 hover:bg-[color:var(--color-brand-soft)]"
+                >
+                  {t("header.settings")}
+                </Link>
                 <button
                   onClick={() => {
                     setMenuOpen(false);

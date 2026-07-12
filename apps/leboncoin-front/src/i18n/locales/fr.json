@@ -28,8 +28,39 @@
     "messages": "Messages",
     "account": "Compte",
     "myListings": "Mes annonces",
+    "settings": "Paramètres",
     "logout": "Déconnexion",
     "allListings": "Toutes les annonces"
+  },
+  "settings": {
+    "title": "Paramètres",
+    "password": {
+      "title": "Mot de passe",
+      "desc": "Nous vous enverrons un lien sécurisé par e-mail pour choisir un nouveau mot de passe.",
+      "action": "Envoyer le lien de réinitialisation",
+      "sent": "Lien envoyé — vérifiez votre boîte de réception."
+    },
+    "sessions": {
+      "title": "Sessions actives",
+      "desc": "Appareils actuellement connectés à votre compte.",
+      "current": "Cet appareil",
+      "unknownDevice": "Appareil inconnu",
+      "lastUsed": "actif {{when}}",
+      "revoke": "Révoquer",
+      "revokeOthers": "Se déconnecter partout ailleurs",
+      "empty": "Aucune session active."
+    },
+    "data": {
+      "title": "Vos données",
+      "desc": "Téléchargez toutes vos données au format JSON.",
+      "action": "Télécharger mes données"
+    },
+    "danger": {
+      "title": "Supprimer le compte",
+      "desc": "Supprime définitivement votre compte et toutes les données associées. Cette action est irréversible.",
+      "action": "Supprimer mon compte",
+      "confirm": "Supprimer définitivement votre compte ? Cette action est irréversible."
+    }
   },
   "home": {
     "categories": "Catégories",

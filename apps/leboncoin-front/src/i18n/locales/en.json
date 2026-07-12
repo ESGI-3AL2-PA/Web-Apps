@@ -28,8 +28,39 @@
     "messages": "Messages",
     "account": "Account",
     "myListings": "My ads",
+    "settings": "Settings",
     "logout": "Log out",
     "allListings": "All ads"
+  },
+  "settings": {
+    "title": "Settings",
+    "password": {
+      "title": "Password",
+      "desc": "We'll email you a secure link to choose a new password.",
+      "action": "Send reset link",
+      "sent": "Reset link sent — check your inbox."
+    },
+    "sessions": {
+      "title": "Active sessions",
+      "desc": "Devices currently signed in to your account.",
+      "current": "This device",
+      "unknownDevice": "Unknown device",
+      "lastUsed": "active {{when}}",
+      "revoke": "Revoke",
+      "revokeOthers": "Log out everywhere else",
+      "empty": "No active sessions."
+    },
+    "data": {
+      "title": "Your data",
+      "desc": "Download everything we hold about you as a JSON file.",
+      "action": "Download my data"
+    },
+    "danger": {
+      "title": "Delete account",
+      "desc": "Permanently delete your account and all associated data. This cannot be undone.",
+      "action": "Delete my account",
+      "confirm": "Delete your account permanently? This cannot be undone."
+    }
   },
   "home": {
     "categories": "Categories",

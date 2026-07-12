@@ -87,6 +87,12 @@ export default function BottomNav() {
             >
               {t("header.myListings")}
             </button>
+            <button
+              onClick={() => go("/parametres")}
+              className="block w-full rounded-lg px-3 py-3 text-left text-sm font-medium text-neutral-700 hover:bg-[color:var(--color-brand-soft)]"
+            >
+              {t("header.settings")}
+            </button>
             <div className="flex items-center justify-between rounded-lg px-3 py-3">
               <span className="text-sm font-medium text-neutral-700">{t("common.language")}</span>
               <div className="flex overflow-hidden rounded-md border border-neutral-300">
