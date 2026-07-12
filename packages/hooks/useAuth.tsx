@@ -150,7 +150,10 @@ export function AuthProvider({ children, authServiceUrl }: AuthProviderProps) {
 
   const value: AuthContextType = {
     user,
-    isAuthenticated: !!accessTokenRef.current,
+    // Derive from reactive state, not the token ref: a ref update never triggers a
+    // re-render, so `isAuthenticated` would only recompute incidentally. `setUser`
+    // co-fires with every token change (set on login/refresh, cleared on logout).
+    isAuthenticated: !!user,
     isLoading,
     authServiceUrl,
     login,
