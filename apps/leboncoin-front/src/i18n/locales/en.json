@@ -51,6 +51,7 @@
       "unknownDevice": "Unknown device",
       "lastUsed": "active {{when}}",
       "revoke": "Revoke",
+      "logout": "Log out",
       "revokeOthers": "Log out everywhere else",
       "empty": "No active sessions."
     },

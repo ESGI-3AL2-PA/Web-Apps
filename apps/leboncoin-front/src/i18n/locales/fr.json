@@ -51,6 +51,7 @@
       "unknownDevice": "Appareil inconnu",
       "lastUsed": "actif {{when}}",
       "revoke": "Révoquer",
+      "logout": "Se déconnecter",
       "revokeOthers": "Se déconnecter partout ailleurs",
       "empty": "Aucune session active."
     },

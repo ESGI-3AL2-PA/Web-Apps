@@ -92,12 +92,18 @@ export default function Settings() {
     }
   };
 
-  const onRevoke = async (id: string) => {
-    setBusy(`revoke:${id}`);
+  const onRevoke = async (session: SessionResponseDto) => {
+    setBusy(`revoke:${session.id}`);
     try {
       const tok = await token();
-      if (tok) await revokeSession(tok, id);
-      setSessions((prev) => prev.filter((s) => s.id !== id));
+      if (tok) await revokeSession(tok, session.id);
+      // Revoking the current session ends this login — log out and bounce.
+      if (session.current) {
+        await logout();
+        window.location.href = "/";
+        return;
+      }
+      setSessions((prev) => prev.filter((s) => s.id !== session.id));
     } finally {
       setBusy(null);
     }
@@ -198,15 +204,13 @@ export default function Settings() {
                       {t("settings.sessions.lastUsed", { when: formatRelative(s.lastUsedAt ?? s.createdAt) })}
                     </p>
                   </div>
-                  {!s.current && (
-                    <button
-                      onClick={() => onRevoke(s.id)}
-                      disabled={busy === `revoke:${s.id}`}
-                      className="shrink-0 rounded-lg border border-neutral-300 px-3 py-1.5 text-sm font-medium text-neutral-700 hover:bg-neutral-50 disabled:opacity-60"
-                    >
-                      {t("settings.sessions.revoke")}
-                    </button>
-                  )}
+                  <button
+                    onClick={() => onRevoke(s)}
+                    disabled={busy === `revoke:${s.id}`}
+                    className="shrink-0 rounded-lg border border-neutral-300 px-3 py-1.5 text-sm font-medium text-neutral-700 hover:bg-neutral-50 disabled:opacity-60"
+                  >
+                    {s.current ? t("settings.sessions.logout") : t("settings.sessions.revoke")}
+                  </button>
                 </li>
               ))}
             </ul>
