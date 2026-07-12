@@ -1,5 +1,15 @@
 import { z } from "../zod";
 
+// Loose shape for RESPONSES — coordinates nest differently per geometry type and
+// stored data is trusted, so it's left untyped rather than forced to a strict shape.
+export const GeoJsonSchema = z
+  .object({
+    type: z.string().openapi({ description: "GeoJSON geometry type", example: "Polygon" }),
+    coordinates: z.array(z.unknown()).openapi({ description: "GeoJSON coordinates (shape depends on geometry type)" }),
+  })
+  .openapi("GeoJson");
+export type GeoJson = z.infer<typeof GeoJsonSchema>;
+
 // A GeoJSON position: [lng, lat] (extra elevation values tolerated) within valid ranges.
 const Position = z.tuple([z.number().min(-180).max(180), z.number().min(-90).max(90)]).rest(z.number());
 
@@ -16,12 +26,13 @@ const LinearRing = z
 
 const PolygonCoordinates = z.array(LinearRing).min(1);
 
-// District boundaries are stored as Polygon or MultiPolygon; validate both strictly
-// so a bad shape is rejected with a 400 up front instead of crashing 2dsphere.
-export const GeoJsonSchema = z
+// Strict shape for REQUEST bodies (district create/update): validate Polygon and
+// MultiPolygon up front so a bad boundary is rejected with a 400 instead of crashing
+// the 2dsphere index with a 500.
+export const GeoJsonInputSchema = z
   .discriminatedUnion("type", [
     z.object({ type: z.literal("Polygon"), coordinates: PolygonCoordinates }),
     z.object({ type: z.literal("MultiPolygon"), coordinates: z.array(PolygonCoordinates).min(1) }),
   ])
-  .openapi("GeoJson");
-export type GeoJson = z.infer<typeof GeoJsonSchema>;
+  .openapi("GeoJsonInput");
+export type GeoJsonInput = z.infer<typeof GeoJsonInputSchema>;
