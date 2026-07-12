@@ -6,8 +6,8 @@ parser.py. Les mots-clés sont reconnus en case-insensitive (FIND == find).
 
 Tokens produits :
     - Mots-clés : FIND, COUNT, INSERT, INTO, UPDATE, DELETE, FROM, WHERE, SET,
-      SELECT, ORDER, BY, LIMIT, SKIP, AND, OR, NOT, LIKE, ILIKE, CONTAINS, IN,
-      EXISTS, ASC, DESC, TRUE, FALSE, NULL
+      SELECT, ORDER, BY, LIMIT, SKIP, AND, OR, NOT, LIKE, ILIKE, IEQ, CONTAINS,
+      IN, EXISTS, ASC, DESC, TRUE, FALSE, NULL
     - IDENT     : identifiant (avec support des chemins pointés type
                   profile.address.city pour les champs MongoDB imbriqués)
     - STRING    : chaîne entre guillemets doubles, séquences \\n, \\" gérées
@@ -43,6 +43,7 @@ reserved = {
     "NOT": "NOT",
     "LIKE": "LIKE",
     "ILIKE": "ILIKE",
+    "IEQ": "IEQ",
     "CONTAINS": "CONTAINS",
     "IN": "IN",
     "EXISTS": "EXISTS",
@@ -101,11 +102,33 @@ def t_NUMBER(t):
     return t
 
 
+# Séquences d'échappement reconnues dans une chaîne. Volontairement limité à ce
+# que produit `quote()` côté TS (plus \t) : décoder via `unicode_escape`
+# corromprait l'UTF-8 multi-octets (« café ») et lèverait sur un \x/\u malformé
+# venant d'une entrée hostile. Un antislash devant tout autre caractère est
+# retiré (le caractère est conservé tel quel).
+_STRING_ESCAPES = {'"': '"', "\\": "\\", "n": "\n", "r": "\r", "t": "\t"}
+
+
+def _unescape(raw: str) -> str:
+    out = []
+    i = 0
+    while i < len(raw):
+        ch = raw[i]
+        if ch == "\\" and i + 1 < len(raw):
+            nxt = raw[i + 1]
+            out.append(_STRING_ESCAPES.get(nxt, nxt))
+            i += 2
+        else:
+            out.append(ch)
+            i += 1
+    return "".join(out)
+
+
 def t_STRING(t):
     r'"([^"\\]|\\.)*"'
-    # On retire les guillemets et on décode les séquences d'échappement
-    raw = t.value[1:-1]
-    t.value = bytes(raw, "utf-8").decode("unicode_escape")
+    # On retire les guillemets et on décode les séquences d'échappement.
+    t.value = _unescape(t.value[1:-1])
     return t
 
 

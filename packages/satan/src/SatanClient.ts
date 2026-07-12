@@ -23,6 +23,7 @@ import { SatanQueryError, type SatanResponse } from "./types";
 interface PendingRequest {
   resolve: (value: unknown) => void;
   reject: (reason: Error) => void;
+  timer?: ReturnType<typeof setTimeout>;
 }
 
 export interface SatanClientOptions {
@@ -41,6 +42,15 @@ export interface SatanClientOptions {
   env?: NodeJS.ProcessEnv;
   /** Restart the worker automatically if it crashes (default: true). */
   autoRestart?: boolean;
+  /**
+   * Per-query backstop timeout in ms (default: 8000; 0 disables). The worker
+   * runs one query at a time, so a single stuck query would block the whole
+   * queue — on timeout the pending query rejects and the worker is force-recycled
+   * (a fresh one starts when autoRestart is on). Keep it above the worker's
+   * server-side `SATAN_MAX_TIME_MS` so the DB budget normally trips first with a
+   * clean error and no recycle.
+   */
+  queryTimeoutMs?: number;
   /** Informational callback fired on each crash, BEFORE the restart. */
   onCrash?: (code: number | null, signal: NodeJS.Signals | null) => void;
 }
@@ -62,11 +72,13 @@ export class SatanClient extends EventEmitter {
   private readonly cwd?: string;
   private readonly childEnv?: NodeJS.ProcessEnv;
   private autoRestart: boolean;
+  private readonly queryTimeoutMs: number;
   private readonly onCrash?: SatanClientOptions["onCrash"];
 
   constructor(opts: SatanClientOptions = {}) {
     super();
     this.pythonBin = opts.pythonBin ?? "python3";
+    this.queryTimeoutMs = opts.queryTimeoutMs ?? 8000;
     // Default assumes the shipped layout:
     //   packages/satan/dist/SatanClient.js   (this file, after build)
     //   packages/satan/python/worker.py
@@ -105,7 +117,10 @@ export class SatanClient extends EventEmitter {
     proc.on("exit", (code, signal) => {
       // Every pending request is doomed.
       const err = new SatanQueryError(`SATAN worker exited (code=${code}, signal=${signal})`);
-      for (const [, p] of this.pending) p.reject(err);
+      for (const [, p] of this.pending) {
+        if (p.timer) clearTimeout(p.timer);
+        p.reject(err);
+      }
       this.pending.clear();
       this.proc = null;
       this.buffer = "";
@@ -137,14 +152,30 @@ export class SatanClient extends EventEmitter {
     const payload = JSON.stringify({ id, query: ql }) + "\n";
 
     return new Promise((resolve, reject) => {
-      this.pending.set(id, { resolve, reject });
+      const timer =
+        this.queryTimeoutMs > 0
+          ? setTimeout(() => {
+              if (!this.pending.delete(id)) return;
+              reject(new SatanQueryError(`SATAN query timed out after ${this.queryTimeoutMs}ms`));
+              // The worker runs one query at a time, so it's stuck on this one —
+              // force-recycle it (SIGKILL) so queued queries don't hang behind it.
+              this.recycleWorker();
+            }, this.queryTimeoutMs)
+          : undefined;
+      this.pending.set(id, { resolve, reject, timer });
       this.proc!.stdin.write(payload, (err) => {
-        if (err) {
-          this.pending.delete(id);
+        if (err && this.pending.delete(id)) {
+          if (timer) clearTimeout(timer);
           reject(err);
         }
       });
     });
+  }
+
+  /** SIGKILL the current worker; the `exit` handler rejects any still-pending
+   *  queries and autoRestart (when enabled) starts a fresh one. */
+  private recycleWorker(): void {
+    this.proc?.kill("SIGKILL");
   }
 
   /** Cleanly shuts the worker down. Any later query rejects. */
@@ -179,8 +210,9 @@ export class SatanClient extends EventEmitter {
       }
 
       const pending = this.pending.get(resp.id);
-      if (!pending) continue; // orphan response, ignored
+      if (!pending) continue; // orphan response (e.g. a timed-out query), ignored
       this.pending.delete(resp.id);
+      if (pending.timer) clearTimeout(pending.timer);
 
       if (resp.ok) {
         pending.resolve(resp.result);

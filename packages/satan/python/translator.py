@@ -140,6 +140,12 @@ def _translate_where(node):
             spec["$options"] = "i"
         return {node["field"]: spec}
 
+    if op == "ieq":
+        # Égalité littérale insensible à la casse : valeur entièrement échappée
+        # (aucun wildcard) et ancrée. Sur un champ tableau, Mongo matche un
+        # élément égal (à la casse près) — équivalent d'un `^valeur$` avec /i.
+        return {node["field"]: {"$regex": "^" + re.escape(node["value"]) + "$", "$options": "i"}}
+
     if op == "contains":
         # Sous-chaîne littérale, insensible à la casse : on échappe entièrement
         # la valeur (pas de wildcard) et on ne l'ancre pas.

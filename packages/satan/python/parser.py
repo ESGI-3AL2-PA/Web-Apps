@@ -25,6 +25,7 @@ Une <expr> est une combinaison de conditions reliées par AND / OR / NOT
     field <op> value          (op ∈ =, !=, <, >, <=, >=)
     field LIKE "pattern"      (ancré, sensible à la casse, wildcards * et ?)
     field ILIKE "pattern"     (comme LIKE, insensible à la casse)
+    field IEQ "text"          (égalité littérale insensible à la casse, ancrée)
     field CONTAINS "text"     (sous-chaîne littérale, insensible à la casse)
     field IN (val, val, …)
     field EXISTS
@@ -41,6 +42,7 @@ Une expression :
     {"op": "not", "expr": <expr>}
     {"op": "eq"|"ne"|"lt"|"gt"|"lte"|"gte", "field": str, "value": Any}
     {"op": "like"|"ilike", "field": str, "value": str}  # wildcards * et ?
+    {"op": "ieq", "field": str, "value": str}           # égalité littérale (i)
     {"op": "contains", "field": str, "value": str}      # sous-chaîne littérale
     {"op": "in",     "field": str, "value": [Any, ...]}
     {"op": "exists", "field": str}
@@ -260,6 +262,11 @@ def p_condition_like(p):
 def p_condition_ilike(p):
     "condition : IDENT ILIKE STRING"
     p[0] = {"op": "ilike", "field": p[1], "value": p[3]}
+
+
+def p_condition_ieq(p):
+    "condition : IDENT IEQ STRING"
+    p[0] = {"op": "ieq", "field": p[1], "value": p[3]}
 
 
 def p_condition_contains(p):

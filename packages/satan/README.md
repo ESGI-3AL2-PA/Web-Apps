@@ -58,10 +58,15 @@ DELETE FROM <coll> [WHERE <expr>]
 
 `<expr>`: `AND` / `OR` / `NOT` with parentheses; conditions use `= != < > <= >=`,
 `LIKE "a*b?"` (anchored, case-sensitive; `*` = any chars, `?` = one char),
-`ILIKE "a*b?"` (same, case-insensitive), `CONTAINS "text"` (case-insensitive
+`ILIKE "a*b?"` (same, case-insensitive), `IEQ "text"` (case-insensitive literal
+equality — anchored, `*`/`?` stay literal), `CONTAINS "text"` (case-insensitive
 literal substring — the search-box operator), `IN (…)`, `EXISTS`. Values are
 strings, numbers, `TRUE`, `FALSE`, `NULL`. Field paths may be dotted
 (`profile.address.city`). Keywords are case-insensitive.
+
+The worker caps read ops (`find`/`count`) with `SATAN_MAX_TIME_MS` (default
+`5000`) so a heavy filter can't pin Mongo; the Node client applies a per-query
+backstop timeout (`queryTimeoutMs`, default `8000`) that recycles a stuck worker.
 
 ## Runtime requirement
 

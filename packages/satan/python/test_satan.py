@@ -94,6 +94,32 @@ CASES = [
             "filter": {"firstName": {"$regex": r"a\.b", "$options": "i"}},
         },
     ),
+    (
+        'FIND listings WHERE tags IEQ "a.b"',
+        {
+            "op": "find",
+            "collection": "listings",
+            "filter": {"tags": {"$regex": r"^a\.b$", "$options": "i"}},
+        },
+    ),
+    # A wildcard in an IEQ value stays literal (no ReDoS / no match-all).
+    (
+        'FIND listings WHERE tags IEQ "*"',
+        {
+            "op": "find",
+            "collection": "listings",
+            "filter": {"tags": {"$regex": r"^\*$", "$options": "i"}},
+        },
+    ),
+    # -- string unescaping: UTF-8 preserved, only quote()'s escapes decoded -----
+    (
+        'FIND users WHERE firstName = "café\\n"',
+        {
+            "op": "find",
+            "collection": "users",
+            "filter": {"firstName": "café\n"},
+        },
+    ),
     # -- INSERT ------------------------------------------------------------
     (
         'INSERT INTO users SET name = "John", email = "john@ex.com", age = 30',

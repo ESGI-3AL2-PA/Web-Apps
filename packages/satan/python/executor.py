@@ -6,7 +6,14 @@ and returns a JSON-serialisable result. This is where the query actually hits
 the database — the Node side never touches Mongo, it only drives the worker.
 """
 
+import os
 from typing import Any, Dict
+
+# Server-side cap on read ops so a pathological/expensive filter (e.g. a heavy
+# `$regex` scan) can't pin mongod or block the single worker indefinitely — Mongo
+# aborts the op past this budget and we return an error. Reads only: find/count
+# accept maxTimeMS; the id-keyed writes are cheap. 0 disables it.
+_MAX_TIME_MS = int(os.environ.get("SATAN_MAX_TIME_MS", "5000"))
 
 
 def _map_id(doc: dict) -> dict:
@@ -24,6 +31,8 @@ def execute(db, op: Dict[str, Any]) -> Any:
 
     if kind == "find":
         cursor = collection.find(op.get("filter") or {}, op.get("projection"))
+        if _MAX_TIME_MS:
+            cursor = cursor.max_time_ms(_MAX_TIME_MS)
         if op.get("sort"):
             cursor = cursor.sort([(field, direction) for field, direction in op["sort"]])
         if op.get("skip"):
@@ -33,7 +42,8 @@ def execute(db, op: Dict[str, Any]) -> Any:
         return [_map_id(doc) for doc in cursor]
 
     if kind == "countDocuments":
-        return {"count": collection.count_documents(op.get("filter") or {})}
+        kwargs = {"maxTimeMS": _MAX_TIME_MS} if _MAX_TIME_MS else {}
+        return {"count": collection.count_documents(op.get("filter") or {}, **kwargs)}
 
     if kind == "insertOne":
         result = collection.insert_one(op["document"])
