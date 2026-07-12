@@ -1,11 +1,12 @@
 import type { Request, Response, NextFunction } from "express";
 import { resolve } from "../../repositories/container.js";
 import type { IConversationRepository } from "../../repositories/Conversation/conversation.repository.js";
+import { getAudioStream, AUDIO_MIME } from "../../services/media-storage.service.js";
+import { sendVoiceMessageUseCase } from "../../use-cases/conversations/send-voice-message.use-case.js";
+import { broadcastNewMessage } from "../../sockets/io.js";
 
 // ~5 Mo décodés. base64 gonfle d'environ 4/3, donc 5 Mo ≈ 6.7M caractères.
 const MAX_AUDIO_BASE64_LENGTH = 7_000_000;
-import { saveAudioFromBase64, getAudioStream, AUDIO_MIME } from "../../services/media-storage.service.js";
-import { broadcastNewMessage } from "../../sockets/io.js";
 
 // POST /conversations/:id/messages/voice — body JSON { audioBase64: string }
 export const voiceMessageHandler = async (req: Request, res: Response, next: NextFunction) => {
@@ -27,44 +28,14 @@ export const voiceMessageHandler = async (req: Request, res: Response, next: Nex
       return;
     }
 
-    const repo: IConversationRepository = resolve("conversation");
-    const conversation = await repo.getConversationById(conversationId);
-    if (!conversation) {
-      res.status(404).json({ message: "Conversation not found" });
-      return;
-    }
-    if (!conversation.participants.includes(user.sub)) {
+    const result = await sendVoiceMessageUseCase(resolve("conversation"))(conversationId, user.sub, audioBase64);
+    if (!result) {
       res.status(404).json({ message: "Conversation not found" });
       return;
     }
 
-    // 1) Crée le message en DB (sans mediaUrl pour l'instant).
-    const message = await repo.createMessage({
-      conversationId,
-      senderId: user.sub,
-      districtId: conversation.districtId,
-      type: "audio",
-      content: "[message vocal]",
-    });
-
-    // 2) Sauve l'audio sur disque sous storage/messages/{messageId}.webm.
-    //    Le nom de fichier dépend de l'id du message (créé en 1), donc si l'écriture
-    //    échoue on supprime la ligne pour ne pas laisser une bulle "[message vocal]"
-    //    sans média (orphelin non lisible).
-    try {
-      await saveAudioFromBase64(message.id, audioBase64);
-    } catch (err) {
-      await repo.deleteMessage(message.id).catch(() => {});
-      throw err;
-    }
-
-    // 3) Met à jour la mediaUrl du message → endpoint streaming.
-    const updated = await repo.attachMedia(message.id, `/messages/${message.id}/audio`, "audio");
-
-    // 4) Push aux autres participants
-    if (updated) broadcastNewMessage(conversation.participants, updated);
-
-    res.status(201).json(updated ?? message);
+    broadcastNewMessage(result.participants, result.message);
+    res.status(201).json(result.message);
   } catch (err) {
     next(err);
   }

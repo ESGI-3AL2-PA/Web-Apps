@@ -29,26 +29,31 @@ const CarteConversation = ({ conversation, active, unreadCount = 0, onClick }: C
   const { user } = useAuth();
   const { isUserOnline } = useSocket();
   const [otherName, setOtherName] = useState<string>("…");
-  const [otherId, setOtherId] = useState<string | null>(null);
+
+  // Resolve the other party's id in render so the fetch effect keys on a primitive.
+  // Depending on the whole `conversation` object would re-fire getUserPublic for
+  // every row whenever the parent re-renders with a fresh array.
+  const oid = conversation.type === "group" ? null : (conversation.participants.find((p) => p !== user?.id) ?? null);
 
   useEffect(() => {
     if (conversation.type === "group" && conversation.name) {
       setOtherName(conversation.name);
-      setOtherId(null);
       return;
     }
-    const oid = conversation.participants.find((p) => p !== user?.id);
     if (!oid) {
       setOtherName("Inconnu");
       return;
     }
-    setOtherId(oid);
+    let cancelled = false;
     getUserPublic(oid)
-      .then((u) => setOtherName(`${u.firstName} ${u.lastName}`))
-      .catch(() => setOtherName(oid.slice(0, 8)));
-  }, [conversation, user?.id]);
+      .then((u) => !cancelled && setOtherName(`${u.firstName} ${u.lastName}`))
+      .catch(() => !cancelled && setOtherName(oid.slice(0, 8)));
+    return () => {
+      cancelled = true;
+    };
+  }, [oid, conversation.type, conversation.name]);
 
-  const online = otherId ? isUserOnline(otherId) : false;
+  const online = oid ? isUserOnline(oid) : false;
 
   return (
     <button
@@ -69,7 +74,7 @@ const CarteConversation = ({ conversation, active, unreadCount = 0, onClick }: C
     >
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <span style={{ fontWeight: 600, fontSize: 14, display: "flex", alignItems: "center", gap: 6 }}>
-          {otherId && (
+          {oid && (
             <span
               role="img"
               aria-label={online ? "En ligne" : "Hors ligne"}

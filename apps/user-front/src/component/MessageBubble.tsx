@@ -23,9 +23,13 @@ const MessageBubble = ({ message, isMine, showSender }: MessageBubbleProps) => {
 
   useEffect(() => {
     if (isMine || !showSender) return;
+    let cancelled = false;
     getUserPublic(message.senderId)
-      .then((u) => setSenderName(`${u.firstName} ${u.lastName}`))
-      .catch(() => setSenderName(message.senderId.slice(0, 8)));
+      .then((u) => !cancelled && setSenderName(`${u.firstName} ${u.lastName}`))
+      .catch(() => !cancelled && setSenderName(message.senderId.slice(0, 8)));
+    return () => {
+      cancelled = true;
+    };
   }, [message.senderId, isMine, showSender]);
 
   // Fetch l'audio en blob (Bearer auto) puis le wrap en URL locale
