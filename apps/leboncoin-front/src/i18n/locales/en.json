@@ -201,6 +201,8 @@
   "events": {
     "title": "Neighbourhood events",
     "subtitle": "Meet your neighbours and take part in local life.",
+    "forYou": "For you",
+    "forYouLoading": "Computing suggestions…",
     "empty": "No events planned yet.",
     "seats_one": "{{count}} seat",
     "seats_other": "{{count}} seats",

@@ -201,6 +201,8 @@
   "events": {
     "title": "Événements du quartier",
     "subtitle": "Rencontrez vos voisins et participez à la vie locale.",
+    "forYou": "Pour toi",
+    "forYouLoading": "Calcul des suggestions…",
     "empty": "Aucun événement prévu pour le moment.",
     "seats_one": "{{count}} place",
     "seats_other": "{{count}} places",
