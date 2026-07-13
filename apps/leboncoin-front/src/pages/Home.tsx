@@ -1,17 +1,19 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { useAuth } from "@repo/hooks";
 import type { EventResponseDto, ListingResponseDto, TagResponseDto, VoteResponseDto } from "@repo/contracts";
 import { getListings } from "../api-service/listings.service";
 import { getTags } from "../api-service/tags.service";
 import { getEvents } from "../api-service/events.service";
 import { getVotes } from "../api-service/votes.service";
 import ListingCard from "../components/ListingCard";
-import { formatDateTime } from "../lib/format";
+import { formatDateTime, formatPrice } from "../lib/format";
 
 export default function Home() {
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const { user } = useAuth();
   const [listings, setListings] = useState<ListingResponseDto[]>([]);
   const [tags, setTags] = useState<TagResponseDto[]>([]);
   const [events, setEvents] = useState<EventResponseDto[]>([]);
@@ -37,6 +39,19 @@ export default function Home() {
 
   return (
     <div className="space-y-8">
+      {user && (
+        <Link
+          to="/profil"
+          className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-[color:var(--color-brand)] p-5 text-white transition hover:bg-[color:var(--color-brand-dark)]"
+        >
+          <div>
+            <p className="text-lg font-bold">{t("home.greeting", { name: user.firstName })}</p>
+            <p className="text-sm text-white/80">{t("home.balanceLabel")}</p>
+          </div>
+          <span className="rounded-lg bg-white/15 px-4 py-2 text-xl font-extrabold">{formatPrice(user.balance)}</span>
+        </Link>
+      )}
+
       {tags.length > 0 && (
         <section>
           <h2 className="mb-3 text-lg font-bold text-neutral-900">{t("home.categories")}</h2>

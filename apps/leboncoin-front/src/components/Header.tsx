@@ -4,6 +4,8 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "@repo/hooks";
 import type { TagResponseDto } from "@repo/contracts";
 import { getTags } from "../api-service/tags.service";
+import { getUserBalance } from "../api-service/transactions.service";
+import { formatPrice } from "../lib/format";
 
 const iconProps = {
   width: 22,
@@ -59,6 +61,7 @@ export default function Header() {
   const [q, setQ] = useState("");
   const [tags, setTags] = useState<TagResponseDto[]>([]);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [balance, setBalance] = useState<number | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -66,6 +69,14 @@ export default function Header() {
       .then(setTags)
       .catch(() => setTags([]));
   }, []);
+
+  // Live points balance in the avatar area (silent on 403).
+  useEffect(() => {
+    if (!user?.id) return;
+    getUserBalance(user.id)
+      .then((r) => setBalance(r.balance))
+      .catch(() => setBalance(null));
+  }, [user?.id]);
 
   // Close the account menu on outside click.
   useEffect(() => {
@@ -125,6 +136,16 @@ export default function Header() {
           <IconAction to="/messages" label={t("header.messages")}>
             <ChatIcon />
           </IconAction>
+
+          {balance !== null && (
+            <Link
+              to="/profil"
+              title={t("header.balance")}
+              className="mr-1 hidden shrink-0 items-center rounded-full bg-[color:var(--color-brand-soft)] px-3 py-1.5 text-xs font-bold text-[color:var(--color-brand-dark)] hover:bg-[color:var(--color-brand)] hover:text-white lg:flex"
+            >
+              {formatPrice(balance)}
+            </Link>
+          )}
 
           <div ref={menuRef} className="relative">
             <button

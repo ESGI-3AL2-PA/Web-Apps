@@ -35,7 +35,8 @@
     "profile": "Profile",
     "settings": "Settings",
     "logout": "Log out",
-    "allListings": "All ads"
+    "allListings": "All ads",
+    "balance": "Points balance"
   },
   "profile": {
     "title": "My profile",
@@ -123,6 +124,8 @@
     }
   },
   "home": {
+    "greeting": "Hi {{name}} 👋",
+    "balanceLabel": "Your points balance",
     "categories": "Categories",
     "upcomingEvents": "Upcoming events",
     "seeAll": "See all",

@@ -35,7 +35,8 @@
     "profile": "Profil",
     "settings": "Paramètres",
     "logout": "Déconnexion",
-    "allListings": "Toutes les annonces"
+    "allListings": "Toutes les annonces",
+    "balance": "Solde de points"
   },
   "profile": {
     "title": "Mon profil",
@@ -123,6 +124,8 @@
     }
   },
   "home": {
+    "greeting": "Bonjour {{name}} 👋",
+    "balanceLabel": "Votre solde de points",
     "categories": "Catégories",
     "upcomingEvents": "Événements à venir",
     "seeAll": "Tout voir",
