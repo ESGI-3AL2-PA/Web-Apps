@@ -13,6 +13,7 @@ import Votes from "../pages/Votes";
 import Settings from "../pages/Settings";
 import Contracts from "../pages/Contracts";
 import Profile from "../pages/Profile";
+import Incidents from "../pages/Incidents";
 
 export const router = createBrowserRouter([
   {
@@ -29,6 +30,7 @@ export const router = createBrowserRouter([
       { path: "/mes-annonces", element: <MyListings /> },
       { path: "/mes-contrats", element: <Contracts /> },
       { path: "/profil", element: <Profile /> },
+      { path: "/incidents", element: <Incidents /> },
       { path: "/parametres", element: <Settings /> },
       { path: "/evenements", element: <Events /> },
       { path: "/sondages", element: <Votes /> },

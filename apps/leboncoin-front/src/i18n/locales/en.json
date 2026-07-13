@@ -33,10 +33,42 @@
     "myListings": "My ads",
     "contracts": "My contracts",
     "profile": "Profile",
+    "incidents": "Report a problem",
     "settings": "Settings",
     "logout": "Log out",
     "allListings": "All ads",
     "balance": "Points balance"
+  },
+  "notifications": {
+    "title": "Notifications",
+    "markAll": "Mark all as read",
+    "empty": "No notifications."
+  },
+  "incidents": {
+    "title": "Reports",
+    "subtitle": "Report a problem in your neighbourhood.",
+    "report": "Report a problem",
+    "category": "Category",
+    "description": "Description",
+    "descriptionPlaceholder": "Describe the problem…",
+    "submit": "Send report",
+    "submitting": "Sending…",
+    "mine": "My reports",
+    "empty": "You have no reports.",
+    "error": "Failed to submit the report.",
+    "categories": {
+      "cleanliness": "Cleanliness",
+      "safety": "Safety",
+      "vandalism": "Vandalism",
+      "noise": "Noise",
+      "other": "Other"
+    },
+    "status": {
+      "open": "Open",
+      "in_progress": "In progress",
+      "resolved": "Resolved",
+      "closed": "Closed"
+    }
   },
   "profile": {
     "title": "My profile",

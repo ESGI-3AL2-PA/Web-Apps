@@ -33,10 +33,42 @@
     "myListings": "Mes annonces",
     "contracts": "Mes contrats",
     "profile": "Profil",
+    "incidents": "Signaler un problème",
     "settings": "Paramètres",
     "logout": "Déconnexion",
     "allListings": "Toutes les annonces",
     "balance": "Solde de points"
+  },
+  "notifications": {
+    "title": "Notifications",
+    "markAll": "Tout marquer comme lu",
+    "empty": "Aucune notification."
+  },
+  "incidents": {
+    "title": "Signalements",
+    "subtitle": "Signalez un problème dans votre quartier.",
+    "report": "Signaler un problème",
+    "category": "Catégorie",
+    "description": "Description",
+    "descriptionPlaceholder": "Décrivez le problème…",
+    "submit": "Envoyer le signalement",
+    "submitting": "Envoi…",
+    "mine": "Mes signalements",
+    "empty": "Vous n'avez aucun signalement.",
+    "error": "Erreur lors du signalement.",
+    "categories": {
+      "cleanliness": "Propreté",
+      "safety": "Sécurité",
+      "vandalism": "Vandalisme",
+      "noise": "Nuisances sonores",
+      "other": "Autre"
+    },
+    "status": {
+      "open": "Ouvert",
+      "in_progress": "En cours",
+      "resolved": "Résolu",
+      "closed": "Clôturé"
+    }
   },
   "profile": {
     "title": "Mon profil",

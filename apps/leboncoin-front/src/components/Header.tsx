@@ -6,6 +6,7 @@ import type { TagResponseDto } from "@repo/contracts";
 import { getTags } from "../api-service/tags.service";
 import { getUserBalance } from "../api-service/transactions.service";
 import { formatPrice } from "../lib/format";
+import NotificationBell from "./NotificationBell";
 
 const iconProps = {
   width: 22,
@@ -126,6 +127,8 @@ export default function Header() {
           </div>
         </form>
 
+        <NotificationBell />
+
         <nav className="hidden shrink-0 items-center gap-1 md:flex">
           <IconAction to="/evenements" label={t("header.events")}>
             <CalendarIcon />
@@ -181,6 +184,13 @@ export default function Header() {
                   className="block px-4 py-2 text-sm text-neutral-700 hover:bg-[color:var(--color-brand-soft)]"
                 >
                   {t("header.contracts")}
+                </Link>
+                <Link
+                  to="/incidents"
+                  onClick={() => setMenuOpen(false)}
+                  className="block px-4 py-2 text-sm text-neutral-700 hover:bg-[color:var(--color-brand-soft)]"
+                >
+                  {t("header.incidents")}
                 </Link>
                 <Link
                   to="/parametres"
