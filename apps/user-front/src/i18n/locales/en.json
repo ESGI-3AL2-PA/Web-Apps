@@ -1,4 +1,9 @@
 {
+  "notFound": {
+    "title": "Page not found",
+    "desc": "The page you're looking for doesn't exist or has moved.",
+    "home": "Back to home"
+  },
   "common": {
     "loading": "Loading…",
     "language": "Language",

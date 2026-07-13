@@ -14,6 +14,7 @@ import Settings from "../pages/Settings";
 import Contracts from "../pages/Contracts";
 import Profile from "../pages/Profile";
 import Incidents from "../pages/Incidents";
+import NotFound from "../pages/NotFound";
 
 export const router = createBrowserRouter([
   {
@@ -22,6 +23,8 @@ export const router = createBrowserRouter([
         <MainLayout />
       </ProtectedRoute>
     ),
+    // Renders a themed page for router errors instead of the raw dev screen.
+    errorElement: <NotFound />,
     children: [
       { path: "/", element: <Home /> },
       { path: "/recherche", element: <Search /> },
@@ -36,6 +39,7 @@ export const router = createBrowserRouter([
       { path: "/sondages", element: <Votes /> },
       { path: "/messages", element: <Messages /> },
       { path: "/messages/:conversationId", element: <Messages /> },
+      { path: "*", element: <NotFound /> },
     ],
   },
 ]);
