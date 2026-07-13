@@ -158,12 +158,12 @@ export default function Messages() {
     <div className="grid h-[calc(100dvh-13rem)] grid-cols-1 gap-4 md:h-[70vh] md:grid-cols-[280px_1fr]">
       {/* Conversation list */}
       <aside
-        className={`overflow-y-auto rounded-xl border border-neutral-200 bg-white ${
+        className={`overflow-y-auto rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 ${
           conversationId ? "hidden md:block" : ""
         }`}
       >
-        <div className="flex items-center justify-between border-b border-neutral-100 p-4">
-          <h2 className="text-lg font-bold text-neutral-900">{t("messages.title")}</h2>
+        <div className="flex items-center justify-between border-b border-neutral-100 dark:border-neutral-800 p-4">
+          <h2 className="text-lg font-bold text-neutral-900 dark:text-neutral-50">{t("messages.title")}</h2>
           <button
             onClick={() => setShowNew(true)}
             className="rounded-lg bg-[color:var(--color-brand)] px-2.5 py-1 text-xs font-semibold text-white hover:bg-[color:var(--color-brand-dark)]"
@@ -172,7 +172,7 @@ export default function Messages() {
           </button>
         </div>
         {conversations.length === 0 ? (
-          <p className="p-4 text-sm text-neutral-500">{t("messages.noConversations")}</p>
+          <p className="p-4 text-sm text-neutral-500 dark:text-neutral-400">{t("messages.noConversations")}</p>
         ) : (
           <ul>
             {conversations.map((c) => {
@@ -182,7 +182,7 @@ export default function Messages() {
                 <li key={c.id}>
                   <button
                     onClick={() => navigate(`/messages/${c.id}`)}
-                    className={`flex w-full items-center gap-3 border-b border-neutral-100 px-4 py-3 text-left hover:bg-neutral-50 ${
+                    className={`flex w-full items-center gap-3 border-b border-neutral-100 dark:border-neutral-800 px-4 py-3 text-left hover:bg-neutral-50 dark:hover:bg-neutral-800 ${
                       c.id === conversationId ? "bg-[color:var(--color-brand-soft)]" : ""
                     }`}
                   >
@@ -194,7 +194,7 @@ export default function Messages() {
                         <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white bg-green-500" />
                       )}
                     </div>
-                    <span className="truncate text-sm font-medium text-neutral-800">{titleOf(c)}</span>
+                    <span className="truncate text-sm font-medium text-neutral-800 dark:text-neutral-100">{titleOf(c)}</span>
                   </button>
                 </li>
               );
@@ -205,28 +205,28 @@ export default function Messages() {
 
       {/* Thread */}
       <section
-        className={`flex-col overflow-hidden rounded-xl border border-neutral-200 bg-white ${
+        className={`flex-col overflow-hidden rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 ${
           conversationId ? "flex" : "hidden md:flex"
         }`}
       >
         {!conversationId ? (
-          <div className="flex flex-1 items-center justify-center text-neutral-400">{t("messages.select")}</div>
+          <div className="flex flex-1 items-center justify-center text-neutral-400 dark:text-neutral-500">{t("messages.select")}</div>
         ) : (
           <>
             {active && (
-              <header className="border-b border-neutral-100 px-4 py-3">
+              <header className="border-b border-neutral-100 dark:border-neutral-800 px-4 py-3">
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => navigate("/messages")}
                     aria-label={t("messages.back")}
-                    className="-ml-1 shrink-0 rounded-md p-1 text-neutral-500 hover:bg-neutral-100 md:hidden"
+                    className="-ml-1 shrink-0 rounded-md p-1 text-neutral-500 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 md:hidden"
                   >
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <path d="m15 18-6-6 6-6" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
                   </button>
                   {active.type === "group" && <span>👥</span>}
-                  <h2 className="truncate font-bold text-neutral-900">{titleOf(active)}</h2>
+                  <h2 className="truncate font-bold text-neutral-900 dark:text-neutral-50">{titleOf(active)}</h2>
                   {(() => {
                     const otherId = otherIdOf(active);
                     return otherId && isUserOnline(otherId) ? (
@@ -238,7 +238,7 @@ export default function Messages() {
                   })()}
                 </div>
                 {active.type === "group" && (
-                  <p className="mt-0.5 truncate text-xs text-neutral-500">
+                  <p className="mt-0.5 truncate text-xs text-neutral-500 dark:text-neutral-400">
                     {t("messages.participantCount", { count: active.participants.length })} ·{" "}
                     {active.participants.map(nameOf).join(", ")}
                   </p>
@@ -252,7 +252,7 @@ export default function Messages() {
                   <div key={m.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
                     <div
                       className={`max-w-[75%] rounded-2xl px-3 py-2 text-sm ${
-                        mine ? "bg-[color:var(--color-brand)] text-white" : "bg-neutral-100 text-neutral-800"
+                        mine ? "bg-[color:var(--color-brand)] text-white" : "bg-neutral-100 dark:bg-neutral-800 text-neutral-800 dark:text-neutral-100"
                       }`}
                     >
                       {!mine && active?.type === "group" && (
@@ -265,7 +265,7 @@ export default function Messages() {
                       ) : (
                         <p className="whitespace-pre-wrap">{m.content}</p>
                       )}
-                      <p className={`mt-0.5 text-[10px] ${mine ? "text-white/70" : "text-neutral-400"}`}>
+                      <p className={`mt-0.5 text-[10px] ${mine ? "text-white/70" : "text-neutral-400 dark:text-neutral-500"}`}>
                         {formatRelative(m.createdAt)}
                       </p>
                     </div>
@@ -275,16 +275,16 @@ export default function Messages() {
               <div ref={bottomRef} />
             </div>
             {recording ? (
-              <div className="border-t border-neutral-100 p-3">
+              <div className="border-t border-neutral-100 dark:border-neutral-800 p-3">
                 <AudioRecorder onSubmit={onSendVoice} onCancel={() => setRecording(false)} />
               </div>
             ) : (
-              <form onSubmit={onSend} className="flex gap-2 border-t border-neutral-100 p-3">
+              <form onSubmit={onSend} className="flex gap-2 border-t border-neutral-100 dark:border-neutral-800 p-3">
                 <button
                   type="button"
                   onClick={() => setRecording(true)}
                   aria-label={t("messages.recordStart")}
-                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-neutral-300 text-lg hover:bg-neutral-50"
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-neutral-300 dark:border-neutral-700 text-lg hover:bg-neutral-50 dark:hover:bg-neutral-800"
                 >
                   🎙
                 </button>
@@ -292,7 +292,7 @@ export default function Messages() {
                   value={draft}
                   onChange={(e) => setDraft(e.target.value)}
                   placeholder={t("messages.placeholder")}
-                  className="h-10 flex-1 rounded-lg border border-neutral-300 px-3 text-sm outline-none focus:border-[color:var(--color-brand)]"
+                  className="h-10 flex-1 rounded-lg border border-neutral-300 dark:border-neutral-700 px-3 text-sm outline-none focus:border-[color:var(--color-brand)]"
                 />
                 <button
                   type="submit"

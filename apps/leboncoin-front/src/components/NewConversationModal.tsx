@@ -45,19 +45,19 @@ export default function NewConversationModal({
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center" role="dialog" aria-modal="true">
       <button aria-label={t("common.cancel")} onClick={onClose} className="absolute inset-0 bg-black/40" />
-      <div className="relative w-full max-w-sm rounded-t-2xl bg-white p-5 shadow-2xl sm:rounded-2xl">
+      <div className="relative w-full max-w-sm rounded-t-2xl bg-white dark:bg-neutral-900 p-5 shadow-2xl sm:rounded-2xl">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-bold text-neutral-900">{t("messages.newConversation")}</h2>
+          <h2 className="text-lg font-bold text-neutral-900 dark:text-neutral-50">{t("messages.newConversation")}</h2>
           <button
             onClick={onClose}
             aria-label={t("common.cancel")}
-            className="text-2xl leading-none text-neutral-400 hover:text-neutral-600"
+            className="text-2xl leading-none text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300"
           >
             ×
           </button>
         </div>
         <form onSubmit={submit}>
-          <label htmlFor="new-conv-participant" className="mb-1.5 block text-sm text-neutral-600">
+          <label htmlFor="new-conv-participant" className="mb-1.5 block text-sm text-neutral-600 dark:text-neutral-300">
             {t("messages.neighbourLabel")}
           </label>
           <UserAutocomplete id="new-conv-participant" selected={target} onSelect={setTarget} autoFocus />
@@ -66,7 +66,7 @@ export default function NewConversationModal({
             <button
               type="button"
               onClick={onClose}
-              className="rounded-lg border border-neutral-300 px-4 py-2 text-sm font-semibold text-neutral-700 hover:bg-neutral-50"
+              className="rounded-lg border border-neutral-300 dark:border-neutral-700 px-4 py-2 text-sm font-semibold text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-800"
             >
               {t("common.cancel")}
             </button>

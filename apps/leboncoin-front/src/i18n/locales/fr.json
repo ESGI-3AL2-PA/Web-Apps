@@ -125,6 +125,12 @@
   },
   "settings": {
     "title": "Paramètres",
+    "appearance": {
+      "title": "Apparence",
+      "desc": "Choisissez le thème clair ou sombre.",
+      "light": "Clair",
+      "dark": "Sombre"
+    },
     "password": {
       "title": "Mot de passe",
       "desc": "Nous vous enverrons un lien sécurisé par e-mail pour choisir un nouveau mot de passe.",

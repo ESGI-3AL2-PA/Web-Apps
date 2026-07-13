@@ -46,7 +46,7 @@ function Tab({ to, label, children }: { to: string; label: string; children: Rea
       end={to === "/"}
       className={({ isActive }) =>
         `flex flex-1 flex-col items-center justify-center gap-0.5 py-1.5 text-[10px] font-medium transition ${
-          isActive ? "text-[color:var(--color-brand)]" : "text-neutral-500"
+          isActive ? "text-[color:var(--color-brand)]" : "text-neutral-500 dark:text-neutral-400"
         }`
       }
     >
@@ -73,47 +73,47 @@ export default function BottomNav() {
       {sheet && (
         <div className="fixed inset-0 z-50 md:hidden" role="dialog" aria-modal="true">
           <button aria-label="Close" onClick={() => setSheet(false)} className="absolute inset-0 bg-black/40" />
-          <div className="absolute inset-x-0 bottom-0 rounded-t-2xl bg-white p-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] shadow-2xl">
+          <div className="absolute inset-x-0 bottom-0 rounded-t-2xl bg-white dark:bg-neutral-900 p-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] shadow-2xl">
             <div className="mx-auto mb-2 mt-1 h-1 w-10 rounded-full bg-neutral-300" />
-            <div className="flex items-center gap-3 border-b border-neutral-100 px-3 py-3">
+            <div className="flex items-center gap-3 border-b border-neutral-100 dark:border-neutral-800 px-3 py-3">
               <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[color:var(--color-brand)] text-sm font-bold text-white">
                 {user?.firstName?.charAt(0) ?? "?"}
               </span>
-              <span className="font-semibold text-neutral-900">{user?.firstName ?? t("header.account")}</span>
+              <span className="font-semibold text-neutral-900 dark:text-neutral-50">{user?.firstName ?? t("header.account")}</span>
             </div>
             <button
               onClick={() => go("/profil")}
-              className="block w-full rounded-lg px-3 py-3 text-left text-sm font-medium text-neutral-700 hover:bg-[color:var(--color-brand-soft)]"
+              className="block w-full rounded-lg px-3 py-3 text-left text-sm font-medium text-neutral-700 dark:text-neutral-200 hover:bg-[color:var(--color-brand-soft)]"
             >
               {t("header.profile")}
             </button>
             <button
               onClick={() => go("/mes-annonces")}
-              className="block w-full rounded-lg px-3 py-3 text-left text-sm font-medium text-neutral-700 hover:bg-[color:var(--color-brand-soft)]"
+              className="block w-full rounded-lg px-3 py-3 text-left text-sm font-medium text-neutral-700 dark:text-neutral-200 hover:bg-[color:var(--color-brand-soft)]"
             >
               {t("header.myListings")}
             </button>
             <button
               onClick={() => go("/mes-contrats")}
-              className="block w-full rounded-lg px-3 py-3 text-left text-sm font-medium text-neutral-700 hover:bg-[color:var(--color-brand-soft)]"
+              className="block w-full rounded-lg px-3 py-3 text-left text-sm font-medium text-neutral-700 dark:text-neutral-200 hover:bg-[color:var(--color-brand-soft)]"
             >
               {t("header.contracts")}
             </button>
             <button
               onClick={() => go("/incidents")}
-              className="block w-full rounded-lg px-3 py-3 text-left text-sm font-medium text-neutral-700 hover:bg-[color:var(--color-brand-soft)]"
+              className="block w-full rounded-lg px-3 py-3 text-left text-sm font-medium text-neutral-700 dark:text-neutral-200 hover:bg-[color:var(--color-brand-soft)]"
             >
               {t("header.incidents")}
             </button>
             <button
               onClick={() => go("/parametres")}
-              className="block w-full rounded-lg px-3 py-3 text-left text-sm font-medium text-neutral-700 hover:bg-[color:var(--color-brand-soft)]"
+              className="block w-full rounded-lg px-3 py-3 text-left text-sm font-medium text-neutral-700 dark:text-neutral-200 hover:bg-[color:var(--color-brand-soft)]"
             >
               {t("header.settings")}
             </button>
             <div className="flex items-center justify-between rounded-lg px-3 py-3">
-              <span className="text-sm font-medium text-neutral-700">{t("common.language")}</span>
-              <div className="flex overflow-hidden rounded-md border border-neutral-300">
+              <span className="text-sm font-medium text-neutral-700 dark:text-neutral-200">{t("common.language")}</span>
+              <div className="flex overflow-hidden rounded-md border border-neutral-300 dark:border-neutral-700">
                 {(["fr", "en"] as const).map((lng) => (
                   <button
                     key={lng}
@@ -121,7 +121,7 @@ export default function BottomNav() {
                     className={`px-3 py-1 text-xs font-semibold uppercase ${
                       i18n.resolvedLanguage === lng
                         ? "bg-[color:var(--color-brand)] text-white"
-                        : "bg-white text-neutral-600"
+                        : "bg-white dark:bg-neutral-900 text-neutral-600 dark:text-neutral-300"
                     }`}
                   >
                     {lng}
@@ -143,7 +143,7 @@ export default function BottomNav() {
       )}
 
       {/* Fixed bottom bar — mobile only */}
-      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-neutral-200 bg-white pb-[env(safe-area-inset-bottom)] md:hidden">
+      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 pb-[env(safe-area-inset-bottom)] md:hidden">
         <div className="flex items-stretch">
           <Tab to="/" label={t("header.home")}>
             <HomeIcon />
@@ -155,7 +155,7 @@ export default function BottomNav() {
           {/* Center action — post an ad */}
           <NavLink
             to="/deposer"
-            className="flex flex-1 flex-col items-center justify-center gap-0.5 py-1.5 text-[10px] font-medium text-neutral-500"
+            className="flex flex-1 flex-col items-center justify-center gap-0.5 py-1.5 text-[10px] font-medium text-neutral-500 dark:text-neutral-400"
           >
             <span className="-mt-4 flex h-11 w-11 items-center justify-center rounded-full bg-[color:var(--color-brand)] text-white shadow-lg shadow-[color:var(--color-brand)]/30">
               <svg {...iconProps} width={26} height={26}>
@@ -170,7 +170,7 @@ export default function BottomNav() {
           </Tab>
           <button
             onClick={() => setSheet(true)}
-            className="flex flex-1 flex-col items-center justify-center gap-0.5 py-1.5 text-[10px] font-medium text-neutral-500"
+            className="flex flex-1 flex-col items-center justify-center gap-0.5 py-1.5 text-[10px] font-medium text-neutral-500 dark:text-neutral-400"
           >
             <UserIcon />
             <span>{t("header.account")}</span>

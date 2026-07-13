@@ -25,16 +25,16 @@ function EventCard({
   const closed = ev.status !== "upcoming" && ev.status !== "ongoing";
 
   return (
-    <article className="flex flex-col rounded-xl border border-neutral-200 bg-white p-5">
+    <article className="flex flex-col rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-5">
       <div className="mb-2 flex items-center justify-between">
         <span className="rounded-full bg-[color:var(--color-brand-soft)] px-2.5 py-0.5 text-xs font-semibold text-[color:var(--color-brand-dark)]">
           {t(`events.status.${ev.status}`, { defaultValue: ev.status })}
         </span>
-        <span className="text-xs text-neutral-400">{t("events.seats", { count: ev.remainingSeats })}</span>
+        <span className="text-xs text-neutral-400 dark:text-neutral-500">{t("events.seats", { count: ev.remainingSeats })}</span>
       </div>
-      <h2 className="text-lg font-bold text-neutral-900">{ev.title}</h2>
-      <p className="mt-1 line-clamp-2 text-sm text-neutral-600">{ev.description}</p>
-      <dl className="mt-3 space-y-1 text-sm text-neutral-700">
+      <h2 className="text-lg font-bold text-neutral-900 dark:text-neutral-50">{ev.title}</h2>
+      <p className="mt-1 line-clamp-2 text-sm text-neutral-600 dark:text-neutral-300">{ev.description}</p>
+      <dl className="mt-3 space-y-1 text-sm text-neutral-700 dark:text-neutral-200">
         <div className="flex items-center gap-2">
           <span>📅</span>
           <span>{formatDateTime(ev.eventDate)}</span>
@@ -49,7 +49,7 @@ function EventCard({
         disabled={busy === ev.id || closed || full}
         className={`mt-4 rounded-lg py-2 text-sm font-semibold ${
           isRegistered
-            ? "border border-neutral-300 text-neutral-700 hover:bg-neutral-50"
+            ? "border border-neutral-300 dark:border-neutral-700 text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-800"
             : "bg-[color:var(--color-brand)] text-white hover:bg-[color:var(--color-brand-dark)]"
         } disabled:opacity-50`}
       >
@@ -114,15 +114,15 @@ export default function Events() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-extrabold text-neutral-900">{t("events.title")}</h1>
-        <p className="text-neutral-500">{t("events.subtitle")}</p>
+        <h1 className="text-2xl font-extrabold text-neutral-900 dark:text-neutral-50">{t("events.title")}</h1>
+        <p className="text-neutral-500 dark:text-neutral-400">{t("events.subtitle")}</p>
       </div>
 
       {user && (loadingReco || recommended.length > 0) && (
         <section className="mb-8">
-          <h2 className="mb-3 text-lg font-bold text-neutral-900">🎯 {t("events.forYou")}</h2>
+          <h2 className="mb-3 text-lg font-bold text-neutral-900 dark:text-neutral-50">🎯 {t("events.forYou")}</h2>
           {loadingReco ? (
-            <p className="text-sm text-neutral-500">{t("events.forYouLoading")}</p>
+            <p className="text-sm text-neutral-500 dark:text-neutral-400">{t("events.forYouLoading")}</p>
           ) : (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {recommended.map((ev) => (
@@ -134,9 +134,9 @@ export default function Events() {
       )}
 
       {loading ? (
-        <p className="text-neutral-500">{t("common.loading")}</p>
+        <p className="text-neutral-500 dark:text-neutral-400">{t("common.loading")}</p>
       ) : events.length === 0 ? (
-        <p className="text-neutral-500">{t("events.empty")}</p>
+        <p className="text-neutral-500 dark:text-neutral-400">{t("events.empty")}</p>
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {events.map((ev) => (

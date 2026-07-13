@@ -83,7 +83,7 @@ export default function AudioRecorder({
   };
 
   return (
-    <div className="flex flex-col gap-2 rounded-lg border border-neutral-300 bg-white p-3">
+    <div className="flex flex-col gap-2 rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-3">
       <div className="flex items-center gap-2">
         {!recording && !blob && (
           <button
@@ -117,7 +117,7 @@ export default function AudioRecorder({
             <button
               type="button"
               onClick={reset}
-              className="rounded-md border border-neutral-300 px-2.5 py-1 text-xs font-medium text-neutral-700 hover:bg-neutral-50"
+              className="rounded-md border border-neutral-300 dark:border-neutral-700 px-2.5 py-1 text-xs font-medium text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-800"
             >
               {t("messages.redo")}
             </button>
@@ -131,7 +131,7 @@ export default function AudioRecorder({
             </button>
           </>
         )}
-        <button type="button" onClick={onCancel} className="text-xs text-neutral-500 hover:text-neutral-700">
+        <button type="button" onClick={onCancel} className="text-xs text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200">
           {t("common.cancel")}
         </button>
       </div>

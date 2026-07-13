@@ -71,8 +71,8 @@ export default function ListingDetail() {
     }
   };
 
-  if (loading) return <p className="text-neutral-500">{t("common.loading")}</p>;
-  if (!listing) return <p className="text-neutral-500">{t("detail.notFound")}</p>;
+  if (loading) return <p className="text-neutral-500 dark:text-neutral-400">{t("common.loading")}</p>;
+  if (!listing) return <p className="text-neutral-500 dark:text-neutral-400">{t("detail.notFound")}</p>;
 
   const images = listing.images ?? [];
   const isOwner = user?.id === listing.authorId;
@@ -81,14 +81,14 @@ export default function ListingDetail() {
 
   return (
     <div className="space-y-4">
-      <Link to="/recherche" className="text-sm text-neutral-500 hover:text-[color:var(--color-brand)]">
+      <Link to="/recherche" className="text-sm text-neutral-500 dark:text-neutral-400 hover:text-[color:var(--color-brand)]">
         {t("detail.back")}
       </Link>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_340px]">
         {/* Gallery */}
-        <div className="overflow-hidden rounded-xl border border-neutral-200 bg-white">
-          <div className="aspect-video w-full bg-neutral-100">
+        <div className="overflow-hidden rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900">
+          <div className="aspect-video w-full bg-neutral-100 dark:bg-neutral-800">
             {images.length > 0 ? (
               <img src={images[active]} alt={listing.title} className="h-full w-full object-contain" />
             ) : (
@@ -119,13 +119,13 @@ export default function ListingDetail() {
 
         {/* Sidebar */}
         <aside className="space-y-4">
-          <div className="rounded-xl border border-neutral-200 bg-white p-5">
+          <div className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-5">
             <span className="mb-1 inline-block rounded bg-[color:var(--color-brand-soft)] px-2 py-0.5 text-xs font-semibold text-[color:var(--color-brand-dark)]">
               {typeLabel(listing.type)}
             </span>
-            <h1 className="text-xl font-bold text-neutral-900">{listing.title}</h1>
+            <h1 className="text-xl font-bold text-neutral-900 dark:text-neutral-50">{listing.title}</h1>
             <p className="mt-1 text-2xl font-extrabold text-[color:var(--color-brand)]">{formatPrice(listing.price)}</p>
-            <p className="mt-1 text-xs text-neutral-400">
+            <p className="mt-1 text-xs text-neutral-400 dark:text-neutral-500">
               {t("detail.publishedOn", { date: formatDate(listing.createdAt) })}
             </p>
 
@@ -150,7 +150,7 @@ export default function ListingDetail() {
               <button
                 onClick={contactSeller}
                 disabled={contacting}
-                className="mt-2 w-full rounded-lg border border-neutral-300 py-2.5 font-semibold text-neutral-700 hover:bg-neutral-50 disabled:opacity-60"
+                className="mt-2 w-full rounded-lg border border-neutral-300 dark:border-neutral-700 py-2.5 font-semibold text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-800 disabled:opacity-60"
               >
                 {contacting ? t("detail.contacting") : t("detail.contactSeller")}
               </button>
@@ -158,7 +158,7 @@ export default function ListingDetail() {
             {isOwner && (
               <Link
                 to="/mes-annonces"
-                className="mt-4 block w-full rounded-lg border border-neutral-300 py-2.5 text-center font-semibold text-neutral-700 hover:bg-neutral-50"
+                className="mt-4 block w-full rounded-lg border border-neutral-300 dark:border-neutral-700 py-2.5 text-center font-semibold text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-800"
               >
                 {t("detail.manageListing")}
               </Link>
@@ -166,13 +166,13 @@ export default function ListingDetail() {
           </div>
 
           {seller && (
-            <div className="rounded-xl border border-neutral-200 bg-white p-5">
-              <h3 className="text-sm font-bold uppercase tracking-wide text-neutral-500">{t("detail.seller")}</h3>
+            <div className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-5">
+              <h3 className="text-sm font-bold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">{t("detail.seller")}</h3>
               <div className="mt-2 flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[color:var(--color-brand-soft)] font-bold text-[color:var(--color-brand-dark)]">
                   {seller.firstName.charAt(0)}
                 </div>
-                <span className="font-medium text-neutral-800">
+                <span className="font-medium text-neutral-800 dark:text-neutral-100">
                   {seller.firstName} {seller.lastName}
                 </span>
               </div>
@@ -181,13 +181,13 @@ export default function ListingDetail() {
         </aside>
       </div>
 
-      <div className="rounded-xl border border-neutral-200 bg-white p-5">
-        <h2 className="mb-2 text-lg font-bold text-neutral-900">{t("detail.description")}</h2>
-        <p className="whitespace-pre-wrap text-neutral-700">{listing.description}</p>
+      <div className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-5">
+        <h2 className="mb-2 text-lg font-bold text-neutral-900 dark:text-neutral-50">{t("detail.description")}</h2>
+        <p className="whitespace-pre-wrap text-neutral-700 dark:text-neutral-200">{listing.description}</p>
         {listing.tags && listing.tags.length > 0 && (
           <div className="mt-4 flex flex-wrap gap-2">
             {listing.tags.map((t) => (
-              <span key={t} className="rounded-full bg-neutral-100 px-3 py-1 text-xs font-medium text-neutral-600">
+              <span key={t} className="rounded-full bg-neutral-100 dark:bg-neutral-800 px-3 py-1 text-xs font-medium text-neutral-600 dark:text-neutral-300">
                 {t}
               </span>
             ))}

@@ -10,9 +10,9 @@ export default function ListingCard({ listing }: { listing: ListingResponseDto }
   return (
     <Link
       to={`/annonce/${listing.id}`}
-      className="group flex flex-col overflow-hidden rounded-lg border border-neutral-200 bg-white transition hover:shadow-md"
+      className="group flex flex-col overflow-hidden rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 transition hover:shadow-md"
     >
-      <div className="relative aspect-square w-full overflow-hidden bg-neutral-100">
+      <div className="relative aspect-square w-full overflow-hidden bg-neutral-100 dark:bg-neutral-800">
         {cover ? (
           <img
             src={cover}
@@ -27,14 +27,14 @@ export default function ListingCard({ listing }: { listing: ListingResponseDto }
             {listing.title.charAt(0).toUpperCase()}
           </div>
         )}
-        <span className="absolute left-2 top-2 rounded bg-white/90 px-2 py-0.5 text-[11px] font-semibold text-neutral-700">
+        <span className="absolute left-2 top-2 rounded bg-white/90 px-2 py-0.5 text-[11px] font-semibold text-neutral-700 dark:text-neutral-200">
           {typeLabel(listing.type)}
         </span>
       </div>
       <div className="flex flex-1 flex-col gap-1 p-3">
-        <span className="text-base font-bold text-neutral-900">{formatPrice(listing.price)}</span>
-        <span className="line-clamp-2 text-sm text-neutral-700">{listing.title}</span>
-        <div className="mt-auto flex items-center justify-between pt-1 text-[11px] text-neutral-400">
+        <span className="text-base font-bold text-neutral-900 dark:text-neutral-50">{formatPrice(listing.price)}</span>
+        <span className="line-clamp-2 text-sm text-neutral-700 dark:text-neutral-200">{listing.title}</span>
+        <div className="mt-auto flex items-center justify-between pt-1 text-[11px] text-neutral-400 dark:text-neutral-500">
           <span className="truncate">{listing.tags?.[0] ?? t("common.misc")}</span>
           <span className="shrink-0">{formatRelative(listing.createdAt)}</span>
         </div>

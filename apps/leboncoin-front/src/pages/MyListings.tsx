@@ -44,7 +44,7 @@ export default function MyListings() {
   return (
     <div>
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-extrabold text-neutral-900">{t("myListings.title")}</h1>
+        <h1 className="text-2xl font-extrabold text-neutral-900 dark:text-neutral-50">{t("myListings.title")}</h1>
         <Link
           to="/deposer"
           className="rounded-lg bg-[color:var(--color-brand)] px-4 py-2 font-semibold text-white hover:bg-[color:var(--color-brand-dark)]"
@@ -54,24 +54,24 @@ export default function MyListings() {
       </div>
 
       {loading ? (
-        <p className="text-neutral-500">{t("common.loading")}</p>
+        <p className="text-neutral-500 dark:text-neutral-400">{t("common.loading")}</p>
       ) : listings.length === 0 ? (
-        <p className="text-neutral-500">{t("myListings.empty")}</p>
+        <p className="text-neutral-500 dark:text-neutral-400">{t("myListings.empty")}</p>
       ) : (
         <ul className="space-y-3">
           {listings.map((l) => (
-            <li key={l.id} className="flex items-center gap-4 rounded-xl border border-neutral-200 bg-white p-3">
-              <div className="h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-neutral-100">
+            <li key={l.id} className="flex items-center gap-4 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-3">
+              <div className="h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-neutral-100 dark:bg-neutral-800">
                 {l.images?.[0] && <img src={l.images[0]} alt="" className="h-full w-full object-cover" />}
               </div>
               <div className="min-w-0 flex-1">
                 <Link
                   to={`/annonce/${l.id}`}
-                  className="block truncate font-semibold text-neutral-900 hover:text-[color:var(--color-brand)]"
+                  className="block truncate font-semibold text-neutral-900 dark:text-neutral-50 hover:text-[color:var(--color-brand)]"
                 >
                   {l.title}
                 </Link>
-                <p className="text-sm text-neutral-500">
+                <p className="text-sm text-neutral-500 dark:text-neutral-400">
                   {typeLabel(l.type)} · {formatPrice(l.price)} · {formatRelative(l.createdAt)}
                 </p>
               </div>

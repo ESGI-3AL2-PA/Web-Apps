@@ -5,6 +5,7 @@ import type { SessionResponseDto } from "@repo/contracts";
 import { getSessions, revokeOtherSessions, revokeSession } from "../api-service/sessions.service";
 import { deleteAccount, exportMyData, requestPasswordReset } from "../api-service/account.service";
 import { formatRelative } from "../lib/format";
+import { getTheme, setTheme, type Theme } from "../lib/theme";
 import { useDialog } from "../components/DialogProvider";
 
 // Best-effort, presentation-only parse of the stored user-agent string.
@@ -35,9 +36,9 @@ function describeDevice(ua: string | null, fallback: string): string {
 
 function Card({ title, description, children }: { title: string; description?: string; children: React.ReactNode }) {
   return (
-    <section className="rounded-xl border border-neutral-200 bg-white p-5">
-      <h2 className="text-lg font-bold text-neutral-900">{title}</h2>
-      {description && <p className="mt-1 text-sm text-neutral-500">{description}</p>}
+    <section className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-5">
+      <h2 className="text-lg font-bold text-neutral-900 dark:text-neutral-50">{title}</h2>
+      {description && <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">{description}</p>}
       <div className="mt-4">{children}</div>
     </section>
   );
@@ -52,6 +53,12 @@ export default function Settings() {
   const [loadingSessions, setLoadingSessions] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
   const [pwSent, setPwSent] = useState(false);
+  const [theme, setThemeState] = useState<Theme>(getTheme());
+
+  const chooseTheme = (next: Theme) => {
+    setTheme(next);
+    setThemeState(next);
+  };
 
   const token = useCallback(
     async (): Promise<string | null> => getAccessToken() ?? (await refresh()),
@@ -160,7 +167,26 @@ export default function Settings() {
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
-      <h1 className="text-2xl font-extrabold text-neutral-900">{t("settings.title")}</h1>
+      <h1 className="text-2xl font-extrabold text-neutral-900 dark:text-neutral-50">{t("settings.title")}</h1>
+
+      {/* Appearance */}
+      <Card title={t("settings.appearance.title")} description={t("settings.appearance.desc")}>
+        <div className="inline-flex overflow-hidden rounded-lg border border-neutral-300 dark:border-neutral-700">
+          {(["light", "dark"] as const).map((mode) => (
+            <button
+              key={mode}
+              onClick={() => chooseTheme(mode)}
+              className={`px-4 py-2 text-sm font-semibold ${
+                theme === mode
+                  ? "bg-[color:var(--color-brand)] text-white"
+                  : "bg-white dark:bg-neutral-900 text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-800"
+              }`}
+            >
+              {t(`settings.appearance.${mode}`)}
+            </button>
+          ))}
+        </div>
+      </Card>
 
       {/* Password */}
       <Card title={t("settings.password.title")} description={t("settings.password.desc")}>
@@ -180,16 +206,16 @@ export default function Settings() {
       {/* Active sessions */}
       <Card title={t("settings.sessions.title")} description={t("settings.sessions.desc")}>
         {loadingSessions ? (
-          <p className="text-sm text-neutral-500">{t("common.loading")}</p>
+          <p className="text-sm text-neutral-500 dark:text-neutral-400">{t("common.loading")}</p>
         ) : sessions.length === 0 ? (
-          <p className="text-sm text-neutral-500">{t("settings.sessions.empty")}</p>
+          <p className="text-sm text-neutral-500 dark:text-neutral-400">{t("settings.sessions.empty")}</p>
         ) : (
           <>
-            <ul className="divide-y divide-neutral-100">
+            <ul className="divide-y divide-neutral-100 dark:divide-neutral-800">
               {sessions.map((s) => (
                 <li key={s.id} className="flex items-center gap-3 py-3">
                   <div className="min-w-0 flex-1">
-                    <p className="flex items-center gap-2 text-sm font-semibold text-neutral-900">
+                    <p className="flex items-center gap-2 text-sm font-semibold text-neutral-900 dark:text-neutral-50">
                       <span className="truncate">
                         {describeDevice(s.userAgent, t("settings.sessions.unknownDevice"))}
                       </span>
@@ -199,7 +225,7 @@ export default function Settings() {
                         </span>
                       )}
                     </p>
-                    <p className="mt-0.5 truncate text-xs text-neutral-500">
+                    <p className="mt-0.5 truncate text-xs text-neutral-500 dark:text-neutral-400">
                       {s.ip ?? "—"} ·{" "}
                       {t("settings.sessions.lastUsed", { when: formatRelative(s.lastUsedAt ?? s.createdAt) })}
                     </p>
@@ -207,7 +233,7 @@ export default function Settings() {
                   <button
                     onClick={() => onRevoke(s)}
                     disabled={busy === `revoke:${s.id}`}
-                    className="shrink-0 rounded-lg border border-neutral-300 px-3 py-1.5 text-sm font-medium text-neutral-700 hover:bg-neutral-50 disabled:opacity-60"
+                    className="shrink-0 rounded-lg border border-neutral-300 dark:border-neutral-700 px-3 py-1.5 text-sm font-medium text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-800 disabled:opacity-60"
                   >
                     {s.current ? t("settings.sessions.logout") : t("settings.sessions.revoke")}
                   </button>
@@ -218,7 +244,7 @@ export default function Settings() {
               <button
                 onClick={onRevokeOthers}
                 disabled={busy === "revoke-others"}
-                className="mt-3 rounded-lg border border-neutral-300 px-4 py-2 text-sm font-semibold text-neutral-700 hover:bg-neutral-50 disabled:opacity-60"
+                className="mt-3 rounded-lg border border-neutral-300 dark:border-neutral-700 px-4 py-2 text-sm font-semibold text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-800 disabled:opacity-60"
               >
                 {t("settings.sessions.revokeOthers")}
               </button>
@@ -232,7 +258,7 @@ export default function Settings() {
         <button
           onClick={onExport}
           disabled={busy === "export"}
-          className="rounded-lg border border-neutral-300 px-4 py-2 text-sm font-semibold text-neutral-700 hover:bg-neutral-50 disabled:opacity-60"
+          className="rounded-lg border border-neutral-300 dark:border-neutral-700 px-4 py-2 text-sm font-semibold text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-800 disabled:opacity-60"
         >
           {t("settings.data.action")}
         </button>

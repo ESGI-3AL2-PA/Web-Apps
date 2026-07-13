@@ -125,6 +125,12 @@
   },
   "settings": {
     "title": "Settings",
+    "appearance": {
+      "title": "Appearance",
+      "desc": "Choose the light or dark theme.",
+      "light": "Light",
+      "dark": "Dark"
+    },
     "password": {
       "title": "Password",
       "desc": "We'll email you a secure link to choose a new password.",

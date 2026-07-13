@@ -57,14 +57,14 @@ export default function PostListing() {
   };
 
   const field =
-    "w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-[color:var(--color-brand)]";
+    "w-full rounded-lg border border-neutral-300 dark:border-neutral-700 px-3 py-2 text-sm outline-none focus:border-[color:var(--color-brand)]";
 
   return (
     <div className="mx-auto max-w-2xl">
-      <h1 className="mb-6 text-2xl font-extrabold text-neutral-900">{t("post.title")}</h1>
-      <form onSubmit={onSubmit} className="space-y-5 rounded-xl border border-neutral-200 bg-white p-6">
+      <h1 className="mb-6 text-2xl font-extrabold text-neutral-900 dark:text-neutral-50">{t("post.title")}</h1>
+      <form onSubmit={onSubmit} className="space-y-5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-6">
         <div>
-          <label className="mb-1 block text-sm font-semibold text-neutral-700">{t("post.fieldTitle")}</label>
+          <label className="mb-1 block text-sm font-semibold text-neutral-700 dark:text-neutral-200">{t("post.fieldTitle")}</label>
           <input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
@@ -77,14 +77,14 @@ export default function PostListing() {
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="mb-1 block text-sm font-semibold text-neutral-700">{t("post.type")}</label>
+            <label className="mb-1 block text-sm font-semibold text-neutral-700 dark:text-neutral-200">{t("post.type")}</label>
             <select value={type} onChange={(e) => setType(e.target.value as "offer" | "request")} className={field}>
               <option value="offer">{t("type.offer")}</option>
               <option value="request">{t("type.request")}</option>
             </select>
           </div>
           <div>
-            <label className="mb-1 block text-sm font-semibold text-neutral-700">{t("post.pricePoints")}</label>
+            <label className="mb-1 block text-sm font-semibold text-neutral-700 dark:text-neutral-200">{t("post.pricePoints")}</label>
             <input
               value={price}
               onChange={(e) => setPrice(e.target.value)}
@@ -98,7 +98,7 @@ export default function PostListing() {
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-semibold text-neutral-700">{t("post.category")}</label>
+          <label className="mb-1 block text-sm font-semibold text-neutral-700 dark:text-neutral-200">{t("post.category")}</label>
           <select value={tag} onChange={(e) => setTag(e.target.value)} className={field}>
             <option value="">{t("post.chooseCategory")}</option>
             {tags.map((t) => (
@@ -110,7 +110,7 @@ export default function PostListing() {
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-semibold text-neutral-700">{t("post.description")}</label>
+          <label className="mb-1 block text-sm font-semibold text-neutral-700 dark:text-neutral-200">{t("post.description")}</label>
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
@@ -122,7 +122,7 @@ export default function PostListing() {
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-semibold text-neutral-700">{t("post.photos")}</label>
+          <label className="mb-1 block text-sm font-semibold text-neutral-700 dark:text-neutral-200">{t("post.photos")}</label>
           <input type="file" accept="image/*" multiple onChange={(e) => onFiles(e.target.files)} className="text-sm" />
           {previews.length > 0 && (
             <div className="mt-3 flex flex-wrap gap-2">
@@ -131,7 +131,7 @@ export default function PostListing() {
                   key={src}
                   src={src}
                   alt=""
-                  className="h-20 w-20 rounded-lg border border-neutral-200 object-cover"
+                  className="h-20 w-20 rounded-lg border border-neutral-200 dark:border-neutral-700 object-cover"
                 />
               ))}
             </div>

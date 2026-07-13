@@ -53,7 +53,7 @@ export default function NotificationBell() {
       <button
         onClick={toggle}
         aria-label={t("notifications.title")}
-        className="relative flex h-9 w-9 items-center justify-center rounded-lg text-neutral-600 hover:bg-neutral-100 hover:text-[color:var(--color-brand)]"
+        className="relative flex h-9 w-9 items-center justify-center rounded-lg text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-[color:var(--color-brand)]"
       >
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
           <path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" strokeLinecap="round" strokeLinejoin="round" />
@@ -67,9 +67,9 @@ export default function NotificationBell() {
       </button>
 
       {open && (
-        <div className="absolute right-0 z-50 mt-2 w-80 max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-lg">
-          <div className="flex items-center justify-between border-b border-neutral-100 px-4 py-2.5">
-            <span className="text-sm font-bold text-neutral-900">{t("notifications.title")}</span>
+        <div className="absolute right-0 z-50 mt-2 w-80 max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 shadow-lg">
+          <div className="flex items-center justify-between border-b border-neutral-100 dark:border-neutral-800 px-4 py-2.5">
+            <span className="text-sm font-bold text-neutral-900 dark:text-neutral-50">{t("notifications.title")}</span>
             {unread > 0 && (
               <button onClick={markAll} className="text-xs font-medium text-[color:var(--color-brand)] hover:underline">
                 {t("notifications.markAll")}
@@ -77,14 +77,14 @@ export default function NotificationBell() {
             )}
           </div>
           {items.length === 0 ? (
-            <p className="px-4 py-6 text-center text-sm text-neutral-500">{t("notifications.empty")}</p>
+            <p className="px-4 py-6 text-center text-sm text-neutral-500 dark:text-neutral-400">{t("notifications.empty")}</p>
           ) : (
             <ul className="max-h-96 overflow-y-auto">
               {items.map((n) => (
                 <li key={n.id}>
                   <button
                     onClick={() => markOne(n)}
-                    className={`flex w-full items-start gap-2 border-b border-neutral-50 px-4 py-3 text-left hover:bg-neutral-50 ${
+                    className={`flex w-full items-start gap-2 border-b border-neutral-50 px-4 py-3 text-left hover:bg-neutral-50 dark:hover:bg-neutral-800 ${
                       n.read ? "" : "bg-[color:var(--color-brand-soft)]/40"
                     }`}
                   >
@@ -94,9 +94,9 @@ export default function NotificationBell() {
                       }`}
                     />
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-semibold text-neutral-900">{n.title}</span>
-                      <span className="block text-xs text-neutral-600">{n.message}</span>
-                      <span className="mt-0.5 block text-[10px] text-neutral-400">{formatRelative(n.createdAt)}</span>
+                      <span className="block truncate text-sm font-semibold text-neutral-900 dark:text-neutral-50">{n.title}</span>
+                      <span className="block text-xs text-neutral-600 dark:text-neutral-300">{n.message}</span>
+                      <span className="mt-0.5 block text-[10px] text-neutral-400 dark:text-neutral-500">{formatRelative(n.createdAt)}</span>
                     </span>
                   </button>
                 </li>

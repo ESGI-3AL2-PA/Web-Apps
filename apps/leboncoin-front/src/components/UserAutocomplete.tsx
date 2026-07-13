@@ -74,7 +74,7 @@ export default function UserAutocomplete({
           setQuery(e.target.value);
         }}
         onFocus={() => results.length > 0 && setOpen(true)}
-        className="h-10 w-full rounded-lg border border-neutral-300 px-3 pr-8 text-sm outline-none focus:border-[color:var(--color-brand)]"
+        className="h-10 w-full rounded-lg border border-neutral-300 dark:border-neutral-700 px-3 pr-8 text-sm outline-none focus:border-[color:var(--color-brand)]"
       />
       {selected && (
         <button
@@ -85,16 +85,16 @@ export default function UserAutocomplete({
             setResults([]);
           }}
           aria-label={t("common.cancel")}
-          className="absolute right-2 top-1/2 -translate-y-1/2 text-lg leading-none text-neutral-400 hover:text-neutral-600"
+          className="absolute right-2 top-1/2 -translate-y-1/2 text-lg leading-none text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300"
         >
           ×
         </button>
       )}
       {open && !selected && (
-        <ul className="absolute inset-x-0 top-[calc(100%+4px)] z-[60] max-h-56 overflow-y-auto rounded-lg border border-neutral-200 bg-white p-1 shadow-lg">
-          {loading && <li className="px-3 py-2 text-sm text-neutral-500">{t("messages.searching")}</li>}
+        <ul className="absolute inset-x-0 top-[calc(100%+4px)] z-[60] max-h-56 overflow-y-auto rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-1 shadow-lg">
+          {loading && <li className="px-3 py-2 text-sm text-neutral-500 dark:text-neutral-400">{t("messages.searching")}</li>}
           {!loading && results.length === 0 && (
-            <li className="px-3 py-2 text-sm text-neutral-500">{t("messages.noNeighbour")}</li>
+            <li className="px-3 py-2 text-sm text-neutral-500 dark:text-neutral-400">{t("messages.noNeighbour")}</li>
           )}
           {results.map((u) => (
             <li key={u.id}>

@@ -13,7 +13,7 @@ const STATUS_CLASS: Record<IncidentStatus, string> = {
   open: "bg-amber-100 text-amber-800",
   in_progress: "bg-blue-100 text-blue-800",
   resolved: "bg-green-100 text-green-800",
-  closed: "bg-neutral-100 text-neutral-700",
+  closed: "bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-200",
 };
 
 export default function Incidents() {
@@ -67,21 +67,21 @@ export default function Incidents() {
   return (
     <div className="mx-auto max-w-2xl space-y-6">
       <div>
-        <h1 className="text-2xl font-extrabold text-neutral-900">{t("incidents.title")}</h1>
-        <p className="text-neutral-500">{t("incidents.subtitle")}</p>
+        <h1 className="text-2xl font-extrabold text-neutral-900 dark:text-neutral-50">{t("incidents.title")}</h1>
+        <p className="text-neutral-500 dark:text-neutral-400">{t("incidents.subtitle")}</p>
       </div>
 
       {/* Report form */}
-      <form onSubmit={submit} className="space-y-3 rounded-xl border border-neutral-200 bg-white p-5">
-        <h2 className="text-lg font-bold text-neutral-900">{t("incidents.report")}</h2>
+      <form onSubmit={submit} className="space-y-3 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-5">
+        <h2 className="text-lg font-bold text-neutral-900 dark:text-neutral-50">{t("incidents.report")}</h2>
         <label className="block">
-          <span className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
+          <span className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
             {t("incidents.category")}
           </span>
           <select
             value={category}
             onChange={(e) => setCategory(e.target.value)}
-            className="mt-1 h-10 w-full rounded-lg border border-neutral-300 bg-white px-3 text-sm outline-none focus:border-[color:var(--color-brand)]"
+            className="mt-1 h-10 w-full rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-3 text-sm outline-none focus:border-[color:var(--color-brand)]"
           >
             {CATEGORIES.map((c) => (
               <option key={c} value={c}>
@@ -91,7 +91,7 @@ export default function Incidents() {
           </select>
         </label>
         <label className="block">
-          <span className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
+          <span className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
             {t("incidents.description")}
           </span>
           <textarea
@@ -99,7 +99,7 @@ export default function Incidents() {
             onChange={(e) => setDescription(e.target.value)}
             rows={3}
             placeholder={t("incidents.descriptionPlaceholder")}
-            className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-[color:var(--color-brand)]"
+            className="mt-1 w-full rounded-lg border border-neutral-300 dark:border-neutral-700 px-3 py-2 text-sm outline-none focus:border-[color:var(--color-brand)]"
           />
         </label>
         <button
@@ -113,25 +113,25 @@ export default function Incidents() {
 
       {/* My incidents */}
       <section>
-        <h2 className="mb-3 text-lg font-bold text-neutral-900">{t("incidents.mine")}</h2>
+        <h2 className="mb-3 text-lg font-bold text-neutral-900 dark:text-neutral-50">{t("incidents.mine")}</h2>
         {loading ? (
-          <p className="text-sm text-neutral-500">{t("common.loading")}</p>
+          <p className="text-sm text-neutral-500 dark:text-neutral-400">{t("common.loading")}</p>
         ) : incidents.length === 0 ? (
-          <p className="text-sm text-neutral-500">{t("incidents.empty")}</p>
+          <p className="text-sm text-neutral-500 dark:text-neutral-400">{t("incidents.empty")}</p>
         ) : (
           <ul className="space-y-3">
             {incidents.map((i) => (
-              <li key={i.id} className="rounded-xl border border-neutral-200 bg-white p-4">
+              <li key={i.id} className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-4">
                 <div className="flex items-center justify-between gap-3">
-                  <span className="text-sm font-semibold text-neutral-900">
+                  <span className="text-sm font-semibold text-neutral-900 dark:text-neutral-50">
                     {t(`incidents.categories.${i.category}`, { defaultValue: i.category })}
                   </span>
                   <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${STATUS_CLASS[i.status]}`}>
                     {t(`incidents.status.${i.status}`)}
                   </span>
                 </div>
-                <p className="mt-1 text-sm text-neutral-700">{i.description}</p>
-                <p className="mt-1 text-xs text-neutral-400">{formatRelative(i.createdAt)}</p>
+                <p className="mt-1 text-sm text-neutral-700 dark:text-neutral-200">{i.description}</p>
+                <p className="mt-1 text-xs text-neutral-400 dark:text-neutral-500">{formatRelative(i.createdAt)}</p>
               </li>
             ))}
           </ul>

@@ -47,7 +47,7 @@ function IconAction({ to, label, children }: { to: string; label: string; childr
   return (
     <Link
       to={to}
-      className="flex min-w-[62px] flex-col items-center gap-1 text-neutral-600 transition hover:text-[color:var(--color-brand)]"
+      className="flex min-w-[62px] flex-col items-center gap-1 text-neutral-600 dark:text-neutral-300 transition hover:text-[color:var(--color-brand)]"
     >
       {children}
       <span className="text-xs font-medium">{label}</span>
@@ -94,7 +94,7 @@ export default function Header() {
   };
 
   return (
-    <header className="sticky top-0 z-40 border-b border-neutral-200 bg-white">
+    <header className="sticky top-0 z-40 border-b border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900">
       {/* Row 1 — logo · deposer · search · account actions */}
       <div className="mx-auto flex max-w-6xl items-center gap-4 px-4 py-2.5">
         <Link to="/" className="flex shrink-0 select-none items-center gap-2 text-xl font-extrabold tracking-tight">
@@ -110,7 +110,7 @@ export default function Header() {
         </Link>
 
         <form onSubmit={onSearch} className="min-w-0 flex-1">
-          <div className="flex items-center rounded-lg bg-neutral-100 p-1 focus-within:ring-2 focus-within:ring-[color:var(--color-brand)]">
+          <div className="flex items-center rounded-lg bg-neutral-100 dark:bg-neutral-800 p-1 focus-within:ring-2 focus-within:ring-[color:var(--color-brand)]">
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
@@ -153,7 +153,7 @@ export default function Header() {
           <div ref={menuRef} className="relative">
             <button
               onClick={() => setMenuOpen((o) => !o)}
-              className="flex min-w-[62px] flex-col items-center gap-1 text-neutral-600 hover:text-[color:var(--color-brand)]"
+              className="flex min-w-[62px] flex-col items-center gap-1 text-neutral-600 dark:text-neutral-300 hover:text-[color:var(--color-brand)]"
             >
               <span className="flex h-[22px] w-[22px] items-center justify-center rounded-full bg-[color:var(--color-brand)] text-xs font-bold text-white">
                 {user?.firstName?.charAt(0) ?? "?"}
@@ -163,39 +163,39 @@ export default function Header() {
               </span>
             </button>
             {menuOpen && (
-              <div className="absolute right-0 mt-2 w-48 overflow-hidden rounded-lg border border-neutral-200 bg-white py-1 shadow-lg">
+              <div className="absolute right-0 mt-2 w-48 overflow-hidden rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 py-1 shadow-lg">
                 <Link
                   to="/profil"
                   onClick={() => setMenuOpen(false)}
-                  className="block px-4 py-2 text-sm text-neutral-700 hover:bg-[color:var(--color-brand-soft)]"
+                  className="block px-4 py-2 text-sm text-neutral-700 dark:text-neutral-200 hover:bg-[color:var(--color-brand-soft)]"
                 >
                   {t("header.profile")}
                 </Link>
                 <Link
                   to="/mes-annonces"
                   onClick={() => setMenuOpen(false)}
-                  className="block px-4 py-2 text-sm text-neutral-700 hover:bg-[color:var(--color-brand-soft)]"
+                  className="block px-4 py-2 text-sm text-neutral-700 dark:text-neutral-200 hover:bg-[color:var(--color-brand-soft)]"
                 >
                   {t("header.myListings")}
                 </Link>
                 <Link
                   to="/mes-contrats"
                   onClick={() => setMenuOpen(false)}
-                  className="block px-4 py-2 text-sm text-neutral-700 hover:bg-[color:var(--color-brand-soft)]"
+                  className="block px-4 py-2 text-sm text-neutral-700 dark:text-neutral-200 hover:bg-[color:var(--color-brand-soft)]"
                 >
                   {t("header.contracts")}
                 </Link>
                 <Link
                   to="/incidents"
                   onClick={() => setMenuOpen(false)}
-                  className="block px-4 py-2 text-sm text-neutral-700 hover:bg-[color:var(--color-brand-soft)]"
+                  className="block px-4 py-2 text-sm text-neutral-700 dark:text-neutral-200 hover:bg-[color:var(--color-brand-soft)]"
                 >
                   {t("header.incidents")}
                 </Link>
                 <Link
                   to="/parametres"
                   onClick={() => setMenuOpen(false)}
-                  className="block px-4 py-2 text-sm text-neutral-700 hover:bg-[color:var(--color-brand-soft)]"
+                  className="block px-4 py-2 text-sm text-neutral-700 dark:text-neutral-200 hover:bg-[color:var(--color-brand-soft)]"
                 >
                   {t("header.settings")}
                 </Link>
@@ -204,7 +204,7 @@ export default function Header() {
                     setMenuOpen(false);
                     logout();
                   }}
-                  className="block w-full px-4 py-2 text-left text-sm text-neutral-700 hover:bg-[color:var(--color-brand-soft)]"
+                  className="block w-full px-4 py-2 text-left text-sm text-neutral-700 dark:text-neutral-200 hover:bg-[color:var(--color-brand-soft)]"
                 >
                   {t("header.logout")}
                 </button>
@@ -216,7 +216,7 @@ export default function Header() {
             value={i18n.resolvedLanguage}
             onChange={(e) => i18n.changeLanguage(e.target.value)}
             aria-label={t("common.language")}
-            className="ml-1 rounded-md border border-neutral-300 bg-white px-1.5 py-1 text-xs font-semibold text-neutral-600"
+            className="ml-1 rounded-md border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-1.5 py-1 text-xs font-semibold text-neutral-600 dark:text-neutral-300"
           >
             <option value="fr">FR</option>
             <option value="en">EN</option>
@@ -225,8 +225,8 @@ export default function Header() {
       </div>
 
       {/* Row 2 — category bar (district tags) */}
-      <div className="border-t border-neutral-100">
-        <nav className="mx-auto flex max-w-6xl items-center gap-5 overflow-x-auto px-4 py-2 text-sm font-medium whitespace-nowrap text-neutral-700">
+      <div className="border-t border-neutral-100 dark:border-neutral-800">
+        <nav className="mx-auto flex max-w-6xl items-center gap-5 overflow-x-auto px-4 py-2 text-sm font-medium whitespace-nowrap text-neutral-700 dark:text-neutral-200">
           {/* Events / polls live in the icon nav on desktop; surface them here on mobile. */}
           <Link to="/evenements" className="shrink-0 hover:text-[color:var(--color-brand)] md:hidden">
             {t("header.events")}

@@ -59,7 +59,7 @@ export default function Search() {
   const filterControls = (
     <>
       <div>
-        <h3 className="mb-2 text-sm font-bold uppercase tracking-wide text-neutral-500">{t("search.type")}</h3>
+        <h3 className="mb-2 text-sm font-bold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">{t("search.type")}</h3>
         <div className="flex flex-col gap-1 text-sm">
           {[
             { v: "", label: t("type.all") },
@@ -72,7 +72,7 @@ export default function Search() {
               className={`rounded px-2 py-1.5 text-left ${
                 type === o.v
                   ? "bg-[color:var(--color-brand-soft)] font-semibold text-[color:var(--color-brand-dark)]"
-                  : "hover:bg-neutral-100"
+                  : "hover:bg-neutral-100 dark:hover:bg-neutral-800"
               }`}
             >
               {o.label}
@@ -81,11 +81,11 @@ export default function Search() {
         </div>
       </div>
       <div>
-        <h3 className="mb-2 text-sm font-bold uppercase tracking-wide text-neutral-500">{t("search.category")}</h3>
+        <h3 className="mb-2 text-sm font-bold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">{t("search.category")}</h3>
         <div className="flex flex-col gap-1 text-sm">
           <button
             onClick={() => setFilter("tag", "")}
-            className={`rounded px-2 py-1.5 text-left ${!tag ? "bg-[color:var(--color-brand-soft)] font-semibold text-[color:var(--color-brand-dark)]" : "hover:bg-neutral-100"}`}
+            className={`rounded px-2 py-1.5 text-left ${!tag ? "bg-[color:var(--color-brand-soft)] font-semibold text-[color:var(--color-brand-dark)]" : "hover:bg-neutral-100 dark:hover:bg-neutral-800"}`}
           >
             {t("search.allCategories")}
           </button>
@@ -96,7 +96,7 @@ export default function Search() {
               className={`rounded px-2 py-1.5 text-left ${
                 tag === tg.name
                   ? "bg-[color:var(--color-brand-soft)] font-semibold text-[color:var(--color-brand-dark)]"
-                  : "hover:bg-neutral-100"
+                  : "hover:bg-neutral-100 dark:hover:bg-neutral-800"
               }`}
             >
               {tg.name}
@@ -114,15 +114,15 @@ export default function Search() {
 
       <section>
         <div className="mb-4 flex items-center justify-between gap-3">
-          <h1 className="truncate text-xl font-bold text-neutral-900">
+          <h1 className="truncate text-xl font-bold text-neutral-900 dark:text-neutral-50">
             {search ? `« ${search} »` : t("search.allListings")}
           </h1>
           <div className="flex shrink-0 items-center gap-3">
-            <span className="hidden text-sm text-neutral-500 sm:inline">{t("search.results", { count: total })}</span>
+            <span className="hidden text-sm text-neutral-500 dark:text-neutral-400 sm:inline">{t("search.results", { count: total })}</span>
             {/* Mobile filter trigger */}
             <button
               onClick={() => setFiltersOpen(true)}
-              className="flex items-center gap-1.5 rounded-lg border border-neutral-300 px-3 py-1.5 text-sm font-medium text-neutral-700 md:hidden"
+              className="flex items-center gap-1.5 rounded-lg border border-neutral-300 dark:border-neutral-700 px-3 py-1.5 text-sm font-medium text-neutral-700 dark:text-neutral-200 md:hidden"
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
                 <path d="M4 6h16M7 12h10M10 18h4" strokeLinecap="round" />
@@ -137,9 +137,9 @@ export default function Search() {
           </div>
         </div>
         {loading ? (
-          <p className="text-neutral-500">{t("common.loading")}</p>
+          <p className="text-neutral-500 dark:text-neutral-400">{t("common.loading")}</p>
         ) : listings.length === 0 ? (
-          <p className="text-neutral-500">{t("search.empty")}</p>
+          <p className="text-neutral-500 dark:text-neutral-400">{t("search.empty")}</p>
         ) : (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
             {listings.map((l) => (
@@ -153,7 +153,7 @@ export default function Search() {
       {filtersOpen && (
         <div className="fixed inset-0 z-50 md:hidden" role="dialog" aria-modal="true">
           <button aria-label="Close" onClick={() => setFiltersOpen(false)} className="absolute inset-0 bg-black/40" />
-          <div className="absolute inset-x-0 bottom-0 max-h-[80vh] overflow-y-auto rounded-t-2xl bg-white p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] shadow-2xl">
+          <div className="absolute inset-x-0 bottom-0 max-h-[80vh] overflow-y-auto rounded-t-2xl bg-white dark:bg-neutral-900 p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] shadow-2xl">
             <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-neutral-300" />
             <div className="space-y-6">{filterControls}</div>
             <button

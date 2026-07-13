@@ -12,7 +12,7 @@ import { useDialog } from "../components/DialogProvider";
 pdfjs.GlobalWorkerOptions.workerSrc = new URL("pdfjs-dist/build/pdf.worker.min.mjs", import.meta.url).toString();
 
 const STATUS_CLASS: Record<ContractSignatureStatus, string> = {
-  draft: "bg-neutral-100 text-neutral-700",
+  draft: "bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-200",
   pending: "bg-amber-100 text-amber-800",
   completed: "bg-green-100 text-green-800",
   rejected: "bg-red-100 text-red-800",
@@ -53,22 +53,22 @@ export default function Contracts() {
     }
   };
 
-  if (loading) return <p className="text-neutral-500">{t("common.loading")}</p>;
+  if (loading) return <p className="text-neutral-500 dark:text-neutral-400">{t("common.loading")}</p>;
 
   return (
     <div className="mx-auto max-w-3xl">
-      <h1 className="mb-6 text-2xl font-extrabold text-neutral-900">{t("contracts.title")}</h1>
+      <h1 className="mb-6 text-2xl font-extrabold text-neutral-900 dark:text-neutral-50">{t("contracts.title")}</h1>
 
       {contracts.length === 0 ? (
-        <p className="text-neutral-500">{t("contracts.empty")}</p>
+        <p className="text-neutral-500 dark:text-neutral-400">{t("contracts.empty")}</p>
       ) : (
         <ul className="space-y-3">
           {contracts.map((c) => (
-            <li key={c.id} className="rounded-xl border border-neutral-200 bg-white p-4">
+            <li key={c.id} className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-4">
               <div className="flex items-center justify-between gap-4">
                 <div>
-                  <p className="font-semibold text-neutral-900">{t("contracts.number", { id: c.id.slice(0, 8) })}</p>
-                  <p className="text-sm text-neutral-500">{formatPrice(c.price)}</p>
+                  <p className="font-semibold text-neutral-900 dark:text-neutral-50">{t("contracts.number", { id: c.id.slice(0, 8) })}</p>
+                  <p className="text-sm text-neutral-500 dark:text-neutral-400">{formatPrice(c.price)}</p>
                 </div>
                 <div className="flex items-center gap-2">
                   {c.disputed && (
@@ -98,7 +98,7 @@ export default function Contracts() {
                   <button
                     onClick={() => onResend(c.id)}
                     disabled={busyId === c.id}
-                    className="rounded-lg border border-neutral-300 px-3 py-1.5 text-sm font-medium text-neutral-700 hover:bg-neutral-50 disabled:opacity-60"
+                    className="rounded-lg border border-neutral-300 dark:border-neutral-700 px-3 py-1.5 text-sm font-medium text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-800 disabled:opacity-60"
                   >
                     {busyId === c.id ? t("contracts.resending") : t("contracts.resend")}
                   </button>
@@ -106,7 +106,7 @@ export default function Contracts() {
                 {c.signatureStatus === "completed" && (
                   <button
                     onClick={() => setPreviewId(previewId === c.id ? null : c.id)}
-                    className="rounded-lg border border-neutral-300 px-3 py-1.5 text-sm font-medium text-neutral-700 hover:bg-neutral-50"
+                    className="rounded-lg border border-neutral-300 dark:border-neutral-700 px-3 py-1.5 text-sm font-medium text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-800"
                   >
                     {previewId === c.id ? t("contracts.hidePdf") : t("contracts.viewPdf")}
                   </button>
@@ -142,10 +142,10 @@ function ContractPdf({ id }: { id: string }) {
   }, [id]);
 
   if (failed) return <p className="mt-3 text-sm text-red-700">{t("contracts.pdfError")}</p>;
-  if (!file) return <p className="mt-3 text-sm text-neutral-500">{t("contracts.pdfLoading")}</p>;
+  if (!file) return <p className="mt-3 text-sm text-neutral-500 dark:text-neutral-400">{t("contracts.pdfLoading")}</p>;
 
   return (
-    <div className="mt-3 overflow-x-auto rounded-lg border border-neutral-200">
+    <div className="mt-3 overflow-x-auto rounded-lg border border-neutral-200 dark:border-neutral-700">
       <Document file={file} onLoadSuccess={({ numPages }) => setPages(numPages)} loading={t("contracts.pdfLoading")}>
         {Array.from({ length: pages }, (_, i) => (
           <Page key={i} pageNumber={i + 1} width={640} />
