@@ -31,9 +31,30 @@
     "messages": "Messages",
     "account": "Account",
     "myListings": "My ads",
+    "contracts": "My contracts",
     "settings": "Settings",
     "logout": "Log out",
     "allListings": "All ads"
+  },
+  "contracts": {
+    "title": "My contracts",
+    "empty": "You don't have any contracts yet.",
+    "number": "Contract #{{id}}",
+    "disputed": "Dispute",
+    "sign": "Sign",
+    "resend": "Resend invitation",
+    "resending": "Sending…",
+    "viewPdf": "View signed contract",
+    "hidePdf": "Hide PDF",
+    "pdfLoading": "Loading PDF…",
+    "pdfError": "Could not display the PDF.",
+    "resendError": "Resending the invitation failed.",
+    "status": {
+      "draft": "Draft",
+      "pending": "Awaiting signature",
+      "completed": "Signed",
+      "rejected": "Rejected"
+    }
   },
   "settings": {
     "title": "Settings",
@@ -95,6 +116,11 @@
     "contacting": "…",
     "contactError": "Unable to contact the seller right now.",
     "manageListing": "Manage my ad",
+    "takeService": "Take this service ({{price}})",
+    "taking": "Creating contract…",
+    "alreadyTaken": "✓ Already taken — see My contracts",
+    "takeError": "Could not create the contract (already taken or ad unavailable).",
+    "insufficientFunds": "Not enough points to take this service.",
     "notFound": "Ad not found.",
     "seller": "Seller",
     "description": "Description"

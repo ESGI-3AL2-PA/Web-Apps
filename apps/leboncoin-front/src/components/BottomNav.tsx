@@ -88,6 +88,12 @@ export default function BottomNav() {
               {t("header.myListings")}
             </button>
             <button
+              onClick={() => go("/mes-contrats")}
+              className="block w-full rounded-lg px-3 py-3 text-left text-sm font-medium text-neutral-700 hover:bg-[color:var(--color-brand-soft)]"
+            >
+              {t("header.contracts")}
+            </button>
+            <button
               onClick={() => go("/parametres")}
               className="block w-full rounded-lg px-3 py-3 text-left text-sm font-medium text-neutral-700 hover:bg-[color:var(--color-brand-soft)]"
             >

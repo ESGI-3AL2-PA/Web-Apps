@@ -31,9 +31,30 @@
     "messages": "Messages",
     "account": "Compte",
     "myListings": "Mes annonces",
+    "contracts": "Mes contrats",
     "settings": "Paramètres",
     "logout": "Déconnexion",
     "allListings": "Toutes les annonces"
+  },
+  "contracts": {
+    "title": "Mes contrats",
+    "empty": "Vous n'avez aucun contrat pour le moment.",
+    "number": "Contrat #{{id}}",
+    "disputed": "Litige",
+    "sign": "Signer",
+    "resend": "Renvoyer l'invitation",
+    "resending": "Envoi…",
+    "viewPdf": "Voir le contrat signé",
+    "hidePdf": "Masquer le PDF",
+    "pdfLoading": "Chargement du PDF…",
+    "pdfError": "Impossible d'afficher le PDF.",
+    "resendError": "Le renvoi de l'invitation a échoué.",
+    "status": {
+      "draft": "Brouillon",
+      "pending": "En attente de signature",
+      "completed": "Signé",
+      "rejected": "Refusé"
+    }
   },
   "settings": {
     "title": "Paramètres",
@@ -95,6 +116,11 @@
     "contacting": "…",
     "contactError": "Impossible de contacter le vendeur pour le moment.",
     "manageListing": "Gérer mon annonce",
+    "takeService": "Prendre ce service ({{price}})",
+    "taking": "Création du contrat…",
+    "alreadyTaken": "✓ Service déjà pris — voir Mes contrats",
+    "takeError": "Impossible de créer le contrat (déjà pris ou annonce indisponible).",
+    "insufficientFunds": "Solde insuffisant pour prendre ce service.",
     "notFound": "Annonce introuvable.",
     "seller": "Vendeur",
     "description": "Description"

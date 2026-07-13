@@ -6,6 +6,7 @@ import type { ListingResponseDto } from "@repo/contracts";
 import { getListingById } from "../api-service/listings.service";
 import { getUserPublic, type UserPublic } from "../api-service/users.service";
 import { createConversation, getConversations } from "../api-service/conversations.service";
+import { createContract } from "../api-service/contracts.service";
 import { formatDate, formatPrice, placeholderColor, typeLabel } from "../lib/format";
 import { useDialog } from "../components/DialogProvider";
 
@@ -20,6 +21,7 @@ export default function ListingDetail() {
   const [active, setActive] = useState(0);
   const [loading, setLoading] = useState(true);
   const [contacting, setContacting] = useState(false);
+  const [taking, setTaking] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -53,11 +55,29 @@ export default function ListingDetail() {
     }
   };
 
+  // Take the service → creates a contract (escrow + Documenso e-signature) and
+  // opens the caller's signing page. The escrowed price is derived server-side.
+  const takeService = async () => {
+    if (!listing || !user) return;
+    setTaking(true);
+    try {
+      const contract = await createContract({ listingId: listing.id, providerId: listing.authorId });
+      if (contract.signingUrl) window.open(contract.signingUrl, "_blank", "noopener");
+      navigate("/mes-contrats");
+    } catch (e) {
+      const status = (e as { response?: { status?: number } })?.response?.status;
+      await alert({ message: status === 400 ? t("detail.insufficientFunds") : t("detail.takeError") });
+      setTaking(false);
+    }
+  };
+
   if (loading) return <p className="text-neutral-500">{t("common.loading")}</p>;
   if (!listing) return <p className="text-neutral-500">{t("detail.notFound")}</p>;
 
   const images = listing.images ?? [];
   const isOwner = user?.id === listing.authorId;
+  const alreadyTaken = listing.userHasContract === true;
+  const canTake = !isOwner && listing.status === "active" && !alreadyTaken;
 
   return (
     <div className="space-y-4">
@@ -109,11 +129,28 @@ export default function ListingDetail() {
               {t("detail.publishedOn", { date: formatDate(listing.createdAt) })}
             </p>
 
+            {canTake && (
+              <button
+                onClick={takeService}
+                disabled={taking}
+                className="mt-4 w-full rounded-lg bg-[color:var(--color-brand)] py-2.5 font-semibold text-white hover:bg-[color:var(--color-brand-dark)] disabled:opacity-60"
+              >
+                {taking ? t("detail.taking") : t("detail.takeService", { price: formatPrice(listing.price) })}
+              </button>
+            )}
+            {!isOwner && alreadyTaken && (
+              <Link
+                to="/mes-contrats"
+                className="mt-4 block rounded-lg border border-green-200 bg-green-50 px-3 py-2.5 text-center text-sm font-medium text-green-800 hover:bg-green-100"
+              >
+                {t("detail.alreadyTaken")}
+              </Link>
+            )}
             {!isOwner && (
               <button
                 onClick={contactSeller}
                 disabled={contacting}
-                className="mt-4 w-full rounded-lg bg-[color:var(--color-brand)] py-2.5 font-semibold text-white hover:bg-[color:var(--color-brand-dark)] disabled:opacity-60"
+                className="mt-2 w-full rounded-lg border border-neutral-300 py-2.5 font-semibold text-neutral-700 hover:bg-neutral-50 disabled:opacity-60"
               >
                 {contacting ? t("detail.contacting") : t("detail.contactSeller")}
               </button>
