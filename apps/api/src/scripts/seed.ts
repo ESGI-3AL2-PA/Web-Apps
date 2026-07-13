@@ -261,7 +261,7 @@ const listings = [
     title: "Petit bricolage et réparations du quotidien",
     description:
       "Je peux aider pour monter un meuble, fixer une étagère, changer une prise ou faire de petites réparations à la maison.",
-    type: "Bricolage",
+    type: "offer",
     price: 10,
     status: "active",
     tags: ["diy"],
@@ -275,7 +275,7 @@ const listings = [
     title: "Garde d'enfants ponctuelle en soirée",
     description:
       "Je cherche une personne de confiance pour garder deux enfants de 4 et 7 ans pendant une soirée, avec jeux et repas déjà préparés.",
-    type: "Garde d'enfants",
+    type: "offer",
     price: 4,
     status: "active",
     tags: ["babysitting"],
@@ -289,7 +289,7 @@ const listings = [
     title: "Atelier cuisine maison pour voisins",
     description:
       "Je propose un atelier cuisine pour apprendre à préparer un repas simple et convivial, idéal pour débutants ou familles.",
-    type: "Cuisine",
+    type: "offer",
     price: 6,
     status: "active",
     tags: ["cooking"],
@@ -303,7 +303,7 @@ const listings = [
     title: "Besoin d'aide pour transporter un canapé",
     description:
       "Je cherche une ou deux personnes pour m'aider à transporter un canapé du rez-de-chaussée jusqu'à un appartement voisin.",
-    type: "Transport",
+    type: "offer",
     price: 0,
     status: "active",
     tags: ["moving"],
@@ -317,7 +317,7 @@ const listings = [
     title: "Aide au jardinage et entretien de balcon",
     description:
       "Disponible pour arroser les plantes, rempoter, tailler quelques arbustes ou donner un coup de main sur un petit jardin ou un balcon.",
-    type: "Jardinage",
+    type: "offer",
     price: 0,
     status: "active",
     tags: ["gardening"],

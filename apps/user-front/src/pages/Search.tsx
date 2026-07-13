@@ -17,8 +17,7 @@ export default function Search() {
 
   const search = params.get("search") ?? "";
   const tag = params.get("tag") ?? "";
-  const type = params.get("type") ?? "";
-  const activeFilters = (tag ? 1 : 0) + (type ? 1 : 0);
+  const activeFilters = tag ? 1 : 0;
 
   const query = useMemo<ListingQueryDto>(
     () =>
@@ -27,9 +26,8 @@ export default function Search() {
         limit: 40,
         ...(search ? { search } : {}),
         ...(tag ? { tag } : {}),
-        ...(type ? { type } : {}),
       }) as ListingQueryDto,
-    [search, tag, type],
+    [search, tag],
   );
 
   useEffect(() => {
@@ -59,29 +57,9 @@ export default function Search() {
   const filterControls = (
     <>
       <div>
-        <h3 className="mb-2 text-sm font-bold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">{t("search.type")}</h3>
-        <div className="flex flex-col gap-1 text-sm">
-          {[
-            { v: "", label: t("type.all") },
-            { v: "offer", label: t("type.offers") },
-            { v: "request", label: t("type.requests") },
-          ].map((o) => (
-            <button
-              key={o.v}
-              onClick={() => setFilter("type", o.v)}
-              className={`rounded px-2 py-1.5 text-left ${
-                type === o.v
-                  ? "bg-[color:var(--color-brand-soft)] font-semibold text-[color:var(--color-brand-dark)]"
-                  : "hover:bg-neutral-100 dark:hover:bg-neutral-800"
-              }`}
-            >
-              {o.label}
-            </button>
-          ))}
-        </div>
-      </div>
-      <div>
-        <h3 className="mb-2 text-sm font-bold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">{t("search.category")}</h3>
+        <h3 className="mb-2 text-sm font-bold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
+          {t("search.category")}
+        </h3>
         <div className="flex flex-col gap-1 text-sm">
           <button
             onClick={() => setFilter("tag", "")}
@@ -118,7 +96,9 @@ export default function Search() {
             {search ? `« ${search} »` : t("search.allListings")}
           </h1>
           <div className="flex shrink-0 items-center gap-3">
-            <span className="hidden text-sm text-neutral-500 dark:text-neutral-400 sm:inline">{t("search.results", { count: total })}</span>
+            <span className="hidden text-sm text-neutral-500 dark:text-neutral-400 sm:inline">
+              {t("search.results", { count: total })}
+            </span>
             {/* Mobile filter trigger */}
             <button
               onClick={() => setFiltersOpen(true)}

@@ -41,6 +41,3 @@ export const placeholderColor = (seed: string): string => {
   for (let i = 0; i < seed.length; i++) hash = (hash * 31 + seed.charCodeAt(i)) >>> 0;
   return PLACEHOLDER_COLORS[hash % PLACEHOLDER_COLORS.length]!;
 };
-
-export const typeLabel = (type: "offer" | "request"): string =>
-  i18n.t(type === "offer" ? "type.offer" : "type.request");

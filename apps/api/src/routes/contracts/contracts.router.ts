@@ -105,11 +105,9 @@ export const contractsRouter = s.router(contractsContract, {
     if (beneficiaryId === body.providerId) {
       return { status: 400, body: { message: "Provider and beneficiary must be different users" } };
     }
-    // Type-aware party check: on an offer the listing author is the provider being
-    // booked; on a request the author is the beneficiary (the caller) posting it.
-    const authorIsExpectedParty =
-      listing.type === "offer" ? listing.authorId === body.providerId : listing.authorId === beneficiaryId;
-    if (!authorIsExpectedParty) {
+    // Listings are offers: the author is the provider being booked, the caller is the
+    // beneficiary. Guard against a mismatched providerId in the body.
+    if (listing.authorId !== body.providerId) {
       return { status: 403, body: { message: "You are not a party to this listing's contract" } };
     }
     // districtId and price are derived server-side from the referenced listing, never

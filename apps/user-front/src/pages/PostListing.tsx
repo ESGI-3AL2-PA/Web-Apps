@@ -12,7 +12,6 @@ export default function PostListing() {
   const [tags, setTags] = useState<TagResponseDto[]>([]);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [type, setType] = useState<"offer" | "request">("offer");
   const [price, setPrice] = useState("");
   const [tag, setTag] = useState("");
   const [files, setFiles] = useState<File[]>([]);
@@ -42,7 +41,7 @@ export default function PostListing() {
       const body: CreateListingDto = {
         title: title.trim(),
         description: description.trim(),
-        type,
+        type: "offer",
         price: Number(price) || 0,
         ...(tag ? { tags: [tag] } : {}),
         ...(images.length ? { images } : {}),
@@ -62,9 +61,14 @@ export default function PostListing() {
   return (
     <div className="mx-auto max-w-2xl">
       <h1 className="mb-6 text-2xl font-extrabold text-neutral-900 dark:text-neutral-50">{t("post.title")}</h1>
-      <form onSubmit={onSubmit} className="space-y-5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-6">
+      <form
+        onSubmit={onSubmit}
+        className="space-y-5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-6"
+      >
         <div>
-          <label className="mb-1 block text-sm font-semibold text-neutral-700 dark:text-neutral-200">{t("post.fieldTitle")}</label>
+          <label className="mb-1 block text-sm font-semibold text-neutral-700 dark:text-neutral-200">
+            {t("post.fieldTitle")}
+          </label>
           <input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
@@ -75,30 +79,25 @@ export default function PostListing() {
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="mb-1 block text-sm font-semibold text-neutral-700 dark:text-neutral-200">{t("post.type")}</label>
-            <select value={type} onChange={(e) => setType(e.target.value as "offer" | "request")} className={field}>
-              <option value="offer">{t("type.offer")}</option>
-              <option value="request">{t("type.request")}</option>
-            </select>
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-semibold text-neutral-700 dark:text-neutral-200">{t("post.pricePoints")}</label>
-            <input
-              value={price}
-              onChange={(e) => setPrice(e.target.value)}
-              type="number"
-              min={0}
-              required
-              className={field}
-              placeholder="0"
-            />
-          </div>
+        <div>
+          <label className="mb-1 block text-sm font-semibold text-neutral-700 dark:text-neutral-200">
+            {t("post.pricePoints")}
+          </label>
+          <input
+            value={price}
+            onChange={(e) => setPrice(e.target.value)}
+            type="number"
+            min={0}
+            required
+            className={field}
+            placeholder="0"
+          />
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-semibold text-neutral-700 dark:text-neutral-200">{t("post.category")}</label>
+          <label className="mb-1 block text-sm font-semibold text-neutral-700 dark:text-neutral-200">
+            {t("post.category")}
+          </label>
           <select value={tag} onChange={(e) => setTag(e.target.value)} className={field}>
             <option value="">{t("post.chooseCategory")}</option>
             {tags.map((t) => (
@@ -110,7 +109,9 @@ export default function PostListing() {
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-semibold text-neutral-700 dark:text-neutral-200">{t("post.description")}</label>
+          <label className="mb-1 block text-sm font-semibold text-neutral-700 dark:text-neutral-200">
+            {t("post.description")}
+          </label>
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
@@ -122,7 +123,9 @@ export default function PostListing() {
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-semibold text-neutral-700 dark:text-neutral-200">{t("post.photos")}</label>
+          <label className="mb-1 block text-sm font-semibold text-neutral-700 dark:text-neutral-200">
+            {t("post.photos")}
+          </label>
           <input type="file" accept="image/*" multiple onChange={(e) => onFiles(e.target.files)} className="text-sm" />
           {previews.length > 0 && (
             <div className="mt-3 flex flex-wrap gap-2">

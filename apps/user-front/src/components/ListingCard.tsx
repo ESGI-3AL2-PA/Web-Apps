@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import type { ListingResponseDto } from "@repo/contracts";
-import { formatPrice, formatRelative, placeholderColor, typeLabel } from "../lib/format";
+import { formatPrice, formatRelative, placeholderColor } from "../lib/format";
 
 export default function ListingCard({ listing }: { listing: ListingResponseDto }) {
   const { t } = useTranslation();
@@ -27,9 +27,6 @@ export default function ListingCard({ listing }: { listing: ListingResponseDto }
             {listing.title.charAt(0).toUpperCase()}
           </div>
         )}
-        <span className="absolute left-2 top-2 rounded bg-white/90 px-2 py-0.5 text-[11px] font-semibold text-neutral-700 dark:text-neutral-200">
-          {typeLabel(listing.type)}
-        </span>
       </div>
       <div className="flex flex-1 flex-col gap-1 p-3">
         <span className="text-base font-bold text-neutral-900 dark:text-neutral-50">{formatPrice(listing.price)}</span>

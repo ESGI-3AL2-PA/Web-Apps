@@ -7,7 +7,7 @@ import { getListingById } from "../api-service/listings.service";
 import { getUserPublic, type UserPublic } from "../api-service/users.service";
 import { createConversation, getConversations } from "../api-service/conversations.service";
 import { createContract } from "../api-service/contracts.service";
-import { formatDate, formatPrice, placeholderColor, typeLabel } from "../lib/format";
+import { formatDate, formatPrice, placeholderColor } from "../lib/format";
 import { useDialog } from "../components/DialogProvider";
 
 export default function ListingDetail() {
@@ -81,7 +81,10 @@ export default function ListingDetail() {
 
   return (
     <div className="space-y-4">
-      <Link to="/recherche" className="text-sm text-neutral-500 dark:text-neutral-400 hover:text-[color:var(--color-brand)]">
+      <Link
+        to="/recherche"
+        className="text-sm text-neutral-500 dark:text-neutral-400 hover:text-[color:var(--color-brand)]"
+      >
         {t("detail.back")}
       </Link>
 
@@ -120,9 +123,6 @@ export default function ListingDetail() {
         {/* Sidebar */}
         <aside className="space-y-4">
           <div className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-5">
-            <span className="mb-1 inline-block rounded bg-[color:var(--color-brand-soft)] px-2 py-0.5 text-xs font-semibold text-[color:var(--color-brand-dark)]">
-              {typeLabel(listing.type)}
-            </span>
             <h1 className="text-xl font-bold text-neutral-900 dark:text-neutral-50">{listing.title}</h1>
             <p className="mt-1 text-2xl font-extrabold text-[color:var(--color-brand)]">{formatPrice(listing.price)}</p>
             <p className="mt-1 text-xs text-neutral-400 dark:text-neutral-500">
@@ -167,7 +167,9 @@ export default function ListingDetail() {
 
           {seller && (
             <div className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-5">
-              <h3 className="text-sm font-bold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">{t("detail.seller")}</h3>
+              <h3 className="text-sm font-bold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
+                {t("detail.seller")}
+              </h3>
               <div className="mt-2 flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[color:var(--color-brand-soft)] font-bold text-[color:var(--color-brand-dark)]">
                   {seller.firstName.charAt(0)}
@@ -187,7 +189,10 @@ export default function ListingDetail() {
         {listing.tags && listing.tags.length > 0 && (
           <div className="mt-4 flex flex-wrap gap-2">
             {listing.tags.map((t) => (
-              <span key={t} className="rounded-full bg-neutral-100 dark:bg-neutral-800 px-3 py-1 text-xs font-medium text-neutral-600 dark:text-neutral-300">
+              <span
+                key={t}
+                className="rounded-full bg-neutral-100 dark:bg-neutral-800 px-3 py-1 text-xs font-medium text-neutral-600 dark:text-neutral-300"
+              >
                 {t}
               </span>
             ))}

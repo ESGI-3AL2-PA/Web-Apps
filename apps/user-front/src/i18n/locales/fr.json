@@ -13,13 +13,6 @@
     "hours": "il y a {{count}} h",
     "days": "il y a {{count}} j"
   },
-  "type": {
-    "offer": "Offre",
-    "request": "Demande",
-    "offers": "Offres",
-    "requests": "Demandes",
-    "all": "Tout"
-  },
   "header": {
     "brand": "Connected NeighBours",
     "home": "Accueil",
@@ -175,7 +168,6 @@
     "empty": "Aucune annonce pour le moment. Soyez le premier à en déposer une !"
   },
   "search": {
-    "type": "Type",
     "category": "Catégorie",
     "allCategories": "Toutes",
     "allListings": "Toutes les annonces",
@@ -204,7 +196,6 @@
     "title": "Déposer une annonce",
     "fieldTitle": "Titre",
     "titlePlaceholder": "Ex. Vélo de ville en bon état",
-    "type": "Type",
     "pricePoints": "Prix (points)",
     "category": "Catégorie",
     "chooseCategory": "— Choisir une catégorie —",

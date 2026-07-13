@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "@repo/hooks";
 import type { ListingResponseDto } from "@repo/contracts";
 import { deleteListing, getListings } from "../api-service/listings.service";
-import { formatPrice, formatRelative, typeLabel } from "../lib/format";
+import { formatPrice, formatRelative } from "../lib/format";
 import { useDialog } from "../components/DialogProvider";
 
 export default function MyListings() {
@@ -60,7 +60,10 @@ export default function MyListings() {
       ) : (
         <ul className="space-y-3">
           {listings.map((l) => (
-            <li key={l.id} className="flex items-center gap-4 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-3">
+            <li
+              key={l.id}
+              className="flex items-center gap-4 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-3"
+            >
               <div className="h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-neutral-100 dark:bg-neutral-800">
                 {l.images?.[0] && <img src={l.images[0]} alt="" className="h-full w-full object-cover" />}
               </div>
@@ -72,7 +75,7 @@ export default function MyListings() {
                   {l.title}
                 </Link>
                 <p className="text-sm text-neutral-500 dark:text-neutral-400">
-                  {typeLabel(l.type)} · {formatPrice(l.price)} · {formatRelative(l.createdAt)}
+                  {formatPrice(l.price)} · {formatRelative(l.createdAt)}
                 </p>
               </div>
               <button
