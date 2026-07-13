@@ -141,6 +141,13 @@ export default function Header() {
             {menuOpen && (
               <div className="absolute right-0 mt-2 w-48 overflow-hidden rounded-lg border border-neutral-200 bg-white py-1 shadow-lg">
                 <Link
+                  to="/profil"
+                  onClick={() => setMenuOpen(false)}
+                  className="block px-4 py-2 text-sm text-neutral-700 hover:bg-[color:var(--color-brand-soft)]"
+                >
+                  {t("header.profile")}
+                </Link>
+                <Link
                   to="/mes-annonces"
                   onClick={() => setMenuOpen(false)}
                   className="block px-4 py-2 text-sm text-neutral-700 hover:bg-[color:var(--color-brand-soft)]"

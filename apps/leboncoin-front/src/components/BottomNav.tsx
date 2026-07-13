@@ -82,6 +82,12 @@ export default function BottomNav() {
               <span className="font-semibold text-neutral-900">{user?.firstName ?? t("header.account")}</span>
             </div>
             <button
+              onClick={() => go("/profil")}
+              className="block w-full rounded-lg px-3 py-3 text-left text-sm font-medium text-neutral-700 hover:bg-[color:var(--color-brand-soft)]"
+            >
+              {t("header.profile")}
+            </button>
+            <button
               onClick={() => go("/mes-annonces")}
               className="block w-full rounded-lg px-3 py-3 text-left text-sm font-medium text-neutral-700 hover:bg-[color:var(--color-brand-soft)]"
             >

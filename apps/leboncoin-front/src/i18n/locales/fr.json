@@ -32,9 +32,43 @@
     "account": "Compte",
     "myListings": "Mes annonces",
     "contracts": "Mes contrats",
+    "profile": "Profil",
     "settings": "Paramètres",
     "logout": "Déconnexion",
     "allListings": "Toutes les annonces"
+  },
+  "profile": {
+    "title": "Mon profil",
+    "identity": {
+      "title": "Mon identifiant",
+      "desc": "Partagez votre identifiant avec un voisin pour qu'il puisse vous contacter.",
+      "copy": "Copier",
+      "copied": "✓ Copié"
+    },
+    "info": {
+      "title": "Mes informations",
+      "edit": "Modifier",
+      "firstName": "Prénom",
+      "lastName": "Nom",
+      "email": "E-mail",
+      "phone": "Téléphone",
+      "address": "Adresse",
+      "district": "Quartier",
+      "save": "Enregistrer",
+      "saving": "Enregistrement…"
+    },
+    "stats": {
+      "title": "Mes statistiques",
+      "listings": "Annonces",
+      "contracts": "Contrats",
+      "events": "Événements",
+      "votes": "Votes"
+    },
+    "points": {
+      "title": "Mes points",
+      "desc": "Utilisables pour rémunérer un service entre voisins."
+    },
+    "saveError": "Erreur lors de l'enregistrement du profil."
   },
   "contracts": {
     "title": "Mes contrats",

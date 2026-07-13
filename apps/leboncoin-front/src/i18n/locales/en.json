@@ -32,9 +32,43 @@
     "account": "Account",
     "myListings": "My ads",
     "contracts": "My contracts",
+    "profile": "Profile",
     "settings": "Settings",
     "logout": "Log out",
     "allListings": "All ads"
+  },
+  "profile": {
+    "title": "My profile",
+    "identity": {
+      "title": "My identifier",
+      "desc": "Share your identifier with a neighbour so they can reach you.",
+      "copy": "Copy",
+      "copied": "✓ Copied"
+    },
+    "info": {
+      "title": "My information",
+      "edit": "Edit",
+      "firstName": "First name",
+      "lastName": "Last name",
+      "email": "Email",
+      "phone": "Phone",
+      "address": "Address",
+      "district": "District",
+      "save": "Save",
+      "saving": "Saving…"
+    },
+    "stats": {
+      "title": "My statistics",
+      "listings": "Ads",
+      "contracts": "Contracts",
+      "events": "Events",
+      "votes": "Votes"
+    },
+    "points": {
+      "title": "My points",
+      "desc": "Usable to pay for a service between neighbours."
+    },
+    "saveError": "Failed to save the profile."
   },
   "contracts": {
     "title": "My contracts",

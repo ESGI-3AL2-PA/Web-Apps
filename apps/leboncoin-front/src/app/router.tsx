@@ -12,6 +12,7 @@ import Events from "../pages/Events";
 import Votes from "../pages/Votes";
 import Settings from "../pages/Settings";
 import Contracts from "../pages/Contracts";
+import Profile from "../pages/Profile";
 
 export const router = createBrowserRouter([
   {
@@ -27,6 +28,7 @@ export const router = createBrowserRouter([
       { path: "/deposer", element: <PostListing /> },
       { path: "/mes-annonces", element: <MyListings /> },
       { path: "/mes-contrats", element: <Contracts /> },
+      { path: "/profil", element: <Profile /> },
       { path: "/parametres", element: <Settings /> },
       { path: "/evenements", element: <Events /> },
       { path: "/sondages", element: <Votes /> },
