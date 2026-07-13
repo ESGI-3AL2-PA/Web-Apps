@@ -7,7 +7,7 @@ const AUTH_SERVICE_URL = config.authServiceUrl;
 
 const api = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 10000,
+  timeout: 15000,
 });
 
 let getAccessToken: (() => string | null) | null = null;

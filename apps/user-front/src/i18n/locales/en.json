@@ -1,172 +1,290 @@
 {
-  "nav": {
-    "dashboard": "Dashboard",
-    "services": "Services",
-    "events": "Events",
-    "messaging": "Messages",
-    "votes": "Votes"
+  "common": {
+    "loading": "Loading…",
+    "language": "Language",
+    "misc": "Misc",
+    "confirm": "Confirm",
+    "cancel": "Cancel",
+    "ok": "OK"
+  },
+  "relative": {
+    "now": "just now",
+    "minutes": "{{count}} min ago",
+    "hours": "{{count}} h ago",
+    "days": "{{count}} d ago"
+  },
+  "type": {
+    "offer": "Offer",
+    "request": "Request",
+    "offers": "Offers",
+    "requests": "Requests",
+    "all": "All"
   },
   "header": {
-    "openMenu": "Open menu",
-    "language": "Language",
-    "notifications": "Notifications",
-    "account": "My account",
-    "profile": "My profile",
-    "logout": "Sign out",
-    "adminSpace": "Admin space",
-    "toDark": "Switch to dark theme",
-    "toLight": "Switch to light theme"
-  },
-  "dashboard": {
-    "balance": "My balance",
-    "points": "points",
-    "given": "Given",
-    "received": "Received",
-    "exchanged": "Exchanged"
-  },
-  "service": {
-    "title": "Neighbour services",
-    "activeCount_one": "{{count}} active listing",
-    "activeCount_other": "{{count}} active listings",
-    "typeTitle": "Listing type",
-    "categoryTitle": "Category",
-    "pointsTitle": "Points",
-    "maxLabel": "Max:",
-    "maxNone": "none",
-    "maxPts": "{{count}} pts",
-    "showFilters": "Filters",
-    "hideFilters": "Hide filters",
-    "searchPlaceholder": "Search a listing…",
-    "searchLabel": "Search a listing",
-    "maxPriceLabel": "Maximum price",
-    "create": "+ Create a listing",
-    "tabs": {
-      "listings": "Listings",
-      "myListings": "My listings",
-      "myContracts": "My contracts"
-    },
-    "type": {
-      "all": "All",
-      "offer": "Offer",
-      "request": "Request"
-    }
-  },
-  "listing": {
-    "points": "{{count}} pts",
-    "type": {
-      "offer": "Offer",
-      "request": "Request"
-    },
-    "status": {
-      "active": "Active",
-      "closed": "Closed",
-      "expired": "Expired"
-    }
-  },
-  "annonces": {
-    "loadError": "Could not load listings.",
-    "retry": "Retry",
-    "empty": "No listing matches your search.",
-    "prev": "Previous",
-    "next": "Next",
-    "page": "Page {{page}} / {{total}}"
-  },
-  "createListing": {
-    "title": "Create a listing",
-    "fieldTitle": "Title",
-    "description": "Description",
-    "type": "Type",
-    "typeOffer": "Offer",
-    "typeRequest": "Request",
-    "price": "Price (points)",
-    "tags": "Tags (comma-separated)",
-    "tagsPlaceholder": "Gardening, DIY",
-    "error": "Creating the listing failed. Try again.",
-    "cancel": "Cancel",
-    "submit": "Create",
-    "submitting": "Creating…"
+    "brand": "Connected NeighBours",
+    "home": "Home",
+    "deposit": "+ Post an ad",
+    "searchPlaceholder": "Search on Connected NeighBours",
+    "search": "Search",
+    "events": "Events",
+    "polls": "Polls",
+    "messages": "Messages",
+    "account": "Account",
+    "myListings": "My ads",
+    "contracts": "My contracts",
+    "profile": "Profile",
+    "incidents": "Report a problem",
+    "settings": "Settings",
+    "logout": "Log out",
+    "allListings": "All ads",
+    "balance": "Points balance"
   },
   "notifications": {
     "title": "Notifications",
-    "empty": "No notifications.",
-    "markAllRead": "Mark all as read",
-    "delete": "Delete"
+    "markAll": "Mark all as read",
+    "empty": "No notifications."
   },
-  "myListings": {
-    "delete": "Delete",
-    "confirmDelete": "Delete this listing?",
-    "empty": "You don't have any listing yet.",
-    "loadError": "Could not load your listings."
-  },
-  "contracts": {
-    "empty": "You have no contracts.",
-    "loadError": "Could not load your contracts.",
-    "role": {
-      "provider": "Provider",
-      "beneficiary": "Beneficiary"
+  "incidents": {
+    "title": "Reports",
+    "subtitle": "Report a problem in your neighbourhood.",
+    "report": "Report a problem",
+    "category": "Category",
+    "description": "Description",
+    "descriptionPlaceholder": "Describe the problem…",
+    "submit": "Send report",
+    "submitting": "Sending…",
+    "mine": "My reports",
+    "empty": "You have no reports.",
+    "error": "Failed to submit the report.",
+    "categories": {
+      "cleanliness": "Cleanliness",
+      "safety": "Safety",
+      "vandalism": "Vandalism",
+      "noise": "Noise",
+      "other": "Other"
     },
     "status": {
-      "draft": "Draft",
-      "sent": "Sent",
-      "partially_signed": "Partially signed",
-      "signed": "Signed",
-      "expired": "Expired",
-      "declined": "Declined"
-    },
-    "disputedBadge": "Dispute in progress",
-    "dispute": "Report a dispute",
-    "disputeReason": "Dispute reason",
-    "disputeSubmit": "Send",
-    "cancel": "Cancel",
-    "disputeError": "Submitting the dispute failed."
-  },
-  "votes": {
-    "loadError": "Could not load votes.",
-    "empty": "No votes yet.",
-    "submit": "Vote",
-    "voted": "Thanks for voting!",
-    "results": "Results",
-    "totalResponses_one": "{{count}} response",
-    "totalResponses_other": "{{count}} responses",
-    "status": {
-      "draft": "Draft",
       "open": "Open",
+      "in_progress": "In progress",
+      "resolved": "Resolved",
       "closed": "Closed"
     }
   },
+  "profile": {
+    "title": "My profile",
+    "identity": {
+      "title": "My identifier",
+      "desc": "Share your identifier with a neighbour so they can reach you.",
+      "copy": "Copy",
+      "copied": "✓ Copied"
+    },
+    "info": {
+      "title": "My information",
+      "edit": "Edit",
+      "firstName": "First name",
+      "lastName": "Last name",
+      "email": "Email",
+      "phone": "Phone",
+      "address": "Address",
+      "district": "District",
+      "save": "Save",
+      "saving": "Saving…"
+    },
+    "stats": {
+      "title": "My statistics",
+      "listings": "Ads",
+      "contracts": "Contracts",
+      "events": "Events",
+      "votes": "Votes"
+    },
+    "points": {
+      "title": "My points",
+      "desc": "Usable to pay for a service between neighbours."
+    },
+    "saveError": "Failed to save the profile."
+  },
+  "contracts": {
+    "title": "My contracts",
+    "empty": "You don't have any contracts yet.",
+    "number": "Contract #{{id}}",
+    "disputed": "Dispute",
+    "sign": "Sign",
+    "resend": "Resend invitation",
+    "resending": "Sending…",
+    "viewPdf": "View signed contract",
+    "hidePdf": "Hide PDF",
+    "pdfLoading": "Loading PDF…",
+    "pdfError": "Could not display the PDF.",
+    "resendError": "Resending the invitation failed.",
+    "status": {
+      "draft": "Draft",
+      "pending": "Awaiting signature",
+      "completed": "Signed",
+      "rejected": "Rejected"
+    }
+  },
+  "settings": {
+    "title": "Settings",
+    "appearance": {
+      "title": "Appearance",
+      "desc": "Choose the light or dark theme.",
+      "light": "Light",
+      "dark": "Dark"
+    },
+    "password": {
+      "title": "Password",
+      "desc": "We'll email you a secure link to choose a new password.",
+      "action": "Send reset link",
+      "confirm": "Send a password reset link to your email address?",
+      "sent": "Reset link sent — check your inbox."
+    },
+    "sessions": {
+      "title": "Active sessions",
+      "desc": "Devices currently signed in to your account.",
+      "current": "This device",
+      "unknownDevice": "Unknown device",
+      "lastUsed": "active {{when}}",
+      "revoke": "Revoke",
+      "logout": "Log out",
+      "revokeOthers": "Log out everywhere else",
+      "empty": "No active sessions."
+    },
+    "data": {
+      "title": "Your data",
+      "desc": "Download everything we hold about you as a JSON file.",
+      "action": "Download my data"
+    },
+    "danger": {
+      "title": "Delete account",
+      "desc": "Permanently delete your account and all associated data. This cannot be undone.",
+      "action": "Delete my account",
+      "confirm": "Delete your account permanently? This cannot be undone."
+    }
+  },
+  "home": {
+    "greeting": "Hi {{name}} 👋",
+    "balanceLabel": "Your points balance",
+    "categories": "Categories",
+    "upcomingEvents": "Upcoming events",
+    "seeAll": "See all",
+    "noEvents": "No upcoming events.",
+    "neighbourhoodPolls": "Neighbourhood polls",
+    "participate": "Take part",
+    "noPolls": "No open polls.",
+    "recentListings": "Recent ads",
+    "empty": "No ads yet. Be the first to post one!"
+  },
+  "search": {
+    "type": "Type",
+    "category": "Category",
+    "allCategories": "All",
+    "allListings": "All ads",
+    "filters": "Filters",
+    "results_one": "{{count}} result",
+    "results_other": "{{count}} results",
+    "empty": "No ad matches your search."
+  },
+  "detail": {
+    "back": "← Back to ads",
+    "publishedOn": "Posted on {{date}}",
+    "contactSeller": "Contact the seller",
+    "contacting": "…",
+    "contactError": "Unable to contact the seller right now.",
+    "manageListing": "Manage my ad",
+    "takeService": "Take this service ({{price}})",
+    "taking": "Creating contract…",
+    "alreadyTaken": "✓ Already taken — see My contracts",
+    "takeError": "Could not create the contract (already taken or ad unavailable).",
+    "insufficientFunds": "Not enough points to take this service.",
+    "notFound": "Ad not found.",
+    "seller": "Seller",
+    "description": "Description"
+  },
+  "post": {
+    "title": "Post an ad",
+    "fieldTitle": "Title",
+    "titlePlaceholder": "e.g. City bike in good condition",
+    "type": "Type",
+    "pricePoints": "Price (points)",
+    "category": "Category",
+    "chooseCategory": "— Choose a category —",
+    "description": "Description",
+    "descriptionPlaceholder": "Describe your ad…",
+    "photos": "Photos (max 8)",
+    "error": "Posting failed. Check the fields and try again.",
+    "submit": "Publish the ad",
+    "submitting": "Publishing…"
+  },
+  "myListings": {
+    "title": "My ads",
+    "deposit": "+ Post",
+    "empty": "You don't have any ads yet.",
+    "delete": "Delete",
+    "confirmDelete": "Delete this ad?",
+    "deleteError": "Could not delete."
+  },
+  "messages": {
+    "title": "Messages",
+    "noConversations": "No conversations.",
+    "conversation": "Conversation",
+    "group": "Group",
+    "you": "You",
+    "participantCount_one": "{{count}} participant",
+    "participantCount_other": "{{count}} participants",
+    "select": "Select a conversation",
+    "back": "Back",
+    "placeholder": "Your message…",
+    "send": "Send",
+    "sending": "Sending…",
+    "online": "Online",
+    "new": "+ New",
+    "newConversation": "New conversation",
+    "neighbourLabel": "Neighbour to contact:",
+    "searchNeighbour": "Search a neighbour by name…",
+    "searching": "Searching…",
+    "noNeighbour": "No neighbour found",
+    "pickNeighbour": "Pick a neighbour",
+    "notYourself": "You can't start a conversation with yourself",
+    "create": "Create",
+    "creating": "Creating…",
+    "createError": "Could not create the conversation.",
+    "recordStart": "Start recording",
+    "recordStop": "Stop recording",
+    "recording": "Recording…",
+    "redo": "Redo",
+    "micError": "Cannot access the microphone. Check your browser permissions.",
+    "voiceError": "Failed to send the voice note."
+  },
   "events": {
-    "loadError": "Could not load events.",
-    "empty": "No events yet.",
-    "seats": "{{remaining}} / {{total}} seats",
-    "register": "Register",
-    "unregister": "Unregister",
-    "full": "Full",
+    "title": "Neighbourhood events",
+    "subtitle": "Meet your neighbours and take part in local life.",
+    "forYou": "For you",
+    "forYouLoading": "Computing suggestions…",
+    "empty": "No events planned yet.",
+    "seats_one": "{{count}} seat",
+    "seats_other": "{{count}} seats",
+    "actionError": "Action failed (no seats left or event closed).",
     "status": {
       "upcoming": "Upcoming",
       "ongoing": "Ongoing",
       "completed": "Completed",
       "cancelled": "Cancelled"
-    }
+    },
+    "finished": "Finished",
+    "full": "Full",
+    "unregister": "Cancel registration",
+    "participate": "Take part"
   },
-  "messaging": {
-    "title": "Messages",
-    "open": "Open messages",
-    "close": "Close",
-    "minimize": "Minimize",
-    "empty": "No conversations.",
-    "select": "Select a conversation to view messages.",
-    "conversation": "Conversation",
-    "placeholder": "Write a message…",
-    "send": "Send",
-    "back": "Back",
-    "loadError": "Could not load conversations."
-  },
-  "comingSoon": "This feature is coming soon.",
-  "notFound": {
-    "title404": "404",
-    "titleError": "Oops",
-    "msg404": "This page does not exist.",
-    "msgError": "Something went wrong.",
-    "home": "Back to home"
+  "votes": {
+    "title": "Neighbourhood polls",
+    "subtitle": "Share your opinion on life in your neighbourhood.",
+    "empty": "No open polls.",
+    "closed": "Closed",
+    "open": "Open",
+    "multipleChoice": "multiple choice",
+    "vote": "Vote",
+    "error": "Vote failed (poll closed or already voted).",
+    "responses_one": "{{count}} response",
+    "responses_other": "{{count}} responses"
   }
 }

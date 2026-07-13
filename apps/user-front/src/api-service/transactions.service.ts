@@ -8,33 +8,17 @@ import api from "./api";
 
 type PaginatedTransactions = PaginatedResponseDto<typeof TransactionResponseDtoSchema>;
 
-// GET /users/:id/transactions — historique de l'utilisateur (self or admin)
+// GET /users/:id/balance — current points balance (self or admin).
+export async function getUserBalance(userId: string): Promise<UserBalanceResponseDto> {
+  const res = await api.get<UserBalanceResponseDto>(`/users/${userId}/balance`);
+  return res.data;
+}
+
+// GET /users/:id/transactions — points history (self or admin).
 export async function getUserTransactions(
   userId: string,
   filters: TransactionQueryDto = {} as TransactionQueryDto,
 ): Promise<PaginatedTransactions> {
-  try {
-    const res = await api.get<PaginatedTransactions>(`/users/${userId}/transactions`, {
-      params: filters,
-    });
-    if (!res.data) {
-      throw new Error();
-    }
-    return res.data;
-  } catch {
-    throw new Error("Erreur lors du chargement des transactions");
-  }
-}
-
-// GET /users/:id/balance — solde courant en points (self or admin)
-export async function getUserBalance(userId: string): Promise<UserBalanceResponseDto> {
-  try {
-    const res = await api.get<UserBalanceResponseDto>(`/users/${userId}/balance`);
-    if (!res.data) {
-      throw new Error();
-    }
-    return res.data;
-  } catch {
-    throw new Error("Erreur lors du chargement du solde");
-  }
+  const res = await api.get<PaginatedTransactions>(`/users/${userId}/transactions`, { params: filters });
+  return res.data;
 }

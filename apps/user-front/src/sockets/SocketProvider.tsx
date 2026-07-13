@@ -19,8 +19,6 @@ export const useSocket = () => useContext(SocketContext);
 
 export const SocketProvider = ({ children }: { children: ReactNode }) => {
   const { user, getAccessToken } = useAuth();
-  // Le socket est en state (pas en ref) pour que la valeur du contexte se recompose
-  // à la connexion — sinon les abonnements consommateurs restent liés à `null`.
   const [socket, setSocket] = useState<Socket | null>(null);
   const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set());
 

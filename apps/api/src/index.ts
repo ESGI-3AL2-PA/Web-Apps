@@ -131,7 +131,7 @@ const openApiDocument = generateOpenApi(
   },
 );
 
-const allowedOrigins = (process.env.CORS_ORIGINS ?? "http://localhost:4000,http://localhost:5000,http://localhost:7000")
+const allowedOrigins = (process.env.CORS_ORIGINS ?? "http://localhost:4000,http://localhost:5000")
   .split(",")
   .map((s) => s.trim())
   .filter(Boolean);

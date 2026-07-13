@@ -42,7 +42,7 @@ const SearchIcon = () => (
   </svg>
 );
 
-// A leboncoin-style icon action: icon on top, small label below.
+// A classifieds-style icon action: icon on top, small label below.
 function IconAction({ to, label, children }: { to: string; label: string; children: ReactNode }) {
   return (
     <Link

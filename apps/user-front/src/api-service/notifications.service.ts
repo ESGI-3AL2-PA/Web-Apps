@@ -9,44 +9,22 @@ import api from "./api";
 
 type PaginatedNotifications = PaginatedResponseDto<typeof NotificationResponseDtoSchema>;
 
-// GET /notifications — paginated list (filters: read, type, recipientId, …)
-// Le backend renvoie uniquement les notifs du user authentifié (sauf admin).
+// GET /notifications — the authed user's notifications (filters: read, type, …).
 export async function getNotifications(
   filters: NotificationQueryDto = {} as NotificationQueryDto,
 ): Promise<PaginatedNotifications> {
-  try {
-    const res = await api.get<PaginatedNotifications>("/notifications", { params: filters });
-    if (!res.data) {
-      throw new Error();
-    }
-    return res.data;
-  } catch {
-    throw new Error("Erreur lors du get all notifications");
-  }
+  const res = await api.get<PaginatedNotifications>("/notifications", { params: filters });
+  return res.data;
 }
 
-// PATCH /notifications/:id/read — marque une notification comme lue (pas de body)
+// PATCH /notifications/:id/read — mark one notification read (no body).
 export async function markNotificationRead(id: string): Promise<NotificationResponseDto> {
-  try {
-    const res = await api.patch<NotificationResponseDto>(`/notifications/${id}/read`);
-    if (!res.data) {
-      throw new Error();
-    }
-    return res.data;
-  } catch {
-    throw new Error("Erreur lors du marquage de la notification comme lue");
-  }
+  const res = await api.patch<NotificationResponseDto>(`/notifications/${id}/read`);
+  return res.data;
 }
 
-// PATCH /notifications/read-all — marque toutes les notifs du user comme lues
+// PATCH /notifications/read-all — mark every notification read.
 export async function markAllNotificationsRead(): Promise<MarkAllReadResponseDto> {
-  try {
-    const res = await api.patch<MarkAllReadResponseDto>("/notifications/read-all");
-    if (!res.data) {
-      throw new Error();
-    }
-    return res.data;
-  } catch {
-    throw new Error("Erreur lors du marquage en masse des notifications");
-  }
+  const res = await api.patch<MarkAllReadResponseDto>("/notifications/read-all");
+  return res.data;
 }

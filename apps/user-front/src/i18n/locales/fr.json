@@ -1,172 +1,290 @@
 {
-  "nav": {
-    "dashboard": "Tableau de bord",
-    "services": "Services",
-    "events": "Événements",
-    "messaging": "Messagerie",
-    "votes": "Votes"
+  "common": {
+    "loading": "Chargement…",
+    "language": "Langue",
+    "misc": "Divers",
+    "confirm": "Confirmer",
+    "cancel": "Annuler",
+    "ok": "OK"
+  },
+  "relative": {
+    "now": "à l'instant",
+    "minutes": "il y a {{count}} min",
+    "hours": "il y a {{count}} h",
+    "days": "il y a {{count}} j"
+  },
+  "type": {
+    "offer": "Offre",
+    "request": "Demande",
+    "offers": "Offres",
+    "requests": "Demandes",
+    "all": "Tout"
   },
   "header": {
-    "openMenu": "Ouvrir le menu",
-    "language": "Langue",
-    "notifications": "Notifications",
-    "account": "Mon compte",
-    "profile": "Mon profil",
-    "logout": "Se déconnecter",
-    "adminSpace": "Espace admin",
-    "toDark": "Passer en thème sombre",
-    "toLight": "Passer en thème clair"
-  },
-  "dashboard": {
-    "balance": "Mon solde",
-    "points": "points",
-    "given": "Donné",
-    "received": "Reçu",
-    "exchanged": "Échangé"
-  },
-  "service": {
-    "title": "Services entre voisins",
-    "activeCount_one": "{{count}} annonce active",
-    "activeCount_other": "{{count}} annonces actives",
-    "typeTitle": "Type d'annonce",
-    "categoryTitle": "Catégorie",
-    "pointsTitle": "Points",
-    "maxLabel": "Max :",
-    "maxNone": "aucun",
-    "maxPts": "{{count}} pts",
-    "showFilters": "Filtres",
-    "hideFilters": "Masquer les filtres",
-    "searchPlaceholder": "Rechercher une annonce…",
-    "searchLabel": "Rechercher une annonce",
-    "maxPriceLabel": "Prix maximum",
-    "create": "+ Créer une annonce",
-    "tabs": {
-      "listings": "Annonces",
-      "myListings": "Mes annonces",
-      "myContracts": "Mes contrats"
-    },
-    "type": {
-      "all": "Tout",
-      "offer": "Offre",
-      "request": "Demande"
-    }
-  },
-  "listing": {
-    "points": "{{count}} pts",
-    "type": {
-      "offer": "Offre",
-      "request": "Demande"
-    },
-    "status": {
-      "active": "Active",
-      "closed": "Clôturée",
-      "expired": "Expirée"
-    }
-  },
-  "annonces": {
-    "loadError": "Impossible de charger les annonces.",
-    "retry": "Réessayer",
-    "empty": "Aucune annonce ne correspond à votre recherche.",
-    "prev": "Précédent",
-    "next": "Suivant",
-    "page": "Page {{page}} / {{total}}"
-  },
-  "createListing": {
-    "title": "Créer une annonce",
-    "fieldTitle": "Titre",
-    "description": "Description",
-    "type": "Type",
-    "typeOffer": "Offre",
-    "typeRequest": "Demande",
-    "price": "Prix (points)",
-    "tags": "Tags (séparés par des virgules)",
-    "tagsPlaceholder": "Jardinage, Bricolage",
-    "error": "La création de l'annonce a échoué. Réessayez.",
-    "cancel": "Annuler",
-    "submit": "Créer",
-    "submitting": "Création…"
+    "brand": "Connected NeighBours",
+    "home": "Accueil",
+    "deposit": "+ Déposer une annonce",
+    "searchPlaceholder": "Rechercher sur Connected NeighBours",
+    "search": "Rechercher",
+    "events": "Événements",
+    "polls": "Sondages",
+    "messages": "Messages",
+    "account": "Compte",
+    "myListings": "Mes annonces",
+    "contracts": "Mes contrats",
+    "profile": "Profil",
+    "incidents": "Signaler un problème",
+    "settings": "Paramètres",
+    "logout": "Déconnexion",
+    "allListings": "Toutes les annonces",
+    "balance": "Solde de points"
   },
   "notifications": {
     "title": "Notifications",
-    "empty": "Aucune notification.",
-    "markAllRead": "Tout marquer comme lu",
-    "delete": "Supprimer"
+    "markAll": "Tout marquer comme lu",
+    "empty": "Aucune notification."
   },
-  "myListings": {
-    "delete": "Supprimer",
-    "confirmDelete": "Supprimer cette annonce ?",
-    "empty": "Vous n'avez pas encore d'annonce.",
-    "loadError": "Impossible de charger vos annonces."
-  },
-  "contracts": {
-    "empty": "Vous n'avez aucun contrat.",
-    "loadError": "Impossible de charger vos contrats.",
-    "role": {
-      "provider": "Prestataire",
-      "beneficiary": "Bénéficiaire"
+  "incidents": {
+    "title": "Signalements",
+    "subtitle": "Signalez un problème dans votre quartier.",
+    "report": "Signaler un problème",
+    "category": "Catégorie",
+    "description": "Description",
+    "descriptionPlaceholder": "Décrivez le problème…",
+    "submit": "Envoyer le signalement",
+    "submitting": "Envoi…",
+    "mine": "Mes signalements",
+    "empty": "Vous n'avez aucun signalement.",
+    "error": "Erreur lors du signalement.",
+    "categories": {
+      "cleanliness": "Propreté",
+      "safety": "Sécurité",
+      "vandalism": "Vandalisme",
+      "noise": "Nuisances sonores",
+      "other": "Autre"
     },
     "status": {
-      "draft": "Brouillon",
-      "sent": "Envoyé",
-      "partially_signed": "Partiellement signé",
-      "signed": "Signé",
-      "expired": "Expiré",
-      "declined": "Refusé"
-    },
-    "disputedBadge": "Litige en cours",
-    "dispute": "Signaler un litige",
-    "disputeReason": "Motif du litige",
-    "disputeSubmit": "Envoyer",
-    "cancel": "Annuler",
-    "disputeError": "L'envoi du litige a échoué."
-  },
-  "votes": {
-    "loadError": "Impossible de charger les votes.",
-    "empty": "Aucun vote pour le moment.",
-    "submit": "Voter",
-    "voted": "Merci pour votre vote !",
-    "results": "Résultats",
-    "totalResponses_one": "{{count}} réponse",
-    "totalResponses_other": "{{count}} réponses",
-    "status": {
-      "draft": "Brouillon",
       "open": "Ouvert",
+      "in_progress": "En cours",
+      "resolved": "Résolu",
       "closed": "Clôturé"
     }
   },
+  "profile": {
+    "title": "Mon profil",
+    "identity": {
+      "title": "Mon identifiant",
+      "desc": "Partagez votre identifiant avec un voisin pour qu'il puisse vous contacter.",
+      "copy": "Copier",
+      "copied": "✓ Copié"
+    },
+    "info": {
+      "title": "Mes informations",
+      "edit": "Modifier",
+      "firstName": "Prénom",
+      "lastName": "Nom",
+      "email": "E-mail",
+      "phone": "Téléphone",
+      "address": "Adresse",
+      "district": "Quartier",
+      "save": "Enregistrer",
+      "saving": "Enregistrement…"
+    },
+    "stats": {
+      "title": "Mes statistiques",
+      "listings": "Annonces",
+      "contracts": "Contrats",
+      "events": "Événements",
+      "votes": "Votes"
+    },
+    "points": {
+      "title": "Mes points",
+      "desc": "Utilisables pour rémunérer un service entre voisins."
+    },
+    "saveError": "Erreur lors de l'enregistrement du profil."
+  },
+  "contracts": {
+    "title": "Mes contrats",
+    "empty": "Vous n'avez aucun contrat pour le moment.",
+    "number": "Contrat #{{id}}",
+    "disputed": "Litige",
+    "sign": "Signer",
+    "resend": "Renvoyer l'invitation",
+    "resending": "Envoi…",
+    "viewPdf": "Voir le contrat signé",
+    "hidePdf": "Masquer le PDF",
+    "pdfLoading": "Chargement du PDF…",
+    "pdfError": "Impossible d'afficher le PDF.",
+    "resendError": "Le renvoi de l'invitation a échoué.",
+    "status": {
+      "draft": "Brouillon",
+      "pending": "En attente de signature",
+      "completed": "Signé",
+      "rejected": "Refusé"
+    }
+  },
+  "settings": {
+    "title": "Paramètres",
+    "appearance": {
+      "title": "Apparence",
+      "desc": "Choisissez le thème clair ou sombre.",
+      "light": "Clair",
+      "dark": "Sombre"
+    },
+    "password": {
+      "title": "Mot de passe",
+      "desc": "Nous vous enverrons un lien sécurisé par e-mail pour choisir un nouveau mot de passe.",
+      "action": "Envoyer le lien de réinitialisation",
+      "confirm": "Envoyer un lien de réinitialisation à votre adresse e-mail ?",
+      "sent": "Lien envoyé — vérifiez votre boîte de réception."
+    },
+    "sessions": {
+      "title": "Sessions actives",
+      "desc": "Appareils actuellement connectés à votre compte.",
+      "current": "Cet appareil",
+      "unknownDevice": "Appareil inconnu",
+      "lastUsed": "actif {{when}}",
+      "revoke": "Révoquer",
+      "logout": "Se déconnecter",
+      "revokeOthers": "Se déconnecter partout ailleurs",
+      "empty": "Aucune session active."
+    },
+    "data": {
+      "title": "Vos données",
+      "desc": "Téléchargez toutes vos données au format JSON.",
+      "action": "Télécharger mes données"
+    },
+    "danger": {
+      "title": "Supprimer le compte",
+      "desc": "Supprime définitivement votre compte et toutes les données associées. Cette action est irréversible.",
+      "action": "Supprimer mon compte",
+      "confirm": "Supprimer définitivement votre compte ? Cette action est irréversible."
+    }
+  },
+  "home": {
+    "greeting": "Bonjour {{name}} 👋",
+    "balanceLabel": "Votre solde de points",
+    "categories": "Catégories",
+    "upcomingEvents": "Événements à venir",
+    "seeAll": "Tout voir",
+    "noEvents": "Aucun événement prévu.",
+    "neighbourhoodPolls": "Sondages du quartier",
+    "participate": "Participer",
+    "noPolls": "Aucun sondage en cours.",
+    "recentListings": "Annonces récentes",
+    "empty": "Aucune annonce pour le moment. Soyez le premier à en déposer une !"
+  },
+  "search": {
+    "type": "Type",
+    "category": "Catégorie",
+    "allCategories": "Toutes",
+    "allListings": "Toutes les annonces",
+    "filters": "Filtres",
+    "results_one": "{{count}} résultat",
+    "results_other": "{{count}} résultats",
+    "empty": "Aucune annonce ne correspond à votre recherche."
+  },
+  "detail": {
+    "back": "← Retour aux annonces",
+    "publishedOn": "Publiée le {{date}}",
+    "contactSeller": "Contacter le vendeur",
+    "contacting": "…",
+    "contactError": "Impossible de contacter le vendeur pour le moment.",
+    "manageListing": "Gérer mon annonce",
+    "takeService": "Prendre ce service ({{price}})",
+    "taking": "Création du contrat…",
+    "alreadyTaken": "✓ Service déjà pris — voir Mes contrats",
+    "takeError": "Impossible de créer le contrat (déjà pris ou annonce indisponible).",
+    "insufficientFunds": "Solde insuffisant pour prendre ce service.",
+    "notFound": "Annonce introuvable.",
+    "seller": "Vendeur",
+    "description": "Description"
+  },
+  "post": {
+    "title": "Déposer une annonce",
+    "fieldTitle": "Titre",
+    "titlePlaceholder": "Ex. Vélo de ville en bon état",
+    "type": "Type",
+    "pricePoints": "Prix (points)",
+    "category": "Catégorie",
+    "chooseCategory": "— Choisir une catégorie —",
+    "description": "Description",
+    "descriptionPlaceholder": "Décrivez votre annonce…",
+    "photos": "Photos (max 8)",
+    "error": "La publication a échoué. Vérifiez les champs et réessayez.",
+    "submit": "Publier l'annonce",
+    "submitting": "Publication…"
+  },
+  "myListings": {
+    "title": "Mes annonces",
+    "deposit": "+ Déposer",
+    "empty": "Vous n'avez pas encore d'annonce.",
+    "delete": "Supprimer",
+    "confirmDelete": "Supprimer cette annonce ?",
+    "deleteError": "Suppression impossible."
+  },
+  "messages": {
+    "title": "Messages",
+    "noConversations": "Aucune conversation.",
+    "conversation": "Conversation",
+    "group": "Groupe",
+    "you": "Vous",
+    "participantCount_one": "{{count}} participant",
+    "participantCount_other": "{{count}} participants",
+    "select": "Sélectionnez une conversation",
+    "back": "Retour",
+    "placeholder": "Votre message…",
+    "send": "Envoyer",
+    "sending": "Envoi…",
+    "online": "En ligne",
+    "new": "+ Nouveau",
+    "newConversation": "Nouvelle conversation",
+    "neighbourLabel": "Voisin à contacter :",
+    "searchNeighbour": "Rechercher un voisin par nom…",
+    "searching": "Recherche…",
+    "noNeighbour": "Aucun voisin trouvé",
+    "pickNeighbour": "Choisissez un voisin",
+    "notYourself": "Vous ne pouvez pas démarrer une conversation avec vous-même",
+    "create": "Créer",
+    "creating": "Création…",
+    "createError": "Impossible de créer la conversation.",
+    "recordStart": "Démarrer l'enregistrement",
+    "recordStop": "Arrêter l'enregistrement",
+    "recording": "Enregistrement…",
+    "redo": "Refaire",
+    "micError": "Impossible d'accéder au micro. Vérifiez les permissions du navigateur.",
+    "voiceError": "Erreur lors de l'envoi du message vocal."
+  },
   "events": {
-    "loadError": "Impossible de charger les événements.",
-    "empty": "Aucun événement pour le moment.",
-    "seats": "{{remaining}} / {{total}} places",
-    "register": "S'inscrire",
-    "unregister": "Se désinscrire",
-    "full": "Complet",
+    "title": "Événements du quartier",
+    "subtitle": "Rencontrez vos voisins et participez à la vie locale.",
+    "forYou": "Pour toi",
+    "forYouLoading": "Calcul des suggestions…",
+    "empty": "Aucun événement prévu pour le moment.",
+    "seats_one": "{{count}} place",
+    "seats_other": "{{count}} places",
+    "actionError": "Action impossible (plus de place ou événement fermé).",
     "status": {
       "upcoming": "À venir",
       "ongoing": "En cours",
       "completed": "Terminé",
       "cancelled": "Annulé"
-    }
+    },
+    "finished": "Terminé",
+    "full": "Complet",
+    "unregister": "Se désinscrire",
+    "participate": "Participer"
   },
-  "messaging": {
-    "title": "Messages",
-    "open": "Ouvrir la messagerie",
-    "close": "Fermer",
-    "minimize": "Réduire",
-    "empty": "Aucune conversation.",
-    "select": "Sélectionnez une conversation pour afficher les messages.",
-    "conversation": "Conversation",
-    "placeholder": "Écrivez un message…",
-    "send": "Envoyer",
-    "back": "Retour",
-    "loadError": "Impossible de charger les conversations."
-  },
-  "comingSoon": "Cette fonctionnalité arrive bientôt.",
-  "notFound": {
-    "title404": "404",
-    "titleError": "Oups",
-    "msg404": "Cette page n'existe pas.",
-    "msgError": "Une erreur est survenue.",
-    "home": "Retour à l'accueil"
+  "votes": {
+    "title": "Sondages du quartier",
+    "subtitle": "Donnez votre avis sur la vie de votre quartier.",
+    "empty": "Aucun sondage en cours.",
+    "closed": "Clôturé",
+    "open": "Ouvert",
+    "multipleChoice": "choix multiple",
+    "vote": "Voter",
+    "error": "Vote impossible (sondage fermé ou déjà voté).",
+    "responses_one": "{{count}} réponse",
+    "responses_other": "{{count}} réponses"
   }
 }

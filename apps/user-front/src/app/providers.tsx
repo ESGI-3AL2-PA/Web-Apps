@@ -3,6 +3,7 @@ import { AuthProvider, useAuth } from "@repo/hooks";
 import { config } from "@repo/config";
 import { setupInterceptors } from "../api-service/api";
 import { SocketProvider } from "../sockets/SocketProvider";
+import { DialogProvider } from "../components/DialogProvider";
 
 const AUTH_SERVICE_URL = config.authServiceUrl;
 
@@ -20,7 +21,9 @@ export default function Providers({ children }: { children: ReactNode }) {
   return (
     <AuthProvider authServiceUrl={AUTH_SERVICE_URL}>
       <InterceptorSetup>
-        <SocketProvider>{children}</SocketProvider>
+        <SocketProvider>
+          <DialogProvider>{children}</DialogProvider>
+        </SocketProvider>
       </InterceptorSetup>
     </AuthProvider>
   );

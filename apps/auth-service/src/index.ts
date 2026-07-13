@@ -20,9 +20,7 @@ import { setupGracefulShutdown } from "./shutdown.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-const allowedOrigins = (
-  process.env.CORS_ORIGINS ?? "http://localhost:3000,http://localhost:4000,http://localhost:5000,http://localhost:7000"
-)
+const allowedOrigins = (process.env.CORS_ORIGINS ?? "http://localhost:3000,http://localhost:4000,http://localhost:5000")
   .split(",")
   .map((s) => s.trim())
   .filter(Boolean);
