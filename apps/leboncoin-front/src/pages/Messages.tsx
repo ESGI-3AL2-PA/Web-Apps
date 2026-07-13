@@ -3,22 +3,59 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@repo/hooks";
 import type { ConversationResponseDto, MessageResponseDto } from "@repo/contracts";
-import { getConversations, getMessages, sendMessage } from "../api-service/conversations.service";
+import {
+  fetchAudioBlob,
+  getConversations,
+  getMessages,
+  markMessageRead,
+  sendMessage,
+  sendVoiceMessage,
+} from "../api-service/conversations.service";
 import { getUserPublic } from "../api-service/users.service";
 import { useSocket } from "../sockets/SocketProvider";
 import { formatRelative } from "../lib/format";
+import { useDialog } from "../components/DialogProvider";
+import NewConversationModal from "../components/NewConversationModal";
+import AudioRecorder from "../components/AudioRecorder";
+
+// Renders a voice-note message: fetches the audio blob (Bearer-authed) and plays it.
+function MessageAudio({ id }: { id: string }) {
+  const { t } = useTranslation();
+  const [url, setUrl] = useState<string | null>(null);
+  useEffect(() => {
+    let objectUrl: string | null = null;
+    fetchAudioBlob(id)
+      .then((b) => {
+        objectUrl = URL.createObjectURL(b);
+        setUrl(objectUrl);
+      })
+      .catch(() => undefined);
+    return () => {
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [id]);
+  return url ? (
+    <audio controls src={url} className="h-9 max-w-[220px]" />
+  ) : (
+    <span className="text-xs opacity-70">🎧 {t("common.loading")}</span>
+  );
+}
 
 export default function Messages() {
   const { conversationId } = useParams();
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { user } = useAuth();
-  const { socket } = useSocket();
+  const { socket, isUserOnline } = useSocket();
+  const { alert } = useDialog();
   const [conversations, setConversations] = useState<ConversationResponseDto[]>([]);
   const [userNames, setUserNames] = useState<Record<string, string>>({});
   const [messages, setMessages] = useState<MessageResponseDto[]>([]);
   const [draft, setDraft] = useState("");
+  const [recording, setRecording] = useState(false);
+  const [showNew, setShowNew] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const markedRef = useRef<Set<string>>(new Set());
 
   // Load the conversation list + resolve every participant's name (needed for groups too).
   useEffect(() => {
@@ -45,6 +82,8 @@ export default function Messages() {
     return (otherId && userNames[otherId]) || t("messages.conversation");
   };
   const nameOf = (id: string): string => (id === user?.id ? t("messages.you") : (userNames[id] ?? "…"));
+  const otherIdOf = (c: ConversationResponseDto): string | undefined =>
+    c.type === "group" ? undefined : c.participants.find((p) => p !== user?.id);
   const active = conversations.find((c) => c.id === conversationId);
 
   // Load messages of the selected conversation.
@@ -57,6 +96,17 @@ export default function Messages() {
       .then(setMessages)
       .catch(() => setMessages([]));
   }, [conversationId]);
+
+  // Read receipts: mark messages from others as read once, when they're in view.
+  useEffect(() => {
+    if (!user) return;
+    for (const m of messages) {
+      if (m.senderId !== user.id && !markedRef.current.has(m.id)) {
+        markedRef.current.add(m.id);
+        markMessageRead(m.id).catch(() => markedRef.current.delete(m.id));
+      }
+    }
+  }, [messages, user]);
 
   // Live updates via socket.
   const onNewMessage = useCallback(
@@ -93,6 +143,17 @@ export default function Messages() {
     }
   };
 
+  const onSendVoice = async (blob: Blob) => {
+    if (!conversationId) return;
+    try {
+      const sent = await sendVoiceMessage(conversationId, blob);
+      setMessages((prev) => (prev.some((m) => m.id === sent.id) ? prev : [...prev, sent]));
+      setRecording(false);
+    } catch {
+      await alert({ message: t("messages.voiceError") });
+    }
+  };
+
   return (
     <div className="grid h-[calc(100dvh-13rem)] grid-cols-1 gap-4 md:h-[70vh] md:grid-cols-[280px_1fr]">
       {/* Conversation list */}
@@ -101,26 +162,43 @@ export default function Messages() {
           conversationId ? "hidden md:block" : ""
         }`}
       >
-        <h2 className="border-b border-neutral-100 p-4 text-lg font-bold text-neutral-900">{t("messages.title")}</h2>
+        <div className="flex items-center justify-between border-b border-neutral-100 p-4">
+          <h2 className="text-lg font-bold text-neutral-900">{t("messages.title")}</h2>
+          <button
+            onClick={() => setShowNew(true)}
+            className="rounded-lg bg-[color:var(--color-brand)] px-2.5 py-1 text-xs font-semibold text-white hover:bg-[color:var(--color-brand-dark)]"
+          >
+            {t("messages.new")}
+          </button>
+        </div>
         {conversations.length === 0 ? (
           <p className="p-4 text-sm text-neutral-500">{t("messages.noConversations")}</p>
         ) : (
           <ul>
-            {conversations.map((c) => (
-              <li key={c.id}>
-                <button
-                  onClick={() => navigate(`/messages/${c.id}`)}
-                  className={`flex w-full items-center gap-3 border-b border-neutral-100 px-4 py-3 text-left hover:bg-neutral-50 ${
-                    c.id === conversationId ? "bg-[color:var(--color-brand-soft)]" : ""
-                  }`}
-                >
-                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[color:var(--color-brand-soft)] text-sm font-bold text-[color:var(--color-brand-dark)]">
-                    {c.type === "group" ? "👥" : titleOf(c).charAt(0).toUpperCase()}
-                  </div>
-                  <span className="truncate text-sm font-medium text-neutral-800">{titleOf(c)}</span>
-                </button>
-              </li>
-            ))}
+            {conversations.map((c) => {
+              const otherId = otherIdOf(c);
+              const online = otherId ? isUserOnline(otherId) : false;
+              return (
+                <li key={c.id}>
+                  <button
+                    onClick={() => navigate(`/messages/${c.id}`)}
+                    className={`flex w-full items-center gap-3 border-b border-neutral-100 px-4 py-3 text-left hover:bg-neutral-50 ${
+                      c.id === conversationId ? "bg-[color:var(--color-brand-soft)]" : ""
+                    }`}
+                  >
+                    <div className="relative">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[color:var(--color-brand-soft)] text-sm font-bold text-[color:var(--color-brand-dark)]">
+                        {c.type === "group" ? "👥" : titleOf(c).charAt(0).toUpperCase()}
+                      </div>
+                      {online && (
+                        <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white bg-green-500" />
+                      )}
+                    </div>
+                    <span className="truncate text-sm font-medium text-neutral-800">{titleOf(c)}</span>
+                  </button>
+                </li>
+              );
+            })}
           </ul>
         )}
       </aside>
@@ -149,6 +227,15 @@ export default function Messages() {
                   </button>
                   {active.type === "group" && <span>👥</span>}
                   <h2 className="truncate font-bold text-neutral-900">{titleOf(active)}</h2>
+                  {(() => {
+                    const otherId = otherIdOf(active);
+                    return otherId && isUserOnline(otherId) ? (
+                      <span className="ml-1 flex items-center gap-1 text-xs font-medium text-green-600">
+                        <span className="h-2 w-2 rounded-full bg-green-500" />
+                        {t("messages.online")}
+                      </span>
+                    ) : null;
+                  })()}
                 </div>
                 {active.type === "group" && (
                   <p className="mt-0.5 truncate text-xs text-neutral-500">
@@ -173,7 +260,11 @@ export default function Messages() {
                           {nameOf(m.senderId)}
                         </p>
                       )}
-                      <p className="whitespace-pre-wrap">{m.content}</p>
+                      {m.type === "audio" ? (
+                        <MessageAudio id={m.id} />
+                      ) : (
+                        <p className="whitespace-pre-wrap">{m.content}</p>
+                      )}
                       <p className={`mt-0.5 text-[10px] ${mine ? "text-white/70" : "text-neutral-400"}`}>
                         {formatRelative(m.createdAt)}
                       </p>
@@ -183,23 +274,41 @@ export default function Messages() {
               })}
               <div ref={bottomRef} />
             </div>
-            <form onSubmit={onSend} className="flex gap-2 border-t border-neutral-100 p-3">
-              <input
-                value={draft}
-                onChange={(e) => setDraft(e.target.value)}
-                placeholder={t("messages.placeholder")}
-                className="h-10 flex-1 rounded-lg border border-neutral-300 px-3 text-sm outline-none focus:border-[color:var(--color-brand)]"
-              />
-              <button
-                type="submit"
-                className="rounded-lg bg-[color:var(--color-brand)] px-4 text-sm font-semibold text-white hover:bg-[color:var(--color-brand-dark)]"
-              >
-                {t("messages.send")}
-              </button>
-            </form>
+            {recording ? (
+              <div className="border-t border-neutral-100 p-3">
+                <AudioRecorder onSubmit={onSendVoice} onCancel={() => setRecording(false)} />
+              </div>
+            ) : (
+              <form onSubmit={onSend} className="flex gap-2 border-t border-neutral-100 p-3">
+                <button
+                  type="button"
+                  onClick={() => setRecording(true)}
+                  aria-label={t("messages.recordStart")}
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-neutral-300 text-lg hover:bg-neutral-50"
+                >
+                  🎙
+                </button>
+                <input
+                  value={draft}
+                  onChange={(e) => setDraft(e.target.value)}
+                  placeholder={t("messages.placeholder")}
+                  className="h-10 flex-1 rounded-lg border border-neutral-300 px-3 text-sm outline-none focus:border-[color:var(--color-brand)]"
+                />
+                <button
+                  type="submit"
+                  className="rounded-lg bg-[color:var(--color-brand)] px-4 text-sm font-semibold text-white hover:bg-[color:var(--color-brand-dark)]"
+                >
+                  {t("messages.send")}
+                </button>
+              </form>
+            )}
           </>
         )}
       </section>
+
+      {showNew && (
+        <NewConversationModal onClose={() => setShowNew(false)} onCreated={(id) => navigate(`/messages/${id}`)} />
+      )}
     </div>
   );
 }
