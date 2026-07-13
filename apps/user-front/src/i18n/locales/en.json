@@ -4,6 +4,12 @@
     "desc": "The page you're looking for doesn't exist or has moved.",
     "home": "Back to home"
   },
+  "serverError": {
+    "title": "Service unavailable",
+    "desc": "The server isn't responding right now. Please try again in a moment.",
+    "retry": "Retry",
+    "retrying": "Checking…"
+  },
   "common": {
     "loading": "Loading…",
     "language": "Language",
