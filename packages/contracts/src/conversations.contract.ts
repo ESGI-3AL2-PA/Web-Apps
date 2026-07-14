@@ -95,12 +95,13 @@ export const conversationsContract = c.router({
       404: NotFoundErrorSchema,
     },
     summary: "Send a message in a conversation (participant only)",
+    // security-M2: writes are participant-only. No districtField — a district admin who
+    // is not a participant must not be able to inject messages into a private conversation.
     metadata: auth({
       audience: "api",
       scope: {
         resource: "conversation",
         ownerArrayField: "participants",
-        districtField: "districtId",
         notFoundOnDeny: true,
       },
     }),
@@ -116,12 +117,12 @@ export const conversationsContract = c.router({
       404: NotFoundErrorSchema,
     },
     summary: "Send a voice message in a conversation (participant only)",
+    // security-M2: writes are participant-only (see sendMessage).
     metadata: auth({
       audience: "api",
       scope: {
         resource: "conversation",
         ownerArrayField: "participants",
-        districtField: "districtId",
         notFoundOnDeny: true,
       },
     }),
@@ -138,12 +139,12 @@ export const conversationsContract = c.router({
       404: NotFoundErrorSchema,
     },
     summary: "Send an image message in a conversation (participant only)",
+    // security-M2: writes are participant-only (see sendMessage).
     metadata: auth({
       audience: "api",
       scope: {
         resource: "conversation",
         ownerArrayField: "participants",
-        districtField: "districtId",
         notFoundOnDeny: true,
       },
     }),
@@ -159,12 +160,13 @@ export const conversationsContract = c.router({
       404: NotFoundErrorSchema,
     },
     summary: "Mark a message as read (conversation participant only)",
+    // security-M2: read-receipt writes are participant-only. No districtField — a district
+    // admin moderating a conversation must not mutate its read state.
     metadata: auth({
       audience: "api",
       scope: {
         resource: "messageParticipants",
         ownerArrayField: "participants",
-        districtField: "districtId",
         notFoundOnDeny: true,
       },
     }),
