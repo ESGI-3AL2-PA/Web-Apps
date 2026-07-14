@@ -26,9 +26,7 @@ function Card({ title, children }: { title: string; children: React.ReactNode })
 function Info({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <div className="text-xs font-semibold uppercase tracking-wide text-neutral-500">
-        {label}
-      </div>
+      <div className="text-xs font-semibold uppercase tracking-wide text-neutral-500">{label}</div>
       <div className="text-sm text-neutral-800 dark:text-neutral-100">{value}</div>
     </div>
   );

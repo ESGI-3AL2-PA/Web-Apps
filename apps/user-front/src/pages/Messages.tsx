@@ -259,9 +259,7 @@ export default function Messages() {
         }`}
       >
         {!conversationId ? (
-          <div className="flex flex-1 items-center justify-center text-neutral-500">
-            {t("messages.select")}
-          </div>
+          <div className="flex flex-1 items-center justify-center text-neutral-500">{t("messages.select")}</div>
         ) : (
           <>
             {active && (

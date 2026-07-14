@@ -10,9 +10,7 @@ import api from "./api";
 type PaginatedNotifications = PaginatedResponseDto<typeof NotificationResponseDtoSchema>;
 
 // GET /notifications — the authed user's notifications (filters: read, type, …).
-export async function getNotifications(
-  filters: NotificationQueryInput = {},
-): Promise<PaginatedNotifications> {
+export async function getNotifications(filters: NotificationQueryInput = {}): Promise<PaginatedNotifications> {
   const res = await api.get<PaginatedNotifications>("/notifications", { params: filters });
   return res.data;
 }

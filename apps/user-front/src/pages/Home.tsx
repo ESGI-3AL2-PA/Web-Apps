@@ -75,7 +75,10 @@ export default function Home() {
           <div className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-5">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-lg font-bold text-neutral-900 dark:text-neutral-50">{t("home.upcomingEvents")}</h2>
-              <Link to="/evenements" className="text-sm font-medium text-[color:var(--color-brand-dark)] hover:underline">
+              <Link
+                to="/evenements"
+                className="text-sm font-medium text-[color:var(--color-brand-dark)] hover:underline"
+              >
                 {t("home.seeAll")}
               </Link>
             </div>

@@ -34,9 +34,7 @@ type PaginatedConversations = PaginatedResponseDto<typeof ConversationResponseDt
 type PaginatedMessages = PaginatedResponseDto<typeof MessageResponseDtoSchema>;
 
 // GET /conversations — conversations the user participates in
-export async function getConversations(
-  filters: ConversationQueryInput = {},
-): Promise<ConversationResponseDto[]> {
+export async function getConversations(filters: ConversationQueryInput = {}): Promise<ConversationResponseDto[]> {
   const res = await api.get<PaginatedConversations>("/conversations", {
     params: { ...filters, limit: filters.limit ?? 100 },
   });
