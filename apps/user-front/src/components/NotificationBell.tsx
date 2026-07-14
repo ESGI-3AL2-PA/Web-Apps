@@ -1,11 +1,38 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import type { NotificationResponseDto } from "@repo/contracts";
+import type { NotificationRefType, NotificationResponseDto } from "@repo/contracts";
 import { getNotifications, markAllNotificationsRead, markNotificationRead } from "../api-service/notifications.service";
+import { useSocket } from "../sockets/SocketProvider";
 import { formatRelative } from "../lib/format";
+
+// Maps a notification's ref to an in-app route. Id-less types point at their list page;
+// `message` refIds are message ids (not conversation ids), so they land on the list too.
+function routeForNotification(refType: NotificationRefType, refId?: string): string | null {
+  switch (refType) {
+    case "listing":
+      return refId ? `/annonce/${refId}` : null;
+    case "conversation":
+      return refId ? `/messages/${refId}` : null;
+    case "message":
+      return "/messages";
+    case "contract":
+      return "/mes-contrats";
+    case "event":
+      return "/evenements";
+    case "vote":
+      return "/sondages";
+    case "incident":
+      return "/incidents";
+    default:
+      return null;
+  }
+}
 
 export default function NotificationBell() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
+  const { socket } = useSocket();
   const [items, setItems] = useState<NotificationResponseDto[]>([]);
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -19,6 +46,16 @@ export default function NotificationBell() {
   useEffect(() => {
     load();
   }, [load]);
+
+  // Live refresh: reload when the server pushes a new notification.
+  useEffect(() => {
+    if (!socket) return;
+    const onNew = () => load();
+    socket.on("notification:new", onNew);
+    return () => {
+      socket.off("notification:new", onNew);
+    };
+  }, [socket, load]);
 
   useEffect(() => {
     const onDoc = (e: MouseEvent) => {
@@ -41,6 +78,15 @@ export default function NotificationBell() {
     if (n.read) return;
     setItems((prev) => prev.map((x) => (x.id === n.id ? { ...x, read: true } : x)));
     await markNotificationRead(n.id).catch(() => load());
+  };
+
+  const onNotificationClick = (n: NotificationResponseDto) => {
+    void markOne(n);
+    const route = n.refType ? routeForNotification(n.refType, n.refId) : null;
+    if (route) {
+      setOpen(false);
+      navigate(route);
+    }
   };
 
   const markAll = async () => {
@@ -85,7 +131,7 @@ export default function NotificationBell() {
               {items.map((n) => (
                 <li key={n.id}>
                   <button
-                    onClick={() => markOne(n)}
+                    onClick={() => onNotificationClick(n)}
                     className={`flex w-full items-start gap-2 border-b border-neutral-50 px-4 py-3 text-left hover:bg-neutral-50 dark:hover:bg-neutral-800 ${
                       n.read ? "" : "bg-[color:var(--color-brand-soft)]/40"
                     }`}
