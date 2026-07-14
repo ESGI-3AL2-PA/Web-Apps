@@ -123,7 +123,7 @@ export default function NewConversationModal({
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder={t("messages.groupNamePlaceholder")}
-                className="h-10 w-full rounded-lg border border-neutral-300 dark:border-neutral-700 px-3 text-sm outline-none focus:border-[color:var(--color-brand)]"
+                className="h-10 w-full rounded-lg border border-neutral-300 dark:border-neutral-700 px-3 text-sm outline-none focus:border-[color:var(--color-brand)] focus-visible:ring-2 ring-[color:var(--color-brand)]"
               />
             </div>
           )}

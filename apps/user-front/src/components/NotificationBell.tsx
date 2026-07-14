@@ -36,6 +36,7 @@ export default function NotificationBell() {
   const [items, setItems] = useState<NotificationResponseDto[]>([]);
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
 
   const load = useCallback(() => {
     getNotifications({ limit: 15 })
@@ -95,11 +96,20 @@ export default function NotificationBell() {
   };
 
   return (
-    <div ref={ref} className="relative shrink-0">
+    <div
+      ref={ref}
+      className="relative shrink-0"
+      onKeyDown={(e) => {
+        if (e.key === "Escape" && open) {
+          setOpen(false);
+          buttonRef.current?.focus();
+        }
+      }}
+    >
       <button
+        ref={buttonRef}
         onClick={toggle}
         aria-label={t("notifications.title")}
-        aria-haspopup="menu"
         aria-expanded={open}
         aria-controls="notification-menu"
         className="relative flex h-9 w-9 items-center justify-center rounded-lg text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-[color:var(--color-brand)]"
@@ -109,7 +119,7 @@ export default function NotificationBell() {
           <path d="M13.7 21a2 2 0 0 1-3.4 0" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
         {unread > 0 && (
-          <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
+          <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold text-white">
             {unread > 9 ? "9+" : unread}
           </span>
         )}
