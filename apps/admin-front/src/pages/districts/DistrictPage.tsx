@@ -1,12 +1,12 @@
 import { useEffect, useState, type FormEvent } from "react";
-import type { GeoJson } from "@repo/contracts";
+import type { GeoJson, GeoJsonInput } from "@repo/contracts";
 import { getDistrict, updateDistrict } from "../../api-service/districts";
 import { Field } from "../../components/Field";
 import { useToast } from "../../components/Toast";
 import { useDistrictScope } from "../../app/DistrictScopeProvider";
 import { DistrictMapEditor } from "./DistrictMapEditor";
 
-function isValidPolygon(geoJson: GeoJson): boolean {
+function isValidPolygon(geoJson: GeoJson): geoJson is GeoJsonInput {
   return (
     geoJson.type === "Polygon" &&
     Array.isArray(geoJson.coordinates) &&
