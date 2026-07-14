@@ -25,6 +25,9 @@ export default function PostListing() {
       .catch(() => setTags([]));
   }, []);
 
+  // Revoke the current preview URLs when they're replaced (re-pick) or on unmount.
+  useEffect(() => () => previews.forEach((url) => URL.revokeObjectURL(url)), [previews]);
+
   const onFiles = (list: FileList | null) => {
     if (!list) return;
     const picked = Array.from(list).slice(0, 8);
