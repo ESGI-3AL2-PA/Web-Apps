@@ -116,6 +116,26 @@ export const deleteUserUseCase = (deps: DeleteUserDeps) => {
     if (deleted) {
       // DETACH DELETE in Neo4j removes all the user's relationships too.
       await syncGraph(`deleteUser(${id})`, () => graphRepository.deleteUser(id));
+
+      // Cross-service erasure: the api owns no auth data, so ask auth-service to
+      // hard-delete this user's refresh-token sessions (incl. retained IP/UA history).
+      // Best-effort — api-side erasure must succeed even if auth-service is unreachable.
+      try {
+        const authServiceUrl = process.env.AUTH_SERVICE_URL ?? "http://localhost:3001";
+        const purgeRes = await fetch(`${authServiceUrl}/internal/sessions/purge`, {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "x-internal-token": process.env.INTERNAL_SERVICE_TOKEN ?? "",
+          },
+          body: JSON.stringify({ userId: id }),
+        });
+        if (!purgeRes.ok) {
+          console.error(`auth-service session purge failed for user ${id}: HTTP ${purgeRes.status}`);
+        }
+      } catch (err) {
+        console.error(`auth-service session purge errored for user ${id}:`, err);
+      }
     }
     return deleted;
   };

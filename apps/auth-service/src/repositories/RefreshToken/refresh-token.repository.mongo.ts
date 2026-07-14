@@ -88,6 +88,10 @@ export class MongoRefreshTokenRepository implements IRefreshTokenRepository {
     await this.collection.updateMany({ userId, revokedAt: null }, { $set: { revokedAt: new Date().toISOString() } });
   }
 
+  async deleteAllForUser(userId: string): Promise<void> {
+    await this.collection.deleteMany({ userId });
+  }
+
   private toEntity(doc: Omit<RefreshToken, "id"> & { _id: string }): RefreshToken {
     const { _id, ...rest } = doc;
     return { id: _id, ...rest };

@@ -180,6 +180,9 @@ services:
       NEO4J_USER: neo4j
       NEO4J_PASSWORD: password
       AUTH_JWKS_URL: http://auth-service:3001/.well-known/jwks.json
+      # Reach auth-service in-network to purge sessions on account deletion (GDPR erasure).
+      AUTH_SERVICE_URL: http://auth-service:3001
+      INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN:-dev-internal-service-token}
       # Documenso reached in-network; secrets come from .env (created once in the UI).
       DOCUMENSO_URL: http://documenso:3030
       DOCUMENSO_API_TOKEN: ${DOCUMENSO_API_TOKEN:-}
@@ -221,6 +224,8 @@ services:
       MONGODB_URL: mongodb://root:root@mongodb:27017
       MONGODB_DB: db
       API_URL: http://api:3000
+      # Shared secret for the api→auth-service internal session-purge call (must match api).
+      INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN:-dev-internal-service-token}
       # No AUTH_*_KEY[_FILE] set → auth-service generates ephemeral RS256 keys on boot.
       # Fine for dev (keys rotate on restart; the api's JWKS set refetches on the next
       # verification miss). Provide stable keys via AUTH_*_KEY_FILE for prod.

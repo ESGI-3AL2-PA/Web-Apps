@@ -1,6 +1,7 @@
 import "./load-env.js"; // must be first: loads .env before any module reads process.env
 import path from "path";
 import fs from "fs";
+import { timingSafeEqual } from "crypto";
 import { fileURLToPath } from "url";
 import express, { type Application, type RequestHandler } from "express";
 import cors from "cors";
@@ -14,8 +15,9 @@ import { authRouter } from "./routes/auth/auth.router.js";
 import { jwksHandler } from "./routes/jwks.route.js";
 import { errorHandler, NotFoundError } from "./middleware/error-handler.js";
 import { connectDB, closeDB } from "./repositories/mongodb.connector.js";
-import { initContainer } from "./repositories/container.js";
+import { initContainer, resolve } from "./repositories/container.js";
 import { MongoRefreshTokenRepository } from "./repositories/RefreshToken/refresh-token.repository.mongo.js";
+import type { IRefreshTokenRepository } from "./repositories/RefreshToken/refresh-token.repository.js";
 import { initKeys } from "./keys.js";
 import { setupGracefulShutdown } from "./shutdown.js";
 
@@ -85,6 +87,40 @@ app.get("/register", (_req, res) => {
 
 // JWKS endpoint
 app.get("/.well-known/jwks.json", jwksHandler);
+
+// Internal service-to-service endpoint (not part of the ts-rest contract, not behind
+// user auth). Guarded by a shared secret in X-Internal-Token. The api calls this after
+// deleting a user so their refresh-token rows (incl. IP/User-Agent history) are erased.
+const internalTokenValid = (provided: string | undefined): boolean => {
+  const expected = process.env.INTERNAL_SERVICE_TOKEN;
+  if (!expected || !provided) return false;
+  const a = Buffer.from(provided);
+  const b = Buffer.from(expected);
+  // timingSafeEqual throws on length mismatch — length-check first, still constant-time
+  // for equal-length inputs (the only case an attacker controls once past this guard).
+  return a.length === b.length && timingSafeEqual(a, b);
+};
+
+app.post("/internal/sessions/purge", (req, res) => {
+  if (!internalTokenValid(req.header("x-internal-token"))) {
+    res.status(401).json({ message: "Unauthorized" });
+    return;
+  }
+  const userId = (req.body as { userId?: unknown } | undefined)?.userId;
+  if (typeof userId !== "string" || userId.length === 0) {
+    res.status(400).json({ message: "userId is required" });
+    return;
+  }
+  // Annotate as the interface so the (never-typed) resolve() result is callable.
+  const refreshTokenRepo: IRefreshTokenRepository = resolve("refreshToken");
+  refreshTokenRepo
+    .deleteAllForUser(userId)
+    .then(() => res.status(204).end())
+    .catch((err) => {
+      console.error("Failed to purge sessions for user:", err);
+      res.status(500).json({ message: "Failed to purge sessions" });
+    });
+});
 
 // Rate limits — mounted before the ts-rest handlers so they run first.
 // In-memory store: fine for single-instance, swap for Redis if scaled.

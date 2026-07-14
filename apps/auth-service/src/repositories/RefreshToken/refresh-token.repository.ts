@@ -17,4 +17,7 @@ export interface IRefreshTokenRepository {
   // to the caller when the call is user-initiated; omit for internal reuse-detection.
   revokeBySessionId(sessionId: string, userId?: string): Promise<boolean>;
   revokeAllForUser(userId: string): Promise<void>;
+  // Hard-delete every session row for a user (GDPR erasure) — unlike revokeAllForUser
+  // this removes the rows outright, purging the retained IP/User-Agent history.
+  deleteAllForUser(userId: string): Promise<void>;
 }
