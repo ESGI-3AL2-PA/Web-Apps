@@ -65,6 +65,7 @@ export const refreshUseCase = (
       userId: stored.userId,
       tokenHash: newTokenHash,
       expiresAt: expiresAt.toISOString(),
+      expiresAtDate: expiresAt,
       revokedAt: null,
       // Preserve the session's identity/origin across rotation; only lastUsedAt moves.
       createdAt: stored.createdAt,

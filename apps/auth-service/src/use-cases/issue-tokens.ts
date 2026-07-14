@@ -66,6 +66,7 @@ export const issueTokensForUser = async (
     userId: user.id,
     tokenHash,
     expiresAt: expiresAt.toISOString(),
+    expiresAtDate: expiresAt,
     revokedAt: null,
     createdAt: now.toISOString(),
     sessionId: randomUUID(),

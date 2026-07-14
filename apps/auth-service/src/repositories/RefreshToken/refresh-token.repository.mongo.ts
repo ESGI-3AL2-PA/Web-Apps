@@ -12,10 +12,12 @@ export class MongoRefreshTokenRepository implements IRefreshTokenRepository {
 
   // TTL index so expired (and revoked-but-expired) rows self-purge, bounding how
   // long a session's IP/User-Agent history is retained. expireAfterSeconds: 0 means
-  // "delete once the indexed date has passed". Idempotent: createIndex is a no-op if
-  // an identical index already exists.
+  // "delete once the indexed date has passed". Indexes the BSON `expiresAtDate` Date
+  // field — the TTL monitor ignores the ISO-string `expiresAt`. Only tokens created
+  // after this deploy carry the Date, so the TTL is forward-looking. Idempotent:
+  // createIndex is a no-op if an identical index already exists.
   async ensureIndexes(): Promise<void> {
-    await this.collection.createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 });
+    await this.collection.createIndex({ expiresAtDate: 1 }, { expireAfterSeconds: 0 });
   }
 
   async create(data: Omit<RefreshToken, "id">): Promise<RefreshToken> {
