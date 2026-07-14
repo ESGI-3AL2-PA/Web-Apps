@@ -70,7 +70,7 @@ export default function NewConversationModal({
           <button
             onClick={onClose}
             aria-label={t("common.cancel")}
-            className="text-2xl leading-none text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300"
+            className="text-2xl leading-none text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300"
           >
             ×
           </button>

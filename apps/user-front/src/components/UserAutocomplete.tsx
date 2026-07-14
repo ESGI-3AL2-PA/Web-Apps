@@ -85,7 +85,7 @@ export default function UserAutocomplete({
             setResults([]);
           }}
           aria-label={t("common.cancel")}
-          className="absolute right-2 top-1/2 -translate-y-1/2 text-lg leading-none text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300"
+          className="absolute right-2 top-1/2 -translate-y-1/2 text-lg leading-none text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300"
         >
           ×
         </button>

@@ -259,7 +259,7 @@ export default function Messages() {
         }`}
       >
         {!conversationId ? (
-          <div className="flex flex-1 items-center justify-center text-neutral-400 dark:text-neutral-500">
+          <div className="flex flex-1 items-center justify-center text-neutral-500">
             {t("messages.select")}
           </div>
         ) : (
@@ -321,7 +321,7 @@ export default function Messages() {
                         <p className="whitespace-pre-wrap">{m.content}</p>
                       )}
                       <p
-                        className={`mt-0.5 flex items-center justify-end gap-1 text-[10px] ${mine ? "text-white/70" : "text-neutral-400 dark:text-neutral-500"}`}
+                        className={`mt-0.5 flex items-center justify-end gap-1 text-[10px] ${mine ? "text-white/90" : "text-neutral-500"}`}
                       >
                         {formatRelative(m.createdAt)}
                         {mine && (

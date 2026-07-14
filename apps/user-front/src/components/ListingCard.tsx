@@ -22,7 +22,7 @@ export default function ListingCard({ listing }: { listing: ListingResponseDto }
           />
         ) : (
           <div
-            className="flex h-full w-full items-center justify-center text-4xl font-black text-white/70"
+            className="flex h-full w-full items-center justify-center text-4xl font-black text-white/90"
             style={{ background: placeholderColor(listing.id) }}
           >
             {listing.title.charAt(0).toUpperCase()}
@@ -32,7 +32,7 @@ export default function ListingCard({ listing }: { listing: ListingResponseDto }
       <div className="flex flex-1 flex-col gap-1 p-3">
         <span className="text-base font-bold text-neutral-900 dark:text-neutral-50">{formatPrice(listing.price)}</span>
         <span className="line-clamp-2 text-sm text-neutral-700 dark:text-neutral-200">{listing.title}</span>
-        <div className="mt-auto flex items-center justify-between pt-1 text-[11px] text-neutral-400 dark:text-neutral-500">
+        <div className="mt-auto flex items-center justify-between pt-1 text-[11px] text-neutral-500">
           <span className="truncate">{listing.tags?.[0] ?? t("common.misc")}</span>
           <span className="shrink-0">{formatRelative(listing.createdAt)}</span>
         </div>

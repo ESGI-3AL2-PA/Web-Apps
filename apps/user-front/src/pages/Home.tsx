@@ -46,7 +46,7 @@ export default function Home() {
         >
           <div>
             <p className="text-lg font-bold">{t("home.greeting", { name: user.firstName })}</p>
-            <p className="text-sm text-white/80">{t("home.balanceLabel")}</p>
+            <p className="text-sm text-white/90">{t("home.balanceLabel")}</p>
           </div>
           <span className="rounded-lg bg-white/15 px-4 py-2 text-xl font-extrabold">{formatPrice(user.balance)}</span>
         </Link>
@@ -75,7 +75,7 @@ export default function Home() {
           <div className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-5">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-lg font-bold text-neutral-900 dark:text-neutral-50">{t("home.upcomingEvents")}</h2>
-              <Link to="/evenements" className="text-sm font-medium text-[color:var(--color-brand)] hover:underline">
+              <Link to="/evenements" className="text-sm font-medium text-[color:var(--color-brand-dark)] hover:underline">
                 {t("home.seeAll")}
               </Link>
             </div>
@@ -111,7 +111,7 @@ export default function Home() {
               <h2 className="text-lg font-bold text-neutral-900 dark:text-neutral-50">
                 {t("home.neighbourhoodPolls")}
               </h2>
-              <Link to="/sondages" className="text-sm font-medium text-[color:var(--color-brand)] hover:underline">
+              <Link to="/sondages" className="text-sm font-medium text-[color:var(--color-brand-dark)] hover:underline">
                 {t("home.participate")}
               </Link>
             </div>
@@ -141,7 +141,7 @@ export default function Home() {
       <section>
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-lg font-bold text-neutral-900 dark:text-neutral-50">{t("home.recentListings")}</h2>
-          <Link to="/recherche" className="text-sm font-medium text-[color:var(--color-brand)] hover:underline">
+          <Link to="/recherche" className="text-sm font-medium text-[color:var(--color-brand-dark)] hover:underline">
             {t("home.seeAll")}
           </Link>
         </div>

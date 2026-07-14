@@ -30,7 +30,7 @@ function PollResults({ vote }: { vote: VoteResponseDto }) {
           </div>
         );
       })}
-      <p className="pt-1 text-xs text-neutral-400 dark:text-neutral-500">{t("votes.responses", { count: total })}</p>
+      <p className="pt-1 text-xs text-neutral-500">{t("votes.responses", { count: total })}</p>
     </div>
   );
 }
@@ -62,7 +62,7 @@ function PollCard({ vote, onVoted }: { vote: VoteResponseDto; onVoted: (v: VoteR
         <span className="rounded-full bg-[color:var(--color-brand-soft)] px-2.5 py-0.5 text-xs font-semibold text-[color:var(--color-brand-dark)]">
           {vote.status === "closed" ? t("votes.closed") : t("votes.open")}
         </span>
-        {multi && <span className="text-xs text-neutral-400 dark:text-neutral-500">{t("votes.multipleChoice")}</span>}
+        {multi && <span className="text-xs text-neutral-500">{t("votes.multipleChoice")}</span>}
       </div>
       <h2 className="text-lg font-bold text-neutral-900 dark:text-neutral-50">{vote.question}</h2>
 

@@ -137,7 +137,7 @@ export default function Incidents() {
                   </span>
                 </div>
                 <p className="mt-1 text-sm text-neutral-700 dark:text-neutral-200">{i.description}</p>
-                <p className="mt-1 text-xs text-neutral-400 dark:text-neutral-500">{formatRelative(i.createdAt)}</p>
+                <p className="mt-1 text-xs text-neutral-500">{formatRelative(i.createdAt)}</p>
               </li>
             ))}
           </ul>

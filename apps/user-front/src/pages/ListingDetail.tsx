@@ -97,7 +97,7 @@ export default function ListingDetail() {
               <AuthedImage src={images[active]!} alt={listing.title} className="h-full w-full object-contain" />
             ) : (
               <div
-                className="flex h-full w-full items-center justify-center text-6xl font-black text-white/70"
+                className="flex h-full w-full items-center justify-center text-6xl font-black text-white/90"
                 style={{ background: placeholderColor(listing.id) }}
               >
                 {listing.title.charAt(0).toUpperCase()}
@@ -126,7 +126,7 @@ export default function ListingDetail() {
           <div className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-5">
             <h1 className="text-xl font-bold text-neutral-900 dark:text-neutral-50">{listing.title}</h1>
             <p className="mt-1 text-2xl font-extrabold text-[color:var(--color-brand)]">{formatPrice(listing.price)}</p>
-            <p className="mt-1 text-xs text-neutral-400 dark:text-neutral-500">
+            <p className="mt-1 text-xs text-neutral-500">
               {t("detail.publishedOn", { date: formatDate(listing.createdAt) })}
             </p>
 

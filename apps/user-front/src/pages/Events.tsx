@@ -30,7 +30,7 @@ function EventCard({
         <span className="rounded-full bg-[color:var(--color-brand-soft)] px-2.5 py-0.5 text-xs font-semibold text-[color:var(--color-brand-dark)]">
           {t(`events.status.${ev.status}`, { defaultValue: ev.status })}
         </span>
-        <span className="text-xs text-neutral-400 dark:text-neutral-500">
+        <span className="text-xs text-neutral-500">
           {t("events.seats", { count: ev.remainingSeats })}
         </span>
       </div>

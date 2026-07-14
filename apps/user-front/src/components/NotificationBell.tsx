@@ -117,7 +117,10 @@ export default function NotificationBell() {
           <div className="flex items-center justify-between border-b border-neutral-100 dark:border-neutral-800 px-4 py-2.5">
             <span className="text-sm font-bold text-neutral-900 dark:text-neutral-50">{t("notifications.title")}</span>
             {unread > 0 && (
-              <button onClick={markAll} className="text-xs font-medium text-[color:var(--color-brand)] hover:underline">
+              <button
+                onClick={markAll}
+                className="text-xs font-medium text-[color:var(--color-brand-dark)] hover:underline"
+              >
                 {t("notifications.markAll")}
               </button>
             )}
@@ -146,9 +149,7 @@ export default function NotificationBell() {
                         {n.title}
                       </span>
                       <span className="block text-xs text-neutral-600 dark:text-neutral-300">{n.message}</span>
-                      <span className="mt-0.5 block text-[10px] text-neutral-400 dark:text-neutral-500">
-                        {formatRelative(n.createdAt)}
-                      </span>
+                      <span className="mt-0.5 block text-[10px] text-neutral-500">{formatRelative(n.createdAt)}</span>
                     </span>
                   </button>
                 </li>
