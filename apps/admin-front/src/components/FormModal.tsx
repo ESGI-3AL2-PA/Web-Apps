@@ -31,6 +31,7 @@ export function FormModal({
   size = "md",
 }: FormModalProps) {
   const titleId = useId();
+  const errorId = useId();
   if (!open) return null;
 
   const body = (
@@ -44,7 +45,11 @@ export function FormModal({
         </button>
       </div>
       <div className="space-y-4">{children}</div>
-      {error && <p className="text-sm text-error mt-3">{error}</p>}
+      {error && (
+        <p id={errorId} role="alert" className="text-sm text-error mt-3">
+          {error}
+        </p>
+      )}
       <div className="flex justify-end gap-2 mt-6">
         <button type="button" className="btn btn-soft" onClick={onClose}>
           {readOnly ? "Close" : "Cancel"}
@@ -67,7 +72,17 @@ export function FormModal({
       labelledBy={titleId}
       panelClassName={`my-8 p-6 ${size === "lg" ? "max-w-3xl" : "max-w-lg"}`}
     >
-      {onSubmit && !readOnly ? <form onSubmit={onSubmit}>{body}</form> : body}
+      {onSubmit && !readOnly ? (
+        <form
+          onSubmit={onSubmit}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={error ? errorId : undefined}
+        >
+          {body}
+        </form>
+      ) : (
+        body
+      )}
     </ModalFrame>
   );
 }
