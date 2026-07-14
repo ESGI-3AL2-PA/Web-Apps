@@ -54,15 +54,16 @@ const ensureBucket = async (): Promise<void> => {
 
 type DecodedImage = { bytes: Buffer; ext: string; contentType: string };
 
-// Parse a `data:image/xxx;base64,....` URL (or raw base64 defaulting to png) into
-// bytes + extension. Returns null for unsupported / malformed input.
+// Parse a `data:image/xxx;base64,....` URL into bytes + extension. Requires a proper
+// image data-URL prefix — a prefix-less payload or a non-image mime (text/plain, svg,
+// …) is rejected (null) rather than silently stored as png.
 export const decodeImageBase64 = (input: string): DecodedImage | null => {
   const match = input.match(/^data:(image\/[a-zA-Z+.-]+);base64,(.*)$/s);
-  const mime = (match?.[1] ?? "image/png").toLowerCase();
-  const payload = match?.[2] ?? input;
+  if (!match) return null;
+  const mime = match[1]!.toLowerCase();
   const ext = MIME_TO_EXT[mime];
   if (!ext) return null;
-  const bytes = Buffer.from(payload, "base64");
+  const bytes = Buffer.from(match[2]!, "base64");
   if (bytes.length === 0) return null;
   return { bytes, ext, contentType: EXT_TO_MIME[ext]! };
 };
