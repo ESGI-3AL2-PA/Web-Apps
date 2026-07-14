@@ -12,7 +12,7 @@ import { createExpressEndpoints } from "@ts-rest/express";
 import { authContract } from "@repo/contracts";
 
 import { authRouter } from "./routes/auth/auth.router.js";
-import { jwksHandler } from "./routes/jwks.route.js";
+import { jwksHandler } from "./routes/jwks.router.js";
 import { errorHandler, NotFoundError } from "./middleware/error-handler.js";
 import { connectDB, closeDB } from "./repositories/mongodb.connector.js";
 import { initContainer, resolve } from "./repositories/container.js";
