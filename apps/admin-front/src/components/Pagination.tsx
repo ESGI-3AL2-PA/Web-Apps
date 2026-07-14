@@ -11,7 +11,7 @@ export function Pagination({ page, limit, total, onPageChange }: PaginationProps
   const to = Math.min(page * limit, total);
 
   return (
-    <div className="flex items-center justify-between gap-4 mt-4">
+    <nav aria-label="Pagination" className="flex items-center justify-between gap-4 mt-4">
       <span className="text-sm text-base-content/60">
         {from}–{to} of {total}
       </span>
@@ -24,7 +24,7 @@ export function Pagination({ page, limit, total, onPageChange }: PaginationProps
         >
           «
         </button>
-        <span className="btn btn-sm join-item pointer-events-none">
+        <span className="btn btn-sm join-item pointer-events-none" aria-current="page" aria-live="polite">
           Page {page} / {totalPages}
         </span>
         <button
@@ -36,6 +36,6 @@ export function Pagination({ page, limit, total, onPageChange }: PaginationProps
           »
         </button>
       </div>
-    </div>
+    </nav>
   );
 }
