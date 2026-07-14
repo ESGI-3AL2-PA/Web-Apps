@@ -21,6 +21,19 @@ export class MongoRefreshTokenRepository implements IRefreshTokenRepository {
     return doc ? this.toEntity(doc) : null;
   }
 
+  async claimByTokenHash(tokenHash: string): Promise<RefreshToken | null> {
+    const res = await this.collection.findOneAndUpdate(
+      { tokenHash, revokedAt: null },
+      { $set: { revokedAt: new Date().toISOString() } },
+      { returnDocument: "before" },
+    );
+    // mongodb <6 returned { value }, >=6 returns the document directly — handle both.
+    const doc = (res && "value" in res ? (res as { value: unknown }).value : res) as
+      | (Omit<RefreshToken, "id"> & { _id: string })
+      | null;
+    return doc ? this.toEntity(doc) : null;
+  }
+
   async findByTokenHash(tokenHash: string): Promise<RefreshToken | null> {
     const doc = await this.collection.findOne({ tokenHash });
     return doc ? this.toEntity(doc) : null;

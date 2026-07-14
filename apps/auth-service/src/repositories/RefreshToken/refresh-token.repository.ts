@@ -3,6 +3,9 @@ import type { RefreshToken } from "../../entities/refresh-token.entity.js";
 export interface IRefreshTokenRepository {
   create(data: Omit<RefreshToken, "id">): Promise<RefreshToken>;
   findActiveByTokenHash(tokenHash: string): Promise<RefreshToken | null>;
+  // Atomically claim (revoke) an active token, returning its pre-image. Null if it
+  // wasn't active — closes the rotation race so only one concurrent refresh wins.
+  claimByTokenHash(tokenHash: string): Promise<RefreshToken | null>;
   // Lookup regardless of revoked status — used to detect reuse of a rotated token.
   findByTokenHash(tokenHash: string): Promise<RefreshToken | null>;
   // Active (non-revoked, non-expired) sessions for the "active sessions" view.
