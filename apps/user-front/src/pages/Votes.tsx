@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { VoteResponseDto } from "@repo/contracts";
 import { getVotes, submitVote } from "../api-service/votes.service";
-import { useDialog } from "../components/DialogProvider";
+import { useDialog } from "../components/dialog-context";
 
 function PollResults({ vote }: { vote: VoteResponseDto }) {
   const { t } = useTranslation();

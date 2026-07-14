@@ -6,7 +6,7 @@ import "react-pdf/dist/Page/TextLayer.css";
 import type { ContractResponseDto, ContractSignatureStatus } from "@repo/contracts";
 import { disputeContract, fetchContractPdf, getContracts, resendContract } from "../api-service/contracts.service";
 import { formatPrice } from "../lib/format";
-import { useDialog } from "../components/DialogProvider";
+import { useDialog } from "../components/dialog-context";
 
 // react-pdf needs its worker; resolve the bundled one through Vite.
 pdfjs.GlobalWorkerOptions.workerSrc = new URL("pdfjs-dist/build/pdf.worker.min.mjs", import.meta.url).toString();

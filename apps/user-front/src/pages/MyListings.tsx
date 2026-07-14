@@ -5,7 +5,7 @@ import { useAuth } from "@repo/hooks";
 import type { ListingResponseDto } from "@repo/contracts";
 import { deleteListing, getListings } from "../api-service/listings.service";
 import { formatPrice, formatRelative } from "../lib/format";
-import { useDialog } from "../components/DialogProvider";
+import { useDialog } from "../components/dialog-context";
 import AuthedImage from "../components/AuthedImage";
 
 export default function MyListings() {

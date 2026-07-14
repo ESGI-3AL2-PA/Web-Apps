@@ -6,7 +6,7 @@ import type { EventResponseDto } from "@repo/contracts";
 import { getEvents, registerToEvent, unregisterFromEvent } from "../api-service/events.service";
 import { getRecommendedEvents } from "../api-service/recommendations.service";
 import { formatDateTime } from "../lib/format";
-import { useDialog } from "../components/DialogProvider";
+import { useDialog } from "../components/dialog-context";
 
 function EventCard({
   ev,

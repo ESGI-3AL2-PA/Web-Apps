@@ -1,29 +1,11 @@
-import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { useFocusTrap } from "../lib/useFocusTrap";
-
-type Tone = "default" | "danger";
-
-interface ConfirmOptions {
-  title?: string;
-  message: string;
-  confirmLabel?: string;
-  cancelLabel?: string;
-  tone?: Tone;
-}
-
-type AlertOptions = Omit<ConfirmOptions, "cancelLabel">;
+import { DialogContext, type AlertOptions, type ConfirmOptions } from "./dialog-context";
 
 interface DialogState extends ConfirmOptions {
   mode: "confirm" | "alert";
 }
-
-interface DialogContextValue {
-  confirm: (opts: ConfirmOptions) => Promise<boolean>;
-  alert: (opts: AlertOptions) => Promise<void>;
-}
-
-const DialogContext = createContext<DialogContextValue | null>(null);
 
 // App-themed replacement for window.confirm / window.alert. Exposes an imperative,
 // promise-based API so call sites read like the native ones they replace:
@@ -130,10 +112,4 @@ export function DialogProvider({ children }: { children: ReactNode }) {
       )}
     </DialogContext.Provider>
   );
-}
-
-export function useDialog(): DialogContextValue {
-  const ctx = useContext(DialogContext);
-  if (!ctx) throw new Error("useDialog must be used within a DialogProvider");
-  return ctx;
 }

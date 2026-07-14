@@ -14,9 +14,9 @@ import {
   sendVoiceMessage,
 } from "../api-service/conversations.service";
 import { getUserPublic } from "../api-service/users.service";
-import { useSocket } from "../sockets/SocketProvider";
+import { useSocket } from "../sockets/socket-context";
 import { formatRelative } from "../lib/format";
-import { useDialog } from "../components/DialogProvider";
+import { useDialog } from "../components/dialog-context";
 import NewConversationModal from "../components/NewConversationModal";
 import AudioRecorder from "../components/AudioRecorder";
 

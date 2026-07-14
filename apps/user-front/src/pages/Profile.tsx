@@ -10,7 +10,7 @@ import { getContracts } from "../api-service/contracts.service";
 import { getEvents } from "../api-service/events.service";
 import { getVotes } from "../api-service/votes.service";
 import { formatPrice } from "../lib/format";
-import { useDialog } from "../components/DialogProvider";
+import { useDialog } from "../components/dialog-context";
 
 function Card({ title, children }: { title: string; children: React.ReactNode }) {
   return (

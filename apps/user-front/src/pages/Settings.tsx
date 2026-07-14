@@ -6,7 +6,7 @@ import { getSessions, revokeOtherSessions, revokeSession } from "../api-service/
 import { deleteAccount, exportMyData, requestPasswordReset } from "../api-service/account.service";
 import { formatRelative } from "../lib/format";
 import { getTheme, setTheme, type Theme } from "../lib/theme";
-import { useDialog } from "../components/DialogProvider";
+import { useDialog } from "../components/dialog-context";
 
 // Best-effort, presentation-only parse of the stored user-agent string.
 function describeDevice(ua: string | null, fallback: string): string {

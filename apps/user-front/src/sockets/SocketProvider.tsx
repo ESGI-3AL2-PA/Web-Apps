@@ -1,21 +1,8 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { io, type Socket } from "socket.io-client";
 import { useAuth } from "@repo/hooks";
 import { config } from "@repo/config";
-
-type SocketContextValue = {
-  socket: Socket | null;
-  onlineUsers: Set<string>;
-  isUserOnline: (userId: string) => boolean;
-};
-
-const SocketContext = createContext<SocketContextValue>({
-  socket: null,
-  onlineUsers: new Set(),
-  isUserOnline: () => false,
-});
-
-export const useSocket = () => useContext(SocketContext);
+import { SocketContext, type SocketContextValue } from "./socket-context";
 
 export const SocketProvider = ({ children }: { children: ReactNode }) => {
   const { user, getAccessToken } = useAuth();

@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import type { NotificationRefType, NotificationResponseDto } from "@repo/contracts";
 import { getNotifications, markAllNotificationsRead, markNotificationRead } from "../api-service/notifications.service";
-import { useSocket } from "../sockets/SocketProvider";
+import { useSocket } from "../sockets/socket-context";
 import { formatRelative } from "../lib/format";
 
 // Maps a notification's ref to an in-app route. Id-less types point at their list page;

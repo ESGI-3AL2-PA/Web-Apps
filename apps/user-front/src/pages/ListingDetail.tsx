@@ -9,7 +9,7 @@ import { createConversation, getConversations } from "../api-service/conversatio
 import { createContract } from "../api-service/contracts.service";
 import { formatDate, formatPrice, placeholderColor } from "../lib/format";
 import AuthedImage from "../components/AuthedImage";
-import { useDialog } from "../components/DialogProvider";
+import { useDialog } from "../components/dialog-context";
 
 export default function ListingDetail() {
   const { id } = useParams();

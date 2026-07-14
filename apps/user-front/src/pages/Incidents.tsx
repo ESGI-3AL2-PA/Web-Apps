@@ -5,7 +5,7 @@ import type { IncidentResponseDto, IncidentStatus } from "@repo/contracts";
 import { createIncident, getIncidents } from "../api-service/incidents.service";
 import { getUserById } from "../api-service/users.service";
 import { formatRelative } from "../lib/format";
-import { useDialog } from "../components/DialogProvider";
+import { useDialog } from "../components/dialog-context";
 
 const CATEGORIES = ["cleanliness", "safety", "vandalism", "noise", "other"] as const;
 
