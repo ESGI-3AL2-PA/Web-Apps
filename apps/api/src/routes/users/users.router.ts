@@ -48,6 +48,9 @@ export const usersRouter = s.router(usersContract, {
     if (result.kind === "wrong-password") {
       return { status: 401, body: { message: "Current password is incorrect" } };
     }
+    if (result.kind === "email-conflict") {
+      return { status: 409, body: { message: "This email address is already in use" } };
+    }
     return { status: 200, body: toDto(result.user) };
   },
 
