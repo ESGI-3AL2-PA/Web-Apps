@@ -1,6 +1,7 @@
 import { randomUUID } from "crypto";
 import type { Collection, Db, Filter } from "mongodb";
 import type { User } from "../../entities/user.entity.js";
+import { escapeRegex } from "../escape-regex.js";
 import type { IUserRepository } from "./user.repository.js";
 
 export class MongoUserRepository implements IUserRepository {
@@ -31,9 +32,7 @@ export class MongoUserRepository implements IUserRepository {
 
     const filter: Filter<Omit<User, "id"> & { _id: string }> = {};
     if (search) {
-      // Escape regex metacharacters so the raw search string can't inject an
-      // evil-regex (catastrophic backtracking / full-scan DoS).
-      const safe = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const safe = escapeRegex(search);
       filter.$or = [
         { firstName: { $regex: safe, $options: "i" } },
         { lastName: { $regex: safe, $options: "i" } },

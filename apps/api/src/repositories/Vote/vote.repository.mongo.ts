@@ -1,6 +1,7 @@
 import { randomUUID } from "crypto";
 import type { ClientSession, Collection, Db, Filter } from "mongodb";
 import type { Vote, VoteResponseEntity, VoteStatus } from "../../entities/vote.entity.js";
+import { escapeRegex } from "../escape-regex.js";
 import type { IVoteRepository } from "./vote.repository.js";
 
 type VoteDoc = Omit<Vote, "id"> & { _id: string };
@@ -37,7 +38,7 @@ export class MongoVoteRepository implements IVoteRepository {
     const { search, status, districtId, creatorId, currentUserId, page = 1, limit = 20 } = params;
 
     const filter: Filter<VoteDoc> = {};
-    if (search) filter.question = { $regex: search, $options: "i" };
+    if (search) filter.question = { $regex: escapeRegex(search), $options: "i" };
     if (status) filter.status = status as VoteStatus;
     if (districtId) filter.districtIds = districtId;
     if (creatorId) filter.creatorId = creatorId;

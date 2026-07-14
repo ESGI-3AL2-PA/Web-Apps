@@ -1,6 +1,7 @@
 import { randomUUID } from "crypto";
 import type { Collection, Db, Filter } from "mongodb";
 import type { Listing, ListingType, ListingStatus } from "../../entities/listing.entity.js";
+import { escapeRegex } from "../escape-regex.js";
 import type { IListingRepository } from "./listing.repository.js";
 
 type ListingDoc = Omit<Listing, "id"> & { _id: string };
@@ -37,7 +38,8 @@ export class MongoListingRepository implements IListingRepository {
     const filter: Filter<ListingDoc> = {};
 
     if (search) {
-      filter.$or = [{ title: { $regex: search, $options: "i" } }, { description: { $regex: search, $options: "i" } }];
+      const safe = escapeRegex(search);
+      filter.$or = [{ title: { $regex: safe, $options: "i" } }, { description: { $regex: safe, $options: "i" } }];
     }
     if (type) filter.type = type as ListingType;
     if (status) filter.status = status as ListingStatus;
@@ -47,8 +49,7 @@ export class MongoListingRepository implements IListingRepository {
     // "babysitting" et inversement. On échappe les caractères regex pour
     // éviter toute injection (`.`, `*`, `+`, etc. dans un nom de tag).
     if (tag) {
-      const escaped = tag.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      filter.tags = { $regex: new RegExp(`^${escaped}$`, "i") };
+      filter.tags = { $regex: new RegExp(`^${escapeRegex(tag)}$`, "i") };
     }
 
     const [total, docs] = await Promise.all([
