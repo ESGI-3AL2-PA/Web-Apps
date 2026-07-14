@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
+import { useFocusTrap } from "../lib/useFocusTrap";
 
 type Tone = "default" | "danger";
 
@@ -66,6 +67,7 @@ export function DialogProvider({ children }: { children: ReactNode }) {
     return () => document.removeEventListener("keydown", onKey);
   }, [state, settle]);
 
+  const panelRef = useFocusTrap<HTMLDivElement>(!!state);
   const danger = state?.tone === "danger";
   const isConfirm = state?.mode === "confirm";
   // For a destructive confirm, focus the safe (cancel) action instead of the
@@ -80,15 +82,27 @@ export function DialogProvider({ children }: { children: ReactNode }) {
           className="fixed inset-0 z-[60] flex items-end justify-center sm:items-center"
           role="dialog"
           aria-modal="true"
+          aria-labelledby={state.title ? "dialog-title" : "dialog-desc"}
+          aria-describedby="dialog-desc"
         >
           <button
             aria-label={t("common.cancel")}
             onClick={() => settle(false)}
             className="absolute inset-0 bg-black/40"
           />
-          <div className="relative w-full max-w-sm rounded-t-2xl bg-white dark:bg-neutral-900 p-5 shadow-2xl sm:rounded-2xl">
-            {state.title && <h2 className="text-lg font-bold text-neutral-900 dark:text-neutral-50">{state.title}</h2>}
-            <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-300">{state.message}</p>
+          <div
+            ref={panelRef}
+            tabIndex={-1}
+            className="relative w-full max-w-sm rounded-t-2xl bg-white dark:bg-neutral-900 p-5 shadow-2xl outline-none sm:rounded-2xl"
+          >
+            {state.title && (
+              <h2 id="dialog-title" className="text-lg font-bold text-neutral-900 dark:text-neutral-50">
+                {state.title}
+              </h2>
+            )}
+            <p id="dialog-desc" className="mt-1 text-sm text-neutral-600 dark:text-neutral-300">
+              {state.message}
+            </p>
             <div className="mt-5 flex justify-end gap-2">
               {isConfirm && (
                 <button

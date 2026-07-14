@@ -2,6 +2,7 @@ import { useState, type ReactNode } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@repo/hooks";
+import { useFocusTrap } from "../lib/useFocusTrap";
 
 const iconProps = {
   width: 24,
@@ -61,6 +62,7 @@ export default function BottomNav() {
   const { t, i18n } = useTranslation();
   const { user, logout } = useAuth();
   const [sheet, setSheet] = useState(false);
+  const sheetRef = useFocusTrap<HTMLDivElement>(sheet, () => setSheet(false));
 
   const go = (to: string) => {
     setSheet(false);
@@ -71,15 +73,28 @@ export default function BottomNav() {
     <>
       {/* Account sheet (slides up from the bottom nav) */}
       {sheet && (
-        <div className="fixed inset-0 z-50 md:hidden" role="dialog" aria-modal="true">
-          <button aria-label="Close" onClick={() => setSheet(false)} className="absolute inset-0 bg-black/40" />
-          <div className="absolute inset-x-0 bottom-0 rounded-t-2xl bg-white dark:bg-neutral-900 p-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] shadow-2xl">
+        <div
+          className="fixed inset-0 z-50 md:hidden"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="account-sheet-title"
+        >
+          <button
+            aria-label={t("common.cancel")}
+            onClick={() => setSheet(false)}
+            className="absolute inset-0 bg-black/40"
+          />
+          <div
+            ref={sheetRef}
+            tabIndex={-1}
+            className="absolute inset-x-0 bottom-0 rounded-t-2xl bg-white dark:bg-neutral-900 p-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] shadow-2xl outline-none"
+          >
             <div className="mx-auto mb-2 mt-1 h-1 w-10 rounded-full bg-neutral-300" />
             <div className="flex items-center gap-3 border-b border-neutral-100 dark:border-neutral-800 px-3 py-3">
               <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[color:var(--color-brand)] text-sm font-bold text-white">
                 {user?.firstName?.charAt(0) ?? "?"}
               </span>
-              <span className="font-semibold text-neutral-900 dark:text-neutral-50">
+              <span id="account-sheet-title" className="font-semibold text-neutral-900 dark:text-neutral-50">
                 {user?.firstName ?? t("header.account")}
               </span>
             </div>

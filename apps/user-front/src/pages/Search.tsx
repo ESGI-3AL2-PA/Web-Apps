@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import type { ListingQueryDto, ListingResponseDto, TagResponseDto } from "@repo/contracts";
 import { getListings } from "../api-service/listings.service";
 import { getTags } from "../api-service/tags.service";
+import { useFocusTrap } from "../lib/useFocusTrap";
 import ListingCard from "../components/ListingCard";
 
 export default function Search() {
@@ -14,6 +15,7 @@ export default function Search() {
   const [tags, setTags] = useState<TagResponseDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const sheetRef = useFocusTrap<HTMLDivElement>(filtersOpen, () => setFiltersOpen(false));
 
   const search = params.get("search") ?? "";
   const tag = params.get("tag") ?? "";
@@ -133,9 +135,25 @@ export default function Search() {
 
       {/* Mobile filter sheet */}
       {filtersOpen && (
-        <div className="fixed inset-0 z-50 md:hidden" role="dialog" aria-modal="true">
-          <button aria-label="Close" onClick={() => setFiltersOpen(false)} className="absolute inset-0 bg-black/40" />
-          <div className="absolute inset-x-0 bottom-0 max-h-[80vh] overflow-y-auto rounded-t-2xl bg-white dark:bg-neutral-900 p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] shadow-2xl">
+        <div
+          className="fixed inset-0 z-50 md:hidden"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="filter-sheet-title"
+        >
+          <button
+            aria-label={t("common.cancel")}
+            onClick={() => setFiltersOpen(false)}
+            className="absolute inset-0 bg-black/40"
+          />
+          <div
+            ref={sheetRef}
+            tabIndex={-1}
+            className="absolute inset-x-0 bottom-0 max-h-[80vh] overflow-y-auto rounded-t-2xl bg-white dark:bg-neutral-900 p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] shadow-2xl outline-none"
+          >
+            <h2 id="filter-sheet-title" className="sr-only">
+              {t("search.filters")}
+            </h2>
             <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-neutral-300" />
             <div className="space-y-6">{filterControls}</div>
             <button

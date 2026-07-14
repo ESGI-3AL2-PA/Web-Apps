@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "@repo/hooks";
 import { createConversation } from "../api-service/conversations.service";
 import type { UserPublic } from "../api-service/users.service";
+import { useFocusTrap } from "../lib/useFocusTrap";
 import UserAutocomplete from "./UserAutocomplete";
 
 export default function NewConversationModal({
@@ -14,6 +15,7 @@ export default function NewConversationModal({
 }) {
   const { t } = useTranslation();
   const { user } = useAuth();
+  const panelRef = useFocusTrap<HTMLDivElement>(true, onClose);
   const [targets, setTargets] = useState<UserPublic[]>([]);
   const [name, setName] = useState("");
   const [pickerKey, setPickerKey] = useState(0);
@@ -62,11 +64,22 @@ export default function NewConversationModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center" role="dialog" aria-modal="true">
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center sm:items-center"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="new-conv-title"
+    >
       <button aria-label={t("common.cancel")} onClick={onClose} className="absolute inset-0 bg-black/40" />
-      <div className="relative w-full max-w-sm rounded-t-2xl bg-white dark:bg-neutral-900 p-5 shadow-2xl sm:rounded-2xl">
+      <div
+        ref={panelRef}
+        tabIndex={-1}
+        className="relative w-full max-w-sm rounded-t-2xl bg-white dark:bg-neutral-900 p-5 shadow-2xl outline-none sm:rounded-2xl"
+      >
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-bold text-neutral-900 dark:text-neutral-50">{t("messages.newConversation")}</h2>
+          <h2 id="new-conv-title" className="text-lg font-bold text-neutral-900 dark:text-neutral-50">
+            {t("messages.newConversation")}
+          </h2>
           <button
             onClick={onClose}
             aria-label={t("common.cancel")}
