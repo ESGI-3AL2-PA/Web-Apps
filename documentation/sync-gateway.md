@@ -1,5 +1,11 @@
 # sync-gateway — H2 ↔ MongoDB Synchronisation
 
+> ## 🚧 NOT YET IMPLEMENTED — proposed / roadmap design
+>
+> This document is a **design spec for a planned service**, not a description of current architecture. `apps/sync-gateway` **does not exist on `main`** yet (work is tracked on the `feat/sync-gateway` branch). Ports, schemas, and endpoints below are proposals and may change during implementation.
+>
+> **Do not confuse this with the existing Mongo → Neo4j projection** in `apps/api/src/repositories/Graph/graph.sync.ts` — that is a live, one-way sync that mirrors MongoDB documents into the Neo4j graph. sync-gateway is a separate, still-unbuilt bidirectional bridge between a companion Java app's embedded H2 database and MongoDB.
+
 ## Role
 
 A dedicated `sync-gateway` service (`apps/sync-gateway`) bridges the Java app's embedded H2 database and MongoDB. It handles bidirectional sync:
@@ -188,4 +194,4 @@ SYNC_CHANGES {
 
 **Problem**: the same entity can be created independently on both sides before a sync cycle — H2 with `mongo_id = NULL`, MongoDB via the Node.js API.
 
-????
+> The deduplication strategy is still open. The intended direction is to reconcile on a per-entity **business key** (e.g. a user's email) via a unique index, so a retried INSERT that collides with an existing document adopts that document's `mongoId` instead of creating a duplicate. The exact conflict-resolution rules will be defined when the service is implemented.
