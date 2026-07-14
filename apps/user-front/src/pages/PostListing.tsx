@@ -66,24 +66,34 @@ export default function PostListing() {
         className="space-y-5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-6"
       >
         <div>
-          <label className="mb-1 block text-sm font-semibold text-neutral-700 dark:text-neutral-200">
+          <label
+            htmlFor="post-title"
+            className="mb-1 block text-sm font-semibold text-neutral-700 dark:text-neutral-200"
+          >
             {t("post.fieldTitle")}
           </label>
           <input
+            id="post-title"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             required
             maxLength={300}
             className={field}
             placeholder={t("post.titlePlaceholder")}
+            aria-invalid={error ? true : undefined}
+            aria-describedby={error ? "post-error" : undefined}
           />
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-semibold text-neutral-700 dark:text-neutral-200">
+          <label
+            htmlFor="post-price"
+            className="mb-1 block text-sm font-semibold text-neutral-700 dark:text-neutral-200"
+          >
             {t("post.pricePoints")}
           </label>
           <input
+            id="post-price"
             value={price}
             onChange={(e) => setPrice(e.target.value)}
             type="number"
@@ -95,10 +105,13 @@ export default function PostListing() {
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-semibold text-neutral-700 dark:text-neutral-200">
+          <label
+            htmlFor="post-category"
+            className="mb-1 block text-sm font-semibold text-neutral-700 dark:text-neutral-200"
+          >
             {t("post.category")}
           </label>
-          <select value={tag} onChange={(e) => setTag(e.target.value)} className={field}>
+          <select id="post-category" value={tag} onChange={(e) => setTag(e.target.value)} className={field}>
             <option value="">{t("post.chooseCategory")}</option>
             {tags.map((t) => (
               <option key={t.id} value={t.name}>
@@ -109,10 +122,14 @@ export default function PostListing() {
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-semibold text-neutral-700 dark:text-neutral-200">
+          <label
+            htmlFor="post-description"
+            className="mb-1 block text-sm font-semibold text-neutral-700 dark:text-neutral-200"
+          >
             {t("post.description")}
           </label>
           <textarea
+            id="post-description"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             required
@@ -123,10 +140,20 @@ export default function PostListing() {
         </div>
 
         <div>
-          <label className="mb-1 block text-sm font-semibold text-neutral-700 dark:text-neutral-200">
+          <label
+            htmlFor="post-photos"
+            className="mb-1 block text-sm font-semibold text-neutral-700 dark:text-neutral-200"
+          >
             {t("post.photos")}
           </label>
-          <input type="file" accept="image/*" multiple onChange={(e) => onFiles(e.target.files)} className="text-sm" />
+          <input
+            id="post-photos"
+            type="file"
+            accept="image/*"
+            multiple
+            onChange={(e) => onFiles(e.target.files)}
+            className="text-sm"
+          />
           {previews.length > 0 && (
             <div className="mt-3 flex flex-wrap gap-2">
               {previews.map((src) => (
@@ -141,7 +168,11 @@ export default function PostListing() {
           )}
         </div>
 
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        {error && (
+          <p id="post-error" role="alert" className="text-sm text-red-600">
+            {error}
+          </p>
+        )}
 
         <button
           type="submit"
