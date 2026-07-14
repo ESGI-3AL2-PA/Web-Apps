@@ -157,12 +157,14 @@
       "revoke": "Revoke",
       "logout": "Log out",
       "revokeOthers": "Log out everywhere else",
-      "empty": "No active sessions."
+      "empty": "No active sessions.",
+      "error": "The action failed. Please try again."
     },
     "data": {
       "title": "Your data",
       "desc": "Download everything we hold about you as a JSON file.",
-      "action": "Download my data"
+      "action": "Download my data",
+      "error": "Downloading your data failed."
     },
     "danger": {
       "title": "Delete account",

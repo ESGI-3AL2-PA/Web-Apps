@@ -157,12 +157,14 @@
       "revoke": "Révoquer",
       "logout": "Se déconnecter",
       "revokeOthers": "Se déconnecter partout ailleurs",
-      "empty": "Aucune session active."
+      "empty": "Aucune session active.",
+      "error": "L'opération a échoué. Réessayez."
     },
     "data": {
       "title": "Vos données",
       "desc": "Téléchargez toutes vos données au format JSON.",
-      "action": "Télécharger mes données"
+      "action": "Télécharger mes données",
+      "error": "Le téléchargement de vos données a échoué."
     },
     "danger": {
       "title": "Supprimer le compte",

@@ -47,7 +47,7 @@ function Card({ title, description, children }: { title: string; description?: s
 export default function Settings() {
   const { t } = useTranslation();
   const { user, logout, getAccessToken, refresh } = useAuth();
-  const { confirm } = useDialog();
+  const { confirm, alert } = useDialog();
 
   const [sessions, setSessions] = useState<SessionResponseDto[]>([]);
   const [loadingSessions, setLoadingSessions] = useState(true);
@@ -111,6 +111,9 @@ export default function Settings() {
         return;
       }
       setSessions((prev) => prev.filter((s) => s.id !== session.id));
+    } catch {
+      await alert({ message: t("settings.sessions.error") });
+      await loadSessions();
     } finally {
       setBusy(null);
     }
@@ -122,6 +125,9 @@ export default function Settings() {
       const tok = await token();
       if (tok) await revokeOtherSessions(tok);
       setSessions((prev) => prev.filter((s) => s.current));
+    } catch {
+      await alert({ message: t("settings.sessions.error") });
+      await loadSessions();
     } finally {
       setBusy(null);
     }
@@ -139,6 +145,8 @@ export default function Settings() {
       a.download = `mes-donnees-${user.id}.json`;
       a.click();
       URL.revokeObjectURL(href);
+    } catch {
+      await alert({ message: t("settings.data.error") });
     } finally {
       setBusy(null);
     }
