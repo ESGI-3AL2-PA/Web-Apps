@@ -153,6 +153,9 @@ export default function Header() {
           <div ref={menuRef} className="relative">
             <button
               onClick={() => setMenuOpen((o) => !o)}
+              aria-haspopup="menu"
+              aria-expanded={menuOpen}
+              aria-controls="account-menu"
               className="flex min-w-[62px] flex-col items-center gap-1 text-neutral-600 dark:text-neutral-300 hover:text-[color:var(--color-brand)]"
             >
               <span className="flex h-[22px] w-[22px] items-center justify-center rounded-full bg-[color:var(--color-brand)] text-xs font-bold text-white">
@@ -163,7 +166,10 @@ export default function Header() {
               </span>
             </button>
             {menuOpen && (
-              <div className="absolute right-0 mt-2 w-48 overflow-hidden rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 py-1 shadow-lg">
+              <div
+                id="account-menu"
+                className="absolute right-0 mt-2 w-48 overflow-hidden rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 py-1 shadow-lg"
+              >
                 <Link
                   to="/profil"
                   onClick={() => setMenuOpen(false)}

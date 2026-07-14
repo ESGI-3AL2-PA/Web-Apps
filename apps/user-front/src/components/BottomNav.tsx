@@ -120,6 +120,7 @@ export default function BottomNav() {
                   <button
                     key={lng}
                     onClick={() => i18n.changeLanguage(lng)}
+                    aria-pressed={i18n.resolvedLanguage === lng}
                     className={`px-3 py-1 text-xs font-semibold uppercase ${
                       i18n.resolvedLanguage === lng
                         ? "bg-[color:var(--color-brand)] text-white"
@@ -136,7 +137,7 @@ export default function BottomNav() {
                 setSheet(false);
                 logout();
               }}
-              className="mt-1 block w-full rounded-lg px-3 py-3 text-left text-sm font-semibold text-red-600 hover:bg-red-50"
+              className="mt-1 block w-full rounded-lg px-3 py-3 text-left text-sm font-semibold text-red-700 hover:bg-red-50"
             >
               {t("header.logout")}
             </button>

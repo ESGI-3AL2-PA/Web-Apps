@@ -16,7 +16,8 @@
     "misc": "Divers",
     "confirm": "Confirmer",
     "cancel": "Annuler",
-    "ok": "OK"
+    "ok": "OK",
+    "skipToContent": "Aller au contenu principal"
   },
   "relative": {
     "now": "à l'instant",

@@ -99,6 +99,9 @@ export default function NotificationBell() {
       <button
         onClick={toggle}
         aria-label={t("notifications.title")}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-controls="notification-menu"
         className="relative flex h-9 w-9 items-center justify-center rounded-lg text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-[color:var(--color-brand)]"
       >
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
@@ -113,7 +116,10 @@ export default function NotificationBell() {
       </button>
 
       {open && (
-        <div className="absolute right-0 z-50 mt-2 w-80 max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 shadow-lg">
+        <div
+          id="notification-menu"
+          className="absolute right-0 z-50 mt-2 w-80 max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 shadow-lg"
+        >
           <div className="flex items-center justify-between border-b border-neutral-100 dark:border-neutral-800 px-4 py-2.5">
             <span className="text-sm font-bold text-neutral-900 dark:text-neutral-50">{t("notifications.title")}</span>
             {unread > 0 && (

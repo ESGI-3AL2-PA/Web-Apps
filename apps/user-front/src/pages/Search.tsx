@@ -63,6 +63,7 @@ export default function Search() {
         <div className="flex flex-col gap-1 text-sm">
           <button
             onClick={() => setFilter("tag", "")}
+            aria-pressed={!tag}
             className={`rounded px-2 py-1.5 text-left ${!tag ? "bg-[color:var(--color-brand-soft)] font-semibold text-[color:var(--color-brand-dark)]" : "hover:bg-neutral-100 dark:hover:bg-neutral-800"}`}
           >
             {t("search.allCategories")}
@@ -71,6 +72,7 @@ export default function Search() {
             <button
               key={tg.id}
               onClick={() => setFilter("tag", tg.name)}
+              aria-pressed={tag === tg.name}
               className={`rounded px-2 py-1.5 text-left ${
                 tag === tg.name
                   ? "bg-[color:var(--color-brand-soft)] font-semibold text-[color:var(--color-brand-dark)]"

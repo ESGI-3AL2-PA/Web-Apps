@@ -81,7 +81,7 @@ export default function MyListings() {
               </div>
               <button
                 onClick={() => onDelete(l.id)}
-                className="rounded-lg border border-red-200 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50"
+                className="rounded-lg border border-red-200 px-3 py-1.5 text-sm font-medium text-red-700 hover:bg-red-50"
               >
                 {t("myListings.delete")}
               </button>

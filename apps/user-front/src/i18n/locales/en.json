@@ -16,7 +16,8 @@
     "misc": "Misc",
     "confirm": "Confirm",
     "cancel": "Cancel",
-    "ok": "OK"
+    "ok": "OK",
+    "skipToContent": "Skip to main content"
   },
   "relative": {
     "now": "just now",

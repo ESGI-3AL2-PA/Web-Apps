@@ -176,6 +176,7 @@ export default function Settings() {
             <button
               key={mode}
               onClick={() => chooseTheme(mode)}
+              aria-pressed={theme === mode}
               className={`px-4 py-2 text-sm font-semibold ${
                 theme === mode
                   ? "bg-[color:var(--color-brand)] text-white"
@@ -265,9 +266,9 @@ export default function Settings() {
       </Card>
 
       {/* Danger zone */}
-      <section className="rounded-xl border border-red-200 bg-red-50/40 p-5">
+      <section className="rounded-xl border border-red-200 bg-red-50 p-5">
         <h2 className="text-lg font-bold text-red-700">{t("settings.danger.title")}</h2>
-        <p className="mt-1 text-sm text-red-600/80">{t("settings.danger.desc")}</p>
+        <p className="mt-1 text-sm text-red-700">{t("settings.danger.desc")}</p>
         <button
           onClick={onDelete}
           disabled={busy === "delete"}
