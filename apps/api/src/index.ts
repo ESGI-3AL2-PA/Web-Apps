@@ -47,6 +47,8 @@ import { requireAuth } from "./middleware/auth.middleware.js";
 import { authorize } from "./middleware/authorize.middleware.js";
 import { connectDB, closeDB } from "./repositories/mongodb.connector.js";
 import { connectNeo4j, closeNeo4j } from "./repositories/neo4j.connector.js";
+import { connectSatan, closeSatan } from "./repositories/satan.connector.js";
+import type { SatanClient } from "@repo/satan";
 import { setupGracefulShutdown } from "./shutdown.js";
 import { initContainer } from "./repositories/container.js";
 import { generateOpenApi } from "@ts-rest/open-api";
@@ -221,9 +223,29 @@ app.use((_req, _res, next) => {
 
 app.use(errorHandler);
 
+// Best-effort: bring up the SATAN QL worker so the container can resolve the
+// SATAN-backed repositories. If it can't start (e.g. python/`ply` missing) we
+// log and fall back to the Mongo repos rather than refusing to boot. Skip
+// entirely when SATAN_REPOS=false.
+const maybeConnectSatan = async (): Promise<SatanClient | undefined> => {
+  if (process.env.SATAN_REPOS === "false") {
+    console.warn("😈 SATAN repositories disabled (SATAN_REPOS=false) — using Mongo repositories");
+    return undefined;
+  }
+  try {
+    const client = await connectSatan();
+    console.warn("😈 SATAN repositories active");
+    return client;
+  } catch (err) {
+    console.error("😈 SATAN worker unavailable — falling back to Mongo repositories:", (err as Error).message);
+    return undefined;
+  }
+};
+
 Promise.all([connectDB(), connectNeo4j()])
-  .then(([db, neo4jDriver]) => {
-    initContainer(db, neo4jDriver);
+  .then(async ([db, neo4jDriver]) => {
+    const satan = await maybeConnectSatan();
+    initContainer(db, neo4jDriver, satan);
 
     // Création d'un http.Server manuel pour pouvoir y attacher Socket.io.
     const httpServer = createServer(app);
@@ -243,7 +265,7 @@ Promise.all([connectDB(), connectNeo4j()])
     setupGracefulShutdown(
       httpServer,
       async () => {
-        await Promise.all([closeDB(), closeNeo4j()]);
+        await Promise.all([closeDB(), closeNeo4j(), closeSatan()]);
       },
       closeSocketIo,
     );

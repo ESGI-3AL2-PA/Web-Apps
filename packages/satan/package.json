@@ -1,0 +1,27 @@
+{
+  "name": "@repo/satan",
+  "version": "0.0.0",
+  "private": true,
+  "description": "SATAN QL — thin bridge to a Python worker that runs SQL-like queries against MongoDB",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "python"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "install:py": "pip install -r python/requirements.txt",
+    "test:py": "python3 python/test_satan.py"
+  },
+  "devDependencies": {
+    "@repo/eslint-config": "*",
+    "@repo/typescript-config": "*",
+    "@types/node": "^20.19.41",
+    "eslint": "^9.39.4",
+    "typescript": "6.0.2"
+  }
+}
