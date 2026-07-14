@@ -7,6 +7,7 @@
     "build": "tsc && cp -r src/login-page src/register-page dist/",
     "dev": "tsx --watch src/index.ts",
     "start": "node ./dist/index.js",
+    "test": "vitest run",
     "seed:superadmin": "tsx src/seed-superadmin.ts",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix"
@@ -21,7 +22,8 @@
     "@types/nodemailer": "^7.0.2",
     "eslint": "^9.39.4",
     "tsx": "^4.21.0",
-    "typescript": "^6.0.2"
+    "typescript": "^6.0.2",
+    "vitest": "^4.1.10"
   },
   "dependencies": {
     "@repo/contracts": "*",

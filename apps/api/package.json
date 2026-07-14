@@ -7,6 +7,7 @@
     "build": "tsc",
     "dev": "tsx --watch src/index.ts",
     "start": "node ./dist/index.js",
+    "test": "vitest run",
     "graph:rebuild": "tsx src/scripts/rebuild-graph.ts",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix"
@@ -19,7 +20,8 @@
     "@types/node": "^25.5.0",
     "eslint": "^9.39.4",
     "tsx": "^4.21.0",
-    "typescript": "^6.0.2"
+    "typescript": "^6.0.2",
+    "vitest": "^4.1.10"
   },
   "dependencies": {
     "@repo/contracts": "*",

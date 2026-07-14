@@ -5,6 +5,7 @@
     "dev": "docker compose -f docker-compose.local.yml --profile core up -d && turbo run dev",
     "lint": "turbo run lint",
     "lint:fix": "turbo run lint:fix",
+    "test": "turbo run test",
     "start": "turbo run start",
     "format": "prettier --write \"**/*.{ts,tsx,js,cjs,mjs,json,md}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,cjs,mjs,json,md}\"",
