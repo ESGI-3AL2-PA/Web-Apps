@@ -8,6 +8,7 @@ import { createNotificationUseCase } from "../../use-cases/notifications/create-
 import { markNotificationReadUseCase } from "../../use-cases/notifications/mark-notification-read.use-case.js";
 import { markAllNotificationsReadUseCase } from "../../use-cases/notifications/mark-all-notifications-read.use-case.js";
 import { deleteNotificationUseCase } from "../../use-cases/notifications/delete-notification.use-case.js";
+import { broadcastNewNotification } from "../../sockets/io.js";
 
 const s = initServer();
 
@@ -37,6 +38,8 @@ export const notificationsRouter = s.router(notificationsContract, {
       ...body,
       districtId: recipient.districtId,
     });
+    // Push au destinataire connecté (il refetchera automatiquement).
+    broadcastNewNotification(notification.recipientId, notification);
     return { status: 201, body: notification };
   },
 
