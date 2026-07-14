@@ -47,3 +47,27 @@ export const getAudioStream = async (messageId: string): Promise<Readable | null
 };
 
 export const AUDIO_MIME = AUDIO_CONTENT_TYPE;
+
+// --- Message images ---------------------------------------------------------
+// Stored in the SAME private bucket as voice notes (never the public `listings`
+// bucket), keyed by message id so the participant-checked stream can find them.
+// The `-image` suffix keeps them distinct from the `<id>.webm` audio objects.
+const imageObjectName = (messageId: string): string => `${messageId}-image`;
+
+// Persist a message image's decoded bytes. The content-type is stored as object
+// metadata so the stream handler can serve it back without a message-doc field.
+export const saveMessageImage = async (messageId: string, bytes: Buffer, contentType: string): Promise<void> => {
+  await minio.putObject(BUCKET, imageObjectName(messageId), bytes, bytes.length, { "Content-Type": contentType });
+};
+
+// Returns the image stream + its stored content-type, or null if it is missing.
+export const getMessageImage = async (messageId: string): Promise<{ stream: Readable; contentType: string } | null> => {
+  try {
+    const name = imageObjectName(messageId);
+    const stat = await minio.statObject(BUCKET, name);
+    const stream = await minio.getObject(BUCKET, name);
+    return { stream, contentType: stat.metaData["content-type"] ?? "application/octet-stream" };
+  } catch {
+    return null; // NoSuchKey etc.
+  }
+};

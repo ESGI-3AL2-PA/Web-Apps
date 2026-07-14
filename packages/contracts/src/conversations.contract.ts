@@ -10,7 +10,9 @@ import {
   MessageResponseDtoSchema,
   SendMessageDtoSchema,
   SendVoiceMessageDtoSchema,
+  SendImageMessageDtoSchema,
   UploadMediaDtoSchema,
+  BadRequestErrorSchema,
   NotFoundErrorSchema,
   PaginatedResponseDtoSchema,
 } from "./DTO";
@@ -114,6 +116,28 @@ export const conversationsContract = c.router({
       404: NotFoundErrorSchema,
     },
     summary: "Send a voice message in a conversation (participant only)",
+    metadata: auth({
+      audience: "api",
+      scope: {
+        resource: "conversation",
+        ownerArrayField: "participants",
+        districtField: "districtId",
+        notFoundOnDeny: true,
+      },
+    }),
+  },
+
+  sendImageMessage: {
+    method: "POST",
+    path: "/conversations/:id/messages/image",
+    pathParams: ConversationParamsDtoSchema,
+    body: SendImageMessageDtoSchema,
+    responses: {
+      201: MessageResponseDtoSchema,
+      400: BadRequestErrorSchema,
+      404: NotFoundErrorSchema,
+    },
+    summary: "Send an image message in a conversation (participant only)",
     metadata: auth({
       audience: "api",
       scope: {

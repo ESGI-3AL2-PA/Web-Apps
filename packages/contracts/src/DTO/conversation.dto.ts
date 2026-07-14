@@ -81,6 +81,19 @@ export const SendVoiceMessageDtoSchema = z
   .openapi({ title: "SendVoiceMessage" });
 export type SendVoiceMessageDto = z.infer<typeof SendVoiceMessageDtoSchema>;
 
+// Image message upload: base64 data-URL (png/jpeg/webp/gif). Same ~5 MB bound as voice.
+// Served privately (participant-checked), unlike public listing images.
+export const SendImageMessageDtoSchema = z
+  .object({
+    imageBase64: z
+      .string()
+      .min(20)
+      .max(7_000_000)
+      .openapi({ description: "Image as a base64 data-URL (png/jpeg/webp/gif), max ~5 MB decoded" }),
+  })
+  .openapi({ title: "SendImageMessage" });
+export type SendImageMessageDto = z.infer<typeof SendImageMessageDtoSchema>;
+
 export const MessageQueryDtoSchema = z
   .object({
     page: z.coerce.number().int().min(1).optional().default(1),

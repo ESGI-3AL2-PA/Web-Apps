@@ -5,14 +5,15 @@ import { useAuth } from "@repo/hooks";
 import type { ConversationResponseDto, MessageResponseDto } from "@repo/contracts";
 import {
   fetchAudioBlob,
+  fetchImageBlob,
   getConversations,
   getMessages,
   markMessageRead,
+  sendImageMessage,
   sendMessage,
   sendVoiceMessage,
 } from "../api-service/conversations.service";
 import { getUserPublic } from "../api-service/users.service";
-import { uploadImage } from "../api-service/uploads.service";
 import { useSocket } from "../sockets/SocketProvider";
 import { formatRelative } from "../lib/format";
 import { useDialog } from "../components/DialogProvider";
@@ -39,6 +40,32 @@ function MessageAudio({ id }: { id: string }) {
     <audio controls src={url} className="h-9 max-w-[220px]" />
   ) : (
     <span className="text-xs opacity-70">🎧 {t("common.loading")}</span>
+  );
+}
+
+// Renders an image message: fetches the bytes (Bearer-authed, participant-checked) and
+// shows them via an object URL. Not a plain <img src> since the endpoint requires auth.
+function MessageImage({ id }: { id: string }) {
+  const { t } = useTranslation();
+  const [url, setUrl] = useState<string | null>(null);
+  useEffect(() => {
+    let objectUrl: string | null = null;
+    fetchImageBlob(id)
+      .then((b) => {
+        objectUrl = URL.createObjectURL(b);
+        setUrl(objectUrl);
+      })
+      .catch(() => undefined);
+    return () => {
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [id]);
+  return url ? (
+    <a href={url} target="_blank" rel="noopener noreferrer">
+      <img src={url} alt="" className="max-h-60 max-w-full rounded-lg" />
+    </a>
+  ) : (
+    <span className="text-xs opacity-70">🖼 {t("common.loading")}</span>
   );
 }
 
@@ -157,16 +184,15 @@ export default function Messages() {
     }
   };
 
-  // Picture message: upload the file to /uploads/images, then send an image message
-  // pointing at the returned public URL (reuses the in-contract sendMessage route).
+  // Picture message: send the file in-band to the participant-checked image route
+  // (bytes stored privately, keyed by message id — like a voice note).
   const onPickImage = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = ""; // let the user re-pick the same file
     if (!file || !conversationId) return;
     setSendingImage(true);
     try {
-      const mediaUrl = await uploadImage(file);
-      const sent = await sendMessage(conversationId, { type: "image", content: "[image]", mediaUrl });
+      const sent = await sendImageMessage(conversationId, file);
       setMessages((prev) => (prev.some((m) => m.id === sent.id) ? prev : [...prev, sent]));
     } catch {
       await alert({ message: t("messages.imageError") });
@@ -289,10 +315,8 @@ export default function Messages() {
                       )}
                       {m.type === "audio" ? (
                         <MessageAudio id={m.id} />
-                      ) : m.type === "image" && m.mediaUrl ? (
-                        <a href={m.mediaUrl} target="_blank" rel="noopener noreferrer">
-                          <img src={m.mediaUrl} alt="" className="max-h-60 max-w-full rounded-lg" loading="lazy" />
-                        </a>
+                      ) : m.type === "image" ? (
+                        <MessageImage id={m.id} />
                       ) : (
                         <p className="whitespace-pre-wrap">{m.content}</p>
                       )}

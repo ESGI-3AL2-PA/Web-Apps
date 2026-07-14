@@ -20,6 +20,16 @@ const blobToBase64 = (blob: Blob): Promise<string> =>
     reader.readAsDataURL(blob);
   });
 
+// Convert a File → full base64 data-URL (keeps the `data:<mime>;base64,` prefix so the
+// api can recover the content-type).
+const fileToDataUrl = (file: File): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+
 type PaginatedConversations = PaginatedResponseDto<typeof ConversationResponseDtoSchema>;
 type PaginatedMessages = PaginatedResponseDto<typeof MessageResponseDtoSchema>;
 
@@ -72,4 +82,19 @@ export async function sendVoiceMessage(conversationId: string, audioBlob: Blob):
 export async function fetchAudioBlob(messageId: string): Promise<Blob> {
   const res = await api.get(`/messages/${messageId}/audio`, { responseType: "blob" });
   return new Blob([res.data], { type: "audio/webm" });
+}
+
+// POST /conversations/:id/messages/image — send an image message (File → base64
+// data-URL). The bytes ride in-band, like a voice note (not the public /uploads route).
+export async function sendImageMessage(conversationId: string, file: File): Promise<MessageResponseDto> {
+  const imageBase64 = await fileToDataUrl(file);
+  const res = await api.post<MessageResponseDto>(`/conversations/${conversationId}/messages/image`, { imageBase64 });
+  return res.data;
+}
+
+// GET /messages/:id/image — fetch a message image's bytes (Bearer auto-attached).
+// Participant-checked server-side, so images are fetched as a blob, not embedded by URL.
+export async function fetchImageBlob(messageId: string): Promise<Blob> {
+  const res = await api.get(`/messages/${messageId}/image`, { responseType: "blob" });
+  return res.data as Blob;
 }

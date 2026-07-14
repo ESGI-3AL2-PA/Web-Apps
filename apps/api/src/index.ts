@@ -41,6 +41,7 @@ import { transactionsRouter } from "./routes/transactions/transactions.router.js
 import { createServer } from "http";
 import { setupSocketIo, closeSocketIo } from "./sockets/io.js";
 import { audioStreamHandler } from "./routes/conversations/voice-message.handler.js";
+import { imageMessageStreamHandler } from "./routes/conversations/image-message.handler.js";
 import { imageUploadHandler, imageStreamHandler } from "./routes/listings/image-upload.handler.js";
 import { recommendationsRouter } from "./routes/recommendations/recommendations.router.js";
 import { errorHandler, NotFoundError } from "./middleware/error-handler.js";
@@ -175,9 +176,12 @@ app.get("/uploads/images/:key", imageStreamHandler);
 app.use(requireAuth);
 app.get("/users/public/search", userSearchHandler);
 app.get("/users/:id/public", userPublicHandler);
-// The voice-message POST is now a ts-rest contract route (conversationsContract).
-// Only the binary audio stream stays a raw handler (like /uploads/images/:key).
+// The voice/image message POSTs are ts-rest contract routes (conversationsContract).
+// Only the binary media streams stay raw handlers. Unlike public listing images
+// (/uploads/images/:key, above requireAuth), these sit BELOW requireAuth and do their
+// own participant check — a photo/voice note in a conversation is participant-private.
 app.get("/messages/:id/audio", audioStreamHandler);
+app.get("/messages/:id/image", imageMessageStreamHandler);
 
 // Rate limiting (per client IP; req.ip honours the TRUST_PROXY setting above).
 // Mirrors the auth-service limiter — 1-minute window, draft-7 headers. A generous
