@@ -168,10 +168,28 @@ export const authorize: RequestHandler = async (req, res, next) => {
     }
 
     const bypass = scope.bypassRoles?.includes(user.role as never) ?? false;
-    const allowed = bypass || ownsRecord(rec, scope, user.sub) || inDistrict(rec, scope, user.adminDistrictId ?? null);
+    const isOwner = ownsRecord(rec, scope, user.sub);
+    // A grant that came solely from the caller's district (not ownership / bypass):
+    // this is a district admin acting as a moderator on a record they don't own.
+    const districtGrant = !bypass && !isOwner && inDistrict(rec, scope, user.adminDistrictId ?? null);
+    const allowed = bypass || isOwner || districtGrant;
     if (!allowed) {
       res.status(scope.notFoundOnDeny ? 404 : 403).json({ message: scope.notFoundOnDeny ? "Not found" : "Forbidden" });
       return;
+    }
+
+    // security-M2: audit non-participant admin reads of private conversations. After the
+    // read-only fix, conversation writes no longer carry districtField, so a district grant
+    // on a conversation resource can only be a moderation read of a DM the admin isn't in.
+    if (districtGrant && isRead && scope.resource === "conversation") {
+      console.warn(
+        JSON.stringify({
+          event: "moderation.conversation.read",
+          actorSub: user.sub,
+          actorRole: user.role,
+          conversationId: id,
+        }),
+      );
     }
 
     // Hand the already-loaded record to the handler to avoid a second fetch.
