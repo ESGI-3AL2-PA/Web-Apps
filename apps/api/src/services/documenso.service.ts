@@ -1,4 +1,5 @@
 import { timingSafeEqual } from "crypto";
+import { z } from "zod";
 import type { ContractSignatureStatus } from "../entities/contract.entity.js";
 
 // Thin client over the Documenso v1 REST API. Documenso runs as a separate
@@ -55,25 +56,132 @@ export const mapDocumensoStatus = (status: string | undefined): ContractSignatur
   }
 };
 
+// Inbound Documenso webhook body. Documenso sends the full document in `payload`; we
+// only read its id + status, but validate the envelope so a malformed/hostile body is
+// rejected with a 400 before it reaches the use-case. `.passthrough()` keeps the many
+// extra document fields Documenso sends without failing validation on them.
+export const documensoWebhookEventSchema = z
+  .object({
+    event: z.string().min(1),
+    payload: z
+      .object({
+        id: z.number().optional(),
+        status: z.string().optional(),
+      })
+      .passthrough()
+      .optional(),
+  })
+  .passthrough();
+
+export type DocumensoWebhookEvent = z.infer<typeof documensoWebhookEventSchema>;
+
+// Stable key identifying a single logical delivery, used to drop replays. Documenso does
+// not send a unique delivery/event id header, so we derive one from the event type plus
+// the document id + status it targets — a re-post of the same terminal event is ignored.
+export const documensoWebhookReplayKey = (event: DocumensoWebhookEvent): string =>
+  `${event.event}:${event.payload?.id ?? ""}:${event.payload?.status ?? ""}`;
+
+// Small in-memory replay guard: remembers recently-processed delivery keys for a short
+// TTL and evicts lazily. Defense-in-depth on top of the downstream atomic status gates —
+// a replayed event is acknowledged (200) without being re-applied. Single-process only;
+// good enough given the DB gates already make re-processing idempotent across instances.
+export class WebhookReplayCache {
+  private readonly seen = new Map<string, number>();
+
+  constructor(private readonly ttlMs: number = 5 * 60_000) {}
+
+  private evict(now: number): void {
+    for (const [key, expiresAt] of this.seen) {
+      if (expiresAt <= now) this.seen.delete(key);
+    }
+  }
+
+  // True when `key` was recorded within the TTL (i.e. this is a replay).
+  has(key: string): boolean {
+    const now = Date.now();
+    this.evict(now);
+    return this.seen.has(key);
+  }
+
+  // Record a key as processed. Call only after successful handling so a legitimate retry
+  // of a delivery that previously 500'd is still reprocessed.
+  remember(key: string): void {
+    this.seen.set(key, Date.now() + this.ttlMs);
+  }
+}
+
+export const documensoWebhookReplayCache = new WebhookReplayCache();
+
 interface DocumensoConfig {
   baseUrl: string;
   apiToken: string;
   templateId: number;
   webhookSecret: string;
   signingLanguage: string;
+  // Hosts the signed-PDF download URL may point at (SSRF allowlist). Derived from the
+  // Documenso base URL + the object-store endpoint(s) the api is configured with.
+  downloadHosts: string[];
 }
+
+// Normalise a set of URL-or-bare-host strings (comma-separated allowed) to lowercase
+// `host[:port]` values, ignoring anything unparseable.
+const collectHosts = (...values: Array<string | undefined>): string[] => {
+  const hosts = new Set<string>();
+  for (const value of values) {
+    if (!value) continue;
+    for (const part of value.split(",")) {
+      const trimmed = part.trim();
+      if (!trimmed) continue;
+      try {
+        hosts.add(new URL(trimmed).host.toLowerCase());
+      } catch {
+        hosts.add(trimmed.toLowerCase());
+      }
+    }
+  }
+  return [...hosts];
+};
+
+// SSRF guard for the signed-PDF download: Documenso hands us a `downloadUrl` (a presigned
+// object-store URL, or itself), which a compromised/misconfigured Documenso could point at
+// an internal address. Reject anything that isn't http(s) to an allowlisted host.
+export const assertAllowedDownloadUrl = (rawUrl: string, allowedHosts: readonly string[]): URL => {
+  let url: URL;
+  try {
+    url = new URL(rawUrl);
+  } catch {
+    throw new DocumensoServiceError("Documenso returned a malformed signed-PDF download URL");
+  }
+  if (url.protocol !== "http:" && url.protocol !== "https:") {
+    throw new DocumensoServiceError(`Refusing signed-PDF download over unsupported scheme "${url.protocol}"`);
+  }
+  if (!allowedHosts.includes(url.host.toLowerCase())) {
+    throw new DocumensoServiceError(`Refusing signed-PDF download from non-allowlisted host "${url.host}"`);
+  }
+  return url;
+};
 
 const readConfig = (): DocumensoConfig | null => {
   const baseUrl = process.env.DOCUMENSO_URL;
   const apiToken = process.env.DOCUMENSO_API_TOKEN;
   const templateId = process.env.DOCUMENSO_TEMPLATE_ID;
   if (!baseUrl || !apiToken || !templateId) return null;
+  const normalizedBaseUrl = baseUrl.replace(/\/+$/, "");
   return {
-    baseUrl: baseUrl.replace(/\/+$/, ""),
+    baseUrl: normalizedBaseUrl,
     apiToken,
     templateId: Number(templateId),
     webhookSecret: process.env.DOCUMENSO_WEBHOOK_SECRET ?? "",
     signingLanguage: process.env.DOCUMENSO_SIGNING_LANGUAGE ?? "fr",
+    // Allow the Documenso host itself, the object-store endpoint(s) the api already knows
+    // (Documenso presigns download URLs against its S3/MinIO upload endpoint), and an
+    // explicit override for deployments whose object store differs from those.
+    downloadHosts: collectHosts(
+      normalizedBaseUrl,
+      process.env.DOCUMENSO_DOWNLOAD_HOSTS,
+      process.env.MESSAGES_MINIO_ENDPOINT ?? "http://localhost:9000",
+      process.env.LISTINGS_MINIO_ENDPOINT,
+    ),
   };
 };
 
@@ -219,8 +327,11 @@ class HttpDocumensoService implements IDocumensoService {
       throw err;
     }
     // The api runs on the same docker network as Documenso's object storage, so the
-    // presigned URL host is directly reachable — a plain fetch suffices.
-    const res = await fetch(meta.downloadUrl, { signal: AbortSignal.timeout(DOCUMENSO_TIMEOUT_MS) });
+    // presigned URL host is directly reachable. Validate it against the configured
+    // allowlist first so a compromised/misconfigured Documenso can't redirect us at an
+    // internal address (SSRF).
+    const downloadUrl = assertAllowedDownloadUrl(meta.downloadUrl, this.config.downloadHosts);
+    const res = await fetch(downloadUrl, { signal: AbortSignal.timeout(DOCUMENSO_TIMEOUT_MS) });
     if (!res.ok) {
       throw new DocumensoServiceError(`Documenso S3 download failed (${res.status})`);
     }
