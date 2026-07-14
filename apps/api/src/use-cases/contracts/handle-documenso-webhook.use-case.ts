@@ -3,14 +3,7 @@ import type { Contract } from "../../entities/contract.entity.js";
 import type { IContractRepository } from "../../repositories/Contract/contract.repository.js";
 import type { ITransactionRepository } from "../../repositories/Transaction/transaction.repository.js";
 import { runInTransaction } from "../../repositories/tx.js";
-import { mapDocumensoStatus } from "../../services/documenso.service.js";
-
-// Shape of the Documenso webhook body we consume. Documenso sends the full
-// document in `payload`; we only need its id and status.
-export interface DocumensoWebhookEvent {
-  event: string;
-  payload?: { id?: number; status?: string };
-}
+import { mapDocumensoStatus, type DocumensoWebhookEvent } from "../../services/documenso.service.js";
 
 // Credits `amount` to a user and records the ledger entry. Used to release the
 // escrow to the provider on completion or refund it to the beneficiary on rejection.
