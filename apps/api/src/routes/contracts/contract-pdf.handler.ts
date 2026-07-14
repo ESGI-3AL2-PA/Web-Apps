@@ -46,7 +46,12 @@ export const contractPdfHandler = async (req: Request, res: Response) => {
     res.status(409).json({ message: "Contract is not fully signed yet" });
     return;
   }
+  // Strip CR/LF and quotes from the Documenso-provided name to avoid header injection/spoofing.
+  const safeName =
+    String(pdf.filename ?? "contract.pdf")
+      .replace(/[\r\n"]/g, "")
+      .trim() || "contract.pdf";
   res.setHeader("Content-Type", pdf.contentType);
-  res.setHeader("Content-Disposition", `inline; filename="${pdf.filename}"`);
+  res.setHeader("Content-Disposition", `inline; filename="${safeName}"`);
   res.send(pdf.body);
 };
