@@ -11,12 +11,14 @@
     "retrying": "Vérification…"
   },
   "common": {
+    "appTitle": "Connected NeighBours — petites annonces",
     "loading": "Chargement…",
     "language": "Langue",
     "misc": "Divers",
     "confirm": "Confirmer",
     "cancel": "Annuler",
     "ok": "OK",
+    "points": "pts",
     "skipToContent": "Aller au contenu principal"
   },
   "relative": {

@@ -4,7 +4,7 @@ import i18n from "../i18n";
 const locale = (): string => (i18n.language?.startsWith("en") ? "en-US" : "fr-FR");
 
 // Prices are integer *tokens* in this backend, not euros — label them honestly.
-export const formatPrice = (price: number): string => `${price.toLocaleString(locale())} pts`;
+export const formatPrice = (price: number): string => `${price.toLocaleString(locale())} ${i18n.t("common.points")}`;
 
 export const formatDate = (iso: string): string => {
   const d = new Date(iso);

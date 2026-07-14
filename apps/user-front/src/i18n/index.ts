@@ -24,8 +24,11 @@ i18n
     },
   });
 
-// Keep <html lang> in sync with the active language.
-const syncHtmlLang = (lng: string) => document.documentElement.setAttribute("lang", lng);
+// Keep <html lang> and the document title in sync with the active language.
+const syncHtmlLang = (lng: string) => {
+  document.documentElement.setAttribute("lang", lng);
+  document.title = i18n.t("common.appTitle");
+};
 i18n.on("languageChanged", syncHtmlLang);
 syncHtmlLang(i18n.language || "fr");
 

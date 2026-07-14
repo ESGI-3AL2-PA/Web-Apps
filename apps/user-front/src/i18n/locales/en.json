@@ -11,12 +11,14 @@
     "retrying": "Checking…"
   },
   "common": {
+    "appTitle": "Connected NeighBours — classifieds",
     "loading": "Loading…",
     "language": "Language",
     "misc": "Misc",
     "confirm": "Confirm",
     "cancel": "Cancel",
     "ok": "OK",
+    "points": "pts",
     "skipToContent": "Skip to main content"
   },
   "relative": {
