@@ -194,7 +194,9 @@ export default function Messages() {
                         <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white bg-green-500" />
                       )}
                     </div>
-                    <span className="truncate text-sm font-medium text-neutral-800 dark:text-neutral-100">{titleOf(c)}</span>
+                    <span className="truncate text-sm font-medium text-neutral-800 dark:text-neutral-100">
+                      {titleOf(c)}
+                    </span>
                   </button>
                 </li>
               );
@@ -210,7 +212,9 @@ export default function Messages() {
         }`}
       >
         {!conversationId ? (
-          <div className="flex flex-1 items-center justify-center text-neutral-400 dark:text-neutral-500">{t("messages.select")}</div>
+          <div className="flex flex-1 items-center justify-center text-neutral-400 dark:text-neutral-500">
+            {t("messages.select")}
+          </div>
         ) : (
           <>
             {active && (
@@ -252,7 +256,9 @@ export default function Messages() {
                   <div key={m.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
                     <div
                       className={`max-w-[75%] rounded-2xl px-3 py-2 text-sm ${
-                        mine ? "bg-[color:var(--color-brand)] text-white" : "bg-neutral-100 dark:bg-neutral-800 text-neutral-800 dark:text-neutral-100"
+                        mine
+                          ? "bg-[color:var(--color-brand)] text-white"
+                          : "bg-neutral-100 dark:bg-neutral-800 text-neutral-800 dark:text-neutral-100"
                       }`}
                     >
                       {!mine && active?.type === "group" && (
@@ -265,7 +271,9 @@ export default function Messages() {
                       ) : (
                         <p className="whitespace-pre-wrap">{m.content}</p>
                       )}
-                      <p className={`mt-0.5 text-[10px] ${mine ? "text-white/70" : "text-neutral-400 dark:text-neutral-500"}`}>
+                      <p
+                        className={`mt-0.5 text-[10px] ${mine ? "text-white/70" : "text-neutral-400 dark:text-neutral-500"}`}
+                      >
                         {formatRelative(m.createdAt)}
                       </p>
                     </div>

@@ -92,7 +92,9 @@ export default function UserAutocomplete({
       )}
       {open && !selected && (
         <ul className="absolute inset-x-0 top-[calc(100%+4px)] z-[60] max-h-56 overflow-y-auto rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-1 shadow-lg">
-          {loading && <li className="px-3 py-2 text-sm text-neutral-500 dark:text-neutral-400">{t("messages.searching")}</li>}
+          {loading && (
+            <li className="px-3 py-2 text-sm text-neutral-500 dark:text-neutral-400">{t("messages.searching")}</li>
+          )}
           {!loading && results.length === 0 && (
             <li className="px-3 py-2 text-sm text-neutral-500 dark:text-neutral-400">{t("messages.noNeighbour")}</li>
           )}

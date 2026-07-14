@@ -64,10 +64,15 @@ export default function Contracts() {
       ) : (
         <ul className="space-y-3">
           {contracts.map((c) => (
-            <li key={c.id} className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-4">
+            <li
+              key={c.id}
+              className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-4"
+            >
               <div className="flex items-center justify-between gap-4">
                 <div>
-                  <p className="font-semibold text-neutral-900 dark:text-neutral-50">{t("contracts.number", { id: c.id.slice(0, 8) })}</p>
+                  <p className="font-semibold text-neutral-900 dark:text-neutral-50">
+                    {t("contracts.number", { id: c.id.slice(0, 8) })}
+                  </p>
                   <p className="text-sm text-neutral-500 dark:text-neutral-400">{formatPrice(c.price)}</p>
                 </div>
                 <div className="flex items-center gap-2">

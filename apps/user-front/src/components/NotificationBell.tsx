@@ -77,7 +77,9 @@ export default function NotificationBell() {
             )}
           </div>
           {items.length === 0 ? (
-            <p className="px-4 py-6 text-center text-sm text-neutral-500 dark:text-neutral-400">{t("notifications.empty")}</p>
+            <p className="px-4 py-6 text-center text-sm text-neutral-500 dark:text-neutral-400">
+              {t("notifications.empty")}
+            </p>
           ) : (
             <ul className="max-h-96 overflow-y-auto">
               {items.map((n) => (
@@ -94,9 +96,13 @@ export default function NotificationBell() {
                       }`}
                     />
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-semibold text-neutral-900 dark:text-neutral-50">{n.title}</span>
+                      <span className="block truncate text-sm font-semibold text-neutral-900 dark:text-neutral-50">
+                        {n.title}
+                      </span>
                       <span className="block text-xs text-neutral-600 dark:text-neutral-300">{n.message}</span>
-                      <span className="mt-0.5 block text-[10px] text-neutral-400 dark:text-neutral-500">{formatRelative(n.createdAt)}</span>
+                      <span className="mt-0.5 block text-[10px] text-neutral-400 dark:text-neutral-500">
+                        {formatRelative(n.createdAt)}
+                      </span>
                     </span>
                   </button>
                 </li>

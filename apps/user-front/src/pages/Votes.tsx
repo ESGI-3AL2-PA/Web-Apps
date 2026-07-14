@@ -15,7 +15,11 @@ function PollResults({ vote }: { vote: VoteResponseDto }) {
         return (
           <div key={r.option}>
             <div className="mb-0.5 flex justify-between text-sm">
-              <span className={mine ? "font-semibold text-[color:var(--color-brand-dark)]" : "text-neutral-700 dark:text-neutral-200"}>
+              <span
+                className={
+                  mine ? "font-semibold text-[color:var(--color-brand-dark)]" : "text-neutral-700 dark:text-neutral-200"
+                }
+              >
                 {r.option} {mine && "✓"}
               </span>
               <span className="text-neutral-500 dark:text-neutral-400">{pct}%</span>

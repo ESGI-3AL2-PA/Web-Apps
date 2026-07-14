@@ -91,8 +91,12 @@ export default function Home() {
                     >
                       <span className="text-xl">📅</span>
                       <span className="min-w-0">
-                        <span className="block truncate font-medium text-neutral-800 dark:text-neutral-100">{ev.title}</span>
-                        <span className="block text-xs text-neutral-500 dark:text-neutral-400">{formatDateTime(ev.eventDate)}</span>
+                        <span className="block truncate font-medium text-neutral-800 dark:text-neutral-100">
+                          {ev.title}
+                        </span>
+                        <span className="block text-xs text-neutral-500 dark:text-neutral-400">
+                          {formatDateTime(ev.eventDate)}
+                        </span>
                       </span>
                     </Link>
                   </li>
@@ -104,7 +108,9 @@ export default function Home() {
           {/* Sondages du quartier */}
           <div className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-5">
             <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-lg font-bold text-neutral-900 dark:text-neutral-50">{t("home.neighbourhoodPolls")}</h2>
+              <h2 className="text-lg font-bold text-neutral-900 dark:text-neutral-50">
+                {t("home.neighbourhoodPolls")}
+              </h2>
               <Link to="/sondages" className="text-sm font-medium text-[color:var(--color-brand)] hover:underline">
                 {t("home.participate")}
               </Link>
@@ -120,7 +126,9 @@ export default function Home() {
                       className="flex items-center gap-3 rounded-lg border border-neutral-100 dark:border-neutral-800 p-2 hover:bg-[color:var(--color-brand-soft)]"
                     >
                       <span className="text-xl">🗳️</span>
-                      <span className="block min-w-0 truncate font-medium text-neutral-800 dark:text-neutral-100">{v.question}</span>
+                      <span className="block min-w-0 truncate font-medium text-neutral-800 dark:text-neutral-100">
+                        {v.question}
+                      </span>
                     </Link>
                   </li>
                 ))}

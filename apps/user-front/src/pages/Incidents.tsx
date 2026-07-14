@@ -72,7 +72,10 @@ export default function Incidents() {
       </div>
 
       {/* Report form */}
-      <form onSubmit={submit} className="space-y-3 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-5">
+      <form
+        onSubmit={submit}
+        className="space-y-3 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-5"
+      >
         <h2 className="text-lg font-bold text-neutral-900 dark:text-neutral-50">{t("incidents.report")}</h2>
         <label className="block">
           <span className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
@@ -121,7 +124,10 @@ export default function Incidents() {
         ) : (
           <ul className="space-y-3">
             {incidents.map((i) => (
-              <li key={i.id} className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-4">
+              <li
+                key={i.id}
+                className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-4"
+              >
                 <div className="flex items-center justify-between gap-3">
                   <span className="text-sm font-semibold text-neutral-900 dark:text-neutral-50">
                     {t(`incidents.categories.${i.category}`, { defaultValue: i.category })}

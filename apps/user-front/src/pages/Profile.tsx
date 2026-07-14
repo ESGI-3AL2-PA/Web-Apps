@@ -26,7 +26,9 @@ function Card({ title, children }: { title: string; children: React.ReactNode })
 function Info({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <div className="text-xs font-semibold uppercase tracking-wide text-neutral-400 dark:text-neutral-500">{label}</div>
+      <div className="text-xs font-semibold uppercase tracking-wide text-neutral-400 dark:text-neutral-500">
+        {label}
+      </div>
       <div className="text-sm text-neutral-800 dark:text-neutral-100">{value}</div>
     </div>
   );
@@ -156,7 +158,9 @@ export default function Profile() {
       <Card title={t("profile.identity.title")}>
         <p className="mb-2 text-sm text-neutral-500 dark:text-neutral-400">{t("profile.identity.desc")}</p>
         <div className="flex items-center gap-2">
-          <code className="flex-1 break-all rounded-lg bg-neutral-100 dark:bg-neutral-800 px-3 py-2 text-sm">{user.id}</code>
+          <code className="flex-1 break-all rounded-lg bg-neutral-100 dark:bg-neutral-800 px-3 py-2 text-sm">
+            {user.id}
+          </code>
           <button
             onClick={copyId}
             className="shrink-0 rounded-lg bg-[color:var(--color-brand)] px-3 py-2 text-sm font-semibold text-white hover:bg-[color:var(--color-brand-dark)]"

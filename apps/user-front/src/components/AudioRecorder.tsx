@@ -131,7 +131,11 @@ export default function AudioRecorder({
             </button>
           </>
         )}
-        <button type="button" onClick={onCancel} className="text-xs text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200">
+        <button
+          type="button"
+          onClick={onCancel}
+          className="text-xs text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200"
+        >
           {t("common.cancel")}
         </button>
       </div>

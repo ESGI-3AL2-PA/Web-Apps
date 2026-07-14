@@ -79,7 +79,9 @@ export default function BottomNav() {
               <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[color:var(--color-brand)] text-sm font-bold text-white">
                 {user?.firstName?.charAt(0) ?? "?"}
               </span>
-              <span className="font-semibold text-neutral-900 dark:text-neutral-50">{user?.firstName ?? t("header.account")}</span>
+              <span className="font-semibold text-neutral-900 dark:text-neutral-50">
+                {user?.firstName ?? t("header.account")}
+              </span>
             </div>
             <button
               onClick={() => go("/profil")}
