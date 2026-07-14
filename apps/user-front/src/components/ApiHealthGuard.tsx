@@ -37,8 +37,8 @@ export default function ApiHealthGuard({ children }: { children: ReactNode }) {
   if (status === "down") return <ServerError onRetry={retry} retrying={retrying} />;
   if (status === "checking") {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[color:var(--color-canvas)]">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-neutral-300 border-t-[color:var(--color-brand)]" />
+      <div className="flex min-h-screen items-center justify-center bg-base-100">
+        <span className="loading loading-spinner loading-lg text-primary" />
       </div>
     );
   }

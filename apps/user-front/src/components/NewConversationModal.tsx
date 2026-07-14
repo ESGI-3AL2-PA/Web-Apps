@@ -74,22 +74,18 @@ export default function NewConversationModal({
       <div
         ref={panelRef}
         tabIndex={-1}
-        className="relative w-full max-w-sm rounded-t-2xl bg-white dark:bg-neutral-900 p-5 shadow-2xl outline-none sm:rounded-2xl"
+        className="modal-box relative w-full max-w-sm rounded-t-2xl bg-base-100 shadow-2xl outline-none sm:rounded-2xl"
       >
         <div className="mb-4 flex items-center justify-between">
-          <h2 id="new-conv-title" className="text-lg font-bold text-neutral-900 dark:text-neutral-50">
+          <h2 id="new-conv-title" className="text-lg font-bold text-base-content">
             {t("messages.newConversation")}
           </h2>
-          <button
-            onClick={onClose}
-            aria-label={t("common.cancel")}
-            className="text-2xl leading-none text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300"
-          >
-            ×
+          <button onClick={onClose} aria-label={t("common.cancel")} className="btn btn-text btn-circle btn-sm">
+            <span className="icon-[tabler--x] size-5" />
           </button>
         </div>
         <form onSubmit={submit}>
-          <label htmlFor="new-conv-participant" className="mb-1.5 block text-sm text-neutral-600 dark:text-neutral-300">
+          <label htmlFor="new-conv-participant" className="mb-1.5 block text-sm text-base-content/70">
             {t("messages.neighbourLabel")}
           </label>
           <UserAutocomplete key={pickerKey} id="new-conv-participant" selected={null} onSelect={addTarget} autoFocus />
@@ -98,14 +94,14 @@ export default function NewConversationModal({
               {targets.map((u) => (
                 <li
                   key={u.id}
-                  className="inline-flex items-center gap-1.5 rounded-full bg-[color:var(--color-brand-soft)] py-1 pl-3 pr-1.5 text-sm text-neutral-800 dark:text-neutral-100"
+                  className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 py-1 pl-3 pr-1.5 text-sm text-base-content"
                 >
                   {u.firstName} {u.lastName}
                   <button
                     type="button"
                     onClick={() => removeTarget(u.id)}
                     aria-label={t("messages.removeParticipant")}
-                    className="text-lg leading-none text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200"
+                    className="text-lg leading-none text-base-content/50 hover:text-base-content"
                   >
                     ×
                   </button>
@@ -115,7 +111,7 @@ export default function NewConversationModal({
           )}
           {isGroup && (
             <div className="mt-3">
-              <label htmlFor="new-conv-name" className="mb-1.5 block text-sm text-neutral-600 dark:text-neutral-300">
+              <label htmlFor="new-conv-name" className="mb-1.5 block text-sm text-base-content/70">
                 {t("messages.groupName")}
               </label>
               <input
@@ -123,28 +119,21 @@ export default function NewConversationModal({
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder={t("messages.groupNamePlaceholder")}
-                className="h-10 w-full rounded-lg border border-neutral-300 dark:border-neutral-700 px-3 text-sm outline-none focus:border-[color:var(--color-brand)]"
+                className="input w-full"
               />
             </div>
           )}
           {error && (
-            <p role="alert" aria-live="assertive" className="mt-2 text-sm text-red-600">
+            <p role="alert" aria-live="assertive" className="mt-2 text-sm text-error">
               {error}
             </p>
           )}
           <div className="mt-5 flex justify-end gap-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-lg border border-neutral-300 dark:border-neutral-700 px-4 py-2 text-sm font-semibold text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-800"
-            >
+            <button type="button" onClick={onClose} className="btn btn-soft">
               {t("common.cancel")}
             </button>
-            <button
-              type="submit"
-              disabled={busy || targets.length === 0}
-              className="rounded-lg bg-[color:var(--color-brand)] px-4 py-2 text-sm font-semibold text-white hover:bg-[color:var(--color-brand-dark)] disabled:opacity-60"
-            >
+            <button type="submit" disabled={busy || targets.length === 0} className="btn btn-primary">
+              {busy && <span className="loading loading-spinner loading-sm" />}
               {busy ? t("messages.creating") : t("messages.create")}
             </button>
           </div>
