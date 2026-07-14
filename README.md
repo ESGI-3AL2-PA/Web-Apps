@@ -1,25 +1,63 @@
-# `Turborepo`
+# Connected NeighBours
 
-### Apps and Packages
+A district-scoped neighbourhood service exchange. Residents of a district offer and request
+services and pay each other in **points** rather than money. Agreements can be formalised with a
+**Documenso** e-signature, and disagreements are handled through a built-in **dispute** flow.
 
-- `admin-front`: react [vite](https://vitejs.dev) ts app
-- `user-front`: react [vite](https://vitejs.dev) ts app
-- `api`: node.js and express app
-- `@repo/ui`: a stub component library shared by `admin-front and user-front` application
-- `@repo/eslint-config`: shared `eslint` configurations
-- `@repo/typescript-config`: `tsconfig.json`s used throughout the monorepo
+The repo is a Turborepo + npm workspaces monorepo.
 
-### Utilities
+## Apps
 
-This Turborepo has some additional tools already setup for you:
+| App                 | Stack                     | Port   | Notes                                                        |
+| ------------------- | ------------------------- | ------ | ------------------------------------------------------------ |
+| `apps/api`          | Express + ts-rest         | `3000` | Resource server; verifies JWTs against the auth-service JWKS |
+| `apps/auth-service` | Express + ts-rest         | `3001` | Issues RS256 access tokens + opaque refresh tokens; TOTP 2FA |
+| `apps/admin-front`  | React + Vite              | `4000` | Admin console                                                |
+| `apps/user-front`   | React + Vite + Tailwind 4 | `5000` | Resident-facing app                                          |
+| `apps/landing`      | React + Vite + Tailwind   | `6060` | Public landing page                                          |
 
-- [TypeScript](https://www.typescriptlang.org/) for static type checking
-- [ESLint](https://eslint.org/) for code linting
-- [Prettier](https://prettier.io) for code formatting
+## Packages
 
-### Getting Started
+- `@repo/contracts` — shared ts-rest contracts + zod DTOs (single source of truth for request/response shapes)
+- `@repo/hooks` — shared React auth (`AuthProvider`, `ProtectedRoute`, `useAuth`, …)
+- `@repo/config` — shared frontend runtime config (public URLs)
+- `@repo/satan` — SATAN QL client: thin bridge to a Python worker running SQL-like queries against MongoDB
+- `@repo/eslint-config` — shared ESLint configs
+- `@repo/typescript-config` — shared `tsconfig.json`s
 
-- `npm run dev`: launch all apps with live reload
-- `npm run build`: build all apps
-- `npm run lint`: lint all apps with eslint
-- `npm rum format`: format all apps with prettier
+## API docs
+
+The api serves interactive **Scalar** docs at [`/docs`](http://localhost:3000/docs) and the raw OpenAPI
+spec at [`/openapi.json`](http://localhost:3000/openapi.json).
+
+## Getting started
+
+Full setup instructions live in [`documentation/getting-started.md`](documentation/getting-started.md).
+
+Quick start — run every app with hot reload:
+
+```bash
+npm install
+npm run dev
+```
+
+Databases and the optional e-signature stack run via Docker Compose, which uses **profiles**:
+
+```bash
+# app + Mongo / Neo4j / fronts
+docker compose -f docker-compose.local.yml --profile core up
+
+# also bring up the Documenso e-signature stack (Documenso / Postgres / MinIO / mailpit)
+docker compose -f docker-compose.local.yml --profile core --profile contracts up
+```
+
+A bare `docker compose up` (no profile) starts nothing.
+
+Copy `.env.dist` to `.env` and fill in what differs from the localhost defaults.
+
+## Scripts
+
+- `npm run dev` — launch all apps with live reload
+- `npm run build` — build all apps
+- `npm run lint` — lint all apps with ESLint
+- `npm run format` — format all apps with Prettier
