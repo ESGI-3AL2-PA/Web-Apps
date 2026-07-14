@@ -1,6 +1,7 @@
 import { randomUUID } from "crypto";
 import type { Collection, Db, Filter } from "mongodb";
 import type { Tag } from "../../entities/tag.entity.js";
+import { escapeRegex } from "../escape-regex.js";
 import type { ITagRepository } from "./tag.repository.js";
 
 type TagDoc = Omit<Tag, "id"> & { _id: string };
@@ -27,7 +28,8 @@ export class MongoTagRepository implements ITagRepository {
 
     const filter: Filter<TagDoc> = {};
     if (search) {
-      filter.$or = [{ name: { $regex: search, $options: "i" } }, { description: { $regex: search, $options: "i" } }];
+      const safe = escapeRegex(search);
+      filter.$or = [{ name: { $regex: safe, $options: "i" } }, { description: { $regex: safe, $options: "i" } }];
     }
     if (districtId) filter.districtId = districtId;
 

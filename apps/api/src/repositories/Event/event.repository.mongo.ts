@@ -1,6 +1,7 @@
 import { randomUUID } from "crypto";
 import type { Collection, Db, Filter } from "mongodb";
 import type { Event } from "../../entities/event.entity.js";
+import { escapeRegex } from "../escape-regex.js";
 import type { IEventRepository } from "./event.repository.js";
 
 type EventDoc = Omit<Event, "id"> & { _id: string };
@@ -56,7 +57,7 @@ export class MongoEventRepository implements IEventRepository {
 
     // Title-only search — matching description/location caused false positives.
     if (search) {
-      filter.title = { $regex: search, $options: "i" };
+      filter.title = { $regex: escapeRegex(search), $options: "i" };
     }
 
     if (districtId) filter.districtId = districtId;
