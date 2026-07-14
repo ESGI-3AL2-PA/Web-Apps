@@ -76,6 +76,28 @@ export const saveImage = async (id: string, image: DecodedImage): Promise<string
   return key;
 };
 
+// Best-effort delete of an image object. Never throws: media cleanup must not break
+// the caller (listing/account deletion), mirroring deleteAudio in media-storage.
+export const deleteImage = async (key: string): Promise<void> => {
+  try {
+    await minio.removeObject(BUCKET, key);
+  } catch {
+    // best-effort
+  }
+};
+
+// Marker shared with the upload handler's stored URL (`<base>/uploads/images/<key>`).
+const IMAGE_URL_MARKER = "/uploads/images/";
+
+// Derive the MinIO object key from a stored image URL. Returns null for URLs that are
+// not our own-hosted uploads, so we never attempt to remove arbitrary external objects.
+export const imageKeyFromUrl = (url: string): string | null => {
+  const idx = url.lastIndexOf(IMAGE_URL_MARKER);
+  if (idx === -1) return null;
+  const key = url.slice(idx + IMAGE_URL_MARKER.length);
+  return key.length > 0 ? key : null;
+};
+
 // Returns a readable stream of the image for the given key, or null if it is missing.
 export const getImageStream = async (key: string): Promise<Readable | null> => {
   try {
