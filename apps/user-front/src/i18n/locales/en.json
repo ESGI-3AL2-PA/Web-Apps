@@ -262,7 +262,9 @@
     "micError": "Cannot access the microphone. Check your browser permissions.",
     "voiceError": "Failed to send the voice note.",
     "addImage": "Add a photo",
-    "imageError": "Failed to send the photo."
+    "imageError": "Failed to send the photo.",
+    "sent": "Sent",
+    "read": "Read"
   },
   "events": {
     "title": "Neighbourhood events",

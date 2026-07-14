@@ -262,7 +262,9 @@
     "micError": "Impossible d'accéder au micro. Vérifiez les permissions du navigateur.",
     "voiceError": "Erreur lors de l'envoi du message vocal.",
     "addImage": "Ajouter une photo",
-    "imageError": "Échec de l'envoi de la photo."
+    "imageError": "Échec de l'envoi de la photo.",
+    "sent": "Envoyé",
+    "read": "Lu"
   },
   "events": {
     "title": "Événements du quartier",
