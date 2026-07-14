@@ -4,12 +4,14 @@ import { MongoUserReaderRepository } from "./User/user-reader.repository.mongo.j
 import { MongoAuthTokenRepository } from "./AuthToken/auth-token.repository.mongo.js";
 import { MongoDistrictAdminReaderRepository } from "./DistrictAdmin/district-admin-reader.repository.mongo.js";
 
-let repositories: {
+type Container = {
   refreshToken: MongoRefreshTokenRepository;
   userReader: MongoUserReaderRepository;
   authToken: MongoAuthTokenRepository;
   districtAdmin: MongoDistrictAdminReaderRepository;
-} | null = null;
+};
+
+let repositories: Container | null = null;
 
 export const initContainer = (db: Db) => {
   repositories = {
@@ -20,10 +22,9 @@ export const initContainer = (db: Db) => {
   };
 };
 
-type Container = NonNullable<typeof repositories>;
 export type ContainerKeys = keyof Container;
 
 export const resolve = <K extends ContainerKeys>(key: K): Container[K] => {
   if (!repositories) throw new Error("Container not initialized — call initContainer(db) first");
-  return (repositories as Container)[key];
+  return repositories[key];
 };
