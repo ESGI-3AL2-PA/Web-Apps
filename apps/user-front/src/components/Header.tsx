@@ -64,6 +64,7 @@ export default function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [balance, setBalance] = useState<number | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     getTags()
@@ -115,7 +116,7 @@ export default function Header() {
               value={q}
               onChange={(e) => setQ(e.target.value)}
               placeholder={t("header.searchPlaceholder")}
-              className="h-9 min-w-0 flex-1 bg-transparent px-3 text-sm outline-none placeholder:text-neutral-500"
+              className="h-9 min-w-0 flex-1 bg-transparent px-3 text-sm outline-none focus-visible:ring-2 ring-[color:var(--color-brand)] placeholder:text-neutral-500"
             />
             <button
               type="submit"
@@ -150,10 +151,19 @@ export default function Header() {
             </Link>
           )}
 
-          <div ref={menuRef} className="relative">
+          <div
+            ref={menuRef}
+            className="relative"
+            onKeyDown={(e) => {
+              if (e.key === "Escape" && menuOpen) {
+                setMenuOpen(false);
+                menuButtonRef.current?.focus();
+              }
+            }}
+          >
             <button
+              ref={menuButtonRef}
               onClick={() => setMenuOpen((o) => !o)}
-              aria-haspopup="menu"
               aria-expanded={menuOpen}
               aria-controls="account-menu"
               className="flex min-w-[62px] flex-col items-center gap-1 text-neutral-600 dark:text-neutral-300 hover:text-[color:var(--color-brand)]"

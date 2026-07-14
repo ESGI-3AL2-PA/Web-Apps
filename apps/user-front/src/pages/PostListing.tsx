@@ -59,7 +59,7 @@ export default function PostListing() {
   };
 
   const field =
-    "w-full rounded-lg border border-neutral-300 dark:border-neutral-700 px-3 py-2 text-sm outline-none focus:border-[color:var(--color-brand)]";
+    "w-full rounded-lg border border-neutral-300 dark:border-neutral-700 px-3 py-2 text-sm outline-none focus:border-[color:var(--color-brand)] focus-visible:ring-2 ring-[color:var(--color-brand)]";
 
   return (
     <div className="mx-auto max-w-2xl">

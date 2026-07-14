@@ -90,7 +90,7 @@ export default function AudioRecorder({
             type="button"
             onClick={start}
             aria-label={t("messages.recordStart")}
-            className="flex h-10 w-10 items-center justify-center rounded-full bg-red-500 text-lg text-white"
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-red-600 text-lg text-white"
           >
             🎙
           </button>
