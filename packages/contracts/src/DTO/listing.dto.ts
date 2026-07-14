@@ -1,5 +1,11 @@
 import { z } from "../zod";
 
+// Listing image URLs must be http(s); reject javascript:/data: and other schemes.
+const imageUrl = z
+  .string()
+  .url()
+  .refine((u) => /^https?:\/\//i.test(u), { message: "Image URL must be http(s)" });
+
 export const ListingTypeSchema = z.enum(["offer", "request"]);
 export type ListingType = z.infer<typeof ListingTypeSchema>;
 
@@ -46,7 +52,7 @@ export const CreateListingDtoSchema = z
       .optional()
       .openapi({ description: "Tag names attached to this listing", example: ["gardening"] }),
     images: z
-      .array(z.string().url())
+      .array(imageUrl)
       .max(8)
       .optional()
       .openapi({ description: "URLs of images attached to this listing (max 8)" }),
@@ -63,7 +69,7 @@ export const UpdateListingDtoSchema = z
     price: z.number().int().min(0).optional(),
     status: ListingStatusSchema.optional(),
     tags: z.array(z.string()).optional(),
-    images: z.array(z.string().url()).max(8).optional(),
+    images: z.array(imageUrl).max(8).optional(),
     expiresAt: z.string().datetime().optional(),
   })
   .openapi({ title: "UpdateListing" });
