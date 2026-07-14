@@ -15,6 +15,7 @@ import { jwksHandler } from "./routes/jwks.route.js";
 import { errorHandler, NotFoundError } from "./middleware/error-handler.js";
 import { connectDB, closeDB } from "./repositories/mongodb.connector.js";
 import { initContainer } from "./repositories/container.js";
+import { MongoRefreshTokenRepository } from "./repositories/RefreshToken/refresh-token.repository.mongo.js";
 import { initKeys } from "./keys.js";
 import { setupGracefulShutdown } from "./shutdown.js";
 
@@ -142,6 +143,13 @@ connectDB()
   .then(async (db) => {
     initContainer(db);
     await initKeys();
+
+    // Best-effort: ensure the refresh-token TTL index exists so expired sessions
+    // self-purge. Never block boot on it — log and continue if index creation fails.
+    // Built directly from `db` (not via resolve) since the repo is a stateless wrapper.
+    await new MongoRefreshTokenRepository(db)
+      .ensureIndexes()
+      .catch((err) => console.error("Failed to ensure refresh-token indexes:", err));
 
     const server = app.listen(port, () => {
       const localUrl = `http://localhost:${port}`;
