@@ -91,6 +91,23 @@ app.get("/.well-known/jwks.json", jwksHandler);
 // Internal service-to-service endpoint (not part of the ts-rest contract, not behind
 // user auth). Guarded by a shared secret in X-Internal-Token. The api calls this after
 // deleting a user so their refresh-token rows (incl. IP/User-Agent history) are erased.
+// Values that must never guard the internal endpoint in production: unset, the
+// .env.dist placeholder, or the dev docker default. Fail-closed on any of them so a
+// copy-pasted template can't ship a predictable service-to-service secret.
+const UNSAFE_INTERNAL_TOKENS = new Set(["__CHANGE_ME__", "dev-internal-service-token"]);
+
+// Mirror keys.ts: refuse to boot in production rather than run with a known/absent secret.
+const assertInternalTokenSafe = (): void => {
+  if (process.env.NODE_ENV !== "production") return;
+  const token = process.env.INTERNAL_SERVICE_TOKEN;
+  if (!token || UNSAFE_INTERNAL_TOKENS.has(token)) {
+    throw new Error(
+      "INTERNAL_SERVICE_TOKEN must be set to a strong, non-default value in production " +
+        "(refusing to boot while it is unset or left at the template placeholder)",
+    );
+  }
+};
+
 const internalTokenValid = (provided: string | undefined): boolean => {
   const expected = process.env.INTERNAL_SERVICE_TOKEN;
   if (!expected || !provided) return false;
@@ -177,6 +194,7 @@ app.use(errorHandler);
 
 connectDB()
   .then(async (db) => {
+    assertInternalTokenSafe();
     initContainer(db);
     await initKeys();
 
