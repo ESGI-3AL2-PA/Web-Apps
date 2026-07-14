@@ -255,7 +255,9 @@
     "recording": "Recording…",
     "redo": "Redo",
     "micError": "Cannot access the microphone. Check your browser permissions.",
-    "voiceError": "Failed to send the voice note."
+    "voiceError": "Failed to send the voice note.",
+    "addImage": "Add a photo",
+    "imageError": "Failed to send the photo."
   },
   "events": {
     "title": "Neighbourhood events",

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@repo/hooks";
@@ -12,6 +12,7 @@ import {
   sendVoiceMessage,
 } from "../api-service/conversations.service";
 import { getUserPublic } from "../api-service/users.service";
+import { uploadImage } from "../api-service/uploads.service";
 import { useSocket } from "../sockets/SocketProvider";
 import { formatRelative } from "../lib/format";
 import { useDialog } from "../components/DialogProvider";
@@ -53,8 +54,10 @@ export default function Messages() {
   const [messages, setMessages] = useState<MessageResponseDto[]>([]);
   const [draft, setDraft] = useState("");
   const [recording, setRecording] = useState(false);
+  const [sendingImage, setSendingImage] = useState(false);
   const [showNew, setShowNew] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
   const markedRef = useRef<Set<string>>(new Set());
 
   // Load the conversation list + resolve every participant's name (needed for groups too).
@@ -151,6 +154,24 @@ export default function Messages() {
       setRecording(false);
     } catch {
       await alert({ message: t("messages.voiceError") });
+    }
+  };
+
+  // Picture message: upload the file to /uploads/images, then send an image message
+  // pointing at the returned public URL (reuses the in-contract sendMessage route).
+  const onPickImage = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // let the user re-pick the same file
+    if (!file || !conversationId) return;
+    setSendingImage(true);
+    try {
+      const mediaUrl = await uploadImage(file);
+      const sent = await sendMessage(conversationId, { type: "image", content: "[image]", mediaUrl });
+      setMessages((prev) => (prev.some((m) => m.id === sent.id) ? prev : [...prev, sent]));
+    } catch {
+      await alert({ message: t("messages.imageError") });
+    } finally {
+      setSendingImage(false);
     }
   };
 
@@ -268,6 +289,10 @@ export default function Messages() {
                       )}
                       {m.type === "audio" ? (
                         <MessageAudio id={m.id} />
+                      ) : m.type === "image" && m.mediaUrl ? (
+                        <a href={m.mediaUrl} target="_blank" rel="noopener noreferrer">
+                          <img src={m.mediaUrl} alt="" className="max-h-60 max-w-full rounded-lg" loading="lazy" />
+                        </a>
                       ) : (
                         <p className="whitespace-pre-wrap">{m.content}</p>
                       )}
@@ -295,6 +320,20 @@ export default function Messages() {
                   className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-neutral-300 dark:border-neutral-700 text-lg hover:bg-neutral-50 dark:hover:bg-neutral-800"
                 >
                   🎙
+                </button>
+                <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={onPickImage} />
+                <button
+                  type="button"
+                  onClick={() => imageInputRef.current?.click()}
+                  disabled={sendingImage}
+                  aria-label={t("messages.addImage")}
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-neutral-300 dark:border-neutral-700 text-lg hover:bg-neutral-50 dark:hover:bg-neutral-800 disabled:opacity-50"
+                >
+                  {sendingImage ? (
+                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-neutral-300 border-t-[color:var(--color-brand)]" />
+                  ) : (
+                    "📷"
+                  )}
                 </button>
                 <input
                   value={draft}
