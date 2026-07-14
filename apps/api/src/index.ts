@@ -152,16 +152,21 @@ app.get("/health", (_req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
-app.get("/openapi.json", (req, res) => {
-  res.json(openApiDocument);
-});
-app.use(
-  "/docs",
-  apiReference({
-    url: "/openapi.json",
-    theme: "moon",
-  }) as unknown as RequestHandler, // Ugly but it works ¯\_(ツ)_/¯
-);
+// The OpenAPI schema + Scalar UI expose the full endpoint catalogue, so they must
+// not be public in production. Off by default in prod unless ENABLE_API_DOCS=true.
+const docsEnabled = process.env.NODE_ENV !== "production" || process.env.ENABLE_API_DOCS === "true";
+if (docsEnabled) {
+  app.get("/openapi.json", (req, res) => {
+    res.json(openApiDocument);
+  });
+  app.use(
+    "/docs",
+    apiReference({
+      url: "/openapi.json",
+      theme: "moon",
+    }) as unknown as RequestHandler, // Ugly but it works ¯\_(ツ)_/¯
+  );
+}
 
 // Documenso posts signing events here. It authenticates with a shared secret
 // (verified inside the handler), not our JWT, so it must sit ABOVE requireAuth.
