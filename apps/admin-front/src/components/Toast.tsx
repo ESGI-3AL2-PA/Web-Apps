@@ -28,20 +28,40 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<ToastItem[]>([]);
   const idRef = useRef(0);
 
-  const show = useCallback((message: string, type: ToastType = "success") => {
-    const id = ++idRef.current;
-    setItems((prev) => [...prev, { id, message, type }]);
-    setTimeout(() => setItems((prev) => prev.filter((t) => t.id !== id)), 4000);
+  const dismiss = useCallback((id: number) => {
+    setItems((prev) => prev.filter((t) => t.id !== id));
   }, []);
+
+  const show = useCallback(
+    (message: string, type: ToastType = "success") => {
+      const id = ++idRef.current;
+      setItems((prev) => [...prev, { id, message, type }]);
+      setTimeout(() => dismiss(id), 4000);
+    },
+    [dismiss],
+  );
 
   return (
     <ToastContext.Provider value={{ show }}>
       {children}
-      <div className="fixed bottom-4 end-4 z-[60] flex flex-col gap-2" aria-live="polite" role="status">
+      <div className="fixed bottom-4 end-4 z-[60] flex flex-col gap-2">
         {items.map((t) => (
-          <div key={t.id} className={`alert ${STYLES[t.type]} shadow-lg`}>
+          <div
+            key={t.id}
+            className={`alert ${STYLES[t.type]} shadow-lg`}
+            role={t.type === "error" ? "alert" : "status"}
+            aria-live={t.type === "error" ? "assertive" : "polite"}
+          >
             <span className={`${ICONS[t.type]} size-5`} />
             <span>{t.message}</span>
+            <button
+              type="button"
+              className="btn btn-circle btn-ghost btn-xs ms-auto"
+              aria-label="Dismiss notification"
+              onClick={() => dismiss(t.id)}
+            >
+              <span className="icon-[tabler--x] size-4" />
+            </button>
           </div>
         ))}
       </div>
