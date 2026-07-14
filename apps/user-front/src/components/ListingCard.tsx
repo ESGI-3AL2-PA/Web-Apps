@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import type { ListingResponseDto } from "@repo/contracts";
 import { formatPrice, formatRelative, placeholderColor } from "../lib/format";
+import AuthedImage from "./AuthedImage";
 
 export default function ListingCard({ listing }: { listing: ListingResponseDto }) {
   const { t } = useTranslation();
@@ -14,7 +15,7 @@ export default function ListingCard({ listing }: { listing: ListingResponseDto }
     >
       <div className="relative aspect-square w-full overflow-hidden bg-neutral-100 dark:bg-neutral-800">
         {cover ? (
-          <img
+          <AuthedImage
             src={cover}
             alt={listing.title}
             className="h-full w-full object-cover transition group-hover:scale-105"

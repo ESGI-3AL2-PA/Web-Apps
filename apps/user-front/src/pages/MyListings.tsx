@@ -6,6 +6,7 @@ import type { ListingResponseDto } from "@repo/contracts";
 import { deleteListing, getListings } from "../api-service/listings.service";
 import { formatPrice, formatRelative } from "../lib/format";
 import { useDialog } from "../components/DialogProvider";
+import AuthedImage from "../components/AuthedImage";
 
 export default function MyListings() {
   const { t } = useTranslation();
@@ -65,7 +66,7 @@ export default function MyListings() {
               className="flex items-center gap-4 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-3"
             >
               <div className="h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-neutral-100 dark:bg-neutral-800">
-                {l.images?.[0] && <img src={l.images[0]} alt="" className="h-full w-full object-cover" />}
+                {l.images?.[0] && <AuthedImage src={l.images[0]} className="h-full w-full object-cover" />}
               </div>
               <div className="min-w-0 flex-1">
                 <Link

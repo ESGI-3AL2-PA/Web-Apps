@@ -8,6 +8,7 @@ import { getUserPublic, type UserPublic } from "../api-service/users.service";
 import { createConversation, getConversations } from "../api-service/conversations.service";
 import { createContract } from "../api-service/contracts.service";
 import { formatDate, formatPrice, placeholderColor } from "../lib/format";
+import AuthedImage from "../components/AuthedImage";
 import { useDialog } from "../components/DialogProvider";
 
 export default function ListingDetail() {
@@ -93,7 +94,7 @@ export default function ListingDetail() {
         <div className="overflow-hidden rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900">
           <div className="aspect-video w-full bg-neutral-100 dark:bg-neutral-800">
             {images.length > 0 ? (
-              <img src={images[active]} alt={listing.title} className="h-full w-full object-contain" />
+              <AuthedImage src={images[active]!} alt={listing.title} className="h-full w-full object-contain" />
             ) : (
               <div
                 className="flex h-full w-full items-center justify-center text-6xl font-black text-white/70"
@@ -113,7 +114,7 @@ export default function ListingDetail() {
                     i === active ? "border-[color:var(--color-brand)]" : "border-transparent"
                   }`}
                 >
-                  <img src={src} alt="" className="h-full w-full object-cover" />
+                  <AuthedImage src={src} alt="" className="h-full w-full object-cover" />
                 </button>
               ))}
             </div>

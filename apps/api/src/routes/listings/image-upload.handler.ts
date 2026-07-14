@@ -44,7 +44,8 @@ export const imageUploadHandler = async (req: Request, res: Response, next: Next
   }
 };
 
-// GET /uploads/images/:key — public read (keys are unguessable UUIDs). Streams the binary.
+// GET /uploads/images/:key — streams the binary. Auth-gated at the mount (below
+// requireAuth): a valid token is required, but there is no per-listing authorization.
 export const imageStreamHandler = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { key } = req.params;
@@ -58,10 +59,7 @@ export const imageStreamHandler = async (req: Request, res: Response, next: Next
       return;
     }
     res.setHeader("Content-Type", contentTypeForKey(key));
-    res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
-    // Public asset embedded by the fronts on a different origin (:5000 → :3000);
-    // override helmet's default same-origin CORP so <img> tags can load it.
-    res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
+    res.setHeader("Cache-Control", "private, max-age=31536000, immutable");
     stream.on("error", (err) => next(err));
     stream.pipe(res);
   } catch (err) {

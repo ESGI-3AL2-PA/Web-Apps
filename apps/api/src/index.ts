@@ -167,10 +167,6 @@ app.use(
 // (verified inside the handler), not our JWT, so it must sit ABOVE requireAuth.
 app.post("/contracts/webhook", documensoWebhookHandler);
 
-// Listing images are public-read (keys are unguessable UUIDs) so plain <img src>
-// tags can load them without an Authorization header. Sits ABOVE requireAuth.
-app.get("/uploads/images/:key", imageStreamHandler);
-
 // Everything below /health, /openapi.json and /docs requires a valid access token.
 // requireAuth verifies the JWT (iss/aud) and sets req.user.
 app.use(requireAuth);
@@ -199,8 +195,12 @@ app.use(makeLimiter(120));
 // admin authorization. Registered before the ts-rest contract routes.
 app.get("/contracts/:id/pdf", makeLimiter(30), contractPdfHandler);
 
-// Listing image upload (base64 → MinIO). Tighter cap: writes to object storage.
-// The matching public GET stream is registered above requireAuth.
+// Listing images: serve + upload (MinIO). Both now sit BELOW requireAuth — a valid
+// token is required to fetch (no per-listing authz), so a leaked image URL is useless
+// without a session, and the global limiter above rate-limits the read. Upload gets a
+// tighter cap (writes to object storage). Images are blob-fetched by the front
+// (AuthedImage), so no cross-origin <img> embedding / CORP needed.
+app.get("/uploads/images/:key", imageStreamHandler);
 app.post("/uploads/images", makeLimiter(30), imageUploadHandler);
 
 // Authorization is declared per-route in the contract `metadata.auth` and enforced

@@ -23,3 +23,11 @@ export async function uploadImages(files: File[]): Promise<string[]> {
   }
   return urls;
 }
+
+// GET /uploads/images/:key — fetch an image's bytes (Bearer auto-attached). The serve
+// endpoint now requires a valid token, so images are blob-fetched (see AuthedImage),
+// not embedded by URL.
+export async function fetchImageBlob(url: string): Promise<Blob> {
+  const res = await api.get(url, { responseType: "blob" });
+  return res.data as Blob;
+}
