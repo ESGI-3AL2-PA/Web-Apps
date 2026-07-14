@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { GeoJson } from "@repo/contracts";
+import { GeoJsonInputSchema } from "@repo/contracts";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "@geoman-io/leaflet-geoman-free/dist/leaflet-geoman.css";
@@ -31,7 +32,13 @@ interface DistrictMapEditorProps {
 export function DistrictMapEditor({ value, onChange, className }: DistrictMapEditorProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const onChangeRef = useRef(onChange);
+  // Set inside the map effect; lets the accessible GeoJSON textarea feed the same layer + emit path the map uses.
+  const applyGeoJsonRef = useRef<((geo: GeoJson) => void) | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
+  const [geoJsonText, setGeoJsonText] = useState(() =>
+    value && value.type === "Polygon" ? JSON.stringify(value, null, 2) : "",
+  );
+  const [geoJsonError, setGeoJsonError] = useState<string | null>(null);
 
   useEffect(() => {
     onChangeRef.current = onChange;
@@ -99,6 +106,26 @@ export function DistrictMapEditor({ value, onChange, className }: DistrictMapEdi
       emitChange(layer);
     });
 
+    // Accessible path: replace the current boundary with a Polygon supplied via the textarea, exactly
+    // as a fresh draw would — same layer teardown, tracking and emit, so map + submit stay in sync.
+    applyGeoJsonRef.current = (geo: GeoJson) => {
+      setWarning(null);
+      if (readonlyLayer) {
+        map.removeLayer(readonlyLayer);
+        readonlyLayer = null;
+      }
+      if (editableLayer) {
+        map.removeLayer(editableLayer);
+        editableLayer = null;
+      }
+      const layer = L.geoJSON(geo as unknown as GeoJSON.Geometry).getLayers()[0] as L.Polygon;
+      layer.addTo(map);
+      layer.pm.enable();
+      trackEditableLayer(layer);
+      map.fitBounds(layer.getBounds());
+      emitChange(layer);
+    };
+
     if (value) {
       try {
         const group = L.geoJSON(value as unknown as GeoJSON.Geometry);
@@ -132,6 +159,27 @@ export function DistrictMapEditor({ value, onChange, className }: DistrictMapEdi
     // eslint-disable-next-line react-hooks/exhaustive-deps -- `value` is the initial geometry only, intentionally not re-run on change
   }, []);
 
+  const handleApplyGeoJson = () => {
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(geoJsonText);
+    } catch {
+      setGeoJsonError("Not valid JSON — paste a GeoJSON Polygon object.");
+      return;
+    }
+    const result = GeoJsonInputSchema.safeParse(parsed);
+    if (!result.success) {
+      setGeoJsonError(result.error.issues[0]?.message ?? "Invalid GeoJSON geometry.");
+      return;
+    }
+    if (result.data.type !== "Polygon") {
+      setGeoJsonError(`Only a single Polygon can be applied here, not a ${result.data.type}.`);
+      return;
+    }
+    setGeoJsonError(null);
+    applyGeoJsonRef.current?.(result.data);
+  };
+
   return (
     <div className={`flex flex-col gap-2 ${className ?? ""}`}>
       {warning && (
@@ -145,6 +193,38 @@ export function DistrictMapEditor({ value, onChange, className }: DistrictMapEdi
         aria-label="District boundary map"
         className="flex-1 min-h-0 rounded-box overflow-hidden"
       />
+      <details className="rounded-box border border-base-300 p-2 text-sm">
+        <summary className="cursor-pointer font-medium">Enter coordinates manually (GeoJSON)</summary>
+        <div className="mt-2 flex flex-col gap-2">
+          <label htmlFor="district-geojson" className="text-xs opacity-80">
+            Keyboard-accessible alternative to drawing on the map. Paste a GeoJSON Polygon to set the boundary:
+            coordinates are [longitude, latitude] and the outer ring must be closed (first and last point identical).
+            Applying replaces any existing shape and updates the map.
+          </label>
+          <textarea
+            id="district-geojson"
+            className="textarea textarea-bordered w-full min-h-32 font-mono text-xs"
+            value={geoJsonText}
+            onChange={(e) => setGeoJsonText(e.target.value)}
+            spellCheck={false}
+            aria-invalid={geoJsonError ? true : undefined}
+            aria-describedby={geoJsonError ? "district-geojson-error" : undefined}
+            placeholder={
+              '{ "type": "Polygon", "coordinates": [[[2.35, 48.85], [2.36, 48.85], [2.36, 48.86], [2.35, 48.85]]] }'
+            }
+          />
+          {geoJsonError && (
+            <div id="district-geojson-error" className="alert alert-error text-sm" role="alert">
+              {geoJsonError}
+            </div>
+          )}
+          <div>
+            <button type="button" className="btn btn-sm btn-primary" onClick={handleApplyGeoJson}>
+              Apply coordinates
+            </button>
+          </div>
+        </div>
+      </details>
     </div>
   );
 }
