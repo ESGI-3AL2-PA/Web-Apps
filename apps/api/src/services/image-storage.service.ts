@@ -81,7 +81,11 @@ export const getImageStream = async (key: string): Promise<Readable | null> => {
   try {
     await ensureBucket();
     return await minio.getObject(BUCKET, key);
-  } catch {
-    return null; // NoSuchKey etc.
+  } catch (err) {
+    // Only a genuine not-found maps to null (→ 404). Any other failure (MinIO down,
+    // auth, network) rethrows so the route surfaces a logged 500 instead of a fake 404.
+    const code = (err as { code?: string } | null)?.code;
+    if (code === "NoSuchKey" || code === "NotFound") return null;
+    throw err;
   }
 };
