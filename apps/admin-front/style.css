@@ -21,3 +21,16 @@
   --color-accent: #22d3ee;
   --color-base-100: #0f172a;
 }
+
+/* Respect users who ask the OS to minimise motion (WCAG 2.3.3): neutralise
+   transitions, animations (animate-pulse skeletons) and smooth scrolling. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
