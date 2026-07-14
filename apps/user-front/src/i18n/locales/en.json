@@ -120,6 +120,11 @@
     "pdfLoading": "Loading PDF…",
     "pdfError": "Could not display the PDF.",
     "resendError": "Resending the invitation failed.",
+    "dispute": "Report a dispute",
+    "disputeReason": "Reason for the dispute",
+    "disputeSubmit": "Submit dispute",
+    "disputeReasonRequired": "Please describe the reason for the dispute.",
+    "disputeError": "Raising the dispute failed.",
     "status": {
       "draft": "Draft",
       "pending": "Awaiting signature",

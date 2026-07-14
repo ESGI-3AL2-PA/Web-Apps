@@ -1,4 +1,4 @@
-import type { ContractQueryDto, ContractResponseDto, CreateContractDto } from "@repo/contracts";
+import type { ContractQueryDto, ContractResponseDto, CreateContractDto, DisputeContractDto } from "@repo/contracts";
 import api from "./api";
 
 // The api is the sole gateway to Documenso — the front never talks to Documenso/S3
@@ -32,6 +32,12 @@ export async function createContract(data: CreateContractDto): Promise<ContractR
 // POST /contracts/:id/resend — re-send the signing invitation emails (party only).
 export async function resendContract(id: string): Promise<void> {
   await api.post(`/contracts/${id}/resend`);
+}
+
+// POST /contracts/:id/dispute — raise a dispute on the contract (party only).
+export async function disputeContract(id: string, body: DisputeContractDto): Promise<ContractResponseDto> {
+  const res = await api.post<ContractResponseDto>(`/contracts/${id}/dispute`, body);
+  return res.data;
 }
 
 // GET /contracts/:id/pdf — signed PDF bytes (proxied from Documenso), once fully signed.

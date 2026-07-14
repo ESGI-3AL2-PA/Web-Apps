@@ -1,10 +1,10 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { Document, Page, pdfjs } from "react-pdf";
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
 import type { ContractResponseDto, ContractSignatureStatus } from "@repo/contracts";
-import { fetchContractPdf, getContracts, resendContract } from "../api-service/contracts.service";
+import { disputeContract, fetchContractPdf, getContracts, resendContract } from "../api-service/contracts.service";
 import { formatPrice } from "../lib/format";
 import { useDialog } from "../components/DialogProvider";
 
@@ -25,6 +25,7 @@ export default function Contracts() {
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [previewId, setPreviewId] = useState<string | null>(null);
+  const [disputeFor, setDisputeFor] = useState<ContractResponseDto | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -52,6 +53,23 @@ export default function Contracts() {
       setBusyId(null);
     }
   };
+
+  const onDispute = async (id: string, reason: string) => {
+    setBusyId(id);
+    try {
+      const updated = await disputeContract(id, { reason });
+      setContracts((prev) => prev.map((c) => (c.id === id ? updated : c)));
+      setDisputeFor(null);
+    } catch {
+      await alert({ message: t("contracts.disputeError") });
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  // A contract can be disputed by a party while it's pending or fully signed, and not already disputed.
+  const canDispute = (c: ContractResponseDto) =>
+    !c.disputed && (c.signatureStatus === "pending" || c.signatureStatus === "completed");
 
   if (loading) return <p className="text-neutral-500 dark:text-neutral-400">{t("common.loading")}</p>;
 
@@ -116,6 +134,15 @@ export default function Contracts() {
                     {previewId === c.id ? t("contracts.hidePdf") : t("contracts.viewPdf")}
                   </button>
                 )}
+                {canDispute(c) && (
+                  <button
+                    onClick={() => setDisputeFor(c)}
+                    disabled={busyId === c.id}
+                    className="rounded-lg border border-red-300 dark:border-red-800 px-3 py-1.5 text-sm font-medium text-red-700 dark:text-red-300 hover:bg-red-50 dark:hover:bg-red-950 disabled:opacity-60"
+                  >
+                    {t("contracts.dispute")}
+                  </button>
+                )}
               </div>
 
               {previewId === c.id && <ContractPdf id={c.id} />}
@@ -123,6 +150,92 @@ export default function Contracts() {
           ))}
         </ul>
       )}
+
+      {disputeFor && (
+        <DisputeModal
+          contract={disputeFor}
+          busy={busyId === disputeFor.id}
+          onClose={() => setDisputeFor(null)}
+          onSubmit={(reason) => onDispute(disputeFor.id, reason)}
+        />
+      )}
+    </div>
+  );
+}
+
+// Local modal to capture a dispute reason — useDialog has no text-input primitive.
+function DisputeModal({
+  contract,
+  busy,
+  onClose,
+  onSubmit,
+}: {
+  contract: ContractResponseDto;
+  busy: boolean;
+  onClose: () => void;
+  onSubmit: (reason: string) => void;
+}) {
+  const { t } = useTranslation();
+  const [reason, setReason] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  const submit = (e: FormEvent) => {
+    e.preventDefault();
+    if (!reason.trim()) {
+      setError(t("contracts.disputeReasonRequired"));
+      return;
+    }
+    setError(null);
+    onSubmit(reason.trim());
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center" role="dialog" aria-modal="true">
+      <button aria-label={t("common.cancel")} onClick={onClose} className="absolute inset-0 bg-black/40" />
+      <div className="relative w-full max-w-sm rounded-t-2xl bg-white dark:bg-neutral-900 p-5 shadow-2xl sm:rounded-2xl">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-lg font-bold text-neutral-900 dark:text-neutral-50">
+            {t("contracts.dispute")} · {t("contracts.number", { id: contract.id.slice(0, 8) })}
+          </h2>
+          <button
+            onClick={onClose}
+            aria-label={t("common.cancel")}
+            className="text-2xl leading-none text-neutral-400 dark:text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300"
+          >
+            ×
+          </button>
+        </div>
+        <form onSubmit={submit}>
+          <label htmlFor="dispute-reason" className="mb-1.5 block text-sm text-neutral-600 dark:text-neutral-300">
+            {t("contracts.disputeReason")}
+          </label>
+          <textarea
+            id="dispute-reason"
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            rows={4}
+            autoFocus
+            className="w-full rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 p-2.5 text-sm text-neutral-900 dark:text-neutral-50 focus:outline-none focus:ring-2 focus:ring-[color:var(--color-brand)]"
+          />
+          {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+          <div className="mt-5 flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-lg border border-neutral-300 dark:border-neutral-700 px-4 py-2 text-sm font-semibold text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-800"
+            >
+              {t("common.cancel")}
+            </button>
+            <button
+              type="submit"
+              disabled={busy}
+              className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60"
+            >
+              {busy ? t("contracts.resending") : t("contracts.disputeSubmit")}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }

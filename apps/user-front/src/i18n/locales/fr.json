@@ -120,6 +120,11 @@
     "pdfLoading": "Chargement du PDF…",
     "pdfError": "Impossible d'afficher le PDF.",
     "resendError": "Le renvoi de l'invitation a échoué.",
+    "dispute": "Signaler un litige",
+    "disputeReason": "Motif du litige",
+    "disputeSubmit": "Envoyer le litige",
+    "disputeReasonRequired": "Veuillez décrire le motif du litige.",
+    "disputeError": "Le signalement du litige a échoué.",
     "status": {
       "draft": "Brouillon",
       "pending": "En attente de signature",
