@@ -68,6 +68,19 @@ export type SendMessageDto = z.infer<typeof SendMessageDtoSchema>;
 export const MessageParamsDtoSchema = z.object({ id: z.string() }).openapi({ title: "MessageParams" });
 export type MessageParamsDto = z.infer<typeof MessageParamsDtoSchema>;
 
+// Voice note upload: base64 (data-URL or raw). Bounded to ~5 MB decoded — base64
+// inflates ~4/3, so 7M chars ≈ 5 MB — to guard against filling object storage.
+export const SendVoiceMessageDtoSchema = z
+  .object({
+    audioBase64: z
+      .string()
+      .min(20)
+      .max(7_000_000)
+      .openapi({ description: "Voice clip as base64 (data-URL or raw), max ~5 MB decoded" }),
+  })
+  .openapi({ title: "SendVoiceMessage" });
+export type SendVoiceMessageDto = z.infer<typeof SendVoiceMessageDtoSchema>;
+
 export const MessageQueryDtoSchema = z
   .object({
     page: z.coerce.number().int().min(1).optional().default(1),

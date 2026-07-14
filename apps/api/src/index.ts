@@ -40,7 +40,7 @@ import { notificationsRouter } from "./routes/notifications/notifications.router
 import { transactionsRouter } from "./routes/transactions/transactions.router.js";
 import { createServer } from "http";
 import { setupSocketIo, closeSocketIo } from "./sockets/io.js";
-import { voiceMessageHandler, audioStreamHandler } from "./routes/conversations/voice-message.handler.js";
+import { audioStreamHandler } from "./routes/conversations/voice-message.handler.js";
 import { imageUploadHandler, imageStreamHandler } from "./routes/listings/image-upload.handler.js";
 import { recommendationsRouter } from "./routes/recommendations/recommendations.router.js";
 import { errorHandler, NotFoundError } from "./middleware/error-handler.js";
@@ -175,7 +175,8 @@ app.get("/uploads/images/:key", imageStreamHandler);
 app.use(requireAuth);
 app.get("/users/public/search", userSearchHandler);
 app.get("/users/:id/public", userPublicHandler);
-app.post("/conversations/:id/messages/voice", voiceMessageHandler);
+// The voice-message POST is now a ts-rest contract route (conversationsContract).
+// Only the binary audio stream stays a raw handler (like /uploads/images/:key).
 app.get("/messages/:id/audio", audioStreamHandler);
 
 // Rate limiting (per client IP; req.ip honours the TRUST_PROXY setting above).

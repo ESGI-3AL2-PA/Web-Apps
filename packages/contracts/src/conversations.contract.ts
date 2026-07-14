@@ -9,6 +9,7 @@ import {
   MessageQueryDtoSchema,
   MessageResponseDtoSchema,
   SendMessageDtoSchema,
+  SendVoiceMessageDtoSchema,
   UploadMediaDtoSchema,
   NotFoundErrorSchema,
   PaginatedResponseDtoSchema,
@@ -92,6 +93,27 @@ export const conversationsContract = c.router({
       404: NotFoundErrorSchema,
     },
     summary: "Send a message in a conversation (participant only)",
+    metadata: auth({
+      audience: "api",
+      scope: {
+        resource: "conversation",
+        ownerArrayField: "participants",
+        districtField: "districtId",
+        notFoundOnDeny: true,
+      },
+    }),
+  },
+
+  sendVoiceMessage: {
+    method: "POST",
+    path: "/conversations/:id/messages/voice",
+    pathParams: ConversationParamsDtoSchema,
+    body: SendVoiceMessageDtoSchema,
+    responses: {
+      201: MessageResponseDtoSchema,
+      404: NotFoundErrorSchema,
+    },
+    summary: "Send a voice message in a conversation (participant only)",
     metadata: auth({
       audience: "api",
       scope: {
