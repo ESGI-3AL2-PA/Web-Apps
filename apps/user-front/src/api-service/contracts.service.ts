@@ -1,9 +1,8 @@
-import type { ContractResponseDto, CreateContractDto, ContractQueryDto } from "@repo/contracts";
+import type { ContractQueryDto, ContractResponseDto, CreateContractDto, DisputeContractDto } from "@repo/contracts";
 import api from "./api";
 
-// All contract data (including the signed PDF) is served by our api, which is the
-// sole gateway to Documenso — the front never talks to Documenso/S3 directly.
-
+// The api is the sole gateway to Documenso — the front never talks to Documenso/S3
+// directly. Contracts are the e-signature layer on top of a taken listing.
 export interface PaginatedContracts {
   data: ContractResponseDto[];
   total: number;
@@ -23,8 +22,8 @@ export async function getContractById(id: string): Promise<ContractResponseDto> 
   return res.data;
 }
 
-// POST /contracts — create a contract; the caller is the beneficiary (payer). This
-// kicks off Documenso document generation server-side and returns the signing URL.
+// POST /contracts — create a contract; the caller is the beneficiary (payer). Kicks
+// off Documenso document generation server-side and returns the caller's signing URL.
 export async function createContract(data: CreateContractDto): Promise<ContractResponseDto> {
   const res = await api.post<ContractResponseDto>("/contracts", data);
   return res.data;
@@ -35,8 +34,13 @@ export async function resendContract(id: string): Promise<void> {
   await api.post(`/contracts/${id}/resend`);
 }
 
-// GET /contracts/:id/pdf — the signed PDF bytes (proxied from Documenso). Only
-// available once the contract is fully signed; returns a Blob for react-pdf.
+// POST /contracts/:id/dispute — raise a dispute on the contract (party only).
+export async function disputeContract(id: string, body: DisputeContractDto): Promise<ContractResponseDto> {
+  const res = await api.post<ContractResponseDto>(`/contracts/${id}/dispute`, body);
+  return res.data;
+}
+
+// GET /contracts/:id/pdf — signed PDF bytes (proxied from Documenso), once fully signed.
 export async function fetchContractPdf(id: string): Promise<Blob> {
   const res = await api.get(`/contracts/${id}/pdf`, { responseType: "blob" });
   return res.data as Blob;

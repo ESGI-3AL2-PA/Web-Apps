@@ -3,28 +3,8 @@ import api from "./api";
 
 type PaginatedTags = PaginatedResponseDto<typeof TagResponseDtoSchema>;
 
-// GET /tags — paginated list, search optionnel
-export async function getTags(filters: TagQueryDto = {} as TagQueryDto): Promise<PaginatedTags> {
-  try {
-    const res = await api.get<PaginatedTags>("/tags", { params: filters });
-    if (!res.data) {
-      throw new Error();
-    }
-    return res.data;
-  } catch {
-    throw new Error("Erreur lors du chargement des tags");
-  }
-}
-
-// GET /tags/:id
-export async function getTagById(id: string): Promise<TagResponseDto> {
-  try {
-    const res = await api.get<TagResponseDto>(`/tags/${id}`);
-    if (!res.data) {
-      throw new Error();
-    }
-    return res.data;
-  } catch {
-    throw new Error("Tag introuvable");
-  }
+// GET /tags — categories, district-scoped. Used to drive the category chips/filter.
+export async function getTags(filters: TagQueryDto = {} as TagQueryDto): Promise<TagResponseDto[]> {
+  const res = await api.get<PaginatedTags>("/tags", { params: { ...filters, limit: filters.limit ?? 100 } });
+  return res.data.data;
 }

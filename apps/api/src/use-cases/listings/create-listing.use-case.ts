@@ -9,6 +9,7 @@ export const createListingUseCase = (listingRepository: IListingRepository, grap
     const listing = await listingRepository.createListing({
       ...data,
       tags: data.tags ?? [],
+      images: data.images ?? [],
       status: "active",
     });
 

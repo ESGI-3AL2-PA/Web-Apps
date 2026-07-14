@@ -4,7 +4,7 @@ import type { IUserReaderRepository } from "../repositories/User/user-reader.rep
 import type { IRefreshTokenRepository } from "../repositories/RefreshToken/refresh-token.repository.js";
 import type { IDistrictAdminReaderRepository } from "../repositories/DistrictAdmin/district-admin-reader.repository.js";
 import { getPrivateKey } from "../keys.js";
-import { issueTokensForUser, type IssuedTokens } from "./issue-tokens.js";
+import { issueTokensForUser, type IssuedTokens, type SessionContext } from "./issue-tokens.js";
 
 export type LoginResult =
   | ({ kind: "ok" } & IssuedTokens)
@@ -24,7 +24,7 @@ export const loginUseCase = (
   refreshTokenRepo: IRefreshTokenRepository,
   districtAdminReader: IDistrictAdminReaderRepository,
 ) => {
-  return async (data: { email: string; password: string }): Promise<LoginResult> => {
+  return async (data: { email: string; password: string }, context?: SessionContext): Promise<LoginResult> => {
     const user = await userReader.findByEmail(data.email);
     if (!user) {
       await argon2.verify(await getDummyHash(), data.password).catch(() => false);
@@ -52,7 +52,7 @@ export const loginUseCase = (
       return { kind: "mfa-required", mfaToken };
     }
 
-    const tokens = await issueTokensForUser(user, refreshTokenRepo, districtAdminReader);
+    const tokens = await issueTokensForUser(user, refreshTokenRepo, districtAdminReader, context);
     return { kind: "ok", ...tokens };
   };
 };

@@ -4,7 +4,7 @@ import type { IRefreshTokenRepository } from "../repositories/RefreshToken/refre
 import type { IDistrictAdminReaderRepository } from "../repositories/DistrictAdmin/district-admin-reader.repository.js";
 import { getPublicKey } from "../keys.js";
 import { verifyTotpStep } from "../services/totp.js";
-import { issueTokensForUser, type IssuedTokens } from "./issue-tokens.js";
+import { issueTokensForUser, type IssuedTokens, type SessionContext } from "./issue-tokens.js";
 
 export type LoginMfaResult =
   | ({ kind: "ok" } & IssuedTokens)
@@ -18,7 +18,7 @@ export const loginMfaUseCase = (
   refreshTokenRepo: IRefreshTokenRepository,
   districtAdminReader: IDistrictAdminReaderRepository,
 ) => {
-  return async (mfaToken: string, code: string): Promise<LoginMfaResult> => {
+  return async (mfaToken: string, code: string, context?: SessionContext): Promise<LoginMfaResult> => {
     let userId: string;
     try {
       const { payload } = await jwtVerify(mfaToken, getPublicKey(), {
@@ -41,7 +41,7 @@ export const loginMfaUseCase = (
     // Reject a code already consumed within its window (replay).
     if (!(await userReader.consumeTotpStep(userId, step))) return { kind: "invalid-code" };
 
-    const tokens = await issueTokensForUser(user, refreshTokenRepo, districtAdminReader);
+    const tokens = await issueTokensForUser(user, refreshTokenRepo, districtAdminReader, context);
     return { kind: "ok", ...tokens };
   };
 };

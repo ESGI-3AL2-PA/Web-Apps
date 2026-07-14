@@ -40,7 +40,9 @@ import { notificationsRouter } from "./routes/notifications/notifications.router
 import { transactionsRouter } from "./routes/transactions/transactions.router.js";
 import { createServer } from "http";
 import { setupSocketIo, closeSocketIo } from "./sockets/io.js";
-import { voiceMessageHandler, audioStreamHandler } from "./routes/conversations/voice-message.handler.js";
+import { audioStreamHandler } from "./routes/conversations/voice-message.handler.js";
+import { imageMessageStreamHandler } from "./routes/conversations/image-message.handler.js";
+import { imageUploadHandler, imageStreamHandler } from "./routes/listings/image-upload.handler.js";
 import { recommendationsRouter } from "./routes/recommendations/recommendations.router.js";
 import { errorHandler, NotFoundError } from "./middleware/error-handler.js";
 import { requireAuth } from "./middleware/auth.middleware.js";
@@ -170,8 +172,12 @@ app.post("/contracts/webhook", documensoWebhookHandler);
 app.use(requireAuth);
 app.get("/users/public/search", userSearchHandler);
 app.get("/users/:id/public", userPublicHandler);
-app.post("/conversations/:id/messages/voice", voiceMessageHandler);
+// The voice/image message POSTs are ts-rest contract routes (conversationsContract).
+// Only the binary media streams stay raw handlers. Unlike public listing images
+// (/uploads/images/:key, above requireAuth), these sit BELOW requireAuth and do their
+// own participant check — a photo/voice note in a conversation is participant-private.
 app.get("/messages/:id/audio", audioStreamHandler);
+app.get("/messages/:id/image", imageMessageStreamHandler);
 
 // Rate limiting (per client IP; req.ip honours the TRUST_PROXY setting above).
 // Mirrors the auth-service limiter — 1-minute window, draft-7 headers. A generous
@@ -188,6 +194,14 @@ app.use(makeLimiter(120));
 // front never talks to Documenso/S3 directly). Raw handler — does its own party/
 // admin authorization. Registered before the ts-rest contract routes.
 app.get("/contracts/:id/pdf", makeLimiter(30), contractPdfHandler);
+
+// Listing images: serve + upload (MinIO). Both now sit BELOW requireAuth — a valid
+// token is required to fetch (no per-listing authz), so a leaked image URL is useless
+// without a session, and the global limiter above rate-limits the read. Upload gets a
+// tighter cap (writes to object storage). Images are blob-fetched by the front
+// (AuthedImage), so no cross-origin <img> embedding / CORP needed.
+app.get("/uploads/images/:key", imageStreamHandler);
+app.post("/uploads/images", makeLimiter(30), imageUploadHandler);
 
 // Authorization is declared per-route in the contract `metadata.auth` and enforced
 // by this single global middleware (reads req.tsRestRoute, loads records for

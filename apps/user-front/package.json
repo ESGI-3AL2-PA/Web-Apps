@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@repo/config": "*",
+    "@repo/contracts": "*",
     "@repo/hooks": "*",
     "@tailwindcss/postcss": "^4.2.2",
     "@tailwindcss/vite": "^4.2.2",
@@ -20,9 +21,9 @@
     "flyonui": "^2.4.1",
     "i18next": "^26.3.5",
     "i18next-browser-languagedetector": "^8.2.1",
+    "react-i18next": "^17.0.8",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
-    "react-i18next": "^17.0.8",
     "react-pdf": "^10.0.1",
     "react-router-dom": "^7.14.0",
     "socket.io-client": "^4.8.1",

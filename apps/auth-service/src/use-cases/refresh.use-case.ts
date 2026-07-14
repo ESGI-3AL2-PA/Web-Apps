@@ -17,23 +17,27 @@ export const refreshUseCase = (
   return async (rawRefreshToken: string): Promise<RefreshResult | null> => {
     const tokenHash = createHash("sha256").update(rawRefreshToken).digest("hex");
 
-    const stored = await refreshTokenRepo.findActiveByTokenHash(tokenHash);
+    // Atomically claim (revoke) the active token so two concurrent refreshes can't
+    // both pass the check and mint tokens — the compare-and-swap lets exactly one win.
+    const stored = await refreshTokenRepo.claimByTokenHash(tokenHash);
     if (!stored) {
       // The token isn't active. If it once existed (now revoked), this is a replay
-      // of an already-rotated token → treat as theft and revoke the whole family.
+      // of an already-rotated token → treat as theft and revoke that session's
+      // family only. Scoping to the family (not the whole user) keeps the user's
+      // other devices logged in — revoking everything would let one stale token on
+      // one device cascade into logging the account out everywhere.
       const seen = await refreshTokenRepo.findByTokenHash(tokenHash);
-      if (seen) await refreshTokenRepo.revokeAllForUser(seen.userId);
+      if (seen) {
+        if (seen.sessionId) await refreshTokenRepo.revokeBySessionId(seen.sessionId);
+        else await refreshTokenRepo.revokeAllForUser(seen.userId);
+      }
       return null;
     }
 
-    // Check expiry
+    // Check expiry — the claim already revoked it, so no extra revoke needed here.
     if (new Date(stored.expiresAt) < new Date()) {
-      await refreshTokenRepo.revokeByTokenHash(tokenHash);
       return null;
     }
-
-    // Revoke old token (rotation)
-    await refreshTokenRepo.revokeByTokenHash(tokenHash);
 
     // Look up user for fresh claims — incl. a re-read of the district-admin
     // relationship, so promotion/demotion takes effect on the next refresh.
@@ -61,8 +65,14 @@ export const refreshUseCase = (
       userId: stored.userId,
       tokenHash: newTokenHash,
       expiresAt: expiresAt.toISOString(),
+      expiresAtDate: expiresAt,
       revokedAt: null,
-      createdAt: now.toISOString(),
+      // Preserve the session's identity/origin across rotation; only lastUsedAt moves.
+      createdAt: stored.createdAt,
+      sessionId: stored.sessionId,
+      userAgent: stored.userAgent,
+      ip: stored.ip,
+      lastUsedAt: now.toISOString(),
     });
 
     return { accessToken, refreshToken: newRawRefreshToken };

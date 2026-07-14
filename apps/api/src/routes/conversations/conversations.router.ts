@@ -7,6 +7,9 @@ import { getConversationByIdUseCase } from "../../use-cases/conversations/get-co
 import { createConversationUseCase } from "../../use-cases/conversations/create-conversation.use-case.js";
 import { getMessagesUseCase } from "../../use-cases/conversations/get-messages.use-case.js";
 import { sendMessageUseCase } from "../../use-cases/conversations/send-message.use-case.js";
+import { sendVoiceMessageUseCase } from "../../use-cases/conversations/send-voice-message.use-case.js";
+import { sendImageMessageUseCase } from "../../use-cases/conversations/send-image-message.use-case.js";
+import { decodeImageBase64 } from "../../services/image-storage.service.js";
 import { markMessageReadUseCase } from "../../use-cases/conversations/mark-message-read.use-case.js";
 import { attachMediaUseCase } from "../../use-cases/conversations/attach-media.use-case.js";
 import { broadcastNewMessage } from "../../sockets/io.js";
@@ -64,6 +67,28 @@ export const conversationsRouter = s.router(conversationsContract, {
       return { status: 404, body: { message: "Conversation not found" } };
     }
     // Push aux autres participants connectés (eux refetcheront automatiquement).
+    broadcastNewMessage(result.participants, result.message);
+    return { status: 201, body: result.message };
+  },
+
+  sendVoiceMessage: async ({ params: { id }, body, req }) => {
+    const result = await sendVoiceMessageUseCase(resolve("conversation"))(id, req.user!.sub, body.audioBase64);
+    if (!result) {
+      return { status: 404, body: { message: "Conversation not found" } };
+    }
+    broadcastNewMessage(result.participants, result.message);
+    return { status: 201, body: result.message };
+  },
+
+  sendImageMessage: async ({ params: { id }, body, req }) => {
+    const decoded = decodeImageBase64(body.imageBase64);
+    if (!decoded) {
+      return { status: 400, body: { message: "Unsupported image format (png, jpeg, webp, gif)" } };
+    }
+    const result = await sendImageMessageUseCase(resolve("conversation"))(id, req.user!.sub, decoded);
+    if (!result) {
+      return { status: 404, body: { message: "Conversation not found" } };
+    }
     broadcastNewMessage(result.participants, result.message);
     return { status: 201, body: result.message };
   },

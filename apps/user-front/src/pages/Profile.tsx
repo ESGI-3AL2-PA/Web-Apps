@@ -1,127 +1,123 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@repo/hooks";
-import type {
-  UserResponseDto,
-  ListingQueryDto,
-  EventQueryDto,
-  VoteQueryDto,
-  TransactionQueryDto,
-} from "@repo/contracts";
-import { getUserById, updateUser, deleteUser } from "../api-service/users.service";
+import type { EventQueryDto, ListingQueryDto, UserResponseDto, VoteQueryDto } from "@repo/contracts";
+import { getUserById, updateUser } from "../api-service/users.service";
 import { getDistrictById } from "../api-service/districts.service";
-import { getUserBalance, getUserTransactions } from "../api-service/transactions.service";
+import { getUserBalance } from "../api-service/transactions.service";
 import { getListings } from "../api-service/listings.service";
 import { getContracts } from "../api-service/contracts.service";
 import { getEvents } from "../api-service/events.service";
 import { getVotes } from "../api-service/votes.service";
+import { formatPrice } from "../lib/format";
+import { useDialog } from "../components/dialog-context";
 
-type EditForm = {
-  firstName: string;
-  lastName: string;
-  phone: string;
-  address: string;
-};
+function Card({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-5">
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="text-lg font-bold text-neutral-900 dark:text-neutral-50">{title}</h2>
+      </div>
+      <div className="mt-4">{children}</div>
+    </section>
+  );
+}
 
-const Profile = () => {
-  const { user, logout } = useAuth();
+function Info({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <div className="text-xs font-semibold uppercase tracking-wide text-neutral-500">{label}</div>
+      <div className="text-sm text-neutral-800 dark:text-neutral-100">{value}</div>
+    </div>
+  );
+}
+
+const inputClass =
+  "mt-1 h-10 w-full rounded-lg border border-neutral-300 dark:border-neutral-700 px-3 text-sm outline-none focus:border-[color:var(--color-brand)]";
+
+export default function Profile() {
+  const { t } = useTranslation();
+  const { user } = useAuth();
+  const { alert } = useDialog();
 
   const [fullUser, setFullUser] = useState<UserResponseDto | null>(null);
-  const [districtName, setDistrictName] = useState<string>("");
+  const [districtName, setDistrictName] = useState("");
   const [balance, setBalance] = useState<number | null>(null);
   const [stats, setStats] = useState({ listings: 0, contracts: 0, events: 0, votes: 0 });
   const [editing, setEditing] = useState(false);
-  const [form, setForm] = useState<EditForm>({ firstName: "", lastName: "", phone: "", address: "" });
+  const [form, setForm] = useState({ firstName: "", lastName: "", phone: "", address: "" });
   const [saving, setSaving] = useState(false);
-  const [confirmDelete, setConfirmDelete] = useState(false);
-  const [deleteInput, setDeleteInput] = useState("");
   const [copied, setCopied] = useState(false);
-  const [exporting, setExporting] = useState(false);
-  const [error, setError] = useState<string>("");
+
+  const uid = user?.id;
 
   useEffect(() => {
-    if (!user?.id) return;
+    if (!uid) return;
     let cancelled = false;
-    (async () => {
-      try {
-        const u = await getUserById(user.id);
+    getUserById(uid)
+      .then((u) => {
         if (cancelled) return;
         setFullUser(u);
-        setForm({
-          firstName: u.firstName,
-          lastName: u.lastName,
-          phone: u.phone ?? "",
-          address: u.address ?? "",
-        });
+        setForm({ firstName: u.firstName, lastName: u.lastName, phone: u.phone ?? "", address: u.address ?? "" });
         if (u.districtId) {
           getDistrictById(u.districtId)
             .then((d) => !cancelled && setDistrictName(d.name))
-            .catch(() => !cancelled && setDistrictName(""));
+            .catch(() => undefined);
         }
-      } catch {
-        if (!cancelled) setError("Impossible de charger le profil");
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [user?.id]);
-
-  useEffect(() => {
-    if (!user?.id) return;
-    let cancelled = false;
-    getUserBalance(user.id)
+      })
+      .catch(() => undefined);
+    getUserBalance(uid)
       .then((r) => !cancelled && setBalance(r.balance))
       .catch(() => !cancelled && setBalance(null));
     return () => {
       cancelled = true;
     };
-  }, [user?.id]);
+  }, [uid]);
 
   useEffect(() => {
-    if (!user?.id) return;
+    if (!uid) return;
     let cancelled = false;
     (async () => {
       try {
-        const [listingsRes, contractsProvider, contractsBenef, eventsRes, votesRes] = await Promise.all([
-          getListings({ authorId: user.id, limit: 1 } as ListingQueryDto),
-          getContracts({ providerId: user.id, limit: 1 }),
-          getContracts({ beneficiaryId: user.id, limit: 1 }),
-          getEvents({ creatorId: user.id, limit: 1 } as EventQueryDto),
-          getVotes({ creatorId: user.id, limit: 1 } as VoteQueryDto),
+        const [listings, cProvider, cBenef, events, votes] = await Promise.all([
+          getListings({ authorId: uid, limit: 1 } as ListingQueryDto),
+          getContracts({ providerId: uid, limit: 1 }),
+          getContracts({ beneficiaryId: uid, limit: 1 }),
+          getEvents({ creatorId: uid, limit: 100 } as EventQueryDto),
+          getVotes({ creatorId: uid, limit: 100 } as VoteQueryDto),
         ]);
         if (cancelled) return;
         setStats({
-          listings: listingsRes.total,
-          contracts: contractsProvider.total + contractsBenef.total,
-          events: eventsRes.total,
-          votes: votesRes.total,
+          listings: listings.total,
+          contracts: cProvider.total + cBenef.total,
+          events: events.length,
+          votes: votes.length,
         });
       } catch {
-        // stats best-effort, on laisse les zéros
+        // stats are best-effort
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [user?.id]);
+  }, [uid]);
 
-  const handleCopyId = async () => {
-    if (!user?.id) return;
+  const copyId = useCallback(async () => {
+    if (!uid) return;
     try {
-      await navigator.clipboard.writeText(user.id);
+      await navigator.clipboard.writeText(uid);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      setError("Impossible de copier dans le presse-papier");
+      // clipboard may be unavailable; ignore
     }
-  };
+  }, [uid]);
 
-  const handleSave = async () => {
-    if (!user?.id) return;
+  const save = async () => {
+    if (!uid) return;
     setSaving(true);
-    setError("");
     try {
-      const updated = await updateUser(user.id, {
+      const updated = await updateUser(uid, {
         firstName: form.firstName,
         lastName: form.lastName,
         phone: form.phone || undefined,
@@ -129,14 +125,14 @@ const Profile = () => {
       });
       setFullUser(updated);
       setEditing(false);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Erreur lors de la sauvegarde");
+    } catch {
+      await alert({ message: t("profile.saveError") });
     } finally {
       setSaving(false);
     }
   };
 
-  const handleCancelEdit = () => {
+  const cancelEdit = () => {
     if (fullUser) {
       setForm({
         firstName: fullUser.firstName,
@@ -146,241 +142,145 @@ const Profile = () => {
       });
     }
     setEditing(false);
-    setError("");
   };
 
-  const handleExportRgpd = async () => {
-    if (!user?.id) return;
-    setExporting(true);
-    try {
-      const [profile, listingsRes, contractsP, contractsB, eventsRes, votesRes, txRes] = await Promise.all([
-        getUserById(user.id),
-        getListings({ authorId: user.id, limit: 200 } as ListingQueryDto).catch(() => ({ data: [] })),
-        getContracts({ providerId: user.id, limit: 200 }).catch(() => ({ data: [] })),
-        getContracts({ beneficiaryId: user.id, limit: 200 }).catch(() => ({ data: [] })),
-        getEvents({ creatorId: user.id, limit: 200 } as EventQueryDto).catch(() => ({ data: [] })),
-        getVotes({ creatorId: user.id, limit: 200 } as VoteQueryDto).catch(() => ({ data: [] })),
-        getUserTransactions(user.id, { limit: 500 } as TransactionQueryDto).catch(() => ({ data: [] })),
-      ]);
-      const payload = {
-        exportedAt: new Date().toISOString(),
-        profile,
-        listings: listingsRes.data,
-        contractsAsProvider: contractsP.data,
-        contractsAsBeneficiary: contractsB.data,
-        events: eventsRes.data,
-        votes: votesRes.data,
-        transactions: txRes.data,
-      };
-      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `mes-donnees-${user.id.slice(0, 8)}-${Date.now()}.json`;
-      a.click();
-      setTimeout(() => URL.revokeObjectURL(url), 5000);
-    } catch {
-      setError("Erreur lors de l'export de vos données");
-    } finally {
-      setExporting(false);
-    }
-  };
+  if (!user) return <p className="text-neutral-500 dark:text-neutral-400">{t("common.loading")}</p>;
 
-  const handleLogout = async () => {
-    await logout();
-    window.location.href = "/";
-  };
-
-  const handleDeleteAccount = async () => {
-    if (!user?.id || deleteInput !== "SUPPRIMER") return;
-    try {
-      await deleteUser(user.id);
-      await logout();
-      window.location.href = "/";
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Erreur lors de la suppression");
-      setConfirmDelete(false);
-    }
-  };
-
-  if (!user) {
-    return <div className="p-8">Chargement…</div>;
-  }
+  const none = "—";
 
   return (
-    <div className="max-w-3xl mx-auto py-8 space-y-6">
-      <h1 className="text-3xl font-bold flex items-center gap-2">👤 Mon profil</h1>
+    <div className="mx-auto max-w-2xl space-y-6">
+      <h1 className="text-2xl font-extrabold text-neutral-900 dark:text-neutral-50">{t("profile.title")}</h1>
 
-      {error && (
-        <div className="alert alert-error">
-          <span>{error}</span>
-        </div>
-      )}
-
-      <section className="card bg-base-100 shadow border border-black/10">
-        <div className="card-body">
-          <h2 className="card-title text-lg">🆔 Mon identifiant</h2>
-          <p className="text-sm text-base-content/70">
-            {"Partage ton ID avec un voisin pour qu'il puisse t'ajouter en messagerie."}
-          </p>
-          <div className="flex gap-2 items-center">
-            <code className="flex-1 px-3 py-2 bg-base-200 rounded text-sm break-all">{user.id}</code>
-            <button className="btn btn-sm btn-primary" onClick={handleCopyId}>
-              {copied ? "✓ Copié" : "📋 Copier"}
-            </button>
-          </div>
-        </div>
-      </section>
-
-      <section className="card bg-base-100 shadow border border-black/10">
-        <div className="card-body">
-          <div className="flex justify-between items-center">
-            <h2 className="card-title text-lg">✏️ Mes informations</h2>
-            {!editing && (
-              <button className="btn btn-sm btn-outline" onClick={() => setEditing(true)}>
-                Modifier
-              </button>
-            )}
-          </div>
-
-          {!editing ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
-              <Info label="Prénom" value={fullUser?.firstName ?? user.firstName} />
-              <Info label="Nom" value={fullUser?.lastName ?? user.lastName} />
-              <Info label="Email" value={fullUser?.email ?? user.email} />
-              <Info label="Téléphone" value={fullUser?.phone ?? "—"} />
-              <Info label="Adresse" value={fullUser?.address ?? "—"} />
-              <Info label="Quartier" value={districtName || (fullUser?.districtId ? "Chargement…" : "—")} />
-              <Info label="Rôle" value={fullUser?.role ?? user.role} />
-            </div>
-          ) : (
-            <div className="space-y-3 mt-3">
-              <Field label="Prénom" value={form.firstName} onChange={(v) => setForm({ ...form, firstName: v })} />
-              <Field label="Nom" value={form.lastName} onChange={(v) => setForm({ ...form, lastName: v })} />
-              <Field label="Téléphone" value={form.phone} onChange={(v) => setForm({ ...form, phone: v })} />
-              <Field label="Adresse" value={form.address} onChange={(v) => setForm({ ...form, address: v })} />
-              <div className="flex gap-2 justify-end">
-                <button className="btn btn-ghost" onClick={handleCancelEdit} disabled={saving}>
-                  Annuler
-                </button>
-                <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
-                  {saving ? "Enregistrement…" : "Enregistrer"}
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      </section>
-
-      <section className="card bg-base-100 shadow border border-black/10">
-        <div className="card-body">
-          <h2 className="card-title text-lg">📊 Mes statistiques</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-2">
-            <StatCard label="Services" value={stats.listings} icon="📋" />
-            <StatCard label="Contrats" value={stats.contracts} icon="📝" />
-            <StatCard label="Événements" value={stats.events} icon="🎉" />
-            <StatCard label="Votes" value={stats.votes} icon="🗳️" />
-          </div>
-        </div>
-      </section>
-
-      <section className="card bg-base-100 shadow border border-black/10">
-        <div className="card-body">
-          <h2 className="card-title text-lg">💎 Mes points</h2>
-          <p className="text-4xl font-bold text-primary">{balance ?? "…"}</p>
-          <p className="text-sm text-base-content/60">Utilisable pour rémunérer un service entre voisins.</p>
-        </div>
-      </section>
-
-      <section className="card bg-base-100 shadow border border-black/10">
-        <div className="card-body">
-          <h2 className="card-title text-lg">🛡️ Mes données (RGPD)</h2>
-          <p className="text-sm text-base-content/70">
-            {"Tu peux télécharger l'intégralité de tes données personnelles dans un fichier JSON."}
-          </p>
-          <button className="btn btn-outline mt-2" onClick={handleExportRgpd} disabled={exporting}>
-            {exporting ? "Export en cours…" : "📥 Télécharger mes données"}
+      {/* Identity */}
+      <Card title={t("profile.identity.title")}>
+        <p className="mb-2 text-sm text-neutral-500 dark:text-neutral-400">{t("profile.identity.desc")}</p>
+        <div className="flex items-center gap-2">
+          <code className="flex-1 break-all rounded-lg bg-neutral-100 dark:bg-neutral-800 px-3 py-2 text-sm">
+            {user.id}
+          </code>
+          <button
+            onClick={copyId}
+            className="shrink-0 rounded-lg bg-[color:var(--color-brand)] px-3 py-2 text-sm font-semibold text-white hover:bg-[color:var(--color-brand-dark)]"
+          >
+            {copied ? t("profile.identity.copied") : t("profile.identity.copy")}
           </button>
         </div>
-      </section>
+      </Card>
 
-      <section className="card bg-base-100 border border-red-200 shadow">
-        <div className="card-body">
-          <h2 className="card-title text-lg text-red-600">Zone sensible</h2>
-          <div className="flex flex-col sm:flex-row gap-2 mt-2">
-            <button className="btn btn-warning flex-1" onClick={handleLogout}>
-              🚪 Se déconnecter
+      {/* Info */}
+      <section className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-5">
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-lg font-bold text-neutral-900 dark:text-neutral-50">{t("profile.info.title")}</h2>
+          {!editing && (
+            <button
+              onClick={() => setEditing(true)}
+              className="rounded-lg border border-neutral-300 dark:border-neutral-700 px-3 py-1.5 text-sm font-medium text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-800"
+            >
+              {t("profile.info.edit")}
             </button>
-            <button className="btn btn-error flex-1" onClick={() => setConfirmDelete(true)}>
-              🗑️ Supprimer mon compte
-            </button>
-          </div>
+          )}
         </div>
-      </section>
-
-      {confirmDelete && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-md w-full p-6 space-y-4">
-            <h3 className="text-xl font-bold text-red-600">Supprimer définitivement votre compte ?</h3>
-            <p className="text-sm">
-              Cette action est <strong>irréversible</strong>. Vos annonces, messages, votes, événements et signalements
-              seront supprimés. Vos contrats signés sont conservés pour des raisons légales (comptabilité). Tapez{" "}
-              <strong>SUPPRIMER</strong> pour confirmer.
-            </p>
-            <input
-              type="text"
-              className="input input-bordered w-full"
-              placeholder="SUPPRIMER"
-              aria-label="Tapez SUPPRIMER pour confirmer la suppression du compte"
-              value={deleteInput}
-              onChange={(e) => setDeleteInput(e.target.value)}
+        {!editing ? (
+          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <Info label={t("profile.info.firstName")} value={fullUser?.firstName ?? user.firstName} />
+            <Info label={t("profile.info.lastName")} value={fullUser?.lastName ?? user.lastName} />
+            <Info label={t("profile.info.email")} value={fullUser?.email ?? user.email} />
+            <Info label={t("profile.info.phone")} value={fullUser?.phone ?? none} />
+            <Info label={t("profile.info.address")} value={fullUser?.address ?? none} />
+            <Info
+              label={t("profile.info.district")}
+              value={districtName || (fullUser?.districtId ? t("common.loading") : none)}
             />
+          </div>
+        ) : (
+          <div className="mt-4 space-y-3">
+            <label className="block">
+              <span className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
+                {t("profile.info.firstName")}
+              </span>
+              <input
+                className={inputClass}
+                value={form.firstName}
+                onChange={(e) => setForm({ ...form, firstName: e.target.value })}
+              />
+            </label>
+            <label className="block">
+              <span className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
+                {t("profile.info.lastName")}
+              </span>
+              <input
+                className={inputClass}
+                value={form.lastName}
+                onChange={(e) => setForm({ ...form, lastName: e.target.value })}
+              />
+            </label>
+            <label className="block">
+              <span className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
+                {t("profile.info.phone")}
+              </span>
+              <input
+                className={inputClass}
+                value={form.phone}
+                onChange={(e) => setForm({ ...form, phone: e.target.value })}
+              />
+            </label>
+            <label className="block">
+              <span className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
+                {t("profile.info.address")}
+              </span>
+              <input
+                className={inputClass}
+                value={form.address}
+                onChange={(e) => setForm({ ...form, address: e.target.value })}
+              />
+            </label>
             <div className="flex justify-end gap-2">
               <button
-                className="btn btn-ghost"
-                onClick={() => {
-                  setConfirmDelete(false);
-                  setDeleteInput("");
-                }}
+                onClick={cancelEdit}
+                disabled={saving}
+                className="rounded-lg border border-neutral-300 dark:border-neutral-700 px-4 py-2 text-sm font-semibold text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-800 disabled:opacity-60"
               >
-                Annuler
+                {t("common.cancel")}
               </button>
-              <button className="btn btn-error" disabled={deleteInput !== "SUPPRIMER"} onClick={handleDeleteAccount}>
-                Confirmer la suppression
+              <button
+                onClick={save}
+                disabled={saving}
+                className="rounded-lg bg-[color:var(--color-brand)] px-4 py-2 text-sm font-semibold text-white hover:bg-[color:var(--color-brand-dark)] disabled:opacity-60"
+              >
+                {saving ? t("profile.info.saving") : t("profile.info.save")}
               </button>
             </div>
           </div>
+        )}
+      </section>
+
+      {/* Stats */}
+      <Card title={t("profile.stats.title")}>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {(
+            [
+              ["listings", stats.listings],
+              ["contracts", stats.contracts],
+              ["events", stats.events],
+              ["votes", stats.votes],
+            ] as const
+          ).map(([key, value]) => (
+            <div key={key} className="rounded-lg bg-neutral-50 dark:bg-neutral-800 p-3 text-center">
+              <div className="text-2xl font-extrabold text-neutral-900 dark:text-neutral-50">{value}</div>
+              <div className="text-xs text-neutral-500 dark:text-neutral-400">{t(`profile.stats.${key}`)}</div>
+            </div>
+          ))}
         </div>
-      )}
+      </Card>
+
+      {/* Points */}
+      <Card title={t("profile.points.title")}>
+        <p className="text-3xl font-extrabold text-[color:var(--color-brand)]">
+          {formatPrice(balance ?? user.balance)}
+        </p>
+        <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">{t("profile.points.desc")}</p>
+      </Card>
     </div>
   );
-};
-
-const Info = ({ label, value }: { label: string; value: string }) => (
-  <div>
-    <div className="text-xs uppercase text-base-content/50">{label}</div>
-    <div className="text-base">{value}</div>
-  </div>
-);
-
-const Field = ({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) => (
-  <div>
-    <label className="text-xs uppercase text-base-content/60">{label}</label>
-    <input
-      type="text"
-      className="input input-bordered w-full mt-1"
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-    />
-  </div>
-);
-
-const StatCard = ({ label, value, icon }: { label: string; value: number; icon: string }) => (
-  <div className="bg-base-200 rounded-lg p-3 text-center">
-    <div className="text-2xl">{icon}</div>
-    <div className="text-2xl font-bold">{value}</div>
-    <div className="text-xs text-base-content/60">{label}</div>
-  </div>
-);
-
-export default Profile;
+}

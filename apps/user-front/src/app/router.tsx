@@ -1,17 +1,20 @@
-import { createBrowserRouter, Navigate } from "react-router-dom";
+import { createBrowserRouter } from "react-router-dom";
 import { ProtectedRoute } from "@repo/hooks";
 import { config } from "@repo/config";
-import MainLayout from "../layouts/MainLayouts";
-import ServiceLayout from "../pages/service/ServiceLayout";
-import EvenementPage from "../pages/Evenement";
-import MessageriePage from "../pages/Messagerie";
-import Annonces from "../pages/service/Annonces";
-import AnnoncesUser from "../pages/service/AnnoncesUser";
-import Contrat from "../pages/service/Contrat";
-import DashBoard from "../pages/dashboard/DashBoard";
-import CreateService from "../pages/service/CreateService";
+import MainLayout from "../layouts/MainLayout";
+import Home from "../pages/Home";
+import Search from "../pages/Search";
+import ListingDetail from "../pages/ListingDetail";
+import PostListing from "../pages/PostListing";
+import MyListings from "../pages/MyListings";
+import Messages from "../pages/Messages";
+import Events from "../pages/Events";
 import Votes from "../pages/Votes";
+import Settings from "../pages/Settings";
+import Contracts from "../pages/Contracts";
 import Profile from "../pages/Profile";
+import Incidents from "../pages/Incidents";
+import NotFound from "../pages/NotFound";
 
 export const router = createBrowserRouter([
   {
@@ -20,23 +23,23 @@ export const router = createBrowserRouter([
         <MainLayout />
       </ProtectedRoute>
     ),
+    // Renders a themed page for router errors instead of the raw dev screen.
+    errorElement: <NotFound />,
     children: [
-      { path: "/", element: <DashBoard /> },
-      {
-        path: "/service",
-        element: <ServiceLayout />,
-        children: [
-          { index: true, element: <Navigate to="annonces" replace /> },
-          { path: "annonces", element: <Annonces /> },
-          { path: "mes-annonces", element: <AnnoncesUser /> },
-          { path: "mes-contrats", element: <Contrat /> },
-        ],
-      },
-      { path: "/creationService", element: <CreateService /> },
-      { path: "/evenement", element: <EvenementPage /> },
-      { path: "/messagerie", element: <MessageriePage /> },
-      { path: "/votes", element: <Votes /> },
-      { path: "/profile", element: <Profile /> },
+      { path: "/", element: <Home /> },
+      { path: "/recherche", element: <Search /> },
+      { path: "/annonce/:id", element: <ListingDetail /> },
+      { path: "/deposer", element: <PostListing /> },
+      { path: "/mes-annonces", element: <MyListings /> },
+      { path: "/mes-contrats", element: <Contracts /> },
+      { path: "/profil", element: <Profile /> },
+      { path: "/incidents", element: <Incidents /> },
+      { path: "/parametres", element: <Settings /> },
+      { path: "/evenements", element: <Events /> },
+      { path: "/sondages", element: <Votes /> },
+      { path: "/messages", element: <Messages /> },
+      { path: "/messages/:conversationId", element: <Messages /> },
+      { path: "*", element: <NotFound /> },
     ],
   },
 ]);

@@ -1,4 +1,4 @@
-import { randomBytes, createHash } from "crypto";
+import { randomBytes, createHash, randomUUID } from "crypto";
 import { SignJWT } from "jose";
 import type { UserRecord } from "../repositories/User/user-reader.repository.js";
 import type { IRefreshTokenRepository } from "../repositories/RefreshToken/refresh-token.repository.js";
@@ -9,6 +9,12 @@ export interface IssuedTokens {
   accessToken: string;
   refreshToken: string;
   user: Omit<UserRecord, "passwordHash" | "totpSecret"> & { adminDistrictId: string | null };
+}
+
+// Where a session was born — surfaced later in the "active sessions" view.
+export interface SessionContext {
+  userAgent: string | null;
+  ip: string | null;
 }
 
 // adminDistrictId is only meaningful for the `admin` role (one district each).
@@ -46,6 +52,7 @@ export const issueTokensForUser = async (
   user: UserRecord,
   refreshTokenRepo: IRefreshTokenRepository,
   districtAdminReader: IDistrictAdminReaderRepository,
+  context?: SessionContext,
 ): Promise<IssuedTokens> => {
   const adminDistrictId = await lookupAdminDistrictId(user, districtAdminReader);
   const accessToken = await signAccessToken(user, adminDistrictId);
@@ -59,8 +66,13 @@ export const issueTokensForUser = async (
     userId: user.id,
     tokenHash,
     expiresAt: expiresAt.toISOString(),
+    expiresAtDate: expiresAt,
     revokedAt: null,
     createdAt: now.toISOString(),
+    sessionId: randomUUID(),
+    userAgent: context?.userAgent ?? null,
+    ip: context?.ip ?? null,
+    lastUsedAt: now.toISOString(),
   });
 
   const { passwordHash: _passwordHash, totpSecret: _totpSecret, ...userDto } = user;

@@ -55,10 +55,6 @@ const ids = {
     movingHelp: "seed-listing-moving-help",
     gardenTools: "seed-listing-garden-tools",
   },
-  contracts: {
-    plumberJob: "seed-contract-plumber-job",
-    tutoringJob: "seed-contract-tutoring-job",
-  },
   events: {
     cleanup: "seed-event-cleanup",
     barbecue: "seed-event-barbecue",
@@ -105,7 +101,6 @@ const ids = {
   },
   notifications: {
     welcomeAlice: "seed-notification-welcome-alice",
-    contractBob: "seed-notification-contract-bob",
     eventCharlie: "seed-notification-event-charlie",
     voteDiana: "seed-notification-vote-diana",
     incidentAdmin: "seed-notification-incident-admin",
@@ -113,9 +108,6 @@ const ids = {
   transactions: {
     aliceCreditWelcome: "seed-transaction-alice-credit",
     bobCreditWelcome: "seed-transaction-bob-credit",
-    aliceToBobTransferOut: "seed-transaction-alice-transfer-out",
-    aliceToBobTransferIn: "seed-transaction-alice-transfer-in",
-    charlieDebit: "seed-transaction-charlie-debit",
   },
 };
 
@@ -261,7 +253,7 @@ const listings = [
     title: "Petit bricolage et réparations du quotidien",
     description:
       "Je peux aider pour monter un meuble, fixer une étagère, changer une prise ou faire de petites réparations à la maison.",
-    type: "Bricolage",
+    type: "offer",
     price: 10,
     status: "active",
     tags: ["diy"],
@@ -275,7 +267,7 @@ const listings = [
     title: "Garde d'enfants ponctuelle en soirée",
     description:
       "Je cherche une personne de confiance pour garder deux enfants de 4 et 7 ans pendant une soirée, avec jeux et repas déjà préparés.",
-    type: "Garde d'enfants",
+    type: "offer",
     price: 4,
     status: "active",
     tags: ["babysitting"],
@@ -289,7 +281,7 @@ const listings = [
     title: "Atelier cuisine maison pour voisins",
     description:
       "Je propose un atelier cuisine pour apprendre à préparer un repas simple et convivial, idéal pour débutants ou familles.",
-    type: "Cuisine",
+    type: "offer",
     price: 6,
     status: "active",
     tags: ["cooking"],
@@ -303,7 +295,7 @@ const listings = [
     title: "Besoin d'aide pour transporter un canapé",
     description:
       "Je cherche une ou deux personnes pour m'aider à transporter un canapé du rez-de-chaussée jusqu'à un appartement voisin.",
-    type: "Transport",
+    type: "offer",
     price: 0,
     status: "active",
     tags: ["moving"],
@@ -317,7 +309,7 @@ const listings = [
     title: "Aide au jardinage et entretien de balcon",
     description:
       "Disponible pour arroser les plantes, rempoter, tailler quelques arbustes ou donner un coup de main sur un petit jardin ou un balcon.",
-    type: "Jardinage",
+    type: "offer",
     price: 0,
     status: "active",
     tags: ["gardening"],
@@ -325,41 +317,9 @@ const listings = [
   },
 ];
 
-const contracts = [
-  {
-    _id: ids.contracts.plumberJob,
-    listingId: ids.listings.plumber,
-    districtId: ids.districts.montmartre,
-    providerId: ids.users.bob,
-    beneficiaryId: ids.users.alice,
-    price: 10,
-    // Fully signed demo contract (Documenso DOCUMENT_COMPLETED); signing URLs are
-    // nulled once completed, mirroring the runtime toResponse behaviour.
-    documensoDocumentId: 1001,
-    signatureStatus: "completed",
-    providerSigningUrl: null,
-    beneficiarySigningUrl: null,
-    disputed: false,
-    disputeReason: null,
-    createdAt: now,
-  },
-  {
-    _id: ids.contracts.tutoringJob,
-    listingId: ids.listings.tutoring,
-    districtId: ids.districts.marais,
-    providerId: ids.users.diana,
-    beneficiaryId: ids.users.charlie,
-    price: 2,
-    // Sent, awaiting signatures (Documenso pending) — each party has a signing URL.
-    documensoDocumentId: 1002,
-    signatureStatus: "pending",
-    providerSigningUrl: "https://documenso.local/sign/demo-provider-1002",
-    beneficiarySigningUrl: "https://documenso.local/sign/demo-beneficiary-1002",
-    disputed: false,
-    disputeReason: null,
-    createdAt: now,
-  },
-];
+// Contracts are not seeded: a contract is only meaningful with a real Documenso
+// document behind it (fake ids can't be signed and crash the PDF proxy). They are
+// created at runtime via "Prendre ce service".
 
 const events = [
   {
@@ -729,17 +689,6 @@ const notifications = [
     createdAt: lastWeek,
   },
   {
-    _id: ids.notifications.contractBob,
-    recipientId: ids.users.bob,
-    type: "contract",
-    title: "New contract pending signature",
-    message: "Alice has signed the plumbing contract — your turn.",
-    refId: ids.contracts.plumberJob,
-    refType: "contract",
-    read: false,
-    createdAt: now,
-  },
-  {
     _id: ids.notifications.eventCharlie,
     recipientId: ids.users.charlie,
     type: "event",
@@ -790,33 +739,6 @@ const transactions = [
     amount: 25,
     refType: "system",
     createdAt: lastWeek,
-  },
-  {
-    _id: ids.transactions.aliceToBobTransferOut,
-    userId: ids.users.alice,
-    type: "transfer_out",
-    amount: -10,
-    refId: ids.contracts.plumberJob,
-    refType: "contract",
-    createdAt: now,
-  },
-  {
-    _id: ids.transactions.aliceToBobTransferIn,
-    userId: ids.users.bob,
-    type: "transfer_in",
-    amount: 10,
-    refId: ids.contracts.plumberJob,
-    refType: "contract",
-    createdAt: now,
-  },
-  {
-    _id: ids.transactions.charlieDebit,
-    userId: ids.users.charlie,
-    type: "transfer_out",
-    amount: -2,
-    refId: ids.contracts.tutoringJob,
-    refType: "contract",
-    createdAt: now,
   },
 ];
 
@@ -984,7 +906,6 @@ const main = async () => {
     console.warn(`  🔑 seeded users share password "${seedPassword}" (e.g. alice@example.com)`);
     await seedCollection(db, "tags", tags);
     await seedCollection(db, "listings", listings);
-    await seedCollection(db, "contracts", contracts);
     await seedCollection(db, "events", events);
     await seedCollection(db, "incidents", incidents);
     await seedCollection(db, "votes", votes);
@@ -999,7 +920,6 @@ const main = async () => {
       users.length +
       tags.length +
       listings.length +
-      contracts.length +
       events.length +
       incidents.length +
       votes.length +

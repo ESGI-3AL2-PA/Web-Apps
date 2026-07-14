@@ -77,6 +77,25 @@ export const ResetPasswordRequestSchema = z
   .openapi({ title: "ResetPasswordRequest" });
 export type ResetPasswordRequestDto = z.infer<typeof ResetPasswordRequestSchema>;
 
+export const SessionResponseDtoSchema = z
+  .object({
+    id: z.string().openapi({ description: "Session (refresh-token) id" }),
+    userAgent: z.string().nullable().openapi({ description: "User-agent captured at login" }),
+    ip: z.string().nullable().openapi({ description: "IP address captured at login" }),
+    createdAt: z.string().datetime().openapi({ description: "When the session was created" }),
+    lastUsedAt: z.string().datetime().nullable().openapi({ description: "Last time the session was refreshed" }),
+    expiresAt: z.string().datetime().openapi({ description: "When the session expires" }),
+    current: z.boolean().openapi({ description: "Whether this is the session making the request" }),
+  })
+  .openapi({ title: "SessionResponse" });
+export type SessionResponseDto = z.infer<typeof SessionResponseDtoSchema>;
+
+export const SessionListResponseDtoSchema = z.array(SessionResponseDtoSchema).openapi({ title: "SessionListResponse" });
+export type SessionListResponseDto = z.infer<typeof SessionListResponseDtoSchema>;
+
+export const SessionParamsDtoSchema = z.object({ id: z.string().min(1) }).openapi({ title: "SessionParams" });
+export type SessionParamsDto = z.infer<typeof SessionParamsDtoSchema>;
+
 export const MfaRequiredResponseSchema = z
   .object({
     mfa_required: z.literal(true),

@@ -45,6 +45,7 @@ export const TransactionQueryDtoSchema = z
   })
   .openapi({ title: "TransactionQuery" });
 export type TransactionQueryDto = z.infer<typeof TransactionQueryDtoSchema>;
+export type TransactionQueryInput = z.input<typeof TransactionQueryDtoSchema>;
 
 export const UserBalanceResponseDtoSchema = z
   .object({

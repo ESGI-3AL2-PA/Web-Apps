@@ -71,6 +71,7 @@ export const EventQueryDtoSchema = z
   })
   .openapi("EventQuery");
 export type EventQueryDto = z.infer<typeof EventQueryDtoSchema>;
+export type EventQueryInput = z.input<typeof EventQueryDtoSchema>;
 
 export const AttendEventDtoSchema = z
   .object({

@@ -2,6 +2,7 @@ import type { Server as HttpServer } from "http";
 import { Server, type Socket } from "socket.io";
 import { createRemoteJWKSet, jwtVerify } from "jose";
 import type { Message } from "../entities/conversation.entity.js";
+import type { Notification } from "../entities/notification.entity.js";
 
 const jwksUrl = process.env.AUTH_JWKS_URL ?? "http://localhost:3001/.well-known/jwks.json";
 const JWKS = createRemoteJWKSet(new URL(jwksUrl));
@@ -94,6 +95,12 @@ export const broadcastNewMessage = (participantIds: string[], message: Message):
   for (const pid of participantIds) {
     io.to(`user:${pid}`).emit("message:new", message);
   }
+};
+
+// Émis après création d'une notification — le destinataire refetchera automatiquement.
+export const broadcastNewNotification = (recipientId: string, notification: Notification): void => {
+  if (!io) return;
+  io.to(`user:${recipientId}`).emit("notification:new", notification);
 };
 
 export const isUserOnline = (userId: string): boolean => onlineSockets.has(userId);

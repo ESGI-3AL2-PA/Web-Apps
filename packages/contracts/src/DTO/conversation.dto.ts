@@ -40,6 +40,7 @@ export const ConversationQueryDtoSchema = z
   })
   .openapi({ title: "ConversationQuery" });
 export type ConversationQueryDto = z.infer<typeof ConversationQueryDtoSchema>;
+export type ConversationQueryInput = z.input<typeof ConversationQueryDtoSchema>;
 
 export const MessageResponseDtoSchema = z
   .object({
@@ -68,6 +69,32 @@ export type SendMessageDto = z.infer<typeof SendMessageDtoSchema>;
 export const MessageParamsDtoSchema = z.object({ id: z.string() }).openapi({ title: "MessageParams" });
 export type MessageParamsDto = z.infer<typeof MessageParamsDtoSchema>;
 
+// Voice note upload: base64 (data-URL or raw). Bounded to ~5 MB decoded — base64
+// inflates ~4/3, so 7M chars ≈ 5 MB — to guard against filling object storage.
+export const SendVoiceMessageDtoSchema = z
+  .object({
+    audioBase64: z
+      .string()
+      .min(20)
+      .max(7_000_000)
+      .openapi({ description: "Voice clip as base64 (data-URL or raw), max ~5 MB decoded" }),
+  })
+  .openapi({ title: "SendVoiceMessage" });
+export type SendVoiceMessageDto = z.infer<typeof SendVoiceMessageDtoSchema>;
+
+// Image message upload: base64 data-URL (png/jpeg/webp/gif). Same ~5 MB bound as voice.
+// Served privately (participant-checked), unlike public listing images.
+export const SendImageMessageDtoSchema = z
+  .object({
+    imageBase64: z
+      .string()
+      .min(20)
+      .max(7_000_000)
+      .openapi({ description: "Image as a base64 data-URL (png/jpeg/webp/gif), max ~5 MB decoded" }),
+  })
+  .openapi({ title: "SendImageMessage" });
+export type SendImageMessageDto = z.infer<typeof SendImageMessageDtoSchema>;
+
 export const MessageQueryDtoSchema = z
   .object({
     page: z.coerce.number().int().min(1).optional().default(1),
@@ -75,6 +102,7 @@ export const MessageQueryDtoSchema = z
   })
   .openapi({ title: "MessageQuery" });
 export type MessageQueryDto = z.infer<typeof MessageQueryDtoSchema>;
+export type MessageQueryInput = z.input<typeof MessageQueryDtoSchema>;
 
 export const UploadMediaDtoSchema = z
   .object({

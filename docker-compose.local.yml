@@ -2,6 +2,7 @@ services:
   mongodb:
     profiles: [core]
     image: mongo:8
+    restart: unless-stopped
     ports:
       - "${MONGO_PORT:-27017}:27017"
     volumes:
@@ -12,7 +13,7 @@ services:
 
   mongo-express:
     profiles: [core]
-    image: mongo-express:latest
+    image: mongo-express:1.0.2
     restart: on-failure
     ports:
       - "${MONGO_EXPRESS_PORT:-8081}:8081"
@@ -27,6 +28,7 @@ services:
   neo4j:
     profiles: [core]
     image: neo4j:5
+    restart: unless-stopped
     ports:
       - "${NEO4J_HTTP_PORT:-7474}:7474"
       - "${NEO4J_BOLT_PORT:-7687}:7687"
@@ -40,7 +42,7 @@ services:
   # invitation emails (and grab the signing links) during local E2E testing.
   mailpit:
     profiles: [core, contracts]
-    image: axllent/mailpit:latest
+    image: axllent/mailpit:v1.20.0
     ports:
       - "${MAILPIT_SMTP_PORT:-1025}:1025"
       - "${MAILPIT_UI_PORT:-8025}:8025"
@@ -70,7 +72,7 @@ services:
   # in-network at http://documenso:3030 and its webhooks reach the api at api:3000.
   documenso:
     profiles: [contracts]
-    image: documenso/documenso:latest
+    image: documenso/documenso:v1.5.6
     depends_on:
       documenso-db:
         condition: service_healthy
@@ -123,7 +125,7 @@ services:
   # the core app also stores voice messages here, so it runs in both profiles.
   minio:
     profiles: [core, contracts]
-    image: minio/minio:latest
+    image: minio/minio:RELEASE.2024-01-16T16-07-38Z
     command: server /data --console-address ":9001"
     ports:
       - "${MINIO_PORT:-9000}:9000"
@@ -142,7 +144,7 @@ services:
   # One-shot: create the buckets (documenso PDFs + voice messages), then exit.
   minio-createbucket:
     profiles: [core, contracts]
-    image: minio/mc:latest
+    image: minio/mc:RELEASE.2024-01-18T07-03-39Z
     depends_on:
       minio:
         condition: service_started
@@ -153,6 +155,7 @@ services:
         until mc alias set local http://minio:9000 minioadmin minioadmin; do sleep 1; done;
         mc mb --ignore-existing local/documenso;
         mc mb --ignore-existing local/messages;
+        mc mb --ignore-existing local/listings;
         exit 0;
 
   # ── Application services (dev target, hot-reload via bind mount) ─────────────
@@ -160,6 +163,7 @@ services:
   # name — no host/container split-horizon for the PDF proxy or webhooks.
   api:
     profiles: [core]
+    restart: unless-stopped
     build:
       context: .
       dockerfile: apps/api/Dockerfile
@@ -179,6 +183,9 @@ services:
       NEO4J_USER: neo4j
       NEO4J_PASSWORD: password
       AUTH_JWKS_URL: http://auth-service:3001/.well-known/jwks.json
+      # Reach auth-service in-network to purge sessions on account deletion (GDPR erasure).
+      AUTH_SERVICE_URL: http://auth-service:3001
+      INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN:-dev-internal-service-token}
       # Documenso reached in-network; secrets come from .env (created once in the UI).
       DOCUMENSO_URL: http://documenso:3030
       DOCUMENSO_API_TOKEN: ${DOCUMENSO_API_TOKEN:-}
@@ -191,15 +198,30 @@ services:
       MESSAGES_MINIO_BUCKET: messages
       MESSAGES_MINIO_ACCESS_KEY: minioadmin
       MESSAGES_MINIO_SECRET_KEY: minioadmin
+      LISTINGS_MINIO_ENDPOINT: http://minio:9000
+      LISTINGS_MINIO_BUCKET: listings
+      LISTINGS_MINIO_ACCESS_KEY: minioadmin
+      LISTINGS_MINIO_SECRET_KEY: minioadmin
     # No hard dependency on `documenso` (contracts profile): the api calls it lazily
     # per contract request and 502s if it's absent, so core can run without it.
     depends_on:
       - mongodb
       - auth-service
       - minio-createbucket
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://localhost:3000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   auth-service:
     profiles: [core]
+    restart: unless-stopped
     build:
       context: .
       dockerfile: apps/auth-service/Dockerfile
@@ -216,6 +238,8 @@ services:
       MONGODB_URL: mongodb://root:root@mongodb:27017
       MONGODB_DB: db
       API_URL: http://api:3000
+      # Shared secret for the api→auth-service internal session-purge call (must match api).
+      INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN:-dev-internal-service-token}
       # No AUTH_*_KEY[_FILE] set → auth-service generates ephemeral RS256 keys on boot.
       # Fine for dev (keys rotate on restart; the api's JWKS set refetches on the next
       # verification miss). Provide stable keys via AUTH_*_KEY_FILE for prod.
@@ -230,6 +254,7 @@ services:
 
   admin-front:
     profiles: [core]
+    restart: unless-stopped
     build:
       context: .
       dockerfile: apps/admin-front/Dockerfile
@@ -249,6 +274,7 @@ services:
 
   user-front:
     profiles: [core]
+    restart: unless-stopped
     build:
       context: .
       dockerfile: apps/user-front/Dockerfile

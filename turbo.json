@@ -8,6 +8,10 @@
     },
     "lint": {},
     "lint:fix": {},
+    "test": {
+      "dependsOn": [],
+      "outputs": []
+    },
     "dev": {
       "dependsOn": ["^build"],
       "cache": false,

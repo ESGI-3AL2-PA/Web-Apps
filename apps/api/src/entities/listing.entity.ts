@@ -18,6 +18,7 @@ export const ListingSchema = z.object({
   price: z.number().int().min(0),
   status: ListingStatusSchema,
   tags: z.array(z.string()),
+  images: z.array(z.string()).default([]),
   createdAt: z.string().datetime(),
   expiresAt: z.string().datetime().optional(),
 });

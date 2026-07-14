@@ -5,7 +5,14 @@
     <link rel="icon" type="image/png" href="/Logo-connectedNeighbours.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link href="./style.css" rel="stylesheet" />
-    <title>Connected NeighBours</title>
+    <title>Connected NeighBours — petites annonces</title>
+    <script>
+      // Apply the saved theme before paint to avoid a flash of the wrong theme.
+      try {
+        var m = localStorage.getItem("theme");
+        if (m === "dark" || m === "light") document.documentElement.setAttribute("data-theme", m);
+      } catch (e) {}
+    </script>
   </head>
 
   <body>

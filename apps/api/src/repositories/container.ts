@@ -43,8 +43,9 @@ import { SatanNotificationRepository } from "./Notification/notification.reposit
 import { SatanTransactionRepository } from "./Transaction/transaction.repository.satan.js";
 
 // Fields are typed by interface so either the Mongo or the SATAN implementation
-// fits the same slot (see initContainer).
-let repositories: {
+// fits the same slot (see initContainer). The named type keeps resolve() typed
+// (an inline `NonNullable<typeof repositories>` collapses to `never` under our TS pin).
+type Container = {
   user: IUserRepository;
   listing: IListingRepository;
   contract: IContractRepository;
@@ -58,7 +59,9 @@ let repositories: {
   notification: INotificationRepository;
   transaction: ITransactionRepository;
   graph: Neo4jGraphRepository;
-} | null = null;
+};
+
+let repositories: Container | null = null;
 
 /**
  * Builds the repository container. When a SATAN client is supplied (and
@@ -120,10 +123,9 @@ export const initContainer = (db: Db, neo4jDriver: Driver, satan?: SatanClient) 
   }
 };
 
-type Container = NonNullable<typeof repositories>;
 export type ContainerKeys = keyof Container;
 
 export const resolve = <K extends ContainerKeys>(key: K): Container[K] => {
   if (!repositories) throw new Error("Container not initialized — call initContainer(db, neo4jDriver) first");
-  return (repositories as Container)[key];
+  return repositories[key];
 };

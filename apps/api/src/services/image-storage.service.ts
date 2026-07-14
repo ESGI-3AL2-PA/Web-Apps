@@ -1,0 +1,113 @@
+import type { Readable } from "stream";
+import * as Minio from "minio";
+
+// Listing images are stored in self-hosted MinIO (same instance as voice messages,
+// see media-storage.service.ts). Config falls back to the MESSAGES_MINIO_* vars so
+// a single MinIO deployment serves both; override with LISTINGS_MINIO_* if needed.
+const BUCKET = process.env.LISTINGS_MINIO_BUCKET ?? "listings";
+
+const endpointUrl = new URL(
+  process.env.LISTINGS_MINIO_ENDPOINT ?? process.env.MESSAGES_MINIO_ENDPOINT ?? "http://localhost:9000",
+);
+const useSSL = endpointUrl.protocol === "https:";
+
+const minio = new Minio.Client({
+  endPoint: endpointUrl.hostname,
+  port: Number(endpointUrl.port) || (useSSL ? 443 : 80),
+  useSSL,
+  accessKey: process.env.LISTINGS_MINIO_ACCESS_KEY ?? process.env.MESSAGES_MINIO_ACCESS_KEY ?? "",
+  secretKey: process.env.LISTINGS_MINIO_SECRET_KEY ?? process.env.MESSAGES_MINIO_SECRET_KEY ?? "",
+});
+
+// data-URL mime → file extension. The extension is baked into the object key so the
+// GET handler can serve the right Content-Type without a metadata round-trip.
+const MIME_TO_EXT: Record<string, string> = {
+  "image/png": "png",
+  "image/jpeg": "jpg",
+  "image/jpg": "jpg",
+  "image/webp": "webp",
+  "image/gif": "gif",
+};
+
+const EXT_TO_MIME: Record<string, string> = {
+  png: "image/png",
+  jpg: "image/jpeg",
+  webp: "image/webp",
+  gif: "image/gif",
+};
+
+export const contentTypeForKey = (key: string): string => {
+  const ext = key.split(".").pop()?.toLowerCase() ?? "";
+  return EXT_TO_MIME[ext] ?? "application/octet-stream";
+};
+
+// Auto-create the bucket on first use so we don't depend on compose-time provisioning.
+let ensured = false;
+const ensureBucket = async (): Promise<void> => {
+  if (ensured) return;
+  const exists = await minio.bucketExists(BUCKET).catch(() => false);
+  if (!exists) {
+    await minio.makeBucket(BUCKET);
+  }
+  ensured = true;
+};
+
+type DecodedImage = { bytes: Buffer; ext: string; contentType: string };
+
+// Parse a `data:image/xxx;base64,....` URL into bytes + extension. Requires a proper
+// image data-URL prefix — a prefix-less payload or a non-image mime (text/plain, svg,
+// …) is rejected (null) rather than silently stored as png.
+export const decodeImageBase64 = (input: string): DecodedImage | null => {
+  const match = input.match(/^data:(image\/[a-zA-Z+.-]+);base64,(.*)$/s);
+  if (!match) return null;
+  const mime = match[1]!.toLowerCase();
+  const ext = MIME_TO_EXT[mime];
+  if (!ext) return null;
+  const bytes = Buffer.from(match[2]!, "base64");
+  if (bytes.length === 0) return null;
+  return { bytes, ext, contentType: EXT_TO_MIME[ext]! };
+};
+
+// Persist an image and return its object key (`<id>.<ext>`).
+export const saveImage = async (id: string, image: DecodedImage): Promise<string> => {
+  await ensureBucket();
+  const key = `${id}.${image.ext}`;
+  await minio.putObject(BUCKET, key, image.bytes, image.bytes.length, { "Content-Type": image.contentType });
+  return key;
+};
+
+// Best-effort delete of an image object. Never throws: media cleanup must not break
+// the caller (listing/account deletion), mirroring deleteAudio in media-storage.
+export const deleteImage = async (key: string): Promise<void> => {
+  try {
+    await minio.removeObject(BUCKET, key);
+  } catch {
+    // best-effort
+  }
+};
+
+// Marker shared with the upload handler's stored URL (`<base>/uploads/images/<key>`).
+const IMAGE_URL_MARKER = "/uploads/images/";
+
+// Derive the MinIO object key from a stored image URL. Returns null for URLs that are
+// not our own-hosted uploads, so we never attempt to remove arbitrary external objects.
+export const imageKeyFromUrl = (url: string): string | null => {
+  const idx = url.lastIndexOf(IMAGE_URL_MARKER);
+  if (idx === -1) return null;
+  const key = url.slice(idx + IMAGE_URL_MARKER.length);
+  return key.length > 0 ? key : null;
+};
+
+// Returns a readable stream of the image for the given key, or null if it is missing.
+export const getImageStream = async (key: string): Promise<Readable | null> => {
+  try {
+    await ensureBucket();
+    return await minio.getObject(BUCKET, key);
+  } catch (err) {
+    // Only a genuine not-found maps to null (→ 404). Any other failure (MinIO down,
+    // auth, network) rethrows so the route surfaces a logged 500 instead of a fake 404.
+    const code = (err as { code?: string } | null)?.code;
+    if (code === "NoSuchKey" || code === "NotFound") return null;
+    throw err;
+  }
+};

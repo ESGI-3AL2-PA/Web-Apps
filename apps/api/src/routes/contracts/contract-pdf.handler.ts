@@ -31,13 +31,27 @@ export const contractPdfHandler = async (req: Request, res: Response) => {
     return;
   }
 
-  const pdf = await documensoService.fetchSignedPdf(contract.documensoDocumentId);
+  // Documenso can fail (e.g. the document was deleted, or is unreachable). Catch it so
+  // a bad PDF request returns 502 instead of crashing the process on an unhandled rejection.
+  let pdf: Awaited<ReturnType<typeof documensoService.fetchSignedPdf>>;
+  try {
+    pdf = await documensoService.fetchSignedPdf(contract.documensoDocumentId);
+  } catch (err) {
+    console.error("fetchSignedPdf failed:", err);
+    res.status(502).json({ message: "Could not fetch the signed PDF" });
+    return;
+  }
   if (!pdf) {
     // Signed PDF only exists once every party has signed.
     res.status(409).json({ message: "Contract is not fully signed yet" });
     return;
   }
+  // Strip CR/LF and quotes from the Documenso-provided name to avoid header injection/spoofing.
+  const safeName =
+    String(pdf.filename ?? "contract.pdf")
+      .replace(/[\r\n"]/g, "")
+      .trim() || "contract.pdf";
   res.setHeader("Content-Type", pdf.contentType);
-  res.setHeader("Content-Disposition", `inline; filename="${pdf.filename}"`);
+  res.setHeader("Content-Disposition", `inline; filename="${safeName}"`);
   res.send(pdf.body);
 };
