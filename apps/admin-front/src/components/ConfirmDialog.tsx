@@ -23,6 +23,7 @@ export function ConfirmDialog({
   onCancel,
 }: ConfirmDialogProps) {
   const titleId = useId();
+  const errorId = useId();
   if (!open) return null;
 
   return (
@@ -37,12 +38,22 @@ export function ConfirmDialog({
         {title}
       </h3>
       <p className="text-sm text-base-content/70">{message}</p>
-      {error && <p className="text-sm text-error mt-3">{error}</p>}
+      {error && (
+        <p id={errorId} role="alert" className="text-sm text-error mt-3">
+          {error}
+        </p>
+      )}
       <div className="flex justify-end gap-2 mt-6">
         <button type="button" className="btn btn-soft" onClick={onCancel} disabled={busy}>
           Cancel
         </button>
-        <button type="button" className="btn btn-error" onClick={onConfirm} disabled={busy}>
+        <button
+          type="button"
+          className="btn btn-error"
+          onClick={onConfirm}
+          disabled={busy}
+          aria-describedby={error ? errorId : undefined}
+        >
           {busy && <span className="loading loading-spinner loading-xs" />}
           {confirmLabel}
         </button>
