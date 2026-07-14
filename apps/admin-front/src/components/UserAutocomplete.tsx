@@ -9,11 +9,13 @@ type UserAutocompleteProps = {
   placeholder?: string;
   // Restrict candidates to a single role (e.g. "admin" for incident assignment).
   role?: "user" | "admin" | "superAdmin";
+  // Forwarded onto the inner input so a wrapping <label htmlFor> can target it.
+  id?: string;
 };
 
 // Name-based user picker backed by GET /users (district-scoped server-side). Resolves the
 // initial value's id to a name, then lets the admin search by name and pick — writes the id back.
-export function UserAutocomplete({ value, onChange, placeholder, role }: UserAutocompleteProps) {
+export function UserAutocomplete({ value, onChange, placeholder, role, id }: UserAutocompleteProps) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<UserResponseDto[]>([]);
   const [open, setOpen] = useState(false);
@@ -76,6 +78,7 @@ export function UserAutocomplete({ value, onChange, placeholder, role }: UserAut
       <label className="input">
         <span className="icon-[tabler--user] size-4 text-base-content/60" />
         <input
+          id={id}
           value={query}
           placeholder={placeholder ?? "Search a user by name…"}
           onChange={(e) => {
