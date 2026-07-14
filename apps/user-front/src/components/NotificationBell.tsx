@@ -38,7 +38,7 @@ export default function NotificationBell() {
   const ref = useRef<HTMLDivElement>(null);
 
   const load = useCallback(() => {
-    getNotifications({ limit: 15 } as never)
+    getNotifications({ limit: 15 })
       .then((page) => setItems(page.data))
       .catch(() => setItems([]));
   }, []);

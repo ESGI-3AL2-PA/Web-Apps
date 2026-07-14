@@ -22,10 +22,10 @@ export default function Home() {
 
   useEffect(() => {
     Promise.all([
-      getListings({ status: "active", limit: 24 } as never),
+      getListings({ status: "active", limit: 24 }),
       getTags(),
-      getEvents({ status: "upcoming", limit: 3 } as never).catch(() => []),
-      getVotes({ status: "open", limit: 3 } as never).catch(() => []),
+      getEvents({ status: "upcoming", limit: 3 }).catch(() => []),
+      getVotes({ status: "open", limit: 3 }).catch(() => []),
     ])
       .then(([page, t, ev, vo]) => {
         setListings(page.data);

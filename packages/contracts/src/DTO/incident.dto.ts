@@ -71,6 +71,7 @@ export const IncidentQueryDtoSchema = z
   })
   .openapi({ title: "IncidentQuery" });
 export type IncidentQueryDto = z.infer<typeof IncidentQueryDtoSchema>;
+export type IncidentQueryInput = z.input<typeof IncidentQueryDtoSchema>;
 
 export const IncidentStatsQueryDtoSchema = z
   .object({

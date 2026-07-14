@@ -1,6 +1,6 @@
 import type {
   CreateListingDto,
-  ListingQueryDto,
+  ListingQueryInput,
   ListingResponseDto,
   ListingResponseDtoSchema,
   PaginatedResponseDto,
@@ -11,7 +11,7 @@ import api from "./api";
 type PaginatedListings = PaginatedResponseDto<typeof ListingResponseDtoSchema>;
 
 // GET /listings — paginated list with optional filters (search, type, status, tag, …)
-export async function getListings(filters: ListingQueryDto = {} as ListingQueryDto): Promise<PaginatedListings> {
+export async function getListings(filters: ListingQueryInput = {}): Promise<PaginatedListings> {
   const res = await api.get<PaginatedListings>("/listings", { params: filters });
   return res.data;
 }

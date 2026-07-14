@@ -1,5 +1,5 @@
 import { config } from "@repo/config";
-import type { EventQueryDto, ListingQueryDto, UserResponseDto, VoteQueryDto } from "@repo/contracts";
+import type { UserResponseDto } from "@repo/contracts";
 import api from "./api";
 import { getListings } from "./listings.service";
 import { getContracts } from "./contracts.service";
@@ -34,7 +34,7 @@ const emptyPage = { data: [] as unknown[] };
 export async function exportMyData(userId: string): Promise<AccountExport> {
   const [user, listings, cProvider, cBenef, events, votes, transactions] = await Promise.all([
     api.get<UserResponseDto>(`/users/${userId}`).then((r) => r.data),
-    getListings({ authorId: userId, limit: 200 } as ListingQueryDto)
+    getListings({ authorId: userId, limit: 200 })
       .then((p) => p.data)
       .catch(() => []),
     getContracts({ providerId: userId, limit: 200 })
@@ -43,9 +43,9 @@ export async function exportMyData(userId: string): Promise<AccountExport> {
     getContracts({ beneficiaryId: userId, limit: 200 })
       .then((p) => p.data)
       .catch(() => []),
-    getEvents({ creatorId: userId, limit: 200 } as EventQueryDto).catch(() => []),
-    getVotes({ creatorId: userId, limit: 200 } as VoteQueryDto).catch(() => []),
-    getUserTransactions(userId, { limit: 500 } as never)
+    getEvents({ creatorId: userId, limit: 200 }).catch(() => []),
+    getVotes({ creatorId: userId, limit: 200 }).catch(() => []),
+    getUserTransactions(userId, { limit: 500 })
       .then((p) => p.data)
       .catch(() => emptyPage.data),
   ]);

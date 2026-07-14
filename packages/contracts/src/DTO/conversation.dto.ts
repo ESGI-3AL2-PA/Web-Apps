@@ -40,6 +40,7 @@ export const ConversationQueryDtoSchema = z
   })
   .openapi({ title: "ConversationQuery" });
 export type ConversationQueryDto = z.infer<typeof ConversationQueryDtoSchema>;
+export type ConversationQueryInput = z.input<typeof ConversationQueryDtoSchema>;
 
 export const MessageResponseDtoSchema = z
   .object({
@@ -101,6 +102,7 @@ export const MessageQueryDtoSchema = z
   })
   .openapi({ title: "MessageQuery" });
 export type MessageQueryDto = z.infer<typeof MessageQueryDtoSchema>;
+export type MessageQueryInput = z.input<typeof MessageQueryDtoSchema>;
 
 export const UploadMediaDtoSchema = z
   .object({

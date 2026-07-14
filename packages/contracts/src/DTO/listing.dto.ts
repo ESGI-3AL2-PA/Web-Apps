@@ -95,3 +95,4 @@ export const ListingQueryDtoSchema = z
   })
   .openapi({ title: "ListingQuery" });
 export type ListingQueryDto = z.infer<typeof ListingQueryDtoSchema>;
+export type ListingQueryInput = z.input<typeof ListingQueryDtoSchema>;

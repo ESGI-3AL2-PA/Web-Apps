@@ -1,9 +1,9 @@
 import type {
-  ConversationQueryDto,
+  ConversationQueryInput,
   ConversationResponseDto,
   ConversationResponseDtoSchema,
   CreateConversationDto,
-  MessageQueryDto,
+  MessageQueryInput,
   MessageResponseDto,
   MessageResponseDtoSchema,
   PaginatedResponseDto,
@@ -35,7 +35,7 @@ type PaginatedMessages = PaginatedResponseDto<typeof MessageResponseDtoSchema>;
 
 // GET /conversations — conversations the user participates in
 export async function getConversations(
-  filters: ConversationQueryDto = {} as ConversationQueryDto,
+  filters: ConversationQueryInput = {},
 ): Promise<ConversationResponseDto[]> {
   const res = await api.get<PaginatedConversations>("/conversations", {
     params: { ...filters, limit: filters.limit ?? 100 },
@@ -52,7 +52,7 @@ export async function createConversation(data: CreateConversationDto): Promise<C
 // GET /conversations/:id/messages — messages of a conversation (participant only)
 export async function getMessages(
   conversationId: string,
-  filters: MessageQueryDto = {} as MessageQueryDto,
+  filters: MessageQueryInput = {},
 ): Promise<MessageResponseDto[]> {
   const res = await api.get<PaginatedMessages>(`/conversations/${conversationId}/messages`, { params: filters });
   // The API returns the most recent messages first; the thread reads oldest→newest top-to-bottom.

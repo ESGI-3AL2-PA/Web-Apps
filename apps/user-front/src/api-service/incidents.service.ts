@@ -1,6 +1,6 @@
 import type {
   CreateIncidentDto,
-  IncidentQueryDto,
+  IncidentQueryInput,
   IncidentResponseDto,
   IncidentResponseDtoSchema,
   PaginatedResponseDto,
@@ -10,7 +10,7 @@ import api from "./api";
 type PaginatedIncidents = PaginatedResponseDto<typeof IncidentResponseDtoSchema>;
 
 // GET /incidents — a regular user only sees their own (backend scopes by role).
-export async function getIncidents(filters: IncidentQueryDto = {} as IncidentQueryDto): Promise<PaginatedIncidents> {
+export async function getIncidents(filters: IncidentQueryInput = {}): Promise<PaginatedIncidents> {
   const res = await api.get<PaginatedIncidents>("/incidents", { params: filters });
   return res.data;
 }

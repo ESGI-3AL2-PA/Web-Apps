@@ -1,10 +1,10 @@
-import type { EventQueryDto, EventResponseDto, EventResponseDtoSchema, PaginatedResponseDto } from "@repo/contracts";
+import type { EventQueryInput, EventResponseDto, EventResponseDtoSchema, PaginatedResponseDto } from "@repo/contracts";
 import api from "./api";
 
 type PaginatedEvents = PaginatedResponseDto<typeof EventResponseDtoSchema>;
 
 // GET /events — community events, district-scoped
-export async function getEvents(filters: EventQueryDto = {} as EventQueryDto): Promise<EventResponseDto[]> {
+export async function getEvents(filters: EventQueryInput = {}): Promise<EventResponseDto[]> {
   const res = await api.get<PaginatedEvents>("/events", { params: { ...filters, limit: filters.limit ?? 50 } });
   return res.data.data;
 }

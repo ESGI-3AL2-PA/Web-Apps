@@ -1,7 +1,7 @@
 import type {
   PaginatedResponseDto,
   SubmitVoteResponseDto,
-  VoteQueryDto,
+  VoteQueryInput,
   VoteResponseDto,
   VoteResponseDtoSchema,
 } from "@repo/contracts";
@@ -10,7 +10,7 @@ import api from "./api";
 type PaginatedVotes = PaginatedResponseDto<typeof VoteResponseDtoSchema>;
 
 // GET /votes — neighbourhood polls, district-scoped
-export async function getVotes(filters: VoteQueryDto = {} as VoteQueryDto): Promise<VoteResponseDto[]> {
+export async function getVotes(filters: VoteQueryInput = {}): Promise<VoteResponseDto[]> {
   const res = await api.get<PaginatedVotes>("/votes", { params: { ...filters, limit: filters.limit ?? 50 } });
   return res.data.data;
 }

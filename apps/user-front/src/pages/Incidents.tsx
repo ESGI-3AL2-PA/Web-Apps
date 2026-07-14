@@ -30,7 +30,7 @@ export default function Incidents() {
   const load = useCallback(() => {
     if (!user?.id) return;
     setLoading(true);
-    getIncidents({ reporterId: user.id, limit: 50 } as never)
+    getIncidents({ reporterId: user.id, limit: 50 })
       .then((page) => setIncidents(page.data))
       .catch(() => setIncidents([]))
       .finally(() => setLoading(false));

@@ -42,7 +42,7 @@ export default function ListingDetail() {
     setContacting(true);
     try {
       // Reuse an existing direct conversation with this seller if there is one.
-      const mine = await getConversations({ participantId: user.id } as never);
+      const mine = await getConversations({ participantId: user.id });
       const existing = mine.find(
         (c) => c.type === "direct" && c.participants.includes(listing.authorId) && c.participants.includes(user.id),
       );

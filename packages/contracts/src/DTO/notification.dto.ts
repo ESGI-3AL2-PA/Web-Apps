@@ -57,6 +57,7 @@ export const NotificationQueryDtoSchema = z
   })
   .openapi({ title: "NotificationQuery" });
 export type NotificationQueryDto = z.infer<typeof NotificationQueryDtoSchema>;
+export type NotificationQueryInput = z.input<typeof NotificationQueryDtoSchema>;
 
 export const MarkAllReadResponseDtoSchema = z
   .object({

@@ -1,6 +1,6 @@
 import type {
   PaginatedResponseDto,
-  TransactionQueryDto,
+  TransactionQueryInput,
   TransactionResponseDtoSchema,
   UserBalanceResponseDto,
 } from "@repo/contracts";
@@ -17,7 +17,7 @@ export async function getUserBalance(userId: string): Promise<UserBalanceRespons
 // GET /users/:id/transactions — points history (self or admin).
 export async function getUserTransactions(
   userId: string,
-  filters: TransactionQueryDto = {} as TransactionQueryDto,
+  filters: TransactionQueryInput = {},
 ): Promise<PaginatedTransactions> {
   const res = await api.get<PaginatedTransactions>(`/users/${userId}/transactions`, { params: filters });
   return res.data;

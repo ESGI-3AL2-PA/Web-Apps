@@ -90,7 +90,7 @@ export default function Messages() {
   // Load the conversation list + resolve every participant's name (needed for groups too).
   useEffect(() => {
     if (!user) return;
-    getConversations({ participantId: user.id } as never)
+    getConversations({ participantId: user.id })
       .then(async (convs) => {
         setConversations(convs);
         const ids = [...new Set(convs.flatMap((c) => c.participants))].filter((id) => id && id !== user.id);
@@ -122,7 +122,7 @@ export default function Messages() {
       setMessages([]);
       return;
     }
-    getMessages(conversationId, { limit: 100 } as never)
+    getMessages(conversationId, { limit: 100 })
       .then(setMessages)
       .catch(() => setMessages([]));
   }, [conversationId]);

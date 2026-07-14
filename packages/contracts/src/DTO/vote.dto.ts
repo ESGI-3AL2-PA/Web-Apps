@@ -80,6 +80,7 @@ export const VoteQueryDtoSchema = z
   })
   .openapi({ title: "VoteQuery" });
 export type VoteQueryDto = z.infer<typeof VoteQueryDtoSchema>;
+export type VoteQueryInput = z.input<typeof VoteQueryDtoSchema>;
 
 export const SubmitVoteResponseDtoSchema = z
   .object({

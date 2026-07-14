@@ -18,7 +18,7 @@ export default function MyListings() {
   const load = useCallback(() => {
     if (!user) return;
     setLoading(true);
-    getListings({ authorId: user.id, limit: 100 } as never)
+    getListings({ authorId: user.id, limit: 100 })
       .then((page) => setListings(page.data))
       .catch(() => setListings([]))
       .finally(() => setLoading(false));
