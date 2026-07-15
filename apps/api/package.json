@@ -9,6 +9,9 @@
     "start": "node ./dist/index.js",
     "test": "vitest run",
     "graph:rebuild": "tsx src/scripts/rebuild-graph.ts",
+    "migrate": "tsx src/scripts/migrate.ts up",
+    "migrate:status": "tsx src/scripts/migrate.ts status",
+    "migrate:down": "tsx src/scripts/migrate.ts down",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix"
   },

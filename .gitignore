@@ -12,5 +12,6 @@ server/dist
 public/dist
 graphify-out
 .audit/
+backups/
 
 docker/documenso/cert.p12
