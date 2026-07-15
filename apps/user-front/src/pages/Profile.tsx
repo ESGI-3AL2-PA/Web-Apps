@@ -1,16 +1,110 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@repo/hooks";
-import type { EventQueryDto, ListingQueryDto, UserResponseDto, VoteQueryDto } from "@repo/contracts";
+import type {
+  EventQueryDto,
+  ListingQueryDto,
+  TransactionResponseDto,
+  UserResponseDto,
+  VoteQueryDto,
+} from "@repo/contracts";
 import { getUserById, updateUser } from "../api-service/users.service";
 import { getDistrictById } from "../api-service/districts.service";
-import { getUserBalance } from "../api-service/transactions.service";
+import { getUserBalance, getUserTransactions } from "../api-service/transactions.service";
 import { getListings } from "../api-service/listings.service";
 import { getContracts } from "../api-service/contracts.service";
 import { getEvents } from "../api-service/events.service";
 import { getVotes } from "../api-service/votes.service";
-import { formatPrice } from "../lib/format";
+import { formatDateTime, formatPrice } from "../lib/format";
 import { useDialog } from "../components/dialog-context";
+
+const HISTORY_PAGE_SIZE = 10;
+
+function PointsHistory({ userId }: { userId: string }) {
+  const { t } = useTranslation();
+  const [items, setItems] = useState<TransactionResponseDto[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError(false);
+    getUserTransactions(userId, { page, limit: HISTORY_PAGE_SIZE })
+      .then((res) => {
+        if (cancelled) return;
+        setItems((prev) => (page === 1 ? res.data : [...prev, ...res.data]));
+        setTotal(res.total);
+      })
+      .catch(() => !cancelled && setError(true))
+      .finally(() => !cancelled && setLoading(false));
+    return () => {
+      cancelled = true;
+    };
+  }, [userId, page]);
+
+  const hasMore = items.length < total;
+
+  if (loading && items.length === 0) {
+    return <p className="text-sm text-neutral-500 dark:text-neutral-400">{t("common.loading")}</p>;
+  }
+  if (error && items.length === 0) {
+    return <p className="text-sm text-red-600">{t("profile.history.error")}</p>;
+  }
+  if (items.length === 0) {
+    return <p className="text-sm text-neutral-500 dark:text-neutral-400">{t("profile.history.empty")}</p>;
+  }
+
+  return (
+    <div>
+      <ul className="divide-y divide-neutral-100 dark:divide-neutral-800">
+        {items.map((tx) => {
+          const positive = tx.amount > 0;
+          const sign = positive ? "+" : "";
+          return (
+            <li key={tx.id} className="flex items-center justify-between gap-4 py-3">
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium text-neutral-900 dark:text-neutral-50">
+                  {t(`profile.history.type.${tx.type}`)}
+                </p>
+                <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                  {formatDateTime(tx.createdAt)}
+                  {tx.refType && (
+                    <>
+                      {" · "}
+                      {t(`profile.history.ref.${tx.refType}`)}
+                      {tx.refId && ` · ${tx.refId.slice(0, 8)}`}
+                    </>
+                  )}
+                </p>
+              </div>
+              <span
+                className={`shrink-0 text-sm font-semibold ${
+                  positive ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"
+                }`}
+              >
+                {sign}
+                {formatPrice(tx.amount)}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+      {error && <p className="mt-3 text-sm text-red-600">{t("profile.history.error")}</p>}
+      {hasMore && (
+        <button
+          onClick={() => setPage((p) => p + 1)}
+          disabled={loading}
+          className="mt-4 w-full rounded-lg border border-neutral-300 dark:border-neutral-700 px-3 py-2 text-sm font-medium text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-800 disabled:opacity-60"
+        >
+          {loading ? t("common.loading") : t("profile.history.loadMore")}
+        </button>
+      )}
+    </div>
+  );
+}
 
 function Card({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -280,6 +374,15 @@ export default function Profile() {
           {formatPrice(balance ?? user.balance)}
         </p>
         <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">{t("profile.points.desc")}</p>
+      </Card>
+
+      {/* Points history */}
+      <Card title={t("profile.history.title")}>
+        {uid ? (
+          <PointsHistory userId={uid} />
+        ) : (
+          <p className="text-sm text-neutral-500 dark:text-neutral-400">{t("common.loading")}</p>
+        )}
       </Card>
     </div>
   );

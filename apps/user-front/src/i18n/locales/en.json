@@ -110,6 +110,25 @@
       "title": "My points",
       "desc": "Usable to pay for a service between neighbours."
     },
+    "history": {
+      "title": "Points history",
+      "empty": "No transactions yet.",
+      "error": "Couldn't load the points history.",
+      "loadMore": "Load more",
+      "type": {
+        "credit": "Credit",
+        "debit": "Debit",
+        "transfer_in": "Received from a neighbour",
+        "transfer_out": "Sent to a neighbour"
+      },
+      "ref": {
+        "contract": "Contract",
+        "listing": "Ad",
+        "event": "Event",
+        "manual": "Manual adjustment",
+        "system": "System"
+      }
+    },
     "saveError": "Failed to save the profile."
   },
   "contracts": {

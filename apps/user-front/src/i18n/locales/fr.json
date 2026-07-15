@@ -110,6 +110,25 @@
       "title": "Mes points",
       "desc": "Utilisables pour rémunérer un service entre voisins."
     },
+    "history": {
+      "title": "Historique des points",
+      "empty": "Aucune transaction pour le moment.",
+      "error": "Impossible de charger l'historique des points.",
+      "loadMore": "Voir plus",
+      "type": {
+        "credit": "Crédit",
+        "debit": "Débit",
+        "transfer_in": "Reçu d'un voisin",
+        "transfer_out": "Envoyé à un voisin"
+      },
+      "ref": {
+        "contract": "Contrat",
+        "listing": "Annonce",
+        "event": "Événement",
+        "manual": "Ajustement manuel",
+        "system": "Système"
+      }
+    },
     "saveError": "Erreur lors de l'enregistrement du profil."
   },
   "contracts": {
