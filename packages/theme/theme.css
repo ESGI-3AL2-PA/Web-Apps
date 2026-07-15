@@ -9,10 +9,6 @@
 @plugin "flyonui";
 @plugin "@iconify/tailwind4"; /* enables icon-[tabler--*] utilities (dynamic, from @iconify-json/tabler) */
 
-/* Enable `dark:` utilities driven by [data-theme="dark"] on <html>. Kept for the
-   duration of the user-front migration; harmless for landing/admin. */
-@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
-
 @theme {
   --color-blc: #f8f7f2; /* cream canvas (landing signature) */
   --color-ink: #1c1b2e; /* light-mode ink; flipped in dark below */
