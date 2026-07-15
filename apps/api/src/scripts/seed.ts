@@ -12,6 +12,7 @@
  */
 
 import argon2 from "argon2";
+import type { Db } from "mongodb";
 import { connectDB } from "../repositories/mongodb.connector.js";
 import { connectNeo4j, closeNeo4j } from "../repositories/neo4j.connector.js";
 import { Neo4jGraphRepository } from "../repositories/Graph/graph.repository.neo4j.js";
@@ -744,11 +745,7 @@ const transactions = [
 
 // ─── Seeding logic ────────────────────────────────────────────────────────────
 
-const seedCollection = async <T extends { _id: string }>(
-  db: import("mongodb").Db,
-  collectionName: string,
-  documents: T[],
-) => {
+const seedCollection = async <T extends { _id: string }>(db: Db, collectionName: string, documents: T[]) => {
   if (documents.length === 0) return;
   const collection = db.collection(collectionName);
   const seededIds = documents.map((d) => d._id);

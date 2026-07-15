@@ -6,6 +6,7 @@ import { createIncident, getIncidents } from "../api-service/incidents.service";
 import { getUserById } from "../api-service/users.service";
 import { formatRelative } from "../lib/format";
 import { useDialog } from "../components/dialog-context";
+import ErrorBanner from "../components/ErrorBanner";
 
 const CATEGORIES = ["cleanliness", "safety", "vandalism", "noise", "other"] as const;
 
@@ -22,6 +23,7 @@ export default function Incidents() {
   const { alert } = useDialog();
   const [incidents, setIncidents] = useState<IncidentResponseDto[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [districtId, setDistrictId] = useState<string | null>(user?.districtId ?? null);
   const [category, setCategory] = useState<string>(CATEGORIES[0]);
   const [description, setDescription] = useState("");
@@ -30,9 +32,10 @@ export default function Incidents() {
   const load = useCallback(() => {
     if (!user?.id) return;
     setLoading(true);
+    setError(false);
     getIncidents({ reporterId: user.id, limit: 50 })
       .then((page) => setIncidents(page.data))
-      .catch(() => setIncidents([]))
+      .catch(() => setError(true))
       .finally(() => setLoading(false));
   }, [user?.id]);
 
@@ -108,6 +111,8 @@ export default function Incidents() {
         <h2 className="mb-3 text-lg font-bold text-base-content">{t("incidents.mine")}</h2>
         {loading ? (
           <p className="text-sm text-base-content/60">{t("common.loading")}</p>
+        ) : error ? (
+          <ErrorBanner onRetry={load} />
         ) : incidents.length === 0 ? (
           <p className="text-sm text-base-content/60">{t("incidents.empty")}</p>
         ) : (

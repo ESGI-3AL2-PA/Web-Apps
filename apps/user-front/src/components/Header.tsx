@@ -2,8 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@repo/hooks";
-import type { TagResponseDto } from "@repo/contracts";
-import { getTags } from "../api-service/tags.service";
+import { useTags } from "../app/tags-context";
 import { getUserBalance } from "../api-service/transactions.service";
 import { formatPrice } from "../lib/format";
 import NotificationBell from "./NotificationBell";
@@ -33,17 +32,12 @@ export default function Header() {
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
   const { user, logout } = useAuth();
+  const { tags, label } = useTags();
   const [q, setQ] = useState("");
-  const [tags, setTags] = useState<TagResponseDto[]>([]);
   const [menuOpen, setMenuOpen] = useState(false);
   const [balance, setBalance] = useState<number | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    getTags()
-      .then(setTags)
-      .catch(() => setTags([]));
-  }, []);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
 
   // Live points balance in the avatar area (silent on 403).
   useEffect(() => {
@@ -110,10 +104,19 @@ export default function Header() {
             </Link>
           )}
 
-          <div ref={menuRef} className="relative">
+          <div
+            ref={menuRef}
+            className="relative"
+            onKeyDown={(e) => {
+              if (e.key === "Escape" && menuOpen) {
+                setMenuOpen(false);
+                menuButtonRef.current?.focus();
+              }
+            }}
+          >
             <button
+              ref={menuButtonRef}
               onClick={() => setMenuOpen((o) => !o)}
-              aria-haspopup="menu"
               aria-expanded={menuOpen}
               aria-controls="account-menu"
               className="flex min-w-[62px] flex-col items-center gap-1 text-base-content/70 hover:text-primary"
@@ -183,7 +186,7 @@ export default function Header() {
               to={`/recherche?tag=${encodeURIComponent(tag.name)}`}
               className="shrink-0 capitalize hover:text-primary"
             >
-              {tag.name}
+              {label(tag)}
             </Link>
           ))}
         </nav>

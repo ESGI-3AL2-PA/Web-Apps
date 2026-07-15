@@ -1,6 +1,7 @@
 import { randomUUID } from "crypto";
 import type { Collection, Db, Filter, UpdateFilter } from "mongodb";
 import type { District, GeoJson } from "../../entities/district.entity.js";
+import { escapeRegex } from "../escape-regex.js";
 import type { IDistrictRepository, UpdateDistrictData } from "./district.repository.js";
 
 type DistrictDoc = Omit<District, "id"> & { _id: string };
@@ -33,7 +34,7 @@ export class MongoDistrictRepository implements IDistrictRepository {
     const { search, page = 1, limit = 20 } = params;
 
     const filter: Filter<DistrictDoc> = {};
-    if (search) filter.name = { $regex: search, $options: "i" };
+    if (search) filter.name = { $regex: escapeRegex(search), $options: "i" };
 
     const [total, docs] = await Promise.all([
       this.collection.countDocuments(filter),

@@ -1,9 +1,16 @@
 import { randomUUID } from "crypto";
 import type { Collection, Db, Filter } from "mongodb";
 import type { Tag } from "../../entities/tag.entity.js";
+import { escapeRegex } from "../escape-regex.js";
 import type { ITagRepository } from "./tag.repository.js";
 
-type TagDoc = Omit<Tag, "id"> & { _id: string };
+// Stored shape tolerates legacy docs written before per-language labels existed
+// (label absent, description a plain string); toTag normalizes them on read.
+type StoredTag = Omit<Tag, "id" | "label" | "description"> & {
+  label?: Tag["label"];
+  description?: Tag["description"] | string;
+};
+type TagDoc = StoredTag & { _id: string };
 
 export class MongoTagRepository implements ITagRepository {
   private collection: Collection<TagDoc>;
@@ -27,7 +34,15 @@ export class MongoTagRepository implements ITagRepository {
 
     const filter: Filter<TagDoc> = {};
     if (search) {
-      filter.$or = [{ name: { $regex: search, $options: "i" } }, { description: { $regex: search, $options: "i" } }];
+      const safe = escapeRegex(search);
+      const rx = { $regex: safe, $options: "i" };
+      filter.$or = [
+        { name: rx },
+        { "label.fr": rx },
+        { "label.en": rx },
+        { "description.fr": rx },
+        { "description.en": rx },
+      ] as Filter<TagDoc>["$or"];
     }
     if (districtId) filter.districtId = districtId;
 
@@ -75,7 +90,13 @@ export class MongoTagRepository implements ITagRepository {
   }
 
   private toTag(doc: TagDoc): Tag {
-    const { _id, ...rest } = doc;
-    return { id: _id, ...rest };
+    const { _id, label, description, ...rest } = doc;
+    return {
+      id: _id,
+      ...rest,
+      // Legacy docs may predate per-language fields — fall back so responses stay valid.
+      label: label ?? { fr: doc.name, en: doc.name },
+      description: typeof description === "string" ? { fr: description, en: description } : description,
+    };
   }
 }

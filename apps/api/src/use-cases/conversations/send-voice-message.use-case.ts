@@ -1,6 +1,16 @@
 import type { Message } from "../../entities/conversation.entity.js";
 import type { IConversationRepository } from "../../repositories/Conversation/conversation.repository.js";
-import { saveAudioFromBase64 } from "../../services/media-storage.service.js";
+import { AppError } from "../../middleware/error-handler.js";
+import { deleteAudio, saveAudioFromBase64 } from "../../services/media-storage.service.js";
+
+// Raised when the audio was written but the message row could not be linked to it.
+// We fully compensate (audio + row deleted) before throwing, so nothing is orphaned.
+export class VoiceMediaAttachError extends AppError {
+  constructor() {
+    super(500, "Failed to attach voice media to message");
+    this.name = "VoiceMediaAttachError";
+  }
+}
 
 export const sendVoiceMessageUseCase = (conversationRepository: IConversationRepository) => {
   return async (
@@ -32,11 +42,26 @@ export const sendVoiceMessageUseCase = (conversationRepository: IConversationRep
       throw err;
     }
 
-    // 3) Pointe la mediaUrl vers l'endpoint de streaming.
-    const updated = await conversationRepository.attachMedia(message.id, `/messages/${message.id}/audio`, "audio");
+    // 3) Pointe la mediaUrl vers l'endpoint de streaming. Si l'update échoue (throw ou
+    //    null = ligne introuvable), on ne peut pas laisser une bulle "[message vocal]"
+    //    sans mediaUrl pointant sur un audio bien écrit : on compense entièrement
+    //    (suppression de l'audio ET de la ligne, best-effort) puis on remonte l'échec.
+    let updated: Message | null;
+    try {
+      updated = await conversationRepository.attachMedia(message.id, `/messages/${message.id}/audio`, "audio");
+    } catch (err) {
+      await deleteAudio(message.id);
+      await conversationRepository.deleteMessage(message.id).catch(() => {});
+      throw err;
+    }
+    if (!updated) {
+      await deleteAudio(message.id);
+      await conversationRepository.deleteMessage(message.id).catch(() => {});
+      throw new VoiceMediaAttachError();
+    }
 
     // Le broadcast socket (effet de bord transport) est laissé au routeur pour garder
     // ce use-case pur — cohérent avec send-message.use-case.
-    return { message: updated ?? message, participants: conversation.participants };
+    return { message: updated, participants: conversation.participants };
   };
 };

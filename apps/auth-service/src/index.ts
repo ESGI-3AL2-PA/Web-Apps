@@ -9,12 +9,14 @@ import cookieParser from "cookie-parser";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import { createExpressEndpoints } from "@ts-rest/express";
+import { pinoHttp } from "pino-http";
 import { authContract } from "@repo/contracts";
+import { logger } from "./logger.js";
 
 import { authRouter } from "./routes/auth/auth.router.js";
-import { jwksHandler } from "./routes/jwks.route.js";
+import { jwksHandler } from "./routes/jwks.router.js";
 import { errorHandler, NotFoundError } from "./middleware/error-handler.js";
-import { connectDB, closeDB } from "./repositories/mongodb.connector.js";
+import { connectDB, closeDB, pingDB } from "./repositories/mongodb.connector.js";
 import { initContainer, resolve } from "./repositories/container.js";
 import { MongoRefreshTokenRepository } from "./repositories/RefreshToken/refresh-token.repository.mongo.js";
 import type { IRefreshTokenRepository } from "./repositories/RefreshToken/refresh-token.repository.js";
@@ -38,6 +40,10 @@ const trustProxy = process.env.TRUST_PROXY;
 if (trustProxy) {
   app.set("trust proxy", /^\d+$/.test(trustProxy) ? Number(trustProxy) : trustProxy === "true" ? true : trustProxy);
 }
+
+// Per-request access logging + correlation id (req.id, exposed as req.log child
+// logger). Mounted first so every request is logged.
+app.use(pinoHttp({ logger }));
 
 // Security headers. CSP allows the inline script/style on the login & register
 // pages while forbidding framing (clickjacking) and plugins.
@@ -66,8 +72,28 @@ app.use(
 app.use(express.json());
 app.use(cookieParser() as RequestHandler);
 
+// Liveness: cheap, dependency-free. Answers "is the process up?" — used to decide
+// whether to restart the container. Must stay static so a slow/down DB never trips it.
 app.get("/health", (_req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
+});
+
+// Readiness: "can this instance serve traffic?" — pings Mongo so the LB can pull a
+// node with a dead DB out of rotation. Mongo is required for every auth flow, so its
+// failure returns 503.
+app.get("/readyz", async (_req, res) => {
+  let mongoOk = true;
+  try {
+    await pingDB();
+  } catch (err) {
+    mongoOk = false;
+    console.error("[readyz] mongo ping failed:", err);
+  }
+  res.status(mongoOk ? 200 : 503).json({
+    status: mongoOk ? "ok" : "unavailable",
+    checks: { mongo: mongoOk ? "ok" : "down" },
+    timestamp: new Date().toISOString(),
+  });
 });
 
 // Login & register pages — inject the trusted-redirect-origin allowlist into the page
@@ -117,8 +143,35 @@ app.post("/internal/sessions/purge", (req, res) => {
     .deleteAllForUser(userId)
     .then(() => res.status(204).end())
     .catch((err) => {
-      console.error("Failed to purge sessions for user:", err);
+      req.log.error({ err, userId }, "Failed to purge sessions for user");
       res.status(500).json({ message: "Failed to purge sessions" });
+    });
+});
+
+// GDPR Art. 15/20 export counterpart to the purge above: the api aggregates a user's
+// full data export and calls this to fold in the refresh-token session history (IP /
+// User-Agent / timestamps) it doesn't own. Same shared-secret guard. Token hashes are
+// stripped — they're secrets, never part of the subject's personal data.
+app.post("/internal/sessions/export", (req, res) => {
+  if (!internalTokenValid(req.header("x-internal-token"))) {
+    res.status(401).json({ message: "Unauthorized" });
+    return;
+  }
+  const userId = (req.body as { userId?: unknown } | undefined)?.userId;
+  if (typeof userId !== "string" || userId.length === 0) {
+    res.status(400).json({ message: "userId is required" });
+    return;
+  }
+  const refreshTokenRepo: IRefreshTokenRepository = resolve("refreshToken");
+  refreshTokenRepo
+    .listAllForUser(userId)
+    .then((sessions) => {
+      const sanitized = sessions.map(({ tokenHash: _tokenHash, ...rest }) => rest);
+      res.status(200).json({ sessions: sanitized });
+    })
+    .catch((err) => {
+      console.error("Failed to export sessions for user:", err);
+      res.status(500).json({ message: "Failed to export sessions" });
     });
 });
 
@@ -181,28 +234,35 @@ connectDB()
     await initKeys();
 
     // Best-effort: ensure the refresh-token TTL index exists so expired sessions
-    // self-purge. Never block boot on it — log and continue if index creation fails.
-    // Built directly from `db` (not via resolve) since the repo is a stateless wrapper.
-    await new MongoRefreshTokenRepository(db)
+    // self-purge, then backfill `expiresAtDate` on legacy rows that predate the field
+    // (GDPR storage-limitation, finding gdpr-H3) so the TTL actually reaps them. Never
+    // block boot on either — log and continue if they fail. Built directly from `db`
+    // (not via resolve) since the repo is a stateless wrapper.
+    const refreshTokenRepo = new MongoRefreshTokenRepository(db);
+    await refreshTokenRepo
       .ensureIndexes()
-      .catch((err) => console.error("Failed to ensure refresh-token indexes:", err));
+      .then(() => refreshTokenRepo.backfillMissingExpiresAtDate())
+      .then((backfilled) => {
+        if (backfilled > 0) logger.info({ backfilled }, "Backfilled expiresAtDate on legacy refresh-token rows");
+      })
+      .catch((err) => logger.error({ err }, "Failed to ensure/backfill refresh-token indexes"));
 
     const server = app.listen(port, () => {
       const localUrl = `http://localhost:${port}`;
-
-      console.warn("");
-      console.warn(" 🔐  Auth Service Running !");
-      console.warn("");
-      console.warn(` ➜  Local:   \x1b[36m${localUrl}\x1b[0m`);
-      console.warn(` ➜  Login:   \x1b[36m${localUrl}/login\x1b[0m`);
-      console.warn(` ➜  Register:\x1b[36m${localUrl}/register\x1b[0m`);
-      console.warn(` ➜  JWKS:    \x1b[36m${localUrl}/.well-known/jwks.json\x1b[0m`);
-      console.warn("");
-      console.warn(`\x1b[33m⚡ Ready to accept connections\x1b[0m`);
+      logger.info(
+        {
+          port,
+          url: localUrl,
+          login: `${localUrl}/login`,
+          register: `${localUrl}/register`,
+          jwks: `${localUrl}/.well-known/jwks.json`,
+        },
+        "Auth service running — ready to accept connections",
+      );
     });
     setupGracefulShutdown(server, closeDB);
   })
   .catch((err) => {
-    console.error("Failed to start auth-service:", err);
+    logger.fatal({ err }, "Failed to start auth-service");
     process.exit(1);
   });

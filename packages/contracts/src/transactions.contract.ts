@@ -34,6 +34,7 @@ export const transactionsContract = c.router({
     responses: {
       201: PaginatedResponseDtoSchema(TransactionResponseDtoSchema),
       400: BadRequestErrorSchema,
+      403: ForbiddenErrorSchema,
     },
     summary:
       "Create a transaction (transfer between users or system credit/debit). Returns the resulting transaction entries.",

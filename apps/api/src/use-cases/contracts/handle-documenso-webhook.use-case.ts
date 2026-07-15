@@ -1,16 +1,10 @@
 import type { ClientSession } from "mongodb";
 import type { Contract } from "../../entities/contract.entity.js";
 import type { IContractRepository } from "../../repositories/Contract/contract.repository.js";
+import { logger } from "../../logger.js";
 import type { ITransactionRepository } from "../../repositories/Transaction/transaction.repository.js";
 import { runInTransaction } from "../../repositories/tx.js";
-import { mapDocumensoStatus } from "../../services/documenso.service.js";
-
-// Shape of the Documenso webhook body we consume. Documenso sends the full
-// document in `payload`; we only need its id and status.
-export interface DocumensoWebhookEvent {
-  event: string;
-  payload?: { id?: number; status?: string };
-}
+import { mapDocumensoStatus, type DocumensoWebhookEvent } from "../../services/documenso.service.js";
 
 // Credits `amount` to a user and records the ledger entry. Used to release the
 // escrow to the provider on completion or refund it to the beneficiary on rejection.
@@ -44,7 +38,7 @@ const credit = async (
     // settled the escrow and the atomic gate fired, so keep the ledger write best-effort
     // — a failure here must not 500 the webhook and cause a re-credit on retry.
     await ledgerWrite.catch((err) =>
-      console.error(`[contracts] escrow-settle ledger write failed for ${contract.id}:`, err),
+      logger.error({ err, contractId: contract.id }, "escrow-settle ledger write failed"),
     );
   }
 };

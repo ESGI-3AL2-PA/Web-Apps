@@ -10,13 +10,15 @@ import { createContract } from "../api-service/contracts.service";
 import { formatDate, formatPrice, placeholderColor } from "../lib/format";
 import AuthedImage from "../components/AuthedImage";
 import { useDialog } from "../components/dialog-context";
+import { useTags } from "../app/tags-context";
 
 export default function ListingDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { user } = useAuth();
-  const { alert } = useDialog();
+  const { alert, confirm } = useDialog();
+  const { labelFor } = useTags();
   const [listing, setListing] = useState<ListingResponseDto | null>(null);
   const [seller, setSeller] = useState<UserPublic | null>(null);
   const [active, setActive] = useState(0);
@@ -60,6 +62,13 @@ export default function ListingDetail() {
   // opens the caller's signing page. The escrowed price is derived server-side.
   const takeService = async () => {
     if (!listing || !user) return;
+    const ok = await confirm({
+      title: t("detail.confirmTakeTitle"),
+      message: t("detail.confirmTakeMessage", { price: formatPrice(listing.price) }),
+      confirmLabel: t("detail.confirmTakeAction"),
+      cancelLabel: t("common.cancel"),
+    });
+    if (!ok) return;
     setTaking(true);
     try {
       const contract = await createContract({ listingId: listing.id, providerId: listing.authorId });
@@ -176,7 +185,7 @@ export default function ListingDetail() {
           <div className="mt-4 flex flex-wrap gap-2">
             {listing.tags.map((t) => (
               <span key={t} className="badge badge-soft">
-                {t}
+                {labelFor(t)}
               </span>
             ))}
           </div>

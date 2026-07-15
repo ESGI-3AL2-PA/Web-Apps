@@ -36,6 +36,7 @@ export default function NotificationBell() {
   const [items, setItems] = useState<NotificationResponseDto[]>([]);
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
 
   const load = useCallback(() => {
     getNotifications({ limit: 15 })
@@ -95,11 +96,20 @@ export default function NotificationBell() {
   };
 
   return (
-    <div ref={ref} className="relative shrink-0">
+    <div
+      ref={ref}
+      className="relative shrink-0"
+      onKeyDown={(e) => {
+        if (e.key === "Escape" && open) {
+          setOpen(false);
+          buttonRef.current?.focus();
+        }
+      }}
+    >
       <button
+        ref={buttonRef}
         onClick={toggle}
         aria-label={t("notifications.title")}
-        aria-haspopup="menu"
         aria-expanded={open}
         aria-controls="notification-menu"
         className="relative flex size-9 items-center justify-center rounded-lg text-base-content/70 hover:bg-base-200 hover:text-primary"

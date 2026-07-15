@@ -8,7 +8,7 @@ export const createTagUseCase = (tagRepository: ITagRepository, graphRepository:
   return async (data: Omit<CreateTagDto, "districtId"> & { districtId: string }): Promise<Tag> => {
     const tag = await tagRepository.createTag(data);
     await syncGraph(`upsertTag(${tag.name})`, () =>
-      graphRepository.upsertTag({ name: tag.name, category: tag.description }),
+      graphRepository.upsertTag({ name: tag.name, category: tag.description?.en }),
     );
     return tag;
   };

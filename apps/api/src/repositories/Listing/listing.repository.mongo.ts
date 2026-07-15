@@ -1,9 +1,25 @@
 import { randomUUID } from "crypto";
-import type { Collection, Db, Filter } from "mongodb";
+import type { Collection, Db, Filter, Sort } from "mongodb";
+import type { ListingSort } from "@repo/contracts";
 import type { Listing, ListingType, ListingStatus } from "../../entities/listing.entity.js";
+import { escapeRegex } from "../escape-regex.js";
 import type { IListingRepository } from "./listing.repository.js";
 
 type ListingDoc = Omit<Listing, "id"> & { _id: string };
+
+// `_id` is always the final tiebreaker so skip/limit pagination is deterministic
+// even when the primary key ties (equal price, or same-millisecond createdAt).
+const SORT_SPECS = {
+  recent: { createdAt: -1, _id: 1 },
+  price_asc: { price: 1, _id: 1 },
+  price_desc: { price: -1, _id: 1 },
+} satisfies Record<ListingSort, Sort>;
+
+/** Map the `sort` query param to a Mongo sort spec; defaults to `recent` for a
+ *  stable order even when no sort is passed. */
+export function listingSortSpec(sort?: ListingSort): Sort {
+  return SORT_SPECS[sort ?? "recent"];
+}
 
 export class MongoListingRepository implements IListingRepository {
   private collection: Collection<ListingDoc>;
@@ -24,6 +40,7 @@ export class MongoListingRepository implements IListingRepository {
     districtId?: string;
     authorId?: string;
     tag?: string;
+    sort?: ListingSort;
     page?: number;
     limit?: number;
   }): Promise<{
@@ -32,12 +49,13 @@ export class MongoListingRepository implements IListingRepository {
     page: number;
     limit: number;
   }> {
-    const { search, type, status, districtId, authorId, tag, page = 1, limit = 20 } = params;
+    const { search, type, status, districtId, authorId, tag, sort, page = 1, limit = 20 } = params;
 
     const filter: Filter<ListingDoc> = {};
 
     if (search) {
-      filter.$or = [{ title: { $regex: search, $options: "i" } }, { description: { $regex: search, $options: "i" } }];
+      const safe = escapeRegex(search);
+      filter.$or = [{ title: { $regex: safe, $options: "i" } }, { description: { $regex: safe, $options: "i" } }];
     }
     if (type) filter.type = type as ListingType;
     if (status) filter.status = status as ListingStatus;
@@ -47,14 +65,14 @@ export class MongoListingRepository implements IListingRepository {
     // "babysitting" et inversement. On échappe les caractères regex pour
     // éviter toute injection (`.`, `*`, `+`, etc. dans un nom de tag).
     if (tag) {
-      const escaped = tag.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      filter.tags = { $regex: new RegExp(`^${escaped}$`, "i") };
+      filter.tags = { $regex: new RegExp(`^${escapeRegex(tag)}$`, "i") };
     }
 
     const [total, docs] = await Promise.all([
       this.collection.countDocuments(filter),
       this.collection
         .find(filter)
+        .sort(listingSortSpec(sort))
         .skip((page - 1) * limit)
         .limit(limit)
         .toArray(),

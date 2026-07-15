@@ -1,41 +1,48 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@repo/hooks";
 import type { EventResponseDto, ListingResponseDto, TagResponseDto, VoteResponseDto } from "@repo/contracts";
 import { getListings } from "../api-service/listings.service";
 import { getTags } from "../api-service/tags.service";
+import { tagLabel } from "../lib/tag-label";
 import { getEvents } from "../api-service/events.service";
 import { getVotes } from "../api-service/votes.service";
 import ListingCard from "../components/ListingCard";
+import ErrorBanner from "../components/ErrorBanner";
 import { formatDateTime, formatPrice } from "../lib/format";
 
 export default function Home() {
   const navigate = useNavigate();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { user } = useAuth();
   const [listings, setListings] = useState<ListingResponseDto[]>([]);
   const [tags, setTags] = useState<TagResponseDto[]>([]);
   const [events, setEvents] = useState<EventResponseDto[]>([]);
   const [votes, setVotes] = useState<VoteResponseDto[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
-  useEffect(() => {
+  const load = useCallback(() => {
+    setLoading(true);
+    setError(false);
     Promise.all([
       getListings({ status: "active", limit: 24 }),
       getTags(),
       getEvents({ status: "upcoming", limit: 3 }).catch(() => []),
       getVotes({ status: "open", limit: 3 }).catch(() => []),
     ])
-      .then(([page, t, ev, vo]) => {
+      .then(([page, tags, ev, vo]) => {
         setListings(page.data);
-        setTags(t);
+        setTags(tags);
         setEvents(ev);
         setVotes(vo);
       })
-      .catch(() => setListings([]))
+      .catch(() => setError(true))
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(load, [load]);
 
   return (
     <div className="space-y-8">
@@ -64,7 +71,7 @@ export default function Home() {
                 onClick={() => navigate(`/recherche?tag=${encodeURIComponent(tag.name)}`)}
                 className="rounded-full border border-base-content/20 bg-base-100 px-4 py-1.5 text-sm font-medium text-base-content/80 hover:border-primary hover:text-primary"
               >
-                {tag.name}
+                {tagLabel(tag, i18n.language)}
               </button>
             ))}
           </div>
@@ -141,6 +148,8 @@ export default function Home() {
         </div>
         {loading ? (
           <p className="text-base-content/60">{t("common.loading")}</p>
+        ) : error ? (
+          <ErrorBanner onRetry={load} />
         ) : listings.length === 0 ? (
           <p className="text-base-content/60">{t("home.empty")}</p>
         ) : (

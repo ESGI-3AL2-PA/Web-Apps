@@ -12,19 +12,21 @@ The project is a **Turborepo monorepo** built entirely in TypeScript, following 
 .
 ├── apps/
 │   ├── api/           # Express REST API : port 3000
-│   ├── admin-front/   # React 19 + Vite : port 4000
-│   ├── user-front/    # React 19 + Vite : port 5000
-│   └── auth-service/  # Express REST API : port 3001
+│   ├── auth-service/  # Express REST API (auth) : port 3001
+│   ├── admin-front/   # React 19 + Vite + Tailwind 4 : port 4000
+│   ├── user-front/    # React 19 + Vite + Tailwind 4 : port 5000
+│   └── landing/       # React 19 + Vite + Tailwind 4 (marketing site) : port 6060
 ├── packages/
 │   ├── contracts/     # ts-rest + Zod contracts (the source of truth)
+│   ├── hooks/         # Shared React auth (AuthProvider, ProtectedRoute, useAuth)
+│   ├── config/        # Shared frontend runtime config (service URLs)
 │   ├── ui/            # Shared React component library
-│   ├── SATAN          # Custom query language for MongoDB, written in typescript and python
+│   ├── satan/         # SATAN — custom MongoDB query language (TypeScript + Python)
 │   ├── eslint-config/ # Shared ESLint flat-config rules
 │   └── typescript-config/ # Shared tsconfig bases
 ├── playwright_testbook/   # End-to-end API and Front tests
-├── docker-compose.yml           # Full stack for dev env
-├── docker-compose.local.yml     # Databases only
-└── docker-compose.prod.yml      # Full stack for production env
+├── docker-compose.yml           # Full stack (apps + databases) — production
+└── docker-compose.local.yml     # Full stack for local/dev (pinned image versions)
 ```
 
 ---
@@ -78,24 +80,41 @@ The API follows **Clean Architecture** with three concentric layers: routes → 
 - Layer 1 — Routes (thin controllers)
 - Layer 2 — Use Cases (business logic)
 - Layer 3 — Repositories (data access)
-- ***
+
+The api is a **resource server**: it verifies incoming RS256 access tokens against the auth-service's JWKS (`createRemoteJWKSet`) via `requireAuth` / `requireRole(...)` middleware. It persists domain data in **MongoDB** and the neighbourhood graph in **Neo4j**.
+
+---
+
+## Auth Service (`apps/auth-service`)
+
+A dedicated Express + ts-rest service (port **3001**) that owns authentication and issues tokens; the api never sees passwords.
+
+- Issues **RS256 access tokens** (short-lived) signed with `AUTH_PRIVATE_KEY`, and publishes the matching public key at `GET /.well-known/jwks.json` so the api can verify without a shared secret.
+- Issues **opaque refresh tokens** (64-byte hex, stored as sha256 in Mongo) in an httpOnly cookie scoped to `/auth`.
+- Hashes passwords with **argon2**; supports **TOTP** 2FA and email flows (password reset / verification via Resend).
+- Register runs here but creates the user through `POST API_URL/users`, authenticated with a short-lived self-signed `role: "service"` JWT.
+
+See `documentation/auth-service.md` for the full flow.
+
+---
 
 ## Frontend Apps
 
-Both frontend apps are structurally identical.
+There are three React 19 + Vite 8 frontends, all styled with **Tailwind CSS 4** (via `@tailwindcss/vite`). `admin-front` and `user-front` share the same base structure — contract-typed clients, `@repo/hooks` auth, `@repo/ui` components — while `landing` is a standalone marketing site (FlyonUI components, no authenticated surface).
 
-| App           | Port | Stack                        |
-| ------------- | ---- | ---------------------------- |
-| `admin-front` | 4000 | React 19, Vite 8, TypeScript |
-| `user-front`  | 5000 | React 19, Vite 8, TypeScript |
+| App           | Port | Stack                                             |
+| ------------- | ---- | ------------------------------------------------- |
+| `admin-front` | 4000 | React 19, Vite 8, TypeScript, Tailwind 4          |
+| `user-front`  | 5000 | React 19, Vite 8, TypeScript, Tailwind 4          |
+| `landing`     | 6060 | React 19, Vite 8, TypeScript, Tailwind 4, FlyonUI |
 
-Each app currently renders shared components from `@repo/ui`. TypeScript is configured via `@repo/typescript-config/vite.json` (targets ESNext + DOM, source maps enabled).
+Each app resolves its host port from an env var (`ADMIN_PORT` / `USER_PORT` / `LANDING_PORT`), falling back to the defaults above. `admin-front` and `user-front` render shared components from `@repo/ui` and consume auth via `@repo/hooks`; service URLs come from `@repo/config`. TypeScript is configured via `@repo/typescript-config/vite.json` (targets ESNext + DOM, source maps enabled).
 
 ---
 
 ## UI Package (`@repo/ui`)
 
-Shared React component library consumed by both frontends.
+Shared React component library consumed by the `admin-front` and `user-front` apps.
 
 ---
 
@@ -125,3 +144,28 @@ ESLint 9 flat-config rules, composed per environment:
 ---
 
 ## Infrastructure & Databases
+
+The stack is orchestrated with Docker Compose. Both compose files use **profiles** so `docker compose up` with no profile starts nothing:
+
+- `--profile core` — app services (api, auth-service, admin-front, user-front) plus their datastores (Mongo, mongo-express, Neo4j).
+- `--profile contracts` — the Documenso e-signature stack (Documenso, Postgres, MinIO, mailpit).
+
+Both compose files define the same topology — the app services plus their datastores — and differ in intent. `docker-compose.yml` is the **production** compose: it builds the app images and tracks rolling `:latest` image tags. `docker-compose.local.yml` is for **local/dev**: it pins exact image versions for reproducibility and additionally exposes MinIO and mailpit under the `core` profile (in production those live under `contracts` only). Either way, `--profile core` brings up the full app stack; apps can also be run directly on the host with `npm run dev`.
+
+### Datastores
+
+| Store             | Image                 | Port(s)                   | Profile     | Purpose                                                                                                                                                                                                                                        |
+| ----------------- | --------------------- | ------------------------- | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **MongoDB**       | `mongo:8`             | 27017                     | `core`      | Primary document store — users, districts, listings, events, votes, incidents, conversations, messages, notifications, refresh tokens, transactions, contracts (see `documentation/MCD/mongo.md`)                                              |
+| **mongo-express** | `mongo-express`       | 8081                      | `core`      | Web admin UI for MongoDB                                                                                                                                                                                                                       |
+| **Neo4j**         | `neo4j:5`             | 7474 (HTTP), 7687 (Bolt)  | `core`      | Graph of neighbourhood relationships — `User`, `District`, `Event` nodes with `LIVES_IN`, `KNOWS`, `CREATED`, `REGISTERED_FOR`, `ATTENDED`, `CONTAINS` edges (see `documentation/MCD/neo4j.md`); backs recommendations and district boundaries |
+| **Postgres**      | `postgres:15`         | 5432                      | `contracts` | Backing database for Documenso (e-signature)                                                                                                                                                                                                   |
+| **Documenso**     | `documenso/documenso` | 3030 (web/API)            | `contracts` | Self-hosted e-signature service for contracts (see `documentation/documenso-integration.md`)                                                                                                                                                   |
+| **MinIO**         | `minio/minio`         | 9000 (S3), 9001 (console) | `contracts` | S3-compatible object storage for Documenso document files                                                                                                                                                                                      |
+| **mailpit**       | `axllent/mailpit`     | 8025 (UI), 1025 (SMTP)    | `contracts` | Local SMTP catch-all for inspecting outgoing mail in dev                                                                                                                                                                                       |
+
+### Data ownership
+
+- The **api** reads and writes MongoDB (domain data) and Neo4j (the social/district graph).
+- The **auth-service** stores credentials and refresh tokens in MongoDB.
+- **Documenso** is an external integration the api calls over HTTP (`DOCUMENSO_URL`); it owns its own Postgres + MinIO and is only started under the `contracts` profile.

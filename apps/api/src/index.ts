@@ -3,6 +3,8 @@ import express, { type Application, type RequestHandler } from "express";
 import cors from "cors";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
+import { pinoHttp } from "pino-http";
+import { logger } from "./logger.js";
 
 import { createExpressEndpoints } from "@ts-rest/express";
 import {
@@ -47,8 +49,8 @@ import { recommendationsRouter } from "./routes/recommendations/recommendations.
 import { errorHandler, NotFoundError } from "./middleware/error-handler.js";
 import { requireAuth } from "./middleware/auth.middleware.js";
 import { authorize } from "./middleware/authorize.middleware.js";
-import { connectDB, closeDB } from "./repositories/mongodb.connector.js";
-import { connectNeo4j, closeNeo4j } from "./repositories/neo4j.connector.js";
+import { connectDB, closeDB, pingDB } from "./repositories/mongodb.connector.js";
+import { connectNeo4j, closeNeo4j, pingNeo4j } from "./repositories/neo4j.connector.js";
 import { connectSatan, closeSatan } from "./repositories/satan.connector.js";
 import type { SatanClient } from "@repo/satan";
 import { setupGracefulShutdown } from "./shutdown.js";
@@ -65,6 +67,10 @@ const trustProxy = process.env.TRUST_PROXY;
 if (trustProxy) {
   app.set("trust proxy", /^\d+$/.test(trustProxy) ? Number(trustProxy) : trustProxy === "true" ? true : trustProxy);
 }
+
+// Per-request access logging + correlation id (req.id, exposed as req.log child
+// logger). Mounted first so every request — including /health and /docs — is logged.
+app.use(pinoHttp({ logger }));
 
 // Security headers. CSP is disabled because the Scalar /docs UI loads its own
 // assets; the rest (X-Frame-Options, HSTS, X-Content-Type-Options, …) still apply.
@@ -148,20 +154,40 @@ app.use(
 // Limite augmentée pour accepter les uploads audio inline en base64 (~5MB max).
 app.use(express.json({ limit: "10mb" }));
 
+// Liveness: cheap, dependency-free. Answers "is the process up?" — used to decide
+// whether to restart the container. Must stay static so a slow/down DB never trips it.
 app.get("/health", (_req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
-app.get("/openapi.json", (req, res) => {
-  res.json(openApiDocument);
+// Readiness: "can this instance serve traffic?" — pings dependencies so the LB can
+// pull a node with a dead DB out of rotation. Mongo is required (down → 503). Neo4j
+// is a projection (Mongo is source of truth, graph writes are best-effort), so its
+// failure degrades recommendations but the instance stays in rotation (200 "degraded").
+app.get("/readyz", async (_req, res) => {
+  const [mongo, neo] = await Promise.allSettled([pingDB(), pingNeo4j()]);
+  const mongoOk = mongo.status === "fulfilled";
+  const neo4jOk = neo.status === "fulfilled";
+  const checks = { mongo: mongoOk ? "ok" : "down", neo4j: neo4jOk ? "ok" : "down" };
+  const status = !mongoOk ? "unavailable" : neo4jOk ? "ok" : "degraded";
+  res.status(mongoOk ? 200 : 503).json({ status, checks, timestamp: new Date().toISOString() });
 });
-app.use(
-  "/docs",
-  apiReference({
-    url: "/openapi.json",
-    theme: "moon",
-  }) as unknown as RequestHandler, // Ugly but it works ¯\_(ツ)_/¯
-);
+
+// The OpenAPI schema + Scalar UI expose the full endpoint catalogue, so they must
+// not be public in production. Off by default in prod unless ENABLE_API_DOCS=true.
+const docsEnabled = process.env.NODE_ENV !== "production" || process.env.ENABLE_API_DOCS === "true";
+if (docsEnabled) {
+  app.get("/openapi.json", (req, res) => {
+    res.json(openApiDocument);
+  });
+  app.use(
+    "/docs",
+    apiReference({
+      url: "/openapi.json",
+      theme: "moon",
+    }) as unknown as RequestHandler, // Ugly but it works ¯\_(ツ)_/¯
+  );
+}
 
 // Documenso posts signing events here. It authenticates with a shared secret
 // (verified inside the handler), not our JWT, so it must sit ABOVE requireAuth.
@@ -243,15 +269,15 @@ app.use(errorHandler);
 // entirely when SATAN_REPOS=false.
 const maybeConnectSatan = async (): Promise<SatanClient | undefined> => {
   if (process.env.SATAN_REPOS === "false") {
-    console.warn("😈 SATAN repositories disabled (SATAN_REPOS=false) — using Mongo repositories");
+    logger.warn("SATAN repositories disabled (SATAN_REPOS=false) — using Mongo repositories");
     return undefined;
   }
   try {
     const client = await connectSatan();
-    console.warn("😈 SATAN repositories active");
+    logger.info("SATAN repositories active");
     return client;
   } catch (err) {
-    console.error("😈 SATAN worker unavailable — falling back to Mongo repositories:", (err as Error).message);
+    logger.warn({ err }, "SATAN worker unavailable — falling back to Mongo repositories");
     return undefined;
   }
 };
@@ -266,15 +292,10 @@ Promise.all([connectDB(), connectNeo4j()])
     setupSocketIo(httpServer);
 
     httpServer.listen(port, () => {
-      const localUrl = `http://localhost:${port}`;
-
-      console.warn("");
-      console.warn(" 🚀  API Server Running !");
-      console.warn("");
-      console.warn(` ➜  Local:   \x1b[36m${localUrl}\x1b[0m`);
-      console.warn(` ➜  Socket:  \x1b[36mws://localhost:${port}\x1b[0m`);
-      console.warn("");
-      console.warn(`\x1b[33m⚡ Ready to accept connections\x1b[0m`);
+      logger.info(
+        { port, url: `http://localhost:${port}`, socket: `ws://localhost:${port}` },
+        "API server running — ready to accept connections",
+      );
     });
     setupGracefulShutdown(
       httpServer,
@@ -285,6 +306,6 @@ Promise.all([connectDB(), connectNeo4j()])
     );
   })
   .catch((err) => {
-    console.error("Failed to connect to databases:", err);
+    logger.fatal({ err }, "Failed to connect to databases");
     process.exit(1);
   });

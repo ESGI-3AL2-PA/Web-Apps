@@ -1,6 +1,7 @@
 import { randomUUID } from "crypto";
 import type { Collection, Db, Filter } from "mongodb";
 import type { Incident, IncidentStatus } from "../../entities/incident.entity.js";
+import { escapeRegex } from "../escape-regex.js";
 import type { IIncidentRepository } from "./incident.repository.js";
 
 type IncidentDoc = Omit<Incident, "id"> & { _id: string };
@@ -37,10 +38,8 @@ export class MongoIncidentRepository implements IIncidentRepository {
     const filter: Filter<IncidentDoc> = {};
 
     if (search) {
-      filter.$or = [
-        { description: { $regex: search, $options: "i" } },
-        { category: { $regex: search, $options: "i" } },
-      ];
+      const safe = escapeRegex(search);
+      filter.$or = [{ description: { $regex: safe, $options: "i" } }, { category: { $regex: safe, $options: "i" } }];
     }
     if (status) filter.status = status as IncidentStatus;
     if (category) filter.category = category;

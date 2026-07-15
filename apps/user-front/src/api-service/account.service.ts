@@ -1,11 +1,6 @@
 import { config } from "@repo/config";
-import type { UserResponseDto } from "@repo/contracts";
+import type { UserDataExportResponseDto } from "@repo/contracts";
 import api from "./api";
-import { getListings } from "./listings.service";
-import { getContracts } from "./contracts.service";
-import { getEvents } from "./events.service";
-import { getVotes } from "./votes.service";
-import { getUserTransactions } from "./transactions.service";
 
 // Reuse the existing (unauthenticated) forgot-password flow to let a logged-in
 // user reset their password by email — no dedicated change-password endpoint.
@@ -17,48 +12,17 @@ export async function requestPasswordReset(email: string): Promise<void> {
   });
 }
 
-export interface AccountExport {
-  exportedAt: string;
-  user: UserResponseDto;
-  listings: unknown[];
-  contractsAsProvider: unknown[];
-  contractsAsBeneficiary: unknown[];
-  events: unknown[];
-  votes: unknown[];
-  transactions: unknown[];
-}
+export type AccountExport = UserDataExportResponseDto;
 
-const emptyPage = { data: [] as unknown[] };
-
-// GDPR access: assemble everything the user owns into a JSON document.
+// GDPR access (Art. 15/20): the api owns the canonical export. One authenticated,
+// self-scoped call returns EVERY category of personal data — user PII, listings,
+// contracts, transactions, events, votes, incidents, conversations + messages,
+// notifications, refresh-token session history, and the Neo4j graph edges — data
+// the client has no read route for on its own (messages of every thread, session
+// IP/UA history, graph relationships) now included.
 export async function exportMyData(userId: string): Promise<AccountExport> {
-  const [user, listings, cProvider, cBenef, events, votes, transactions] = await Promise.all([
-    api.get<UserResponseDto>(`/users/${userId}`).then((r) => r.data),
-    getListings({ authorId: userId, limit: 200 })
-      .then((p) => p.data)
-      .catch(() => []),
-    getContracts({ providerId: userId, limit: 200 })
-      .then((p) => p.data)
-      .catch(() => []),
-    getContracts({ beneficiaryId: userId, limit: 200 })
-      .then((p) => p.data)
-      .catch(() => []),
-    getEvents({ creatorId: userId, limit: 200 }).catch(() => []),
-    getVotes({ creatorId: userId, limit: 200 }).catch(() => []),
-    getUserTransactions(userId, { limit: 500 })
-      .then((p) => p.data)
-      .catch(() => emptyPage.data),
-  ]);
-  return {
-    exportedAt: new Date().toISOString(),
-    user,
-    listings,
-    contractsAsProvider: cProvider,
-    contractsAsBeneficiary: cBenef,
-    events,
-    votes,
-    transactions,
-  };
+  const { data } = await api.get<AccountExport>(`/users/${userId}/export`);
+  return data;
 }
 
 // GDPR erasure: delete the caller's own account (self-service, backend-scoped).

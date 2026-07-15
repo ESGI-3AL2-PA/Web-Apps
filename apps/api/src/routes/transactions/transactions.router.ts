@@ -26,11 +26,16 @@ export const transactionsRouter = s.router(transactionsContract, {
   },
 
   createTransaction: async ({ body, req }) => {
-    const isAdmin = req.user!.role === "admin" || req.user!.role === "superAdmin";
-    // Non-admins can only move their own tokens (no spoofed source, no system minting).
-    const data = isAdmin ? body : { ...body, fromUserId: req.user!.sub };
-
-    const result = await createTransactionUseCase(resolve("transaction"), resolve("user"))(data);
+    // Authorization (source forcing for non-admins, district scoping + mint/burn gating
+    // for admins) lives in the use-case so it is covered by unit tests.
+    const result = await createTransactionUseCase(resolve("transaction"), resolve("user"))(body, {
+      sub: req.user!.sub,
+      role: req.user!.role,
+      adminDistrictId: req.user!.adminDistrictId ?? null,
+    });
+    if (result.kind === "forbidden") {
+      return { status: 403, body: { message: "Forbidden" } };
+    }
     if (result.kind === "insufficient-funds") {
       return { status: 400, body: { message: "Insufficient balance" } };
     }

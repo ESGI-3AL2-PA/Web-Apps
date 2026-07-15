@@ -11,9 +11,36 @@ import { createUserUseCase } from "../../use-cases/users/create-user.use-case.js
 import { updateUserUseCase } from "../../use-cases/users/update-user.use-case.js";
 import { banUserUseCase } from "../../use-cases/users/ban-user.use-case.js";
 import { deleteUserUseCase, CannotDeleteSuperAdminError } from "../../use-cases/users/delete-user.use-case.js";
+import { exportUserDataUseCase } from "../../use-cases/users/export-user-data.use-case.js";
 
 // Strip secrets (password hash + TOTP secret) from user responses.
 const toDto = ({ passwordHash: _passwordHash, totpSecret: _totpSecret, ...rest }: User): UserResponseDto => rest;
+
+// Cross-service read for the GDPR export: the api owns no auth data, so it asks
+// auth-service for this user's refresh-token session history (IP/UA/timestamps).
+// Best-effort — the export must still succeed if auth-service is unreachable.
+const fetchUserSessions = async (userId: string): Promise<unknown[]> => {
+  try {
+    const authServiceUrl = process.env.AUTH_SERVICE_URL ?? "http://localhost:3001";
+    const res = await fetch(`${authServiceUrl}/internal/sessions/export`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-internal-token": process.env.INTERNAL_SERVICE_TOKEN ?? "",
+      },
+      body: JSON.stringify({ userId }),
+    });
+    if (!res.ok) {
+      console.error(`auth-service session export failed for user ${userId}: HTTP ${res.status}`);
+      return [];
+    }
+    const body = (await res.json()) as { sessions?: unknown[] };
+    return body.sessions ?? [];
+  } catch (err) {
+    console.error(`auth-service session export errored for user ${userId}:`, err);
+    return [];
+  }
+};
 
 const s = initServer();
 
@@ -35,6 +62,27 @@ export const usersRouter = s.router(usersContract, {
     return { status: 200, body: toDto(user) };
   },
 
+  exportUserData: async ({ params: { id } }) => {
+    // Route scope (selfParam:"id") already restricts this to the caller's own id.
+    const data = await exportUserDataUseCase({
+      userRepository: resolve("user"),
+      listingRepository: resolve("listing"),
+      contractRepository: resolve("contract"),
+      transactionRepository: resolve("transaction"),
+      eventRepository: resolve("event"),
+      voteRepository: resolve("vote"),
+      incidentRepository: resolve("incident"),
+      conversationRepository: resolve("conversation"),
+      notificationRepository: resolve("notification"),
+      graphRepository: resolve("graph"),
+      fetchSessions: fetchUserSessions,
+    })({ id });
+    if (!data) {
+      return { status: 404, body: { message: "User not found" } };
+    }
+    return { status: 200, body: data };
+  },
+
   createUser: async ({ body }) => {
     const newUser = await createUserUseCase(resolve("user"), resolve("district"), resolve("graph"))({ ...body });
     return { status: 201, body: toDto(newUser) };
@@ -47,6 +95,9 @@ export const usersRouter = s.router(usersContract, {
     }
     if (result.kind === "wrong-password") {
       return { status: 401, body: { message: "Current password is incorrect" } };
+    }
+    if (result.kind === "email-conflict") {
+      return { status: 409, body: { message: "This email address is already in use" } };
     }
     return { status: 200, body: toDto(result.user) };
   },
@@ -66,7 +117,7 @@ export const usersRouter = s.router(usersContract, {
     // Route scope already restricts this to the caller's own id; the use-case adds the
     // superAdmin guardrail. Graph projection cleanup (DETACH DELETE) happens in the use-case.
     try {
-      const deleted = await deleteUserUseCase({
+      const result = await deleteUserUseCase({
         userRepository: resolve("user"),
         graphRepository: resolve("graph"),
         conversationRepository: resolve("conversation"),
@@ -79,8 +130,16 @@ export const usersRouter = s.router(usersContract, {
         contractRepository: resolve("contract"),
         documenso: documensoService,
       })({ id });
-      if (!deleted) {
+      if (result.kind === "not-found") {
         return { status: 404, body: { message: "User not found" } };
+      }
+      if (result.kind === "sessions-purge-failed") {
+        // Account data erased locally, but the auth-service session purge did not
+        // complete — partial erasure. Surface a 5xx so the caller retries (GDPR Art. 17).
+        return {
+          status: 502,
+          body: { message: "Account data erased, but session cleanup did not complete — please retry." },
+        };
       }
       return { status: 204, body: undefined };
     } catch (err) {

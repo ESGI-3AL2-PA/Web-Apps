@@ -1,6 +1,7 @@
 import type { Db } from "mongodb";
 import type { Driver } from "neo4j-driver";
 import type { SatanClient } from "@repo/satan";
+import { logger } from "../logger.js";
 
 import type { IUserRepository } from "./User/user.repository.js";
 import type { IListingRepository } from "./Listing/listing.repository.js";
@@ -119,7 +120,7 @@ export const initContainer = (db: Db, neo4jDriver: Driver, satan?: SatanClient) 
     ["conversation", repositories.conversation],
   ];
   for (const [name, repo] of withIndexes) {
-    void repo.ensureIndexes().catch((err) => console.error(`Failed to ensure ${name} indexes:`, err));
+    void repo.ensureIndexes().catch((err) => logger.error({ err, name }, "Failed to ensure indexes"));
   }
 };
 

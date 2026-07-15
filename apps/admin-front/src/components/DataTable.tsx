@@ -35,11 +35,15 @@ export function DataTable<T>({
         <thead>
           <tr>
             {columns.map((col) => (
-              <th key={col.header} className={col.className}>
+              <th key={col.header} scope="col" className={col.className}>
                 {col.header}
               </th>
             ))}
-            {actions && <th className="text-end">Actions</th>}
+            {actions && (
+              <th scope="col" className="text-end">
+                Actions
+              </th>
+            )}
           </tr>
         </thead>
         <tbody>

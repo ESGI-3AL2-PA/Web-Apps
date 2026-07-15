@@ -1,15 +1,17 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import type { CreateListingDto, TagResponseDto } from "@repo/contracts";
+import type { CreateListingDto, ListingType, TagResponseDto } from "@repo/contracts";
 import { createListing } from "../api-service/listings.service";
 import { getTags } from "../api-service/tags.service";
+import { tagLabel } from "../lib/tag-label";
 import { uploadImages } from "../api-service/uploads.service";
 
 export default function PostListing() {
   const navigate = useNavigate();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [tags, setTags] = useState<TagResponseDto[]>([]);
+  const [type, setType] = useState<ListingType>("offer");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState("");
@@ -44,7 +46,7 @@ export default function PostListing() {
       const body: CreateListingDto = {
         title: title.trim(),
         description: description.trim(),
-        type: "offer",
+        type,
         price: Number(price) || 0,
         ...(tag ? { tags: [tag] } : {}),
         ...(images.length ? { images } : {}),
@@ -58,14 +60,53 @@ export default function PostListing() {
     }
   };
 
-  const label = "mb-1 block text-sm font-semibold text-base-content/80";
+  const field =
+    "w-full rounded-lg border border-base-content/20 px-3 py-2 text-sm outline-none focus:border-primary focus-visible:ring-2 ring-primary";
 
   return (
     <div className="mx-auto max-w-2xl">
       <h1 className="mb-6 text-2xl font-extrabold text-base-content">{t("post.title")}</h1>
-      <form onSubmit={onSubmit} className="card space-y-5 border border-base-content/10 bg-base-100 p-6">
+      <form
+        onSubmit={onSubmit}
+        className="space-y-5 rounded-xl border border-base-content/10 bg-base-100 p-6"
+      >
+        <fieldset>
+          <legend className="mb-1 block text-sm font-semibold text-base-content/80">
+            {t("post.typeLabel")}
+          </legend>
+          <div
+            role="radiogroup"
+            aria-label={t("post.typeLabel")}
+            className="grid grid-cols-2 gap-1 rounded-lg border border-base-content/20 p-1"
+          >
+            {(["offer", "request"] as const).map((value) => {
+              const active = type === value;
+              return (
+                <button
+                  key={value}
+                  type="button"
+                  role="radio"
+                  aria-checked={active}
+                  onClick={() => setType(value)}
+                  className={`rounded-md px-3 py-2 text-sm font-semibold transition-colors ${
+                    active
+                      ? "bg-primary text-primary-content"
+                      : "text-base-content/80 hover:bg-base-200"
+                  }`}
+                >
+                  {t(`post.type_${value}`)}
+                </button>
+              );
+            })}
+          </div>
+          <p className="mt-1 text-xs text-base-content/60">{t(`post.typeHint_${type}`)}</p>
+        </fieldset>
+
         <div>
-          <label htmlFor="post-title" className={label}>
+          <label
+            htmlFor="post-title"
+            className="mb-1 block text-sm font-semibold text-base-content/80"
+          >
             {t("post.fieldTitle")}
           </label>
           <input
@@ -74,15 +115,18 @@ export default function PostListing() {
             onChange={(e) => setTitle(e.target.value)}
             required
             maxLength={300}
-            className="input w-full"
-            placeholder={t("post.titlePlaceholder")}
+            className={field}
+            placeholder={t(`post.titlePlaceholder_${type}`)}
             aria-invalid={error ? true : undefined}
             aria-describedby={error ? "post-error" : undefined}
           />
         </div>
 
         <div>
-          <label htmlFor="post-price" className={label}>
+          <label
+            htmlFor="post-price"
+            className="mb-1 block text-sm font-semibold text-base-content/80"
+          >
             {t("post.pricePoints")}
           </label>
           <input
@@ -92,27 +136,33 @@ export default function PostListing() {
             type="number"
             min={0}
             required
-            className="input w-full"
+            className={field}
             placeholder="0"
           />
         </div>
 
         <div>
-          <label htmlFor="post-category" className={label}>
+          <label
+            htmlFor="post-category"
+            className="mb-1 block text-sm font-semibold text-base-content/80"
+          >
             {t("post.category")}
           </label>
-          <select id="post-category" value={tag} onChange={(e) => setTag(e.target.value)} className="select w-full">
+          <select id="post-category" value={tag} onChange={(e) => setTag(e.target.value)} className={field}>
             <option value="">{t("post.chooseCategory")}</option>
             {tags.map((t) => (
               <option key={t.id} value={t.name}>
-                {t.name}
+                {tagLabel(t, i18n.language)}
               </option>
             ))}
           </select>
         </div>
 
         <div>
-          <label htmlFor="post-description" className={label}>
+          <label
+            htmlFor="post-description"
+            className="mb-1 block text-sm font-semibold text-base-content/80"
+          >
             {t("post.description")}
           </label>
           <textarea
@@ -121,13 +171,16 @@ export default function PostListing() {
             onChange={(e) => setDescription(e.target.value)}
             required
             rows={5}
-            className="textarea w-full"
-            placeholder={t("post.descriptionPlaceholder")}
+            className={field}
+            placeholder={t(`post.descriptionPlaceholder_${type}`)}
           />
         </div>
 
         <div>
-          <label htmlFor="post-photos" className={label}>
+          <label
+            htmlFor="post-photos"
+            className="mb-1 block text-sm font-semibold text-base-content/80"
+          >
             {t("post.photos")}
           </label>
           <input
@@ -136,7 +189,7 @@ export default function PostListing() {
             accept="image/*"
             multiple
             onChange={(e) => onFiles(e.target.files)}
-            className="input w-full"
+            className="text-sm"
           />
           {previews.length > 0 && (
             <div className="mt-3 flex flex-wrap gap-2">
@@ -158,8 +211,11 @@ export default function PostListing() {
           </p>
         )}
 
-        <button type="submit" disabled={submitting} className="btn btn-primary btn-block">
-          {submitting && <span className="loading loading-spinner loading-sm" />}
+        <button
+          type="submit"
+          disabled={submitting}
+          className="w-full rounded-lg bg-primary py-3 font-semibold text-primary-content hover:bg-primary/90 disabled:opacity-60"
+        >
           {submitting ? t("post.submitting") : t("post.submit")}
         </button>
       </form>

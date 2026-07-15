@@ -78,7 +78,7 @@ const loaders: Partial<Record<ResourceKind, RecordLoader>> = {
   },
 };
 
-const ownsRecord = (rec: Record_, scope: AuthScope, sub: string): boolean => {
+export const ownsRecord = (rec: Record_, scope: AuthScope, sub: string): boolean => {
   if (scope.ownerField && rec[scope.ownerField] === sub) return true;
   if (scope.ownerFields?.some((f) => rec[f] === sub)) return true;
   if (scope.ownerArrayField && Array.isArray(rec[scope.ownerArrayField])) {
@@ -87,7 +87,7 @@ const ownsRecord = (rec: Record_, scope: AuthScope, sub: string): boolean => {
   return false;
 };
 
-const inDistrict = (rec: Record_, scope: AuthScope, adminDistrictId: string | null): boolean => {
+export const inDistrict = (rec: Record_, scope: AuthScope, adminDistrictId: string | null): boolean => {
   // Degrades safely: until the adminDistrictId claim is minted, district never matches.
   if (!adminDistrictId) return false;
   if (scope.districtField) return rec[scope.districtField] === adminDistrictId;
@@ -97,7 +97,7 @@ const inDistrict = (rec: Record_, scope: AuthScope, adminDistrictId: string | nu
   return false;
 };
 
-const hasRecordCheck = (scope: AuthScope): boolean =>
+export const hasRecordCheck = (scope: AuthScope): boolean =>
   Boolean(
     scope.ownerField || scope.ownerFields || scope.ownerArrayField || scope.districtField || scope.districtArrayField,
   );
@@ -168,10 +168,29 @@ export const authorize: RequestHandler = async (req, res, next) => {
     }
 
     const bypass = scope.bypassRoles?.includes(user.role as never) ?? false;
-    const allowed = bypass || ownsRecord(rec, scope, user.sub) || inDistrict(rec, scope, user.adminDistrictId ?? null);
+    const isOwner = ownsRecord(rec, scope, user.sub);
+    // A grant that came solely from the caller's district (not ownership / bypass):
+    // this is a district admin acting as a moderator on a record they don't own.
+    const districtGrant = !bypass && !isOwner && inDistrict(rec, scope, user.adminDistrictId ?? null);
+    const allowed = bypass || isOwner || districtGrant;
     if (!allowed) {
       res.status(scope.notFoundOnDeny ? 404 : 403).json({ message: scope.notFoundOnDeny ? "Not found" : "Forbidden" });
       return;
+    }
+
+    // security-M2: audit non-participant admin reads of private conversations. After the
+    // read-only fix, conversation writes no longer carry districtField, so a district grant
+    // on a conversation resource can only be a moderation read of a DM the admin isn't in.
+    if (districtGrant && isRead && scope.resource === "conversation") {
+      req.log.info(
+        {
+          audit: "moderation.conversation.read",
+          actorSub: user.sub,
+          actorRole: user.role,
+          conversationId: id,
+        },
+        "Non-participant admin read of a private conversation",
+      );
     }
 
     // Hand the already-loaded record to the handler to avoid a second fetch.

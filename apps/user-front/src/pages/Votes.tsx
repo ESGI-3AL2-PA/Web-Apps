@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import type { VoteResponseDto } from "@repo/contracts";
 import { getVotes, submitVote } from "../api-service/votes.service";
 import { useDialog } from "../components/dialog-context";
+import ErrorBanner from "../components/ErrorBanner";
 
 function PollResults({ vote }: { vote: VoteResponseDto }) {
   const { t } = useTranslation();
@@ -109,12 +110,14 @@ export default function Votes() {
   const { t } = useTranslation();
   const [votes, setVotes] = useState<VoteResponseDto[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
   const load = useCallback(() => {
     setLoading(true);
+    setError(false);
     getVotes()
       .then(setVotes)
-      .catch(() => setVotes([]))
+      .catch(() => setError(true))
       .finally(() => setLoading(false));
   }, []);
 
@@ -132,6 +135,8 @@ export default function Votes() {
 
       {loading ? (
         <p className="text-base-content/60">{t("common.loading")}</p>
+      ) : error ? (
+        <ErrorBanner onRetry={load} />
       ) : votes.length === 0 ? (
         <p className="text-base-content/60">{t("votes.empty")}</p>
       ) : (

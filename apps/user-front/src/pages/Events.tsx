@@ -7,6 +7,7 @@ import { getEvents, registerToEvent, unregisterFromEvent } from "../api-service/
 import { getRecommendedEvents } from "../api-service/recommendations.service";
 import { formatDateTime } from "../lib/format";
 import { useDialog } from "../components/dialog-context";
+import ErrorBanner from "../components/ErrorBanner";
 
 function EventCard({
   ev,
@@ -69,13 +70,15 @@ export default function Events() {
   const [recommended, setRecommended] = useState<EventResponseDto[]>([]);
   const [loadingReco, setLoadingReco] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
 
   const load = useCallback(() => {
     setLoading(true);
+    setError(false);
     getEvents()
       .then(setEvents)
-      .catch(() => setEvents([]))
+      .catch(() => setError(true))
       .finally(() => setLoading(false));
   }, []);
 
@@ -131,6 +134,8 @@ export default function Events() {
 
       {loading ? (
         <p className="text-base-content/60">{t("common.loading")}</p>
+      ) : error ? (
+        <ErrorBanner onRetry={load} />
       ) : events.length === 0 ? (
         <p className="text-base-content/60">{t("events.empty")}</p>
       ) : (
