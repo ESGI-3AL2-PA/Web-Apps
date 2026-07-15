@@ -10,13 +10,18 @@ export class InvalidDisputeStateError extends Error {
 
 export const disputeContractUseCase = (contractRepository: IContractRepository) => {
   return async (id: string, data: { reason: string }): Promise<Contract | null> => {
+    // Single state-gated write: the repo stamps the dispute only while the contract is
+    // pending/completed, so it can't race a webhook completing/rejecting the contract
+    // between a read and the write (which would let a dispute land on a just-terminal
+    // contract or pass on stale data).
+    const disputed = await contractRepository.disputeContract(id, data.reason);
+    if (disputed) return disputed;
+
+    // The atomic guard didn't match. Read back only to classify the error response —
+    // the money-relevant guard already fired: missing → null (404); present but not in a
+    // disputable state (draft/rejected) → InvalidDisputeStateError (400).
     const existing = await contractRepository.getContractById(id);
     if (!existing) return null;
-    // Un litige ne peut porter que sur un contrat en cours de signature ou déjà signé —
-    // pas sur un brouillon jamais envoyé ni un contrat refusé.
-    if (existing.signatureStatus !== "pending" && existing.signatureStatus !== "completed") {
-      throw new InvalidDisputeStateError();
-    }
-    return await contractRepository.updateContract(id, { disputed: true, disputeReason: data.reason });
+    throw new InvalidDisputeStateError();
   };
 };

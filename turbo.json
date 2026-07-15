@@ -10,7 +10,7 @@
     "lint:fix": {},
     "test": {
       "dependsOn": [],
-      "outputs": []
+      "outputs": ["coverage/**"]
     },
     "dev": {
       "dependsOn": ["^build"],

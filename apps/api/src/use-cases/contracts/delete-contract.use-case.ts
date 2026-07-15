@@ -1,6 +1,7 @@
 import type { IContractRepository } from "../../repositories/Contract/contract.repository.js";
 import type { ITransactionRepository } from "../../repositories/Transaction/transaction.repository.js";
 import { runInTransaction } from "../../repositories/tx.js";
+import { logger } from "../../logger.js";
 
 // Deletes a contract and, if it was still pending (escrow held, not yet released to
 // the provider or refunded), refunds the escrow to the beneficiary. Uses the state
@@ -36,7 +37,7 @@ export const deleteContractUseCase = (
         } else {
           // Sequential fallback: the refund already settled; keep the ledger best-effort.
           await ledgerWrite.catch((err) =>
-            console.error(`[contracts] escrow-refund ledger write failed for ${deleted.id}:`, err),
+            logger.error({ err, contractId: deleted.id }, "escrow-refund ledger write failed"),
           );
         }
       }

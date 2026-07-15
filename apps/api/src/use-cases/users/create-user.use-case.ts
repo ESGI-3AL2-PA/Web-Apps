@@ -1,6 +1,7 @@
 import argon2 from "argon2";
 import type { IUserRepository } from "../../repositories/User/user.repository.js";
 import type { IDistrictRepository } from "../../repositories/District/district.repository.js";
+import { logger } from "../../logger.js";
 import type { IGraphRepository } from "../../repositories/Graph/graph.repository.js";
 import type { User } from "../../entities/user.entity.js";
 import { getCoordinatesFromAddress } from "../../services/address.service.js";
@@ -40,7 +41,7 @@ export const createUserUseCase = (
       const district = await districtRepository.findDistrictContaining(coordinates);
       districtId = district?.id ?? "";
     } catch (err) {
-      console.error("District resolution failed during user creation:", err);
+      logger.error({ err }, "District resolution failed during user creation");
     }
 
     const user = await userRepository.createUser({

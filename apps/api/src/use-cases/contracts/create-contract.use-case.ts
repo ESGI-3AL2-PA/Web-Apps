@@ -1,6 +1,7 @@
 import type { CreateContractDto } from "@repo/contracts";
 import type { Contract } from "../../entities/contract.entity.js";
 import type { IContractRepository } from "../../repositories/Contract/contract.repository.js";
+import { logger } from "../../logger.js";
 import type { IUserRepository } from "../../repositories/User/user.repository.js";
 import type { ITransactionRepository } from "../../repositories/Transaction/transaction.repository.js";
 import type { IDocumensoService } from "../../services/documenso.service.js";
@@ -100,7 +101,10 @@ export const createContractUseCase = (
         await transactionRepository
           .adjustBalance(data.beneficiaryId, data.price)
           .catch((refundErr) =>
-            console.error(`[contracts] escrow rollback failed for beneficiary ${data.beneficiaryId}:`, refundErr),
+            logger.error(
+              { err: refundErr, beneficiaryId: data.beneficiaryId },
+              "escrow rollback failed for beneficiary",
+            ),
           );
       }
       // A concurrent identical create won the unique-index race (both passed the
@@ -126,7 +130,7 @@ export const createContractUseCase = (
             refType: "contract",
           },
         ])
-        .catch((err) => console.error(`[contracts] escrow-hold ledger write failed for ${contract.id}:`, err));
+        .catch((err) => logger.error({ err, contractId: contract.id }, "escrow-hold ledger write failed"));
     }
     return contract;
   };

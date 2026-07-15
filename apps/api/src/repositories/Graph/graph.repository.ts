@@ -52,11 +52,30 @@ export interface TagNode {
   category?: string;
 }
 
+/** A relationship touching the exported user, flattened for a portable JSON dump. */
+export interface UserGraphRelationship {
+  type: string;
+  direction: "out" | "in";
+  properties: Record<string, unknown>;
+  other: { labels: string[]; properties: Record<string, unknown> };
+}
+
+/** The user's node plus every edge it participates in (GDPR export). */
+export interface UserGraphExport {
+  nodes: Array<{ labels: string[]; properties: Record<string, unknown> }>;
+  relationships: UserGraphRelationship[];
+}
+
 export interface IGraphRepository {
   // ─── Projection maintenance ───────────────────────────────────────────────
   /** Wipe the entire projection (MATCH (n) DETACH DELETE n) — used by the
    *  reconciliation job before replaying the graph from Mongo. */
   reset(): Promise<void>;
+
+  // ─── GDPR export ──────────────────────────────────────────────────────────
+  /** All nodes + relationships touching this user — LIVES_IN (address), social
+   *  KNOWS, and every domain edge — for the Art. 15/20 data export. Read-only. */
+  exportUserGraph(userId: string): Promise<UserGraphExport>;
 
   // ─── Nodes (upsert + delete) ──────────────────────────────────────────────
   upsertUser(node: UserNode): Promise<void>;

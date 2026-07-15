@@ -30,6 +30,6 @@ export const forgotPasswordUseCase = (userReader: IUserReaderRepository, authTok
     });
 
     const link = `${AUTH_PUBLIC_URL}/reset-password?token=${rawToken}`;
-    await sendPasswordResetEmail(user.email, link);
+    await sendPasswordResetEmail(user.email, link, user.lang);
   };
 };

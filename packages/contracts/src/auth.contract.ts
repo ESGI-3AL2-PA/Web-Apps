@@ -100,6 +100,7 @@ export const authContract = c.router({
     body: RegisterRequestDtoSchema,
     responses: {
       202: AuthMessageResponseDtoSchema,
+      400: AuthMessageResponseDtoSchema,
       409: ConflictErrorSchema,
     },
     summary: "Register a new user and email a verification link. No tokens are issued until verified.",

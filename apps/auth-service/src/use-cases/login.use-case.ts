@@ -3,7 +3,7 @@ import { SignJWT } from "jose";
 import type { IUserReaderRepository } from "../repositories/User/user-reader.repository.js";
 import type { IRefreshTokenRepository } from "../repositories/RefreshToken/refresh-token.repository.js";
 import type { IDistrictAdminReaderRepository } from "../repositories/DistrictAdmin/district-admin-reader.repository.js";
-import { getPrivateKey } from "../keys.js";
+import { getKeyId, getPrivateKey } from "../keys.js";
 import { issueTokensForUser, type IssuedTokens, type SessionContext } from "./issue-tokens.js";
 
 export type LoginResult =
@@ -42,7 +42,7 @@ export const loginUseCase = (
     if (user.totpEnabled) {
       // Issue a short-lived MFA token; client must POST it + a TOTP code to /auth/login/mfa.
       const mfaToken = await new SignJWT({})
-        .setProtectedHeader({ alg: "RS256", kid: "auth-1" })
+        .setProtectedHeader({ alg: "RS256", kid: getKeyId() })
         .setSubject(user.id)
         .setIssuer("auth-service")
         .setAudience("mfa")

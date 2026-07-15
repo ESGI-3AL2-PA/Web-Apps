@@ -1,5 +1,6 @@
 import type { ClientSession } from "mongodb";
 import { getMongoClient } from "./mongodb.connector.js";
+import { logger } from "../logger.js";
 
 // Cached capability probe: null = unknown, true = replica set (transactions work),
 // false = standalone (transactions unsupported, fall back to sequential writes).
@@ -34,7 +35,7 @@ export const runInTransaction = async <T>(fn: (session?: ClientSession) => Promi
   } catch (err) {
     if (txSupported === null && isNoTransactionSupportError(err)) {
       txSupported = false;
-      console.warn("[tx] Mongo transactions unavailable (standalone server) — using sequential writes");
+      logger.warn("Mongo transactions unavailable (standalone server) — using sequential writes");
       return fn(undefined);
     }
     throw err;
