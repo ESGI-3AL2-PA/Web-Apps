@@ -15,6 +15,7 @@ import Contracts from "../pages/Contracts";
 import Profile from "../pages/Profile";
 import Incidents from "../pages/Incidents";
 import NotFound from "../pages/NotFound";
+import ServerError from "../pages/ServerError";
 
 export const router = createBrowserRouter([
   {
@@ -23,8 +24,8 @@ export const router = createBrowserRouter([
         <MainLayout />
       </ProtectedRoute>
     ),
-    // Renders a themed page for router errors instead of the raw dev screen.
-    errorElement: <NotFound />,
+    // Renders a themed 500 page for genuine loader/render errors (NotFound is the catch-all 404 below).
+    errorElement: <ServerError />,
     children: [
       { path: "/", element: <Home /> },
       { path: "/recherche", element: <Search /> },
