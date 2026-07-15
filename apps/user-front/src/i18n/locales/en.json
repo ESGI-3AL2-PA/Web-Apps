@@ -13,6 +13,8 @@
   "common": {
     "appTitle": "Connected NeighBours — classifieds",
     "loading": "Loading…",
+    "loadError": "Something went wrong. We couldn't load this content.",
+    "retry": "Retry",
     "language": "Language",
     "misc": "Misc",
     "confirm": "Confirm",
