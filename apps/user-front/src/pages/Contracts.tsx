@@ -172,7 +172,7 @@ function DisputeModal({
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center" role="dialog" aria-modal="true">
       <button aria-label={t("common.cancel")} onClick={onClose} className="absolute inset-0 bg-black/40" />
-      <div className="modal-box relative w-full max-w-sm rounded-t-2xl bg-base-100 shadow-2xl sm:rounded-2xl">
+      <div className="relative w-full max-w-sm rounded-t-2xl bg-base-100 p-5 shadow-2xl sm:rounded-2xl">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-bold text-base-content">
             {t("contracts.dispute")} · {t("contracts.number", { id: contract.id.slice(0, 8) })}

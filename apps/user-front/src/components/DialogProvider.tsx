@@ -75,7 +75,7 @@ export function DialogProvider({ children }: { children: ReactNode }) {
           <div
             ref={panelRef}
             tabIndex={-1}
-            className="modal-box relative w-full max-w-sm rounded-t-2xl bg-base-100 shadow-2xl outline-none sm:rounded-2xl"
+            className="relative w-full max-w-sm rounded-t-2xl bg-base-100 p-5 shadow-2xl outline-none sm:rounded-2xl"
           >
             {state.title && (
               <h2 id="dialog-title" className="text-lg font-bold text-base-content">

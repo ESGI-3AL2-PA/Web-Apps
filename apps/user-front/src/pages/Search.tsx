@@ -136,7 +136,7 @@ export default function Search() {
           <div
             ref={sheetRef}
             tabIndex={-1}
-            className="modal-box absolute inset-x-0 bottom-0 max-h-[80vh] overflow-y-auto rounded-t-2xl bg-base-100 p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] shadow-2xl outline-none"
+            className="absolute inset-x-0 bottom-0 max-h-[80vh] overflow-y-auto rounded-t-2xl bg-base-100 p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] shadow-2xl outline-none"
           >
             <h2 id="filter-sheet-title" className="sr-only">
               {t("search.filters")}
