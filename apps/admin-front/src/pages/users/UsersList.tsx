@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { TransactionResponseDto, UserBalanceResponseDto, UserResponseDto } from "@repo/contracts";
 import { useScopedList } from "../../hooks/useScopedList";
 import { banUser, listUsers, requestPasswordReset } from "../../api-service/users";
@@ -15,6 +16,7 @@ import { useDistrictScope } from "../../app/DistrictScopeProvider";
 import { formatDate, formatTokens } from "../../lib/format";
 
 export default function UsersList() {
+  const { t } = useTranslation();
   const list = useScopedList<UserResponseDto>(listUsers);
   const toast = useToast();
   const ban = useAsyncAction();
@@ -24,20 +26,20 @@ export default function UsersList() {
   const [resetting, setResetting] = useState<UserResponseDto | null>(null);
 
   const columns: Column<UserResponseDto>[] = [
-    { header: "Name", cell: (u) => `${u.firstName} ${u.lastName}` },
-    { header: "Email", cell: (u) => u.email },
-    { header: "Role", cell: (u) => <StatusBadge value={u.role} /> },
-    { header: "Status", cell: (u) => <StatusBadge value={u.banned ? "banned" : "active"} /> },
-    { header: "Balance", cell: (u) => formatTokens(u.balance) },
-    { header: "Verified", cell: (u) => (u.emailVerified ? "✓" : "—") },
-    { header: "Created", cell: (u) => formatDate(u.createdAt) },
+    { header: t("common.fields.name"), cell: (u) => `${u.firstName} ${u.lastName}` },
+    { header: t("common.fields.email"), cell: (u) => u.email },
+    { header: t("common.fields.role"), cell: (u) => <StatusBadge value={u.role} /> },
+    { header: t("common.fields.status"), cell: (u) => <StatusBadge value={u.banned ? "banned" : "active"} /> },
+    { header: t("common.fields.balance"), cell: (u) => formatTokens(u.balance) },
+    { header: t("common.fields.verified"), cell: (u) => (u.emailVerified ? "✓" : "—") },
+    { header: t("common.fields.created"), cell: (u) => formatDate(u.createdAt) },
   ];
 
   return (
     <div className="space-y-2">
-      <h1 className="text-2xl font-semibold">Users</h1>
+      <h1 className="text-2xl font-semibold">{t("users.title")}</h1>
 
-      <Toolbar search={list.search} onSearchChange={list.setSearch} searchPlaceholder="Search name or email…" />
+      <Toolbar search={list.search} onSearchChange={list.setSearch} searchPlaceholder={t("users.searchPlaceholder")} />
 
       <DataTable
         columns={columns}
@@ -48,15 +50,15 @@ export default function UsersList() {
         actions={(u) => (
           <div className="flex justify-end gap-1">
             <button className="btn btn-xs btn-text" onClick={() => setViewing(u)}>
-              View
+              {t("common.actions.view")}
             </button>
             {u.role === "user" && (
               <>
                 <button className="btn btn-xs btn-text" onClick={() => setResetting(u)}>
-                  Reset password
+                  {t("users.resetPassword")}
                 </button>
                 <button className={`btn btn-xs btn-text ${u.banned ? "" : "btn-error"}`} onClick={() => setBanning(u)}>
-                  {u.banned ? "Unban" : "Ban"}
+                  {u.banned ? t("users.unban") : t("users.ban")}
                 </button>
               </>
             )}
@@ -69,9 +71,9 @@ export default function UsersList() {
 
       <ConfirmDialog
         open={!!resetting}
-        title="Send password reset"
-        message={`Email a password reset link to ${resetting?.email}? They'll set a new password themselves.`}
-        confirmLabel="Send link"
+        title={t("users.sendReset")}
+        message={t("users.resetMessage", { email: resetting?.email })}
+        confirmLabel={t("users.sendLink")}
         busy={reset.busy}
         error={reset.error}
         onCancel={() => {
@@ -81,7 +83,7 @@ export default function UsersList() {
         onConfirm={() =>
           reset.run(async () => {
             await requestPasswordReset(resetting!.email);
-            toast.show("Password reset link sent");
+            toast.show(t("users.resetSent"));
             setResetting(null);
           })
         }
@@ -89,13 +91,13 @@ export default function UsersList() {
 
       <ConfirmDialog
         open={!!banning}
-        title={banning?.banned ? "Unban user" : "Ban user"}
+        title={banning?.banned ? t("users.unbanTitle") : t("users.banTitle")}
         message={
           banning?.banned
-            ? `Restore access for ${banning?.email}? They'll be able to log in again.`
-            : `Ban ${banning?.email}? They'll be logged out and blocked from signing in.`
+            ? t("users.unbanMessage", { email: banning?.email })
+            : t("users.banMessage", { email: banning?.email })
         }
-        confirmLabel={banning?.banned ? "Unban" : "Ban"}
+        confirmLabel={banning?.banned ? t("users.unban") : t("users.ban")}
         busy={ban.busy}
         error={ban.error}
         onCancel={() => {
@@ -106,7 +108,7 @@ export default function UsersList() {
           ban.run(async () => {
             const wasBanned = banning!.banned;
             await banUser(banning!.id, !wasBanned);
-            toast.show(wasBanned ? "User unbanned" : "User banned");
+            toast.show(wasBanned ? t("users.unbanned") : t("users.banned"));
             setBanning(null);
             list.refetch();
           })
@@ -117,6 +119,7 @@ export default function UsersList() {
 }
 
 function UserView({ user, onClose }: { user: UserResponseDto; onClose: () => void }) {
+  const { t } = useTranslation();
   const scope = useDistrictScope();
   const [balance, setBalance] = useState<UserBalanceResponseDto | null>(null);
   const [txns, setTxns] = useState<TransactionResponseDto[]>([]);
@@ -131,29 +134,29 @@ function UserView({ user, onClose }: { user: UserResponseDto; onClose: () => voi
         setTxns(t.data);
       })
       .catch((err) => {
-        if (!cancelled) setError(err?.response?.data?.message ?? err?.message ?? "Failed to load");
+        if (!cancelled) setError(err?.response?.data?.message ?? err?.message ?? t("common.states.failedToLoad"));
       });
     return () => {
       cancelled = true;
     };
-  }, [user.id]);
+  }, [user.id, t]);
 
   return (
     <FormModal open title={`${user.firstName} ${user.lastName}`} onClose={onClose} readOnly size="lg">
       <div className="grid grid-cols-2 gap-3 text-sm">
-        <Info label="Email" value={user.email} />
-        <Info label="Phone" value={user.phone ?? "—"} />
-        <Info label="Role" value={user.role} />
-        <Info label="Status" value={user.banned ? "Banned" : "Active"} />
-        <Info label="District" value={scope.districtName ?? user.districtId ?? "—"} />
-        <Info label="Address" value={user.address ?? "—"} />
-        <Info label="Balance" value={formatTokens(balance?.balance ?? user.balance)} />
+        <Info label={t("common.fields.email")} value={user.email} />
+        <Info label={t("common.fields.phone")} value={user.phone ?? "—"} />
+        <Info label={t("common.fields.role")} value={t(`role.${user.role}`)} />
+        <Info label={t("common.fields.status")} value={user.banned ? t("status.banned") : t("status.active")} />
+        <Info label={t("common.fields.district")} value={scope.districtName ?? user.districtId ?? "—"} />
+        <Info label={t("common.fields.address")} value={user.address ?? "—"} />
+        <Info label={t("common.fields.balance")} value={formatTokens(balance?.balance ?? user.balance)} />
       </div>
       {error && <p className="text-sm text-error">{error}</p>}
       <div>
-        <h4 className="font-medium mt-2 mb-2">Recent transactions</h4>
+        <h4 className="font-medium mt-2 mb-2">{t("users.recentTransactions")}</h4>
         {txns.length === 0 ? (
-          <p className="text-sm text-base-content/60">No transactions</p>
+          <p className="text-sm text-base-content/60">{t("users.noTransactions")}</p>
         ) : (
           <ul className="divide-y divide-base-content/10">
             {txns.map((t) => (

@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@repo/hooks";
 import type { ListingResponseDto, ListingStatus, ListingType } from "@repo/contracts";
 import { useScopedList } from "../../hooks/useScopedList";
@@ -19,6 +20,7 @@ const TYPES: ListingType[] = ["offer", "request"];
 const STATUSES: ListingStatus[] = ["active", "closed", "expired"];
 
 export default function ListingsList() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const isSuperAdmin = user?.role === "superAdmin";
   const list = useScopedList<ListingResponseDto>(listListings);
@@ -29,34 +31,34 @@ export default function ListingsList() {
   const [deleting, setDeleting] = useState<ListingResponseDto | null>(null);
 
   const columns: Column<ListingResponseDto>[] = [
-    { header: "Title", cell: (l) => l.title },
-    { header: "Type", cell: (l) => <StatusBadge value={l.type} /> },
-    { header: "Status", cell: (l) => <StatusBadge value={l.status} /> },
-    { header: "Price", cell: (l) => formatTokens(l.price) },
-    { header: "Author", cell: (l) => <UserName id={l.authorId} /> },
-    { header: "Created", cell: (l) => formatDate(l.createdAt) },
+    { header: t("common.fields.title"), cell: (l) => l.title },
+    { header: t("common.fields.type"), cell: (l) => <StatusBadge value={l.type} /> },
+    { header: t("common.fields.status"), cell: (l) => <StatusBadge value={l.status} /> },
+    { header: t("common.fields.price"), cell: (l) => formatTokens(l.price) },
+    { header: t("common.fields.author"), cell: (l) => <UserName id={l.authorId} /> },
+    { header: t("common.fields.created"), cell: (l) => formatDate(l.createdAt) },
   ];
 
   return (
     <div className="space-y-2">
-      <h1 className="text-2xl font-semibold">Listings</h1>
+      <h1 className="text-2xl font-semibold">{t("listings.title")}</h1>
       <Toolbar
         search={list.search}
         onSearchChange={list.setSearch}
-        searchPlaceholder="Search listings…"
+        searchPlaceholder={t("listings.searchPlaceholder")}
         filters={[
           {
             key: "type",
-            label: "Type",
+            label: t("common.fields.type"),
             value: list.filters.type ?? "",
-            options: TYPES.map((t) => ({ value: t, label: t })),
+            options: TYPES.map((ty) => ({ value: ty, label: t(`type.${ty}`) })),
             onChange: (v) => list.setFilter("type", v),
           },
           {
             key: "status",
-            label: "Status",
+            label: t("common.fields.status"),
             value: list.filters.status ?? "",
-            options: STATUSES.map((s) => ({ value: s, label: s })),
+            options: STATUSES.map((s) => ({ value: s, label: t(`status.${s}`) })),
             onChange: (v) => list.setFilter("status", v),
           },
         ]}
@@ -70,11 +72,11 @@ export default function ListingsList() {
         actions={(l) => (
           <div className="flex justify-end gap-1">
             <button className="btn btn-xs btn-text" onClick={() => setViewing(l)}>
-              View
+              {t("common.actions.view")}
             </button>
             {isSuperAdmin && (
               <button className="btn btn-xs btn-text btn-error" onClick={() => setDeleting(l)}>
-                Delete
+                {t("common.actions.delete")}
               </button>
             )}
           </div>
@@ -85,25 +87,25 @@ export default function ListingsList() {
       {viewing && (
         <FormModal open title={viewing.title} onClose={() => setViewing(null)} readOnly size="lg">
           <div className="grid grid-cols-2 gap-3 text-sm">
-            <Info label="Type" value={viewing.type} />
-            <Info label="Status" value={viewing.status} />
-            <Info label="Price" value={formatTokens(viewing.price)} />
-            <Info label="Author" value={<UserName id={viewing.authorId} />} />
-            <Info label="District" value={scope.districtName ?? viewing.districtId} />
-            <Info label="Tags" value={viewing.tags?.join(", ") || "—"} />
-            <Info label="Created" value={formatDate(viewing.createdAt)} />
-            <Info label="Expires" value={formatDate(viewing.expiresAt)} />
+            <Info label={t("common.fields.type")} value={t(`type.${viewing.type}`, viewing.type)} />
+            <Info label={t("common.fields.status")} value={t(`status.${viewing.status}`, viewing.status)} />
+            <Info label={t("common.fields.price")} value={formatTokens(viewing.price)} />
+            <Info label={t("common.fields.author")} value={<UserName id={viewing.authorId} />} />
+            <Info label={t("common.fields.district")} value={scope.districtName ?? viewing.districtId} />
+            <Info label={t("common.fields.tags")} value={viewing.tags?.join(", ") || "—"} />
+            <Info label={t("common.fields.created")} value={formatDate(viewing.createdAt)} />
+            <Info label={t("common.fields.expires")} value={formatDate(viewing.expiresAt)} />
           </div>
           <div>
-            <p className="text-xs text-base-content/50">Description</p>
+            <p className="text-xs text-base-content/50">{t("common.fields.description")}</p>
             <p className="text-sm whitespace-pre-wrap">{viewing.description}</p>
           </div>
         </FormModal>
       )}
       <ConfirmDialog
         open={!!deleting}
-        title="Delete listing"
-        message={`Delete listing "${deleting?.title}"?`}
+        title={t("listings.deleteTitle")}
+        message={t("listings.deleteMessage", { title: deleting?.title })}
         busy={del.busy}
         error={del.error}
         onCancel={() => {
@@ -113,7 +115,7 @@ export default function ListingsList() {
         onConfirm={() =>
           del.run(async () => {
             await deleteListing(deleting!.id);
-            toast.show("Listing deleted");
+            toast.show(t("listings.deleted"));
             setDeleting(null);
             list.refetch();
           })

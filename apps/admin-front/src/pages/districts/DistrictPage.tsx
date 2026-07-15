@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
+import { useTranslation } from "react-i18next";
 import type { GeoJson, GeoJsonInput } from "@repo/contracts";
 import { getDistrict, updateDistrict } from "../../api-service/districts";
 import { Field } from "../../components/Field";
@@ -19,6 +20,7 @@ function isValidPolygon(geoJson: GeoJson): geoJson is GeoJsonInput {
 // name/boundary and save in place. superAdmin switches which district this shows via the top-bar
 // selector. There is no list/create/delete — the deployment has a single district.
 export default function DistrictPage() {
+  const { t } = useTranslation();
   const { districtId, loading: scopeLoading } = useDistrictScope();
   const toast = useToast();
 
@@ -46,7 +48,7 @@ export default function DistrictPage() {
         setGeoJson(d.geoJson ?? null);
       })
       .catch(() => {
-        if (!cancelled) setError("Failed to load district.");
+        if (!cancelled) setError(t("districts.loadFailed"));
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -54,7 +56,7 @@ export default function DistrictPage() {
     return () => {
       cancelled = true;
     };
-  }, [districtId]);
+  }, [districtId, t]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -63,7 +65,7 @@ export default function DistrictPage() {
     if (!districtId) return;
 
     if (geoJson && !isValidPolygon(geoJson)) {
-      setError("Draw a valid polygon (at least 3 distinct points) before saving.");
+      setError(t("districts.invalidPolygon"));
       return;
     }
 
@@ -72,10 +74,10 @@ export default function DistrictPage() {
       // null explicitly clears an existing boundary; undefined would be dropped by JSON.
       await updateDistrict(districtId, { name, geoJson });
       setSaved(true);
-      toast.show("District saved");
+      toast.show(t("districts.saved"));
     } catch (err: unknown) {
       const e2 = err as { response?: { data?: { message?: string } }; message?: string };
-      setError(e2?.response?.data?.message ?? e2?.message ?? "Failed to save");
+      setError(e2?.response?.data?.message ?? e2?.message ?? t("common.states.failedToSave"));
     } finally {
       setSubmitting(false);
     }
@@ -84,29 +86,29 @@ export default function DistrictPage() {
   if (scopeLoading || loading) {
     return (
       <div className="flex items-center justify-center h-full text-base-content/60">
-        <span className="loading loading-spinner loading-sm" /> Loading…
+        <span className="loading loading-spinner loading-sm" /> {t("common.states.loading")}
       </div>
     );
   }
 
   if (!districtId) {
-    return <p className="text-sm text-base-content/60">No district in scope.</p>;
+    return <p className="text-sm text-base-content/60">{t("districts.noScope")}</p>;
   }
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4 h-[calc(100vh-8.5rem)]">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">{name || "District"}</h1>
+        <h1 className="text-2xl font-semibold">{name || t("districts.title")}</h1>
         <div className="flex items-center gap-3">
-          {saved && <span className="text-sm text-success">Saved</span>}
+          {saved && <span className="text-sm text-success">{t("common.states.saved")}</span>}
           <button type="submit" className="btn btn-primary" disabled={submitting}>
             {submitting && <span className="loading loading-spinner loading-xs" />}
-            Save
+            {t("common.actions.save")}
           </button>
         </div>
       </div>
 
-      <Field label="Name" required>
+      <Field label={t("common.fields.name")} required>
         <input
           className="input max-w-md"
           value={name}
@@ -118,11 +120,7 @@ export default function DistrictPage() {
         />
       </Field>
 
-      {!geoJson && (
-        <p className="text-xs text-base-content/60">
-          No boundary set — this district won&apos;t match any addresses until one is drawn.
-        </p>
-      )}
+      {!geoJson && <p className="text-xs text-base-content/60">{t("districts.noBoundary")}</p>}
       {error && <p className="text-sm text-error">{error}</p>}
 
       <DistrictMapEditor

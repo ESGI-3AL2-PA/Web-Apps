@@ -1,5 +1,6 @@
 import { Suspense, useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation, useMatches } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@repo/hooks";
 import { config } from "@repo/config";
 import { useDistrictScope } from "../app/DistrictScopeProvider";
@@ -7,35 +8,39 @@ import { useTheme } from "../hooks/useTheme";
 
 interface NavItem {
   to: string;
+  // i18n key under `nav.*`
   label: string;
   icon: string;
 }
 
+// `section` and `label` hold i18n keys, resolved at render (this array is module-scoped and can't
+// call the translation hook).
 const NAV: { section: string; items: NavItem[] }[] = [
   {
-    section: "Overview",
-    items: [{ to: "/", label: "Dashboard", icon: "icon-[tabler--layout-dashboard]" }],
+    section: "nav.overview",
+    items: [{ to: "/", label: "nav.dashboard", icon: "icon-[tabler--layout-dashboard]" }],
   },
   {
-    section: "Community",
+    section: "nav.community",
     items: [
-      { to: "/users", label: "Users", icon: "icon-[tabler--users]" },
-      { to: "/districts", label: "Districts", icon: "icon-[tabler--map-2]" },
-      { to: "/tags", label: "Tags", icon: "icon-[tabler--tags]" },
-      { to: "/incidents", label: "Incidents", icon: "icon-[tabler--alert-triangle]" },
+      { to: "/users", label: "nav.users", icon: "icon-[tabler--users]" },
+      { to: "/districts", label: "nav.districts", icon: "icon-[tabler--map-2]" },
+      { to: "/tags", label: "nav.tags", icon: "icon-[tabler--tags]" },
+      { to: "/incidents", label: "nav.incidents", icon: "icon-[tabler--alert-triangle]" },
     ],
   },
   {
-    section: "Moderation",
+    section: "nav.moderation",
     items: [
-      { to: "/listings", label: "Listings", icon: "icon-[tabler--clipboard-list]" },
-      { to: "/events", label: "Events", icon: "icon-[tabler--calendar-event]" },
-      { to: "/votes", label: "Votes", icon: "icon-[tabler--checkbox]" },
+      { to: "/listings", label: "nav.listings", icon: "icon-[tabler--clipboard-list]" },
+      { to: "/events", label: "nav.events", icon: "icon-[tabler--calendar-event]" },
+      { to: "/votes", label: "nav.votes", icon: "icon-[tabler--checkbox]" },
     ],
   },
 ];
 
 export default function AdminLayout() {
+  const { t, i18n } = useTranslation();
   const { user, logout } = useAuth();
   const scope = useDistrictScope();
   const { theme, toggle } = useTheme();
@@ -47,27 +52,32 @@ export default function AdminLayout() {
   // Close the mobile drawer whenever the route changes.
   useEffect(() => setDrawerOpen(false), [location.pathname]);
 
-  // Keep the document title in sync with the active route's handle.
+  // Keep the document title in sync with the active route's handle (an i18n key) and language.
   useEffect(() => {
     const match = [...matches].reverse().find((m) => (m.handle as { title?: string })?.title);
-    const title = (match?.handle as { title?: string })?.title;
-    document.title = title ? `${title} — Admin` : "Connected NeighBours — Admin";
-  }, [matches]);
+    const titleKey = (match?.handle as { title?: string })?.title;
+    document.title = titleKey ? t("common.titleSuffix", { title: t(titleKey) }) : t("common.appTitle");
+  }, [matches, t, i18n.language]);
 
   const sidebar = (
     <>
       <div className="h-16 flex items-center gap-2 px-5 border-b border-base-content/10">
-        <a href={config.appUrl} className="btn btn-sm btn-circle btn-text" aria-label="Back to app" title="Back to app">
+        <a
+          href={config.appUrl}
+          className="btn btn-sm btn-circle btn-text"
+          aria-label={t("nav.backToApp")}
+          title={t("nav.backToApp")}
+        >
           <span className="icon-[tabler--arrow-left] size-5" />
         </a>
         <span className="icon-[tabler--building-community] size-6 text-primary" />
-        <span className="font-semibold">Admin Console</span>
+        <span className="font-semibold">{t("nav.adminConsole")}</span>
       </div>
       <nav className="flex-1 overflow-y-auto p-3 space-y-4">
         {NAV.map((group) => (
           <div key={group.section}>
             <p className="px-3 mb-1 text-xs font-medium uppercase tracking-wide text-base-content/50">
-              {group.section}
+              {t(group.section)}
             </p>
             <ul className="menu p-0 gap-0.5">
               {group.items.map((item) => (
@@ -82,7 +92,7 @@ export default function AdminLayout() {
                     }
                   >
                     <span className={`${item.icon} size-5`} />
-                    {item.label}
+                    {t(item.label)}
                   </NavLink>
                 </li>
               ))}
@@ -99,7 +109,7 @@ export default function AdminLayout() {
         href="#main"
         className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-primary focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-primary-content"
       >
-        Skip to content
+        {t("nav.skipToContent")}
       </a>
       {/* Static sidebar (desktop) */}
       <aside className="hidden lg:flex w-64 shrink-0 bg-base-100 border-e border-base-content/10 flex-col">
@@ -122,7 +132,7 @@ export default function AdminLayout() {
             <button
               className="btn btn-sm btn-text btn-circle lg:hidden"
               onClick={() => setDrawerOpen(true)}
-              aria-label="Open navigation menu"
+              aria-label={t("nav.openMenu")}
             >
               <span className="icon-[tabler--menu-2] size-5" />
             </button>
@@ -133,13 +143,13 @@ export default function AdminLayout() {
               ) : (
                 <>
                   <span className="hidden sm:inline text-xs uppercase tracking-wide text-base-content/50">
-                    Auditing
+                    {t("nav.auditing")}
                   </span>
                   <select
                     className="select select-sm max-w-[12rem]"
                     value={scope.districtId ?? ""}
                     onChange={(e) => scope.setDistrictId(e.target.value)}
-                    aria-label="District to audit"
+                    aria-label={t("nav.districtToAudit")}
                   >
                     {scope.districts.map((d) => (
                       <option key={d.id} value={d.id}>
@@ -157,25 +167,34 @@ export default function AdminLayout() {
                 {scope.districtName}
               </span>
             ) : (
-              <span className="text-xs text-warning">No district assigned</span>
+              <span className="text-xs text-warning">{t("nav.noDistrict")}</span>
             )}
           </div>
 
           <div className="flex items-center gap-2 sm:gap-4">
+            <select
+              className="select select-sm max-w-[4.5rem]"
+              value={i18n.resolvedLanguage}
+              onChange={(e) => i18n.changeLanguage(e.target.value)}
+              aria-label={t("nav.language")}
+            >
+              <option value="fr">FR</option>
+              <option value="en">EN</option>
+            </select>
             <button
               className="btn btn-sm btn-text btn-circle"
               onClick={toggle}
-              aria-label={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
+              aria-label={theme === "dark" ? t("nav.themeToLight") : t("nav.themeToDark")}
             >
               <span className={`${theme === "dark" ? "icon-[tabler--sun]" : "icon-[tabler--moon]"} size-5`} />
             </button>
             <div className="hidden sm:block text-end leading-tight">
               <p className="text-sm font-medium">{user ? `${user.firstName} ${user.lastName}` : "—"}</p>
-              <p className="text-xs text-base-content/60">{user?.role}</p>
+              <p className="text-xs text-base-content/60">{user ? t(`role.${user.role}`) : ""}</p>
             </div>
             <button className="btn btn-sm btn-soft btn-error gap-2" onClick={() => logout()}>
               <span className="icon-[tabler--logout] size-4" />
-              <span className="hidden sm:inline">Logout</span>
+              <span className="hidden sm:inline">{t("nav.logout")}</span>
             </button>
           </div>
         </header>

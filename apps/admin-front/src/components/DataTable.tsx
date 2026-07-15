@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 
 export interface Column<T> {
   header: string;
@@ -18,15 +19,8 @@ interface DataTableProps<T> {
   actions?: (row: T) => ReactNode;
 }
 
-export function DataTable<T>({
-  columns,
-  rows,
-  rowKey,
-  loading,
-  error,
-  emptyLabel = "No results",
-  actions,
-}: DataTableProps<T>) {
+export function DataTable<T>({ columns, rows, rowKey, loading, error, emptyLabel, actions }: DataTableProps<T>) {
+  const { t } = useTranslation();
   const colSpan = columns.length + (actions ? 1 : 0);
 
   return (
@@ -41,7 +35,7 @@ export function DataTable<T>({
             ))}
             {actions && (
               <th scope="col" className="text-end">
-                Actions
+                {t("common.actions.actions")}
               </th>
             )}
           </tr>
@@ -50,7 +44,7 @@ export function DataTable<T>({
           {loading && (
             <tr>
               <td colSpan={colSpan} className="text-center text-base-content/60 py-8">
-                <span className="loading loading-spinner loading-sm" /> Loading…
+                <span className="loading loading-spinner loading-sm" /> {t("common.states.loading")}
               </td>
             </tr>
           )}
@@ -64,7 +58,7 @@ export function DataTable<T>({
           {!loading && !error && rows.length === 0 && (
             <tr>
               <td colSpan={colSpan} className="text-center text-base-content/60 py-8">
-                {emptyLabel}
+                {emptyLabel ?? t("common.states.noResults")}
               </td>
             </tr>
           )}
