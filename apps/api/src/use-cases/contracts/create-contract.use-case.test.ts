@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { logger } from "../../logger.js";
 import type { User } from "../../entities/user.entity.js";
 import type { Contract } from "../../entities/contract.entity.js";
 import type { IUserRepository } from "../../repositories/User/user.repository.js";
@@ -142,7 +143,7 @@ describe("createContractUseCase", () => {
   });
 
   it("does NOT roll back a persisted contract when the ledger write fails", async () => {
-    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+    const loggerError = vi.spyOn(logger, "error").mockImplementation(() => {});
     const txRepo = makeTxRepo({
       createTransactions: vi.fn(async () => {
         throw new Error("ledger down");
@@ -161,8 +162,8 @@ describe("createContractUseCase", () => {
     expect(contract.id).toBe("contract-1");
     // No refund: the money is correctly held against a live contract.
     expect(txRepo.adjustBalance).not.toHaveBeenCalled();
-    expect(consoleError).toHaveBeenCalled();
-    consoleError.mockRestore();
+    expect(loggerError).toHaveBeenCalled();
+    loggerError.mockRestore();
   });
 
   it("throws InsufficientFundsError (no external work) when the debit fails", async () => {

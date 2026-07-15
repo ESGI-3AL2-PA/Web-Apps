@@ -7,6 +7,7 @@ import { registerUseCase, TERMS_VERSION } from "./register.use-case.js";
 // test here, so stub the key provider and the mailer.
 vi.mock("../keys.js", () => ({
   getPrivateKey: vi.fn().mockReturnValue("fake-private-key"),
+  getKeyId: vi.fn().mockReturnValue("test-kid"),
 }));
 vi.mock("jose", () => ({
   SignJWT: class {
