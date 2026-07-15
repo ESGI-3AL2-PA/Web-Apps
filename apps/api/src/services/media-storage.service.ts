@@ -60,6 +60,14 @@ export const saveMessageImage = async (messageId: string, bytes: Buffer, content
   await minio.putObject(BUCKET, imageObjectName(messageId), bytes, bytes.length, { "Content-Type": contentType });
 };
 
+export const deleteMessageImage = async (messageId: string): Promise<void> => {
+  try {
+    await minio.removeObject(BUCKET, imageObjectName(messageId));
+  } catch {
+    // best-effort
+  }
+};
+
 // Returns the image stream + its stored content-type, or null if it is missing.
 export const getMessageImage = async (messageId: string): Promise<{ stream: Readable; contentType: string } | null> => {
   try {
