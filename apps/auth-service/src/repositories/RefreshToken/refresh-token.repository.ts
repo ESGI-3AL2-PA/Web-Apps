@@ -20,4 +20,7 @@ export interface IRefreshTokenRepository {
   // Hard-delete every session row for a user (GDPR erasure) — unlike revokeAllForUser
   // this removes the rows outright, purging the retained IP/User-Agent history.
   deleteAllForUser(userId: string): Promise<void>;
+  // One-time GDPR storage-limitation backfill: set expiresAtDate (createdAt + 7d) on
+  // legacy rows missing it so the TTL index reaps them. Idempotent; returns rows touched.
+  backfillMissingExpiresAtDate(): Promise<number>;
 }
