@@ -58,6 +58,8 @@ const makeReq = (opts: {
     user: opts.user,
     params: opts.params ?? {},
     method: opts.method ?? "GET",
+    // pino-http per-request child logger — mocked so audit log assertions can inspect it.
+    log: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
   } as unknown as Request;
 };
 
@@ -419,54 +421,45 @@ describe("authorize middleware", () => {
     });
 
     it("audits a district-grant moderation read of a conversation the admin is not in", async () => {
-      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
       stubRecord({ participants: ["a", "b"], districtId: "district-1" });
       const policy: AuthPolicy = {
         scope: { resource: "conversation", ownerArrayField: "participants", districtField: "districtId" },
       };
       const { res, captured } = makeRes();
       const next = vi.fn();
-      await authorize(
-        makeReq({
-          policy,
-          user: makeUser({ sub: "admin-1", role: "admin", adminDistrictId: "district-1" }),
-          params: { id: "conv-1" },
-          method: "GET",
-        }),
-        res,
-        next,
-      );
+      const req = makeReq({
+        policy,
+        user: makeUser({ sub: "admin-1", role: "admin", adminDistrictId: "district-1" }),
+        params: { id: "conv-1" },
+        method: "GET",
+      });
+      await authorize(req, res, next);
       expect(next).toHaveBeenCalledOnce();
       expect(captured.statusCode).toBeUndefined();
-      expect(warnSpy).toHaveBeenCalledOnce();
-      const logged = JSON.parse((warnSpy.mock.calls[0]![0] as string) ?? "{}");
-      expect(logged).toMatchObject({
-        event: "moderation.conversation.read",
+      expect(req.log.info).toHaveBeenCalledOnce();
+      expect(vi.mocked(req.log.info).mock.calls[0]![0]).toMatchObject({
+        audit: "moderation.conversation.read",
         actorSub: "admin-1",
         conversationId: "conv-1",
       });
     });
 
     it("does NOT audit when the caller is a participant (owner, not a district grant)", async () => {
-      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
       stubRecord({ participants: ["admin-1", "b"], districtId: "district-1" });
       const policy: AuthPolicy = {
         scope: { resource: "conversation", ownerArrayField: "participants", districtField: "districtId" },
       };
       const { res } = makeRes();
       const next = vi.fn();
-      await authorize(
-        makeReq({
-          policy,
-          user: makeUser({ sub: "admin-1", role: "admin", adminDistrictId: "district-1" }),
-          params: { id: "conv-1" },
-          method: "GET",
-        }),
-        res,
-        next,
-      );
+      const req = makeReq({
+        policy,
+        user: makeUser({ sub: "admin-1", role: "admin", adminDistrictId: "district-1" }),
+        params: { id: "conv-1" },
+        method: "GET",
+      });
+      await authorize(req, res, next);
       expect(next).toHaveBeenCalledOnce();
-      expect(warnSpy).not.toHaveBeenCalled();
+      expect(req.log.info).not.toHaveBeenCalled();
     });
   });
 });
