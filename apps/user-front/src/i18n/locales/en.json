@@ -232,8 +232,20 @@
     "deposit": "+ Post",
     "empty": "You don't have any ads yet.",
     "delete": "Delete",
+    "edit": "Edit",
     "confirmDelete": "Delete this ad?",
-    "deleteError": "Could not delete."
+    "confirmDeleteActive": "This ad has an active contract. Delete it anyway?",
+    "deleteError": "Could not delete.",
+    "activeBadge": "Booked",
+    "editTitle": "Edit ad",
+    "editError": "Could not save changes. Check the fields and try again.",
+    "fieldType": "Type",
+    "typeOffer": "Offer",
+    "typeRequest": "Request",
+    "save": "Save",
+    "saving": "Saving…",
+    "loadError": "Could not load your ads.",
+    "retry": "Retry"
   },
   "messages": {
     "title": "Messages",
