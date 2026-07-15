@@ -9,6 +9,12 @@ export const connectDB = async (): Promise<Db> => {
   return client.db(dbName);
 };
 
+// Readiness check: cheap round-trip to the server. Rejects if the connection is
+// dead (server down, auth revoked, network partition) so /readyz can return 503.
+export const pingDB = async (): Promise<void> => {
+  await client.db(dbName).command({ ping: 1 });
+};
+
 export const closeDB = async (): Promise<void> => {
   await client.close();
 };

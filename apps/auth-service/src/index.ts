@@ -14,7 +14,7 @@ import { authContract } from "@repo/contracts";
 import { authRouter } from "./routes/auth/auth.router.js";
 import { jwksHandler } from "./routes/jwks.router.js";
 import { errorHandler, NotFoundError } from "./middleware/error-handler.js";
-import { connectDB, closeDB } from "./repositories/mongodb.connector.js";
+import { connectDB, closeDB, pingDB } from "./repositories/mongodb.connector.js";
 import { initContainer, resolve } from "./repositories/container.js";
 import { MongoRefreshTokenRepository } from "./repositories/RefreshToken/refresh-token.repository.mongo.js";
 import type { IRefreshTokenRepository } from "./repositories/RefreshToken/refresh-token.repository.js";
@@ -66,8 +66,28 @@ app.use(
 app.use(express.json());
 app.use(cookieParser() as RequestHandler);
 
+// Liveness: cheap, dependency-free. Answers "is the process up?" — used to decide
+// whether to restart the container. Must stay static so a slow/down DB never trips it.
 app.get("/health", (_req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
+});
+
+// Readiness: "can this instance serve traffic?" — pings Mongo so the LB can pull a
+// node with a dead DB out of rotation. Mongo is required for every auth flow, so its
+// failure returns 503.
+app.get("/readyz", async (_req, res) => {
+  let mongoOk = true;
+  try {
+    await pingDB();
+  } catch (err) {
+    mongoOk = false;
+    console.error("[readyz] mongo ping failed:", err);
+  }
+  res.status(mongoOk ? 200 : 503).json({
+    status: mongoOk ? "ok" : "unavailable",
+    checks: { mongo: mongoOk ? "ok" : "down" },
+    timestamp: new Date().toISOString(),
+  });
 });
 
 // Login & register pages — inject the trusted-redirect-origin allowlist into the page
