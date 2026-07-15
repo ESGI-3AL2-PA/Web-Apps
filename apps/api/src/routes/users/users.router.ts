@@ -69,7 +69,7 @@ export const usersRouter = s.router(usersContract, {
     // Route scope already restricts this to the caller's own id; the use-case adds the
     // superAdmin guardrail. Graph projection cleanup (DETACH DELETE) happens in the use-case.
     try {
-      const deleted = await deleteUserUseCase({
+      const result = await deleteUserUseCase({
         userRepository: resolve("user"),
         graphRepository: resolve("graph"),
         conversationRepository: resolve("conversation"),
@@ -82,8 +82,16 @@ export const usersRouter = s.router(usersContract, {
         contractRepository: resolve("contract"),
         documenso: documensoService,
       })({ id });
-      if (!deleted) {
+      if (result.kind === "not-found") {
         return { status: 404, body: { message: "User not found" } };
+      }
+      if (result.kind === "sessions-purge-failed") {
+        // Account data erased locally, but the auth-service session purge did not
+        // complete — partial erasure. Surface a 5xx so the caller retries (GDPR Art. 17).
+        return {
+          status: 502,
+          body: { message: "Account data erased, but session cleanup did not complete — please retry." },
+        };
       }
       return { status: 204, body: undefined };
     } catch (err) {

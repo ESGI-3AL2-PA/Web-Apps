@@ -2,6 +2,7 @@ import { initContract } from "@ts-rest/core";
 import { z } from "zod";
 
 import {
+  BadGatewayErrorSchema,
   BanUserDtoSchema,
   ConflictErrorSchema,
   CreateUserDtoSchema,
@@ -101,6 +102,10 @@ export const usersContract = c.router({
       204: z.undefined(),
       403: ForbiddenErrorSchema,
       404: NotFoundErrorSchema,
+      // Account data was erased locally but a downstream dependency (auth-service
+      // session purge) did not complete — erasure is only partial. Surfaced instead
+      // of a false 204 so the caller knows to retry (GDPR Art. 17).
+      502: BadGatewayErrorSchema,
     },
     // Self-service account deletion (GDPR erasure): a user may delete ONLY their own
     // account — selfParam:"id", no superAdmin bypass (admins can't delete others via
