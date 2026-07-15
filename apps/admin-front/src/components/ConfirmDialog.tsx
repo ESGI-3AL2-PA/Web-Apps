@@ -1,4 +1,5 @@
 import { useId } from "react";
+import { useTranslation } from "react-i18next";
 import { ModalFrame } from "./ModalFrame";
 
 interface ConfirmDialogProps {
@@ -16,12 +17,13 @@ export function ConfirmDialog({
   open,
   title,
   message,
-  confirmLabel = "Delete",
+  confirmLabel,
   busy,
   error,
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
+  const { t } = useTranslation();
   const titleId = useId();
   const errorId = useId();
   if (!open) return null;
@@ -45,7 +47,7 @@ export function ConfirmDialog({
       )}
       <div className="flex justify-end gap-2 mt-6">
         <button type="button" className="btn btn-soft" onClick={onCancel} disabled={busy}>
-          Cancel
+          {t("common.actions.cancel")}
         </button>
         <button
           type="button"
@@ -55,7 +57,7 @@ export function ConfirmDialog({
           aria-describedby={error ? errorId : undefined}
         >
           {busy && <span className="loading loading-spinner loading-xs" />}
-          {confirmLabel}
+          {confirmLabel ?? t("common.actions.delete")}
         </button>
       </div>
     </ModalFrame>

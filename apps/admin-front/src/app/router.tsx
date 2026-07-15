@@ -21,14 +21,14 @@ export const router = createBrowserRouter([
       </ProtectedRoute>
     ),
     children: [
-      { path: "/", element: <Dashboard />, handle: { title: "Dashboard" } },
-      { path: "/users", element: <UsersList />, handle: { title: "Users" } },
-      { path: "/districts", element: <DistrictPage />, handle: { title: "District" } },
-      { path: "/tags", element: <TagsList />, handle: { title: "Tags" } },
-      { path: "/incidents", element: <IncidentsList />, handle: { title: "Incidents" } },
-      { path: "/listings", element: <ListingsList />, handle: { title: "Listings" } },
-      { path: "/events", element: <EventsList />, handle: { title: "Events" } },
-      { path: "/votes", element: <VotesList />, handle: { title: "Votes" } },
+      { path: "/", element: <Dashboard />, handle: { title: "nav.dashboard" } },
+      { path: "/users", element: <UsersList />, handle: { title: "nav.users" } },
+      { path: "/districts", element: <DistrictPage />, handle: { title: "nav.districts" } },
+      { path: "/tags", element: <TagsList />, handle: { title: "nav.tags" } },
+      { path: "/incidents", element: <IncidentsList />, handle: { title: "nav.incidents" } },
+      { path: "/listings", element: <ListingsList />, handle: { title: "nav.listings" } },
+      { path: "/events", element: <EventsList />, handle: { title: "nav.events" } },
+      { path: "/votes", element: <VotesList />, handle: { title: "nav.votes" } },
     ],
   },
 ]);

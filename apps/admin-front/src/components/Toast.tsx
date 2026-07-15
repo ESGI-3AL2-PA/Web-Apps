@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useRef, useState, type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 
 type ToastType = "success" | "error" | "info";
 interface ToastItem {
@@ -25,6 +26,7 @@ const ICONS: Record<ToastType, string> = {
 };
 
 export function ToastProvider({ children }: { children: ReactNode }) {
+  const { t } = useTranslation();
   const [items, setItems] = useState<ToastItem[]>([]);
   const idRef = useRef(0);
 
@@ -45,20 +47,20 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     <ToastContext.Provider value={{ show }}>
       {children}
       <div className="fixed bottom-4 end-4 z-[60] flex flex-col gap-2">
-        {items.map((t) => (
+        {items.map((item) => (
           <div
-            key={t.id}
-            className={`alert ${STYLES[t.type]} shadow-lg`}
-            role={t.type === "error" ? "alert" : "status"}
-            aria-live={t.type === "error" ? "assertive" : "polite"}
+            key={item.id}
+            className={`alert ${STYLES[item.type]} shadow-lg`}
+            role={item.type === "error" ? "alert" : "status"}
+            aria-live={item.type === "error" ? "assertive" : "polite"}
           >
-            <span className={`${ICONS[t.type]} size-5`} />
-            <span>{t.message}</span>
+            <span className={`${ICONS[item.type]} size-5`} />
+            <span>{item.message}</span>
             <button
               type="button"
               className="btn btn-circle btn-ghost btn-xs ms-auto"
-              aria-label="Dismiss notification"
-              onClick={() => dismiss(t.id)}
+              aria-label={t("common.table.dismiss")}
+              onClick={() => dismiss(item.id)}
             >
               <span className="icon-[tabler--x] size-4" />
             </button>
