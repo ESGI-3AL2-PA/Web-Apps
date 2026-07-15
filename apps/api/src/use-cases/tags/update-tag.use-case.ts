@@ -9,7 +9,7 @@ export const updateTagUseCase = (tagRepository: ITagRepository, graphRepository:
     if (tag) {
       // Tag nodes in Neo4j are keyed by `name`, so refresh the projection.
       await syncGraph(`upsertTag(${tag.name})`, () =>
-        graphRepository.upsertTag({ name: tag.name, category: tag.description }),
+        graphRepository.upsertTag({ name: tag.name, category: tag.description?.en }),
       );
     }
     return tag;

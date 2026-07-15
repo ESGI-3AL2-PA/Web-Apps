@@ -9,6 +9,7 @@
     "start": "node ./dist/index.js",
     "test": "vitest run",
     "graph:rebuild": "tsx src/scripts/rebuild-graph.ts",
+    "tags:backfill": "tsx src/scripts/backfill-tag-labels.ts",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix"
   },
