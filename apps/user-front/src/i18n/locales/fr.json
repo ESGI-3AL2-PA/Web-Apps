@@ -263,8 +263,20 @@
     "deposit": "+ Déposer",
     "empty": "Vous n'avez pas encore d'annonce.",
     "delete": "Supprimer",
+    "edit": "Modifier",
     "confirmDelete": "Supprimer cette annonce ?",
-    "deleteError": "Suppression impossible."
+    "confirmDeleteActive": "Un contrat est en cours sur cette annonce. La supprimer quand même ?",
+    "deleteError": "Suppression impossible.",
+    "activeBadge": "Réservée",
+    "editTitle": "Modifier l'annonce",
+    "editError": "La modification a échoué. Vérifiez les champs et réessayez.",
+    "fieldType": "Type",
+    "typeOffer": "Offre",
+    "typeRequest": "Demande",
+    "save": "Enregistrer",
+    "saving": "Enregistrement…",
+    "loadError": "Impossible de charger vos annonces.",
+    "retry": "Réessayer"
   },
   "messages": {
     "title": "Messages",
