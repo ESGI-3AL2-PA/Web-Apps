@@ -47,8 +47,8 @@ import { recommendationsRouter } from "./routes/recommendations/recommendations.
 import { errorHandler, NotFoundError } from "./middleware/error-handler.js";
 import { requireAuth } from "./middleware/auth.middleware.js";
 import { authorize } from "./middleware/authorize.middleware.js";
-import { connectDB, closeDB } from "./repositories/mongodb.connector.js";
-import { connectNeo4j, closeNeo4j } from "./repositories/neo4j.connector.js";
+import { connectDB, closeDB, pingDB } from "./repositories/mongodb.connector.js";
+import { connectNeo4j, closeNeo4j, pingNeo4j } from "./repositories/neo4j.connector.js";
 import { connectSatan, closeSatan } from "./repositories/satan.connector.js";
 import type { SatanClient } from "@repo/satan";
 import { setupGracefulShutdown } from "./shutdown.js";
@@ -148,8 +148,23 @@ app.use(
 // Limite augmentée pour accepter les uploads audio inline en base64 (~5MB max).
 app.use(express.json({ limit: "10mb" }));
 
+// Liveness: cheap, dependency-free. Answers "is the process up?" — used to decide
+// whether to restart the container. Must stay static so a slow/down DB never trips it.
 app.get("/health", (_req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
+});
+
+// Readiness: "can this instance serve traffic?" — pings dependencies so the LB can
+// pull a node with a dead DB out of rotation. Mongo is required (down → 503). Neo4j
+// is a projection (Mongo is source of truth, graph writes are best-effort), so its
+// failure degrades recommendations but the instance stays in rotation (200 "degraded").
+app.get("/readyz", async (_req, res) => {
+  const [mongo, neo] = await Promise.allSettled([pingDB(), pingNeo4j()]);
+  const mongoOk = mongo.status === "fulfilled";
+  const neo4jOk = neo.status === "fulfilled";
+  const checks = { mongo: mongoOk ? "ok" : "down", neo4j: neo4jOk ? "ok" : "down" };
+  const status = !mongoOk ? "unavailable" : neo4jOk ? "ok" : "degraded";
+  res.status(mongoOk ? 200 : 503).json({ status, checks, timestamp: new Date().toISOString() });
 });
 
 // The OpenAPI schema + Scalar UI expose the full endpoint catalogue, so they must
