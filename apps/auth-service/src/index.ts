@@ -181,11 +181,18 @@ connectDB()
     await initKeys();
 
     // Best-effort: ensure the refresh-token TTL index exists so expired sessions
-    // self-purge. Never block boot on it — log and continue if index creation fails.
-    // Built directly from `db` (not via resolve) since the repo is a stateless wrapper.
-    await new MongoRefreshTokenRepository(db)
+    // self-purge, then backfill `expiresAtDate` on legacy rows that predate the field
+    // (GDPR storage-limitation, finding gdpr-H3) so the TTL actually reaps them. Never
+    // block boot on either — log and continue if they fail. Built directly from `db`
+    // (not via resolve) since the repo is a stateless wrapper.
+    const refreshTokenRepo = new MongoRefreshTokenRepository(db);
+    await refreshTokenRepo
       .ensureIndexes()
-      .catch((err) => console.error("Failed to ensure refresh-token indexes:", err));
+      .then(() => refreshTokenRepo.backfillMissingExpiresAtDate())
+      .then((backfilled) => {
+        if (backfilled > 0) console.warn(`Backfilled expiresAtDate on ${backfilled} legacy refresh-token row(s).`);
+      })
+      .catch((err) => console.error("Failed to ensure/backfill refresh-token indexes:", err));
 
     const server = app.listen(port, () => {
       const localUrl = `http://localhost:${port}`;

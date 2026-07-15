@@ -20,6 +20,24 @@ export class MongoRefreshTokenRepository implements IRefreshTokenRepository {
     await this.collection.createIndex({ expiresAtDate: 1 }, { expireAfterSeconds: 0 });
   }
 
+  // One-time backfill for storage-limitation (GDPR Art. 5(1)(e), finding gdpr-H3):
+  // rows created before `expiresAtDate` existed have no BSON Date, so the TTL index
+  // never touches them and their IP/User-Agent history is retained indefinitely.
+  // Set `expiresAtDate` = createdAt + the same 7-day window issue-tokens.ts applies, so
+  // legacy sessions expire consistently with policy rather than surprisingly-immediately.
+  // Idempotent: `{ expiresAtDate: null }` matches both missing and null fields and is a
+  // cheap index-backed no-op once every row has been backfilled. Run after ensureIndexes.
+  async backfillMissingExpiresAtDate(): Promise<number> {
+    const result = await this.collection.updateMany({ expiresAtDate: null }, [
+      {
+        $set: {
+          expiresAtDate: { $dateAdd: { startDate: { $toDate: "$createdAt" }, unit: "day", amount: 7 } },
+        },
+      },
+    ]);
+    return result.modifiedCount;
+  }
+
   async create(data: Omit<RefreshToken, "id">): Promise<RefreshToken> {
     const doc = { ...data, _id: randomUUID() };
     await this.collection.insertOne(doc);
