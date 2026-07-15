@@ -195,7 +195,19 @@
     "filters": "Filtres",
     "results_one": "{{count}} résultat",
     "results_other": "{{count}} résultats",
-    "empty": "Aucune annonce ne correspond à votre recherche."
+    "empty": "Aucune annonce ne correspond à votre recherche.",
+    "type": "Type",
+    "allTypes": "Tous",
+    "type_offer": "Offres",
+    "type_request": "Demandes",
+    "sortLabel": "Trier les annonces",
+    "sortRecent": "Plus récentes",
+    "sortPriceAsc": "Prix croissant",
+    "sortPriceDesc": "Prix décroissant",
+    "loadMore": "Voir plus",
+    "loadedCount": "{{loaded}} sur {{total}} affichées",
+    "error": "Impossible de charger les annonces.",
+    "retry": "Réessayer"
   },
   "detail": {
     "back": "← Retour aux annonces",
