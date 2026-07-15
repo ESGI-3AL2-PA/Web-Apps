@@ -1,7 +1,7 @@
 import { SignJWT } from "jose";
 import type { IUserReaderRepository } from "../repositories/User/user-reader.repository.js";
 import type { IAuthTokenRepository } from "../repositories/AuthToken/auth-token.repository.js";
-import { getPrivateKey } from "../keys.js";
+import { getKeyId, getPrivateKey } from "../keys.js";
 import { sendVerificationEmailUseCase } from "./send-verification-email.use-case.js";
 
 const API_URL = process.env.API_URL || "http://localhost:3000";
@@ -44,7 +44,7 @@ export const registerUseCase = (userReader: IUserReaderRepository, authTokenRepo
     const serviceToken = await new SignJWT({
       role: "service",
     })
-      .setProtectedHeader({ alg: "RS256", kid: "auth-1" })
+      .setProtectedHeader({ alg: "RS256", kid: getKeyId() })
       .setSubject("auth-service")
       .setIssuer("auth-service")
       .setAudience("api:internal")
