@@ -15,22 +15,30 @@ export const setupGracefulShutdown = (server: Server, cleanup: () => Promise<voi
     shuttingDown = true;
     console.warn(`\n${signal} received — shutting down gracefully…`);
 
-    const force = setTimeout(() => {
-      console.error("Shutdown timed out — forcing exit");
-      process.exit(1);
-    }, FORCE_EXIT_MS);
-    force.unref(); // don't let the watchdog itself keep the process alive
-
-    server.close(async () => {
+    // Run cleanup at most once, whether draining finishes cleanly or the watchdog fires.
+    let cleaned = false;
+    const runCleanup = async (code: number) => {
+      if (cleaned) return;
+      cleaned = true;
       try {
         await cleanup();
         console.warn("Closed HTTP server and DB connection — bye");
-        process.exit(0);
+        process.exit(code);
       } catch (err) {
         console.error("Error during shutdown:", err);
         process.exit(1);
       }
-    });
+    };
+
+    const force = setTimeout(() => {
+      // Draining stalled — still close the DB connections before exiting, so they
+      // aren't dropped uncleanly (previously this force-exited without cleanup).
+      console.error("Shutdown timed out — running cleanup then forcing exit");
+      void runCleanup(1);
+    }, FORCE_EXIT_MS);
+    force.unref(); // don't let the watchdog itself keep the process alive
+
+    server.close(() => void runCleanup(0));
   };
 
   process.on("SIGTERM", () => shutdown("SIGTERM"));
