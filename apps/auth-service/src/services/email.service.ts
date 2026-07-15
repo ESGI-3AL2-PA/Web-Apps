@@ -48,26 +48,65 @@ const send = async (to: string, subject: string, html: string, text: string) => 
   }
 };
 
-export const sendVerificationEmail = async (to: string, link: string) => {
-  const subject = `Verify your ${appName} account`;
-  const text = `Welcome to ${appName}!\n\nClick the link below to verify your email:\n${link}\n\nThis link expires in 24 hours.`;
-  const html = `
+export type Lang = "fr" | "en";
+
+// Default to French — missing/unknown locales are treated as fr per product decision.
+const resolveLang = (lang?: Lang): Lang => (lang === "en" ? "en" : "fr");
+
+type Template = { subject: string; text: string; html: string };
+
+export const verificationTemplates: Record<Lang, (link: string) => Template> = {
+  en: (link) => ({
+    subject: `Verify your ${appName} account`,
+    text: `Welcome to ${appName}!\n\nClick the link below to verify your email:\n${link}\n\nThis link expires in 24 hours.`,
+    html: `
     <p>Welcome to ${appName}!</p>
     <p>Click the link below to verify your email:</p>
     <p><a href="${link}">${link}</a></p>
     <p>This link expires in 24 hours.</p>
-  `;
-  await send(to, subject, html, text);
+  `,
+  }),
+  fr: (link) => ({
+    subject: `Vérifiez votre compte ${appName}`,
+    text: `Bienvenue sur ${appName} !\n\nCliquez sur le lien ci-dessous pour vérifier votre adresse e-mail :\n${link}\n\nCe lien expire dans 24 heures.`,
+    html: `
+    <p>Bienvenue sur ${appName} !</p>
+    <p>Cliquez sur le lien ci-dessous pour vérifier votre adresse e-mail :</p>
+    <p><a href="${link}">${link}</a></p>
+    <p>Ce lien expire dans 24 heures.</p>
+  `,
+  }),
 };
 
-export const sendPasswordResetEmail = async (to: string, link: string) => {
-  const subject = `Reset your ${appName} password`;
-  const text = `A password reset was requested for your account.\n\nClick the link below to set a new password:\n${link}\n\nThis link expires in 1 hour. If you didn't request this, ignore this email.`;
-  const html = `
+export const passwordResetTemplates: Record<Lang, (link: string) => Template> = {
+  en: (link) => ({
+    subject: `Reset your ${appName} password`,
+    text: `A password reset was requested for your account.\n\nClick the link below to set a new password:\n${link}\n\nThis link expires in 1 hour. If you didn't request this, ignore this email.`,
+    html: `
     <p>A password reset was requested for your account.</p>
     <p>Click the link below to set a new password:</p>
     <p><a href="${link}">${link}</a></p>
     <p>This link expires in 1 hour. If you didn't request this, ignore this email.</p>
-  `;
+  `,
+  }),
+  fr: (link) => ({
+    subject: `Réinitialisez votre mot de passe ${appName}`,
+    text: `Une réinitialisation de mot de passe a été demandée pour votre compte.\n\nCliquez sur le lien ci-dessous pour définir un nouveau mot de passe :\n${link}\n\nCe lien expire dans 1 heure. Si vous n'êtes pas à l'origine de cette demande, ignorez cet e-mail.`,
+    html: `
+    <p>Une réinitialisation de mot de passe a été demandée pour votre compte.</p>
+    <p>Cliquez sur le lien ci-dessous pour définir un nouveau mot de passe :</p>
+    <p><a href="${link}">${link}</a></p>
+    <p>Ce lien expire dans 1 heure. Si vous n'êtes pas à l'origine de cette demande, ignorez cet e-mail.</p>
+  `,
+  }),
+};
+
+export const sendVerificationEmail = async (to: string, link: string, lang?: Lang) => {
+  const { subject, text, html } = verificationTemplates[resolveLang(lang)](link);
+  await send(to, subject, html, text);
+};
+
+export const sendPasswordResetEmail = async (to: string, link: string, lang?: Lang) => {
+  const { subject, text, html } = passwordResetTemplates[resolveLang(lang)](link);
   await send(to, subject, html, text);
 };

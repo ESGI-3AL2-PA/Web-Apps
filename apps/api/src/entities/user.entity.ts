@@ -18,6 +18,7 @@ export const UserSchema = z.object({
   emailVerified: z.boolean().default(false),
   totpSecret: z.string().nullable().default(null),
   totpEnabled: z.boolean().default(false),
+  lang: z.enum(["fr", "en"]).optional(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
 });

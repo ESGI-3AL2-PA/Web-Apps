@@ -8,7 +8,7 @@ const VERIFY_TTL_MS = 24 * 60 * 60 * 1000; // 24h
 // Issues a verification token for the given user, persists its sha256 hash,
 // and emails the raw token to the user as a link.
 export const sendVerificationEmailUseCase = (authTokenRepo: IAuthTokenRepository) => {
-  return async (userId: string, email: string): Promise<void> => {
+  return async (userId: string, email: string, lang?: "fr" | "en"): Promise<void> => {
     // Revoke any in-flight verification tokens for this user so only the latest works.
     await authTokenRepo.revokeAllForUser(userId, "verify_email");
 
@@ -27,6 +27,6 @@ export const sendVerificationEmailUseCase = (authTokenRepo: IAuthTokenRepository
     });
 
     const link = `${AUTH_PUBLIC_URL}/auth/verify?token=${rawToken}`;
-    await sendVerificationEmail(email, link);
+    await sendVerificationEmail(email, link, lang);
   };
 };

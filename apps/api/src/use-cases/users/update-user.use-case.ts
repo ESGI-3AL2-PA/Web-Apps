@@ -29,6 +29,7 @@ export const updateUserUseCase = (userRepository: IUserRepository, graphReposito
     if (data.email !== undefined) update.email = data.email;
     if (data.phone !== undefined) update.phone = data.phone;
     if (data.address !== undefined) update.address = data.address;
+    if (data.lang !== undefined) update.lang = data.lang;
 
     // Need the current record to verify a password change and to detect an email change.
     const existing = newPassword || data.email !== undefined ? await userRepository.getUserById(id) : null;
