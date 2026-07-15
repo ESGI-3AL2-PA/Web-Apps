@@ -83,14 +83,14 @@ export default function AudioRecorder({
   };
 
   return (
-    <div className="flex flex-col gap-2 rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-3">
+    <div className="flex flex-col gap-2 rounded-box border border-base-content/20 bg-base-100 p-3">
       <div className="flex items-center gap-2">
         {!recording && !blob && (
           <button
             type="button"
             onClick={start}
             aria-label={t("messages.recordStart")}
-            className="flex h-10 w-10 items-center justify-center rounded-full bg-red-600 text-lg text-white"
+            className="flex size-10 items-center justify-center rounded-full bg-error text-lg text-error-content"
           >
             🎙
           </button>
@@ -101,11 +101,11 @@ export default function AudioRecorder({
               type="button"
               onClick={stop}
               aria-label={t("messages.recordStop")}
-              className="flex h-10 w-10 items-center justify-center rounded-full bg-neutral-700 text-white"
+              className="flex size-10 items-center justify-center rounded-full bg-neutral text-neutral-content"
             >
               ⏹
             </button>
-            <span className="text-xs text-red-800">
+            <span className="text-xs text-error">
               ● {t("messages.recording")} {elapsed}s
             </span>
           </>
@@ -114,33 +114,20 @@ export default function AudioRecorder({
         <div className="flex-1" />
         {blob && (
           <>
-            <button
-              type="button"
-              onClick={reset}
-              className="rounded-md border border-neutral-300 dark:border-neutral-700 px-2.5 py-1 text-xs font-medium text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-800"
-            >
+            <button type="button" onClick={reset} className="btn btn-soft btn-sm">
               {t("messages.redo")}
             </button>
-            <button
-              type="button"
-              onClick={send}
-              disabled={sending}
-              className="rounded-md bg-[color:var(--color-brand)] px-3 py-1 text-xs font-semibold text-white hover:bg-[color:var(--color-brand-dark)] disabled:opacity-60"
-            >
+            <button type="button" onClick={send} disabled={sending} className="btn btn-primary btn-sm">
               {sending ? t("messages.sending") : t("messages.send")}
             </button>
           </>
         )}
-        <button
-          type="button"
-          onClick={onCancel}
-          className="text-xs text-neutral-500 dark:text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200"
-        >
+        <button type="button" onClick={onCancel} className="text-xs text-base-content/60 hover:text-base-content">
           {t("common.cancel")}
         </button>
       </div>
       {error && (
-        <p role="alert" className="text-xs text-red-600">
+        <p role="alert" className="text-xs text-error">
           {error}
         </p>
       )}

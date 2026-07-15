@@ -1,61 +1,34 @@
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@repo/hooks";
 import { useFocusTrap } from "../lib/useFocusTrap";
 
-const iconProps = {
-  width: 24,
-  height: 24,
-  viewBox: "0 0 24 24",
-  fill: "none",
-  stroke: "currentColor",
-  strokeWidth: 1.8,
-  strokeLinecap: "round" as const,
-  strokeLinejoin: "round" as const,
-};
-
-const HomeIcon = () => (
-  <svg {...iconProps}>
-    <path d="M3 10.5 12 3l9 7.5" />
-    <path d="M5 9.5V21h14V9.5" />
-  </svg>
-);
-const SearchIcon = () => (
-  <svg {...iconProps}>
-    <circle cx="11" cy="11" r="7" />
-    <path d="m21 21-4.3-4.3" />
-  </svg>
-);
-const ChatIcon = () => (
-  <svg {...iconProps}>
-    <path d="M21 11.5a8.4 8.4 0 0 1-8.5 8.5 8.5 8.5 0 0 1-3.9-.9L3 21l1.9-5.6A8.4 8.4 0 0 1 4 11.5 8.5 8.5 0 0 1 12.5 3 8.4 8.4 0 0 1 21 11.5z" />
-  </svg>
-);
-const UserIcon = () => (
-  <svg {...iconProps}>
-    <circle cx="12" cy="8" r="4" />
-    <path d="M4 21a8 8 0 0 1 16 0" />
-  </svg>
-);
-
 // A single bottom-bar tab: icon + label, brand-colored when active.
-function Tab({ to, label, children }: { to: string; label: string; children: ReactNode }) {
+function Tab({ to, label, icon }: { to: string; label: string; icon: string }) {
   return (
     <NavLink
       to={to}
       end={to === "/"}
       className={({ isActive }) =>
         `flex flex-1 flex-col items-center justify-center gap-0.5 py-1.5 text-[10px] font-medium transition ${
-          isActive ? "text-[color:var(--color-brand)]" : "text-neutral-500 dark:text-neutral-400"
+          isActive ? "text-primary" : "text-base-content/60"
         }`
       }
     >
-      {children}
+      <span className={`${icon} size-6`} />
       <span>{label}</span>
     </NavLink>
   );
 }
+
+const SHEET_LINKS = [
+  { to: "/profil", key: "header.profile" },
+  { to: "/mes-annonces", key: "header.myListings" },
+  { to: "/mes-contrats", key: "header.contracts" },
+  { to: "/incidents", key: "header.incidents" },
+  { to: "/parametres", key: "header.settings" },
+] as const;
 
 export default function BottomNav() {
   const navigate = useNavigate();
@@ -87,59 +60,36 @@ export default function BottomNav() {
           <div
             ref={sheetRef}
             tabIndex={-1}
-            className="absolute inset-x-0 bottom-0 rounded-t-2xl bg-white dark:bg-neutral-900 p-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] shadow-2xl outline-none"
+            className="absolute inset-x-0 bottom-0 rounded-t-2xl bg-base-100 p-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))] shadow-2xl outline-none"
           >
-            <div className="mx-auto mb-2 mt-1 h-1 w-10 rounded-full bg-neutral-300" />
-            <div className="flex items-center gap-3 border-b border-neutral-100 dark:border-neutral-800 px-3 py-3">
-              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[color:var(--color-brand)] text-sm font-bold text-white">
+            <div className="mx-auto mb-2 mt-1 h-1 w-10 rounded-full bg-base-content/20" />
+            <div className="flex items-center gap-3 border-b border-base-content/10 px-3 py-3">
+              <span className="flex size-10 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-content">
                 {user?.firstName?.charAt(0) ?? "?"}
               </span>
-              <span id="account-sheet-title" className="font-semibold text-neutral-900 dark:text-neutral-50">
+              <span id="account-sheet-title" className="font-semibold text-base-content">
                 {user?.firstName ?? t("header.account")}
               </span>
             </div>
-            <button
-              onClick={() => go("/profil")}
-              className="block w-full rounded-lg px-3 py-3 text-left text-sm font-medium text-neutral-700 dark:text-neutral-200 hover:bg-[color:var(--color-brand-soft)]"
-            >
-              {t("header.profile")}
-            </button>
-            <button
-              onClick={() => go("/mes-annonces")}
-              className="block w-full rounded-lg px-3 py-3 text-left text-sm font-medium text-neutral-700 dark:text-neutral-200 hover:bg-[color:var(--color-brand-soft)]"
-            >
-              {t("header.myListings")}
-            </button>
-            <button
-              onClick={() => go("/mes-contrats")}
-              className="block w-full rounded-lg px-3 py-3 text-left text-sm font-medium text-neutral-700 dark:text-neutral-200 hover:bg-[color:var(--color-brand-soft)]"
-            >
-              {t("header.contracts")}
-            </button>
-            <button
-              onClick={() => go("/incidents")}
-              className="block w-full rounded-lg px-3 py-3 text-left text-sm font-medium text-neutral-700 dark:text-neutral-200 hover:bg-[color:var(--color-brand-soft)]"
-            >
-              {t("header.incidents")}
-            </button>
-            <button
-              onClick={() => go("/parametres")}
-              className="block w-full rounded-lg px-3 py-3 text-left text-sm font-medium text-neutral-700 dark:text-neutral-200 hover:bg-[color:var(--color-brand-soft)]"
-            >
-              {t("header.settings")}
-            </button>
+            {SHEET_LINKS.map((link) => (
+              <button
+                key={link.to}
+                onClick={() => go(link.to)}
+                className="block w-full rounded-lg px-3 py-3 text-left text-sm font-medium text-base-content hover:bg-base-200"
+              >
+                {t(link.key)}
+              </button>
+            ))}
             <div className="flex items-center justify-between rounded-lg px-3 py-3">
-              <span className="text-sm font-medium text-neutral-700 dark:text-neutral-200">{t("common.language")}</span>
-              <div className="flex overflow-hidden rounded-md border border-neutral-300 dark:border-neutral-700">
+              <span className="text-sm font-medium text-base-content">{t("common.language")}</span>
+              <div className="join">
                 {(["fr", "en"] as const).map((lng) => (
                   <button
                     key={lng}
                     onClick={() => i18n.changeLanguage(lng)}
                     aria-pressed={i18n.resolvedLanguage === lng}
-                    className={`px-3 py-1 text-xs font-semibold uppercase ${
-                      i18n.resolvedLanguage === lng
-                        ? "bg-[color:var(--color-brand)] text-white"
-                        : "bg-white dark:bg-neutral-900 text-neutral-600 dark:text-neutral-300"
+                    className={`btn btn-sm join-item uppercase ${
+                      i18n.resolvedLanguage === lng ? "btn-primary" : "btn-soft"
                     }`}
                   >
                     {lng}
@@ -152,7 +102,7 @@ export default function BottomNav() {
                 setSheet(false);
                 logout();
               }}
-              className="mt-1 block w-full rounded-lg px-3 py-3 text-left text-sm font-semibold text-red-700 hover:bg-red-50"
+              className="mt-1 block w-full rounded-lg px-3 py-3 text-left text-sm font-semibold text-error hover:bg-error/10"
             >
               {t("header.logout")}
             </button>
@@ -161,36 +111,28 @@ export default function BottomNav() {
       )}
 
       {/* Fixed bottom bar — mobile only */}
-      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 pb-[env(safe-area-inset-bottom)] md:hidden">
+      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-base-content/10 bg-base-100 pb-[env(safe-area-inset-bottom)] md:hidden">
         <div className="flex items-stretch">
-          <Tab to="/" label={t("header.home")}>
-            <HomeIcon />
-          </Tab>
-          <Tab to="/recherche" label={t("header.search")}>
-            <SearchIcon />
-          </Tab>
+          <Tab to="/" label={t("header.home")} icon="icon-[tabler--home]" />
+          <Tab to="/recherche" label={t("header.search")} icon="icon-[tabler--search]" />
 
           {/* Center action — post an ad */}
           <NavLink
             to="/deposer"
-            className="flex flex-1 flex-col items-center justify-center gap-0.5 py-1.5 text-[10px] font-medium text-neutral-500 dark:text-neutral-400"
+            className="flex flex-1 flex-col items-center justify-center gap-0.5 py-1.5 text-[10px] font-medium text-base-content/60"
           >
-            <span className="-mt-4 flex h-11 w-11 items-center justify-center rounded-full bg-[color:var(--color-brand)] text-white shadow-lg shadow-[color:var(--color-brand)]/30">
-              <svg {...iconProps} width={26} height={26}>
-                <path d="M12 5v14M5 12h14" />
-              </svg>
+            <span className="-mt-4 flex size-11 items-center justify-center rounded-full bg-primary text-primary-content shadow-lg shadow-primary/30">
+              <span className="icon-[tabler--plus] size-6" />
             </span>
             <span className="-mt-2.5">{t("myListings.deposit").replace(/^\+\s*/, "")}</span>
           </NavLink>
 
-          <Tab to="/messages" label={t("header.messages")}>
-            <ChatIcon />
-          </Tab>
+          <Tab to="/messages" label={t("header.messages")} icon="icon-[tabler--message-circle]" />
           <button
             onClick={() => setSheet(true)}
-            className="flex flex-1 flex-col items-center justify-center gap-0.5 py-1.5 text-[10px] font-medium text-neutral-500 dark:text-neutral-400"
+            className="flex flex-1 flex-col items-center justify-center gap-0.5 py-1.5 text-[10px] font-medium text-base-content/60"
           >
-            <UserIcon />
+            <span className="icon-[tabler--user] size-6" />
             <span>{t("header.account")}</span>
           </button>
         </div>

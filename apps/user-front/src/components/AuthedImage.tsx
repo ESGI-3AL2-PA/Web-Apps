@@ -41,5 +41,5 @@ export default function AuthedImage({ src, alt = "", className }: { src: string;
   }, [src, inView]);
 
   if (url) return <img src={url} alt={alt} className={className} />;
-  return <div ref={placeholderRef} className={`${className ?? ""} animate-pulse bg-neutral-200 dark:bg-neutral-700`} />;
+  return <div ref={placeholderRef} className={`${className ?? ""} animate-pulse bg-base-200`} />;
 }

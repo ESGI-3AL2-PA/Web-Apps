@@ -61,23 +61,23 @@ export default function PostListing() {
   };
 
   const field =
-    "w-full rounded-lg border border-neutral-300 dark:border-neutral-700 px-3 py-2 text-sm outline-none focus:border-[color:var(--color-brand)] focus-visible:ring-2 ring-[color:var(--color-brand)]";
+    "w-full rounded-lg border border-base-content/20 px-3 py-2 text-sm outline-none focus:border-primary focus-visible:ring-2 ring-primary";
 
   return (
     <div className="mx-auto max-w-2xl">
-      <h1 className="mb-6 text-2xl font-extrabold text-neutral-900 dark:text-neutral-50">{t("post.title")}</h1>
+      <h1 className="mb-6 text-2xl font-extrabold text-base-content">{t("post.title")}</h1>
       <form
         onSubmit={onSubmit}
-        className="space-y-5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-6"
+        className="space-y-5 rounded-xl border border-base-content/10 bg-base-100 p-6"
       >
         <fieldset>
-          <legend className="mb-1 block text-sm font-semibold text-neutral-700 dark:text-neutral-200">
+          <legend className="mb-1 block text-sm font-semibold text-base-content/80">
             {t("post.typeLabel")}
           </legend>
           <div
             role="radiogroup"
             aria-label={t("post.typeLabel")}
-            className="grid grid-cols-2 gap-1 rounded-lg border border-neutral-300 dark:border-neutral-700 p-1"
+            className="grid grid-cols-2 gap-1 rounded-lg border border-base-content/20 p-1"
           >
             {(["offer", "request"] as const).map((value) => {
               const active = type === value;
@@ -90,8 +90,8 @@ export default function PostListing() {
                   onClick={() => setType(value)}
                   className={`rounded-md px-3 py-2 text-sm font-semibold transition-colors ${
                     active
-                      ? "bg-[color:var(--color-brand)] text-white"
-                      : "text-neutral-700 dark:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                      ? "bg-primary text-primary-content"
+                      : "text-base-content/80 hover:bg-base-200"
                   }`}
                 >
                   {t(`post.type_${value}`)}
@@ -99,13 +99,13 @@ export default function PostListing() {
               );
             })}
           </div>
-          <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">{t(`post.typeHint_${type}`)}</p>
+          <p className="mt-1 text-xs text-base-content/60">{t(`post.typeHint_${type}`)}</p>
         </fieldset>
 
         <div>
           <label
             htmlFor="post-title"
-            className="mb-1 block text-sm font-semibold text-neutral-700 dark:text-neutral-200"
+            className="mb-1 block text-sm font-semibold text-base-content/80"
           >
             {t("post.fieldTitle")}
           </label>
@@ -125,7 +125,7 @@ export default function PostListing() {
         <div>
           <label
             htmlFor="post-price"
-            className="mb-1 block text-sm font-semibold text-neutral-700 dark:text-neutral-200"
+            className="mb-1 block text-sm font-semibold text-base-content/80"
           >
             {t("post.pricePoints")}
           </label>
@@ -144,7 +144,7 @@ export default function PostListing() {
         <div>
           <label
             htmlFor="post-category"
-            className="mb-1 block text-sm font-semibold text-neutral-700 dark:text-neutral-200"
+            className="mb-1 block text-sm font-semibold text-base-content/80"
           >
             {t("post.category")}
           </label>
@@ -161,7 +161,7 @@ export default function PostListing() {
         <div>
           <label
             htmlFor="post-description"
-            className="mb-1 block text-sm font-semibold text-neutral-700 dark:text-neutral-200"
+            className="mb-1 block text-sm font-semibold text-base-content/80"
           >
             {t("post.description")}
           </label>
@@ -179,7 +179,7 @@ export default function PostListing() {
         <div>
           <label
             htmlFor="post-photos"
-            className="mb-1 block text-sm font-semibold text-neutral-700 dark:text-neutral-200"
+            className="mb-1 block text-sm font-semibold text-base-content/80"
           >
             {t("post.photos")}
           </label>
@@ -198,7 +198,7 @@ export default function PostListing() {
                   key={src}
                   src={src}
                   alt=""
-                  className="h-20 w-20 rounded-lg border border-neutral-200 dark:border-neutral-700 object-cover"
+                  className="h-20 w-20 rounded-lg border border-base-content/10 object-cover"
                 />
               ))}
             </div>
@@ -206,7 +206,7 @@ export default function PostListing() {
         </div>
 
         {error && (
-          <p id="post-error" role="alert" className="text-sm text-red-600">
+          <p id="post-error" role="alert" className="text-sm text-error">
             {error}
           </p>
         )}
@@ -214,7 +214,7 @@ export default function PostListing() {
         <button
           type="submit"
           disabled={submitting}
-          className="w-full rounded-lg bg-[color:var(--color-brand)] py-3 font-semibold text-white hover:bg-[color:var(--color-brand-dark)] disabled:opacity-60"
+          className="w-full rounded-lg bg-primary py-3 font-semibold text-primary-content hover:bg-primary/90 disabled:opacity-60"
         >
           {submitting ? t("post.submitting") : t("post.submit")}
         </button>

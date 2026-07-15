@@ -74,7 +74,7 @@ export default function UserAutocomplete({
           setQuery(e.target.value);
         }}
         onFocus={() => results.length > 0 && setOpen(true)}
-        className="h-10 w-full rounded-lg border border-neutral-300 dark:border-neutral-700 px-3 pr-8 text-sm outline-none focus:border-[color:var(--color-brand)]"
+        className="input w-full pr-8"
       />
       {selected && (
         <button
@@ -85,26 +85,20 @@ export default function UserAutocomplete({
             setResults([]);
           }}
           aria-label={t("common.cancel")}
-          className="absolute right-2 top-1/2 -translate-y-1/2 text-lg leading-none text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300"
+          className="absolute right-2 top-1/2 -translate-y-1/2 text-lg leading-none text-base-content/50 hover:text-base-content"
         >
           ×
         </button>
       )}
       {open && !selected && (
-        <ul className="absolute inset-x-0 top-[calc(100%+4px)] z-[60] max-h-56 overflow-y-auto rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-1 shadow-lg">
-          {loading && (
-            <li className="px-3 py-2 text-sm text-neutral-500 dark:text-neutral-400">{t("messages.searching")}</li>
-          )}
+        <ul className="menu absolute inset-x-0 top-[calc(100%+4px)] z-[60] max-h-56 flex-nowrap overflow-y-auto rounded-box border border-base-content/10 bg-base-100 p-1 shadow-lg">
+          {loading && <li className="px-3 py-2 text-sm text-base-content/60">{t("messages.searching")}</li>}
           {!loading && results.length === 0 && (
-            <li className="px-3 py-2 text-sm text-neutral-500 dark:text-neutral-400">{t("messages.noNeighbour")}</li>
+            <li className="px-3 py-2 text-sm text-base-content/60">{t("messages.noNeighbour")}</li>
           )}
           {results.map((u) => (
             <li key={u.id}>
-              <button
-                type="button"
-                onClick={() => pick(u)}
-                className="w-full rounded-md px-3 py-2 text-left text-sm hover:bg-[color:var(--color-brand-soft)]"
-              >
+              <button type="button" onClick={() => pick(u)}>
                 {u.firstName} {u.lastName}
               </button>
             </li>

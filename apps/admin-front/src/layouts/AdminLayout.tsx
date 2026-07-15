@@ -58,21 +58,7 @@ export default function AdminLayout() {
     <>
       <div className="h-16 flex items-center gap-2 px-5 border-b border-base-content/10">
         <a href={config.appUrl} className="btn btn-sm btn-circle btn-text" aria-label="Back to app" title="Back to app">
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M5 12h14" />
-            <path d="M5 12l6 6" />
-            <path d="M5 12l6 -6" />
-          </svg>
+          <span className="icon-[tabler--arrow-left] size-5" />
         </a>
         <span className="icon-[tabler--building-community] size-6 text-primary" />
         <span className="font-semibold">Admin Console</span>
@@ -188,21 +174,7 @@ export default function AdminLayout() {
               <p className="text-xs text-base-content/60">{user?.role}</p>
             </div>
             <button className="btn btn-sm btn-soft btn-error gap-2" onClick={() => logout()}>
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M14 8v-2a2 2 0 0 0 -2 -2h-7a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h7a2 2 0 0 0 2 -2v-2" />
-                <path d="M9 12h12l-3 -3" />
-                <path d="M18 15l3 -3" />
-              </svg>
+              <span className="icon-[tabler--logout] size-4" />
               <span className="hidden sm:inline">Logout</span>
             </button>
           </div>

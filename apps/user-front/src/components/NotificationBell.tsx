@@ -112,14 +112,11 @@ export default function NotificationBell() {
         aria-label={t("notifications.title")}
         aria-expanded={open}
         aria-controls="notification-menu"
-        className="relative flex h-9 w-9 items-center justify-center rounded-lg text-neutral-600 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-[color:var(--color-brand)]"
+        className="relative flex size-9 items-center justify-center rounded-lg text-base-content/70 hover:bg-base-200 hover:text-primary"
       >
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-          <path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" strokeLinecap="round" strokeLinejoin="round" />
-          <path d="M13.7 21a2 2 0 0 1-3.4 0" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
+        <span className="icon-[tabler--bell] size-[22px]" />
         {unread > 0 && (
-          <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold text-white">
+          <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-error px-1 text-[10px] font-bold text-error-content">
             {unread > 9 ? "9+" : unread}
           </span>
         )}
@@ -128,44 +125,37 @@ export default function NotificationBell() {
       {open && (
         <div
           id="notification-menu"
-          className="absolute right-0 z-50 mt-2 w-80 max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 shadow-lg"
+          className="absolute right-0 z-50 mt-2 w-80 max-w-[calc(100vw-2rem)] overflow-hidden rounded-box border border-base-content/10 bg-base-100 shadow-lg"
         >
-          <div className="flex items-center justify-between border-b border-neutral-100 dark:border-neutral-800 px-4 py-2.5">
-            <span className="text-sm font-bold text-neutral-900 dark:text-neutral-50">{t("notifications.title")}</span>
+          <div className="flex items-center justify-between border-b border-base-content/10 px-4 py-2.5">
+            <span className="text-sm font-bold text-base-content">{t("notifications.title")}</span>
             {unread > 0 && (
-              <button
-                onClick={markAll}
-                className="text-xs font-medium text-[color:var(--color-brand-dark)] hover:underline"
-              >
+              <button onClick={markAll} className="text-xs font-medium text-primary hover:underline">
                 {t("notifications.markAll")}
               </button>
             )}
           </div>
           {items.length === 0 ? (
-            <p className="px-4 py-6 text-center text-sm text-neutral-500 dark:text-neutral-400">
-              {t("notifications.empty")}
-            </p>
+            <p className="px-4 py-6 text-center text-sm text-base-content/60">{t("notifications.empty")}</p>
           ) : (
             <ul className="max-h-96 overflow-y-auto">
               {items.map((n) => (
                 <li key={n.id}>
                   <button
                     onClick={() => onNotificationClick(n)}
-                    className={`flex w-full items-start gap-2 border-b border-neutral-50 px-4 py-3 text-left hover:bg-neutral-50 dark:hover:bg-neutral-800 ${
-                      n.read ? "" : "bg-[color:var(--color-brand-soft)]/40"
+                    className={`flex w-full items-start gap-2 border-b border-base-content/5 px-4 py-3 text-left hover:bg-base-200 ${
+                      n.read ? "" : "bg-primary/5"
                     }`}
                   >
                     <span
-                      className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${
-                        n.read ? "bg-transparent" : "bg-[color:var(--color-brand)]"
-                      }`}
+                      className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${n.read ? "bg-transparent" : "bg-primary"}`}
                     />
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-semibold text-neutral-900 dark:text-neutral-50">
-                        {n.title}
+                      <span className="block truncate text-sm font-semibold text-base-content">{n.title}</span>
+                      <span className="block text-xs text-base-content/70">{n.message}</span>
+                      <span className="mt-0.5 block text-[10px] text-base-content/50">
+                        {formatRelative(n.createdAt)}
                       </span>
-                      <span className="block text-xs text-neutral-600 dark:text-neutral-300">{n.message}</span>
-                      <span className="mt-0.5 block text-[10px] text-neutral-500">{formatRelative(n.createdAt)}</span>
                     </span>
                   </button>
                 </li>

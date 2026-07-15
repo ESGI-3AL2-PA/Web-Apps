@@ -75,34 +75,26 @@ export function DialogProvider({ children }: { children: ReactNode }) {
           <div
             ref={panelRef}
             tabIndex={-1}
-            className="relative w-full max-w-sm rounded-t-2xl bg-white dark:bg-neutral-900 p-5 shadow-2xl outline-none sm:rounded-2xl"
+            className="relative w-full max-w-sm rounded-t-2xl bg-base-100 p-5 shadow-2xl outline-none sm:rounded-2xl"
           >
             {state.title && (
-              <h2 id="dialog-title" className="text-lg font-bold text-neutral-900 dark:text-neutral-50">
+              <h2 id="dialog-title" className="text-lg font-bold text-base-content">
                 {state.title}
               </h2>
             )}
-            <p id="dialog-desc" className="mt-1 text-sm text-neutral-600 dark:text-neutral-300">
+            <p id="dialog-desc" className="mt-1 text-sm text-base-content/70">
               {state.message}
             </p>
             <div className="mt-5 flex justify-end gap-2">
               {isConfirm && (
-                <button
-                  autoFocus={!focusDestructive}
-                  onClick={() => settle(false)}
-                  className="rounded-lg border border-neutral-300 dark:border-neutral-700 px-4 py-2 text-sm font-semibold text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-800"
-                >
+                <button autoFocus={!focusDestructive} onClick={() => settle(false)} className="btn btn-soft">
                   {state.cancelLabel ?? t("common.cancel")}
                 </button>
               )}
               <button
                 autoFocus={focusDestructive}
                 onClick={() => settle(true)}
-                className={`rounded-lg px-4 py-2 text-sm font-semibold text-white ${
-                  danger
-                    ? "bg-red-600 hover:bg-red-700"
-                    : "bg-[color:var(--color-brand)] hover:bg-[color:var(--color-brand-dark)]"
-                }`}
+                className={`btn ${danger ? "btn-error" : "btn-primary"}`}
               >
                 {state.confirmLabel ?? (isConfirm ? t("common.confirm") : t("common.ok"))}
               </button>

@@ -205,21 +205,18 @@ export default function Messages() {
     <div className="grid h-[calc(100dvh-13rem)] grid-cols-1 gap-4 md:h-[70vh] md:grid-cols-[280px_1fr]">
       {/* Conversation list */}
       <aside
-        className={`overflow-y-auto rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 ${
+        className={`overflow-y-auto rounded-xl border border-base-content/10 bg-base-100 ${
           conversationId ? "hidden md:block" : ""
         }`}
       >
-        <div className="flex items-center justify-between border-b border-neutral-100 dark:border-neutral-800 p-4">
-          <h2 className="text-lg font-bold text-neutral-900 dark:text-neutral-50">{t("messages.title")}</h2>
-          <button
-            onClick={() => setShowNew(true)}
-            className="rounded-lg bg-[color:var(--color-brand)] px-2.5 py-1 text-xs font-semibold text-white hover:bg-[color:var(--color-brand-dark)]"
-          >
+        <div className="flex items-center justify-between border-b border-base-content/10 p-4">
+          <h2 className="text-lg font-bold text-base-content">{t("messages.title")}</h2>
+          <button onClick={() => setShowNew(true)} className="btn btn-primary btn-sm">
             {t("messages.new")}
           </button>
         </div>
         {conversations.length === 0 ? (
-          <p className="p-4 text-sm text-neutral-500 dark:text-neutral-400">{t("messages.noConversations")}</p>
+          <p className="p-4 text-sm text-base-content/60">{t("messages.noConversations")}</p>
         ) : (
           <ul>
             {conversations.map((c) => {
@@ -229,21 +226,19 @@ export default function Messages() {
                 <li key={c.id}>
                   <button
                     onClick={() => navigate(`/messages/${c.id}`)}
-                    className={`flex w-full items-center gap-3 border-b border-neutral-100 dark:border-neutral-800 px-4 py-3 text-left hover:bg-neutral-50 dark:hover:bg-neutral-800 ${
-                      c.id === conversationId ? "bg-[color:var(--color-brand-soft)]" : ""
+                    className={`flex w-full items-center gap-3 border-b border-base-content/10 px-4 py-3 text-left hover:bg-base-200 ${
+                      c.id === conversationId ? "bg-primary/10" : ""
                     }`}
                   >
                     <div className="relative">
-                      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[color:var(--color-brand-soft)] text-sm font-bold text-[color:var(--color-brand-dark)]">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary">
                         {c.type === "group" ? "👥" : titleOf(c).charAt(0).toUpperCase()}
                       </div>
                       {online && (
-                        <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white bg-green-500" />
+                        <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-base-100 bg-success" />
                       )}
                     </div>
-                    <span className="truncate text-sm font-medium text-neutral-800 dark:text-neutral-100">
-                      {titleOf(c)}
-                    </span>
+                    <span className="truncate text-sm font-medium text-base-content/80">{titleOf(c)}</span>
                   </button>
                 </li>
               );
@@ -254,40 +249,38 @@ export default function Messages() {
 
       {/* Thread */}
       <section
-        className={`flex-col overflow-hidden rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 ${
+        className={`flex-col overflow-hidden rounded-xl border border-base-content/10 bg-base-100 ${
           conversationId ? "flex" : "hidden md:flex"
         }`}
       >
         {!conversationId ? (
-          <div className="flex flex-1 items-center justify-center text-neutral-500">{t("messages.select")}</div>
+          <div className="flex flex-1 items-center justify-center text-base-content/60">{t("messages.select")}</div>
         ) : (
           <>
             {active && (
-              <header className="border-b border-neutral-100 dark:border-neutral-800 px-4 py-3">
+              <header className="border-b border-base-content/10 px-4 py-3">
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => navigate("/messages")}
                     aria-label={t("messages.back")}
-                    className="-ml-1 shrink-0 rounded-md p-1 text-neutral-500 dark:text-neutral-400 hover:bg-neutral-100 dark:hover:bg-neutral-800 md:hidden"
+                    className="-ml-1 shrink-0 rounded-md p-1 text-base-content/60 hover:bg-base-200 md:hidden"
                   >
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="m15 18-6-6 6-6" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
+                    <span className="icon-[tabler--chevron-left] size-5" />
                   </button>
                   {active.type === "group" && <span>👥</span>}
-                  <h2 className="truncate font-bold text-neutral-900 dark:text-neutral-50">{titleOf(active)}</h2>
+                  <h2 className="truncate font-bold text-base-content">{titleOf(active)}</h2>
                   {(() => {
                     const otherId = otherIdOf(active);
                     return otherId && isUserOnline(otherId) ? (
-                      <span className="ml-1 flex items-center gap-1 text-xs font-medium text-green-600">
-                        <span className="h-2 w-2 rounded-full bg-green-500" />
+                      <span className="ml-1 flex items-center gap-1 text-xs font-medium text-success">
+                        <span className="h-2 w-2 rounded-full bg-success" />
                         {t("messages.online")}
                       </span>
                     ) : null;
                   })()}
                 </div>
                 {active.type === "group" && (
-                  <p className="mt-0.5 truncate text-xs text-neutral-500 dark:text-neutral-400">
+                  <p className="mt-0.5 truncate text-xs text-base-content/60">
                     {t("messages.participantCount", { count: active.participants.length })} ·{" "}
                     {active.participants.map(nameOf).join(", ")}
                   </p>
@@ -301,15 +294,11 @@ export default function Messages() {
                   <div key={m.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
                     <div
                       className={`max-w-[75%] rounded-2xl px-3 py-2 text-sm ${
-                        mine
-                          ? "bg-[color:var(--color-brand)] text-white"
-                          : "bg-neutral-100 dark:bg-neutral-800 text-neutral-800 dark:text-neutral-100"
+                        mine ? "bg-primary text-primary-content" : "bg-base-200 text-base-content/80"
                       }`}
                     >
                       {!mine && active?.type === "group" && (
-                        <p className="mb-0.5 text-[11px] font-semibold text-[color:var(--color-brand-dark)]">
-                          {nameOf(m.senderId)}
-                        </p>
+                        <p className="mb-0.5 text-[11px] font-semibold text-primary">{nameOf(m.senderId)}</p>
                       )}
                       {m.type === "audio" ? (
                         <MessageAudio id={m.id} />
@@ -319,7 +308,7 @@ export default function Messages() {
                         <p className="whitespace-pre-wrap">{m.content}</p>
                       )}
                       <p
-                        className={`mt-0.5 flex items-center justify-end gap-1 text-[10px] ${mine ? "text-white/90" : "text-neutral-500"}`}
+                        className={`mt-0.5 flex items-center justify-end gap-1 text-[10px] ${mine ? "text-primary-content/90" : "text-base-content/60"}`}
                       >
                         {formatRelative(m.createdAt)}
                         {mine && (
@@ -338,16 +327,16 @@ export default function Messages() {
               <div ref={bottomRef} />
             </div>
             {recording ? (
-              <div className="border-t border-neutral-100 dark:border-neutral-800 p-3">
+              <div className="border-t border-base-content/10 p-3">
                 <AudioRecorder onSubmit={onSendVoice} onCancel={() => setRecording(false)} />
               </div>
             ) : (
-              <form onSubmit={onSend} className="flex gap-2 border-t border-neutral-100 dark:border-neutral-800 p-3">
+              <form onSubmit={onSend} className="flex gap-2 border-t border-base-content/10 p-3">
                 <button
                   type="button"
                   onClick={() => setRecording(true)}
                   aria-label={t("messages.recordStart")}
-                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-neutral-300 dark:border-neutral-700 text-lg hover:bg-neutral-50 dark:hover:bg-neutral-800"
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-base-content/20 text-lg hover:bg-base-200"
                 >
                   🎙
                 </button>
@@ -357,24 +346,17 @@ export default function Messages() {
                   onClick={() => imageInputRef.current?.click()}
                   disabled={sendingImage}
                   aria-label={t("messages.addImage")}
-                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-neutral-300 dark:border-neutral-700 text-lg hover:bg-neutral-50 dark:hover:bg-neutral-800 disabled:opacity-50"
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-base-content/20 text-lg hover:bg-base-200 disabled:opacity-50"
                 >
-                  {sendingImage ? (
-                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-neutral-300 border-t-[color:var(--color-brand)]" />
-                  ) : (
-                    "📷"
-                  )}
+                  {sendingImage ? <span className="loading loading-spinner loading-sm text-primary" /> : "📷"}
                 </button>
                 <input
                   value={draft}
                   onChange={(e) => setDraft(e.target.value)}
                   placeholder={t("messages.placeholder")}
-                  className="h-10 flex-1 rounded-lg border border-neutral-300 dark:border-neutral-700 px-3 text-sm outline-none focus:border-[color:var(--color-brand)]"
+                  className="input h-10 flex-1"
                 />
-                <button
-                  type="submit"
-                  className="rounded-lg bg-[color:var(--color-brand)] px-4 text-sm font-semibold text-white hover:bg-[color:var(--color-brand-dark)]"
-                >
+                <button type="submit" className="btn btn-primary">
                   {t("messages.send")}
                 </button>
               </form>
