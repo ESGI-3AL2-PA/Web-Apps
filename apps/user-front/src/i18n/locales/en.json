@@ -216,7 +216,19 @@
     "filters": "Filters",
     "results_one": "{{count}} result",
     "results_other": "{{count}} results",
-    "empty": "No ad matches your search."
+    "empty": "No ad matches your search.",
+    "type": "Type",
+    "allTypes": "All",
+    "type_offer": "Offers",
+    "type_request": "Requests",
+    "sortLabel": "Sort listings",
+    "sortRecent": "Most recent",
+    "sortPriceAsc": "Price: low to high",
+    "sortPriceDesc": "Price: high to low",
+    "loadMore": "Load more",
+    "loadedCount": "{{loaded}} of {{total}} shown",
+    "error": "Couldn't load listings.",
+    "retry": "Retry"
   },
   "detail": {
     "back": "← Back to ads",
