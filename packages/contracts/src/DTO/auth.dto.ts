@@ -1,5 +1,5 @@
 import { z } from "../zod";
-import { UserResponseDtoSchema } from "./user.dto";
+import { UserResponseDtoSchema, LangSchema } from "./user.dto";
 import { StrongPasswordSchema } from "./password.schema";
 
 export const LoginRequestDtoSchema = z
@@ -169,6 +169,9 @@ export const RegisterRequestDtoSchema = z
       description:
         "Explicit acceptance of the Terms of Service and Privacy Policy. Must be true — GDPR Art. 6/7 lawful-basis consent.",
       example: true,
+    }),
+    lang: LangSchema.optional().openapi({
+      description: "Active UI language for transactional emails; falls back to Accept-Language, then fr",
     }),
   })
   .openapi({ title: "RegisterRequest" });

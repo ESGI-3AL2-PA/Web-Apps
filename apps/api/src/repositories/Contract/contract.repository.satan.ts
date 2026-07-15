@@ -55,6 +55,16 @@ export class SatanContractRepository implements IContractRepository {
   rejectContract(id: string, session?: ClientSession): Promise<Contract | null> {
     return this.mongo.rejectContract(id, session);
   }
+  disputeContract(id: string, reason: string, session?: ClientSession): Promise<Contract | null> {
+    return this.mongo.disputeContract(id, reason, session);
+  }
+  resolveDispute(
+    id: string,
+    terminalStatus: ContractSignatureStatus,
+    session?: ClientSession,
+  ): Promise<Contract | null> {
+    return this.mongo.resolveDispute(id, terminalStatus, session);
+  }
   applyNonTerminalStatus(id: string, status: ContractSignatureStatus): Promise<Contract | null> {
     return this.mongo.applyNonTerminalStatus(id, status);
   }

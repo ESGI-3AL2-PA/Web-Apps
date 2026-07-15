@@ -8,6 +8,6 @@ export const resendVerificationUseCase = (userReader: IUserReaderRepository, aut
   return async (email: string): Promise<void> => {
     const user = await userReader.findByEmail(email);
     if (!user || user.emailVerified) return;
-    await sendVerificationEmailUseCase(authTokenRepo)(user.id, user.email);
+    await sendVerificationEmailUseCase(authTokenRepo)(user.id, user.email, user.lang);
   };
 };

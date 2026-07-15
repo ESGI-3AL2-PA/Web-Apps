@@ -1,4 +1,5 @@
-FROM node:25-alpine AS base
+# Pinned to the Node 22 LTS line by digest (M5). Bump the tag+digest together.
+FROM node:22-alpine@sha256:16e22a550f3863206a3f701448c45f7912c6896a62de43add43bb9c86130c3e2 AS base
 WORKDIR /app
 
 # @repo/satan shells out to python3 with `ply` (parse SATAN QL) and `pymongo`
@@ -33,5 +34,8 @@ ENV NODE_ENV=production
 COPY packages/ ./packages/
 COPY apps/api/ ./apps/api/
 RUN npx turbo run build --filter=api
+# Drop root: the node:*-alpine image ships an unprivileged `node` user (uid 1000).
+# Build runs as root (writes to /app); the runtime only reads the compiled dist.
+USER node
 EXPOSE 3000
 CMD ["node", "apps/api/dist/index.js"]

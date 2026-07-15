@@ -18,14 +18,14 @@
 
 ### 1.2 Documented vision vs. reality — the differentiators are **not** built
 
-| Documented feature                                                                                | Doc                                           | Status                | Evidence                                                                                                                                                                                                                                                                         |
-| ------------------------------------------------------------------------------------------------- | --------------------------------------------- | --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Recommendation feed** (Neo4j graph, tag/social/recency scoring, view & reply interest tracking) | `recommendation-algorithm.md`, `MCD/neo4j.md` | ❌ **0%**             | Neo4j container provisioned (`docker-compose.local.yml:25`) but **no driver dependency, no code** — only a comment in `use-cases/events/attend-event.use-case.ts`. `GET /listings/feed` and `POST /listings/:id/view` are documented but **absent** from `listings.contract.ts`. |
-| **OpenSign e-signature**                                                                          | `opensign-integration.md`                     | ⚠️ **cosmetic stub**  | `contract.entity.ts` has `openSignDocumentId` / `openSignStatus` (enum), but `sign-contract.use-case.ts` just persists whatever the client sends — **no OpenSign client, no document generation, no webhook, no `react-pdf`, no Documents page**. Signatures are unverifiable.   |
-| **District boundary editor** (Leaflet/geoman admin map)                                           | `district-boundary-editor.md`                 | ❌ **0% UI**          | Districts CRUD API + GeoJSON exist; admin app is empty, no `leaflet` dependency.                                                                                                                                                                                                 |
-| **Address → district inference / autocomplete** (geocoding, point-in-polygon)                     | `ToDefine.md`                                 | ⚠️ **partial**        | `apps/api/src/services/address.service.ts` exists; geo-inference loop not wired end-to-end.                                                                                                                                                                                      |
-| **SATAN QL** (custom Mongo query language, Python PLY, `@repo/satan`)                             | `satan-ql.md`, `architecture.md`              | ❌ **does not exist** | No `packages/satan` / `packages/SATAN`.                                                                                                                                                                                                                                          |
-| **sync-gateway** (H2↔Mongo bridge for a Java app)                                                 | `sync-gateway.md`                             | ❌ **does not exist** | No `apps/sync-gateway`; no Java app in repo. Doc is unfinished (Deduplication ends in `????`, port "TBD").                                                                                                                                                                       |
+| Documented feature                                                                                | Doc                                           | Status                | Evidence                                                                                                                                                                                                                                                                          |
+| ------------------------------------------------------------------------------------------------- | --------------------------------------------- | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Recommendation feed** (Neo4j graph, tag/social/recency scoring, view & reply interest tracking) | `recommendation-algorithm.md`, `MCD/neo4j.md` | ❌ **0%**             | Neo4j container provisioned (`docker-compose.local.yml:25`) but **no driver dependency, no code** — only a comment in `use-cases/events/attend-event.use-case.ts`. `GET /listings/feed` and `POST /listings/:id/view` are documented but **absent** from `listings.contract.ts`.  |
+| **Documenso e-signature**                                                                         | `documenso-integration.md`                    | ⚠️ **cosmetic stub**  | `contract.entity.ts` has `documensoDocumentId` / `signatureStatus` (enum), but `sign-contract.use-case.ts` just persists whatever the client sends — **no Documenso client, no document generation, no webhook, no `react-pdf`, no Documents page**. Signatures are unverifiable. |
+| **District boundary editor** (Leaflet/geoman admin map)                                           | `district-boundary-editor.md`                 | ❌ **0% UI**          | Districts CRUD API + GeoJSON exist; admin app is empty, no `leaflet` dependency.                                                                                                                                                                                                  |
+| **Address → district inference / autocomplete** (geocoding, point-in-polygon)                     | `ToDefine.md`                                 | ⚠️ **partial**        | `apps/api/src/services/address.service.ts` exists; geo-inference loop not wired end-to-end.                                                                                                                                                                                       |
+| **SATAN QL** (custom Mongo query language, Python PLY, `@repo/satan`)                             | `satan-ql.md`, `architecture.md`              | ❌ **does not exist** | No `packages/satan` / `packages/SATAN`.                                                                                                                                                                                                                                           |
+| **sync-gateway** (H2↔Mongo bridge for a Java app)                                                 | `sync-gateway.md`                             | ❌ **does not exist** | No `apps/sync-gateway`; no Java app in repo. Doc is unfinished (Deduplication ends in `????`, port "TBD").                                                                                                                                                                        |
 
 ### 1.3 Frontend product surface (user-front)
 
@@ -48,13 +48,13 @@ Only **1 of ~70 endpoints** is wired (`getAllAnnonces`). The core loop is **not 
 | #   | Severity   | Issue                                                                                                                                                                                                                   | Location                                        |
 | --- | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
 | A1  | **High**   | **No authorization/ownership enforcement model** — use-cases take ids but ownership checks are inconsistent; IDOR risk (act on another user's resource). Listed unresolved in `ToDefine.md`.                            | `apps/api/src/use-cases/**`, `routes/**`        |
-| A2  | **High**   | **Signatures are forgeable** — `sign-contract` trusts client-supplied `openSignStatus`/`openSignDocumentId`.                                                                                                            | `use-cases/contracts/sign-contract.use-case.ts` |
+| A2  | **High**   | **Signatures are forgeable** — `sign-contract` trusts client-supplied `signatureStatus`/`documensoDocumentId`.                                                                                                          | `use-cases/contracts/sign-contract.use-case.ts` |
 | A3  | **High**   | **No sensitive-data privacy / GDPR story** — `users` stores `address`/`phone`/`email` with no documented access control or export/delete rights.                                                                        | `MCD/mongo.md`, `ToDefine.md`                   |
 | A4  | **Medium** | **No rate limiting** anywhere, incl. auth endpoints (login, forgot-password, TOTP) → brute-force / enumeration exposure.                                                                                                | `apps/auth-service`, `ToDefine.md`              |
 | A5  | **Medium** | **Fake data shown as real** (Points card) → misleading demo.                                                                                                                                                            | `pages/dashboard/Points.tsx`                    |
 | A6  | **Medium** | **Dead nav + orphaned auth pages** → broken UX and maintenance traps.                                                                                                                                                   | `component/Header.tsx`, `pages/auth/*`          |
 | A7  | **Low**    | **Doc drift** — `architecture.md` references `docker-compose.prod.yml` and `packages/SATAN` (neither exists); `README.md` is stock Turborepo boilerplate omitting auth-service/contracts; `sync-gateway.md` unfinished. | `documentation/*`, `README.md`                  |
-| A8  | **Low**    | **Near-zero tests** — `playwright_testbook` has one spec (`tests/users.spec.ts`).                                                                                                                                       | `playwright_testbook/`                          |
+| A8  | **Low**    | **Near-zero tests** — `playwright_testbook` is a documented stub with no runnable specs, pending stack-provisioned E2E (see `playwright_testbook/README.md`).                                                           | `playwright_testbook/`                          |
 | A9  | **Info**   | **Large uncommitted WIP** on `etienne` (67 files, +606/−343), broadly threading auth through routes/use-cases. Reconcile/commit before building on top.                                                                 | working tree                                    |
 
 ---
@@ -63,8 +63,8 @@ Only **1 of ~70 endpoints** is wired (`getAllAnnonces`). The core loop is **not 
 
 **Build the core exchange loop end-to-end with _simple_ versions of the two hard features first, then upgrade them to the documented versions.**
 
-- The simple feed (district filter + recency) and simple contract (in-app mutual accept) are demoable for a fraction of the effort of Neo4j scoring and OpenSign.
-- They generate the data the fancy versions need: view/reply events for the recommendation graph, real contracts for OpenSign. Building Neo4j scoring against an empty graph, or OpenSign before contracts are reachable in the UI, is wasted effort.
+- The simple feed (district filter + recency) and simple contract (in-app mutual accept) are demoable for a fraction of the effort of Neo4j scoring and Documenso.
+- They generate the data the fancy versions need: view/reply events for the recommendation graph, real contracts for Documenso. Building Neo4j scoring against an empty graph, or Documenso before contracts are reachable in the UI, is wasted effort.
 - **One complete vertical slice beats twelve half-slices** for a credible demo.
 
 The work splits into **two parallel tracks** a group should staff separately:
@@ -171,7 +171,7 @@ _Goal: a user can post a service, be discovered, message, contract, and transfer
 **P1-3 — Contracts V1 + points transfer** · **L** · supersedes A2 later
 
 - Create contract from a listing: `POST /contracts` (provider/beneficiary/price from listing).
-- **In-app mutual accept** (defer OpenSign): both parties accept → contract completes.
+- **In-app mutual accept** (defer Documenso): both parties accept → contract completes.
 - On completion, move points: `POST /transactions` debiting beneficiary / crediting provider; enforce non-negative balance atomically.
 - Fill `Contrat.tsx` "Mes contrats".
 - **Done when:** completing a contract transfers points and both balances reflect it; double-completion is rejected.
@@ -205,12 +205,12 @@ _Goal: the documented graph-ranked feed, now that Phase 1 produces real signals.
 
 ## 6. Phase 3 — Trust + operability _(parallelizable with Phase 2)_
 
-**P3-1 — OpenSign integration** · **L** · fixes A2 · implements `opensign-integration.md`
+**P3-1 — Documenso integration** · **L** · fixes A2 · implements `documenso-integration.md`
 
-- API-side OpenSign client (document creation from template, signer assignment), persist PDF URL + per-signer signing URLs + status; **webhook handler** (verify signature; map `completed`→complete, `declined`→disputed).
+- API-side Documenso client (document creation from template, signer assignment), persist PDF URL + per-signer signing URLs + status; **webhook handler** (verify signature; map `completed`→complete, `declined`→disputed).
 - Replace P1-3 mutual-accept with real signing; trigger points transfer on `document.completed`.
 - Front: Documents list + detail/signing page (`react-pdf` preview → redirect to signing URL).
-- **Done when:** a contract is signed via OpenSign and the webhook (not the client) drives status + points transfer.
+- **Done when:** a contract is signed via Documenso and the webhook (not the client) drives status + points transfer.
 
 **P3-2 — Admin app (district-bound) + superAdmin** · **L** · see §2A
 
@@ -235,7 +235,7 @@ _Goal: the documented graph-ranked feed, now that Phase 1 produces real signals.
 
 **P4-3 — Delivery & quality** · **M** · fixes A8
 
-- CI/CD (GitHub Actions: lint, build, Playwright); expand `playwright_testbook` beyond the single users spec to cover the Phase 1 loop and authz (P0-1).
+- CI/CD (GitHub Actions: lint, build, Playwright); build out `playwright_testbook` (currently a documented stub pending stack-provisioned E2E) to cover the Phase 1 loop and authz (P0-1).
 - Logging/observability; structured error responses (no internal leakage).
 
 **P4-4 — Prod deploy** · **S** · from `TODO.md`
@@ -305,7 +305,7 @@ _Goal: the bidirectional H2 ↔ MongoDB bridge the existing Java app talks to._ 
 1. **sync-gateway contract (B2-0)** — the Java app (separate repo) is the fixed counterparty. Before building, read that app's outbox/poll code to confirm the synced-collection set, payload shapes, and the dedup behaviour the doc leaves as `????`. Also pick the gateway port.
 2. **SATAN integration surface (B1-3)** — which api query path(s) run through SATAN? Pick at least one real one (e.g. admin user/listing search) so it's demonstrably wired, not a toy.
 3. **Auth UI direction** — keep auth-service hosted pages (current working path) or move login/register in-app? Decides P0-3.
-4. **Real money/legal weight on contracts?** If signatures must be legally binding, P3-1 (OpenSign) is non-negotiable and moves earlier; if "points are a game", P1-3 mutual-accept may suffice for v1.
+4. **Real money/legal weight on contracts?** If signatures must be legally binding, P3-1 (Documenso) is non-negotiable and moves earlier; if "points are a game", P1-3 mutual-accept may suffice for v1.
 
 ---
 
@@ -321,7 +321,7 @@ _Goal: the bidirectional H2 ↔ MongoDB bridge the existing Java app talks to._ 
 `conversations`/messages (8): conversations CRUD-ish · messages list/send/read · media
 `transactions` (2): list · create
 
-**Documented but missing:** `GET /listings/feed`, `POST /listings/:id/view` (Phase 2); OpenSign webhook (Phase 3).
+**Documented but missing:** `GET /listings/feed`, `POST /listings/:id/view` (Phase 2); Documenso webhook (Phase 3).
 
 ## Appendix B — Effort summary
 
@@ -330,7 +330,7 @@ _Goal: the bidirectional H2 ↔ MongoDB bridge the existing Java app talks to._ 
 | A · 0         | Foundations (authz, districts, hygiene)               | M    |
 | A · 1         | Core loop (listings, messaging, contracts+points)     | L    |
 | A · 2         | Recommendation feed (Neo4j)                           | M–L  |
-| A · 3         | Trust + admin (OpenSign, admin app)                   | L    |
+| A · 3         | Trust + admin (Documenso, admin app)                  | L    |
 | A · 4         | Governance & hardening (GDPR, rate limit, CI, deploy) | M    |
 | B · 1         | SATAN QL (Python PLY parser + Node client + api wire) | L    |
 | B · 2         | sync-gateway (ingest + Change Streams + changes)      | M    |

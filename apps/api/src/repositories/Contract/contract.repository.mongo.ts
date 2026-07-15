@@ -92,8 +92,11 @@ export class MongoContractRepository implements IContractRepository {
   async completeContract(id: string, session?: ClientSession): Promise<Contract | null> {
     // The {$nin} guard + $set are one atomic update, so concurrent webhooks can't
     // both transition (and double-release), and a rejected contract can't complete.
+    // The {disputed: {$ne: true}} guard freezes settlement while a dispute is open —
+    // a disputed contract must not auto-release the escrow on the next signature event;
+    // only an admin resolving the dispute may move the money.
     const result = await this.collection.findOneAndUpdate(
-      { _id: id, signatureStatus: { $nin: ["completed", "rejected"] } },
+      { _id: id, signatureStatus: { $nin: ["completed", "rejected"] }, disputed: { $ne: true } },
       { $set: { signatureStatus: "completed", providerSigningUrl: null, beneficiarySigningUrl: null } },
       { returnDocument: "after", session },
     );
@@ -101,8 +104,10 @@ export class MongoContractRepository implements IContractRepository {
   }
 
   async rejectContract(id: string, session?: ClientSession): Promise<Contract | null> {
+    // Same terminal + dispute-freeze guard as completeContract: a disputed contract can't
+    // auto-refund on a signature event either — it stays frozen until an admin resolves it.
     const result = await this.collection.findOneAndUpdate(
-      { _id: id, signatureStatus: { $nin: ["completed", "rejected"] } },
+      { _id: id, signatureStatus: { $nin: ["completed", "rejected"] }, disputed: { $ne: true } },
       {
         $set: {
           signatureStatus: "rejected",
@@ -111,6 +116,45 @@ export class MongoContractRepository implements IContractRepository {
         },
       },
       { returnDocument: "after", session },
+    );
+    return result ? this.toContract(result) : null;
+  }
+
+  async disputeContract(id: string, reason: string, session?: ClientSession): Promise<Contract | null> {
+    // Atomically raise a dispute only while the contract is in a disputable state
+    // (pending or completed — not draft/rejected). The state guard + $set are one update,
+    // so a concurrent settlement webhook can't stamp a dispute onto a just-terminal
+    // contract, and disputing can't pass on stale read-then-write data.
+    const result = await this.collection.findOneAndUpdate(
+      { _id: id, signatureStatus: { $in: ["pending", "completed"] } },
+      { $set: { disputed: true, disputeReason: reason } },
+      { returnDocument: "after", session },
+    );
+    return result ? this.toContract(result) : null;
+  }
+
+  async resolveDispute(
+    id: string,
+    terminalStatus: ContractSignatureStatus,
+    session?: ClientSession,
+  ): Promise<Contract | null> {
+    // Atomically clear the dispute (only while disputed:true, so concurrent resolves
+    // settle the escrow at most once) and move to the given terminal status, clearing
+    // signing URLs. Returns the contract's *pre-resolution* state so the caller can
+    // settle the escrow based on whether it was still held; null if it wasn't disputed
+    // or doesn't exist.
+    const result = await this.collection.findOneAndUpdate(
+      { _id: id, disputed: true },
+      {
+        $set: {
+          disputed: false,
+          disputeReason: null,
+          signatureStatus: terminalStatus,
+          providerSigningUrl: null,
+          beneficiarySigningUrl: null,
+        },
+      },
+      { returnDocument: "before", session },
     );
     return result ? this.toContract(result) : null;
   }

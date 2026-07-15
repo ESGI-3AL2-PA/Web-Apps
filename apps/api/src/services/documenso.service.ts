@@ -1,6 +1,7 @@
 import { timingSafeEqual } from "crypto";
 import { z } from "zod";
 import type { ContractSignatureStatus } from "../entities/contract.entity.js";
+import { logger } from "../logger.js";
 
 // Thin client over the Documenso v1 REST API. Documenso runs as a separate
 // self-hosted service and owns the signing UI, emails, and certificate; we only
@@ -384,8 +385,8 @@ const config = readConfig();
 if (config && !config.webhookSecret) {
   // Without it every inbound webhook is rejected (fail-closed), so contracts would
   // never advance past "pending". Warn loudly rather than fail silently.
-  console.warn(
-    "[documenso] DOCUMENSO_WEBHOOK_SECRET is not set — signing webhooks will be rejected and contracts will stay pending.",
+  logger.warn(
+    "DOCUMENSO_WEBHOOK_SECRET is not set — signing webhooks will be rejected and contracts will stay pending.",
   );
 }
 export const documensoService: IDocumensoService = config

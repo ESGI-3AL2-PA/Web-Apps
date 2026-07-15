@@ -1,10 +1,25 @@
 import { randomUUID } from "crypto";
-import type { Collection, Db, Filter } from "mongodb";
+import type { Collection, Db, Filter, Sort } from "mongodb";
+import type { ListingSort } from "@repo/contracts";
 import type { Listing, ListingType, ListingStatus } from "../../entities/listing.entity.js";
 import { escapeRegex } from "../escape-regex.js";
 import type { IListingRepository } from "./listing.repository.js";
 
 type ListingDoc = Omit<Listing, "id"> & { _id: string };
+
+// `_id` is always the final tiebreaker so skip/limit pagination is deterministic
+// even when the primary key ties (equal price, or same-millisecond createdAt).
+const SORT_SPECS = {
+  recent: { createdAt: -1, _id: 1 },
+  price_asc: { price: 1, _id: 1 },
+  price_desc: { price: -1, _id: 1 },
+} satisfies Record<ListingSort, Sort>;
+
+/** Map the `sort` query param to a Mongo sort spec; defaults to `recent` for a
+ *  stable order even when no sort is passed. */
+export function listingSortSpec(sort?: ListingSort): Sort {
+  return SORT_SPECS[sort ?? "recent"];
+}
 
 export class MongoListingRepository implements IListingRepository {
   private collection: Collection<ListingDoc>;
@@ -25,6 +40,7 @@ export class MongoListingRepository implements IListingRepository {
     districtId?: string;
     authorId?: string;
     tag?: string;
+    sort?: ListingSort;
     page?: number;
     limit?: number;
   }): Promise<{
@@ -33,7 +49,7 @@ export class MongoListingRepository implements IListingRepository {
     page: number;
     limit: number;
   }> {
-    const { search, type, status, districtId, authorId, tag, page = 1, limit = 20 } = params;
+    const { search, type, status, districtId, authorId, tag, sort, page = 1, limit = 20 } = params;
 
     const filter: Filter<ListingDoc> = {};
 
@@ -56,6 +72,7 @@ export class MongoListingRepository implements IListingRepository {
       this.collection.countDocuments(filter),
       this.collection
         .find(filter)
+        .sort(listingSortSpec(sort))
         .skip((page - 1) * limit)
         .limit(limit)
         .toArray(),

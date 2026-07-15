@@ -42,7 +42,7 @@ export const documensoWebhookHandler = async (req: Request, res: Response) => {
   try {
     await handleDocumensoWebhookUseCase(contractRepo, transactionRepo)(event);
   } catch (err) {
-    console.error("Documenso webhook handling failed:", err);
+    req.log.error({ err }, "Documenso webhook handling failed");
     // 500 so Documenso retries; the update is idempotent.
     res.status(500).json({ message: "Webhook processing failed" });
     return;

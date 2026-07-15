@@ -13,6 +13,8 @@ export interface UserRecord {
   emailVerified: boolean;
   totpSecret: string | null;
   totpEnabled: boolean;
+  // Preferred language for transactional emails; missing is treated as "fr".
+  lang?: "fr" | "en";
   // Highest TOTP time-step already consumed; used to reject replay of a code within its window.
   lastTotpStep?: number;
   createdAt: string;

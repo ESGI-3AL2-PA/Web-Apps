@@ -2,7 +2,9 @@ import { initContract } from "@ts-rest/core";
 import { z } from "zod";
 
 import {
+  BadGatewayErrorSchema,
   BanUserDtoSchema,
+  ConflictErrorSchema,
   CreateUserDtoSchema,
   ForbiddenErrorSchema,
   NotFoundErrorSchema,
@@ -11,6 +13,7 @@ import {
   UserParamsDtoSchema,
   UserQueryDtoSchema,
   UserResponseDtoSchema,
+  UserDataExportResponseDtoSchema,
   PaginatedResponseDtoSchema,
 } from "./DTO";
 import { auth } from "./auth-meta";
@@ -44,6 +47,25 @@ export const usersContract = c.router({
     }),
   },
 
+  exportUserData: {
+    method: "GET",
+    path: "/users/:id/export",
+    pathParams: UserParamsDtoSchema,
+    responses: {
+      200: UserDataExportResponseDtoSchema,
+      404: NotFoundErrorSchema,
+    },
+    // GDPR Art. 15/20: canonical server-side export of ALL of the caller's personal
+    // data in one authenticated call. Strictly self-scoped (selfParam:"id", NO admin
+    // bypass — this dumps private messages/sessions; an admin has no business pulling
+    // another user's full export here). notFoundOnDeny hides other users' existence.
+    summary: "Export all of your personal data as a single JSON document (self only).",
+    metadata: auth({
+      audience: "api",
+      scope: { resource: "user", selfParam: "id", notFoundOnDeny: true },
+    }),
+  },
+
   createUser: {
     method: "POST",
     path: "/users",
@@ -64,6 +86,7 @@ export const usersContract = c.router({
       200: UserResponseDtoSchema,
       401: UnauthorizedErrorSchema,
       404: NotFoundErrorSchema,
+      409: ConflictErrorSchema,
     },
     summary: "Partially update a user (self or admin)",
     metadata: auth({
@@ -99,6 +122,10 @@ export const usersContract = c.router({
       204: z.undefined(),
       403: ForbiddenErrorSchema,
       404: NotFoundErrorSchema,
+      // Account data was erased locally but a downstream dependency (auth-service
+      // session purge) did not complete — erasure is only partial. Surfaced instead
+      // of a false 204 so the caller knows to retry (GDPR Art. 17).
+      502: BadGatewayErrorSchema,
     },
     // Self-service account deletion (GDPR erasure): a user may delete ONLY their own
     // account — selfParam:"id", no superAdmin bypass (admins can't delete others via

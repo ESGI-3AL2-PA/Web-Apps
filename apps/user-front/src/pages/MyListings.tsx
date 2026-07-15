@@ -7,6 +7,7 @@ import { deleteListing, getListings } from "../api-service/listings.service";
 import { formatPrice, formatRelative } from "../lib/format";
 import { useDialog } from "../components/dialog-context";
 import AuthedImage from "../components/AuthedImage";
+import EditListingModal from "../components/EditListingModal";
 
 export default function MyListings() {
   const { t } = useTranslation();
@@ -14,29 +15,32 @@ export default function MyListings() {
   const { confirm, alert } = useDialog();
   const [listings, setListings] = useState<ListingResponseDto[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  const [editing, setEditing] = useState<ListingResponseDto | null>(null);
 
   const load = useCallback(() => {
     if (!user) return;
     setLoading(true);
+    setError(false);
     getListings({ authorId: user.id, limit: 100 })
       .then((page) => setListings(page.data))
-      .catch(() => setListings([]))
+      .catch(() => setError(true))
       .finally(() => setLoading(false));
   }, [user]);
 
   useEffect(load, [load]);
 
-  const onDelete = async (id: string) => {
+  const onDelete = async (listing: ListingResponseDto) => {
     const ok = await confirm({
       title: t("myListings.title"),
-      message: t("myListings.confirmDelete"),
+      message: listing.userHasContract ? t("myListings.confirmDeleteActive") : t("myListings.confirmDelete"),
       confirmLabel: t("myListings.delete"),
       tone: "danger",
     });
     if (!ok) return;
     try {
-      await deleteListing(id);
-      setListings((prev) => prev.filter((l) => l.id !== id));
+      await deleteListing(listing.id);
+      setListings((prev) => prev.filter((l) => l.id !== listing.id));
     } catch {
       await alert({ message: t("myListings.deleteError") });
     }
@@ -56,6 +60,19 @@ export default function MyListings() {
 
       {loading ? (
         <p className="text-neutral-500 dark:text-neutral-400">{t("common.loading")}</p>
+      ) : error ? (
+        <div
+          role="alert"
+          className="flex flex-col items-start gap-3 rounded-xl border border-red-200 bg-red-50 dark:border-red-900/60 dark:bg-red-950/40 p-4 sm:flex-row sm:items-center sm:justify-between"
+        >
+          <p className="text-sm text-red-700 dark:text-red-300">{t("myListings.loadError")}</p>
+          <button
+            onClick={load}
+            className="rounded-lg border border-red-300 dark:border-red-800 px-3 py-1.5 text-sm font-medium text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/40"
+          >
+            {t("myListings.retry")}
+          </button>
+        </div>
       ) : listings.length === 0 ? (
         <p className="text-neutral-500 dark:text-neutral-400">{t("myListings.empty")}</p>
       ) : (
@@ -69,18 +86,31 @@ export default function MyListings() {
                 {l.images?.[0] && <AuthedImage src={l.images[0]} className="h-full w-full object-cover" />}
               </div>
               <div className="min-w-0 flex-1">
-                <Link
-                  to={`/annonce/${l.id}`}
-                  className="block truncate font-semibold text-neutral-900 dark:text-neutral-50 hover:text-[color:var(--color-brand)]"
-                >
-                  {l.title}
-                </Link>
+                <div className="flex items-center gap-2">
+                  <Link
+                    to={`/annonce/${l.id}`}
+                    className="block truncate font-semibold text-neutral-900 dark:text-neutral-50 hover:text-[color:var(--color-brand)]"
+                  >
+                    {l.title}
+                  </Link>
+                  {l.userHasContract && (
+                    <span className="shrink-0 rounded-full bg-amber-100 dark:bg-amber-900/40 px-2 py-0.5 text-xs font-semibold text-amber-800 dark:text-amber-300">
+                      {t("myListings.activeBadge")}
+                    </span>
+                  )}
+                </div>
                 <p className="text-sm text-neutral-500 dark:text-neutral-400">
                   {formatPrice(l.price)} · {formatRelative(l.createdAt)}
                 </p>
               </div>
               <button
-                onClick={() => onDelete(l.id)}
+                onClick={() => setEditing(l)}
+                className="rounded-lg border border-neutral-200 dark:border-neutral-700 px-3 py-1.5 text-sm font-medium text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-800"
+              >
+                {t("myListings.edit")}
+              </button>
+              <button
+                onClick={() => onDelete(l)}
                 className="rounded-lg border border-red-200 px-3 py-1.5 text-sm font-medium text-red-700 hover:bg-red-50"
               >
                 {t("myListings.delete")}
@@ -88,6 +118,14 @@ export default function MyListings() {
             </li>
           ))}
         </ul>
+      )}
+
+      {editing && (
+        <EditListingModal
+          listing={editing}
+          onClose={() => setEditing(null)}
+          onUpdated={(updated) => setListings((prev) => prev.map((l) => (l.id === updated.id ? updated : l)))}
+        />
       )}
     </div>
   );

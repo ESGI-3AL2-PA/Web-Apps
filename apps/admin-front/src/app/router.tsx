@@ -1,15 +1,19 @@
+import { lazy } from "react";
 import { createBrowserRouter } from "react-router-dom";
 import { ProtectedRoute } from "@repo/hooks";
 import { DistrictScopeProvider } from "./DistrictScopeProvider";
 import AdminLayout from "../layouts/AdminLayout";
-import Dashboard from "../pages/dashboard/Dashboard";
-import UsersList from "../pages/users/UsersList";
-import DistrictPage from "../pages/districts/DistrictPage";
-import TagsList from "../pages/tags/TagsList";
-import IncidentsList from "../pages/incidents/IncidentsList";
-import ListingsList from "../pages/listings/ListingsList";
-import EventsList from "../pages/events/EventsList";
-import VotesList from "../pages/votes/VotesList";
+
+// Route components are code-split: each becomes its own chunk fetched on
+// navigation, keeping the initial bundle small.
+const Dashboard = lazy(() => import("../pages/dashboard/Dashboard"));
+const UsersList = lazy(() => import("../pages/users/UsersList"));
+const DistrictPage = lazy(() => import("../pages/districts/DistrictPage"));
+const TagsList = lazy(() => import("../pages/tags/TagsList"));
+const IncidentsList = lazy(() => import("../pages/incidents/IncidentsList"));
+const ListingsList = lazy(() => import("../pages/listings/ListingsList"));
+const EventsList = lazy(() => import("../pages/events/EventsList"));
+const VotesList = lazy(() => import("../pages/votes/VotesList"));
 
 export const router = createBrowserRouter([
   {
