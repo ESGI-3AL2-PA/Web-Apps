@@ -1,3 +1,4 @@
+import type { ListingSort } from "@repo/contracts";
 import type { Listing } from "../../entities/listing.entity.js";
 
 export interface IListingRepository {
@@ -10,6 +11,7 @@ export interface IListingRepository {
     districtId?: string;
     authorId?: string;
     tag?: string;
+    sort?: ListingSort;
     page?: number;
     limit?: number;
   }): Promise<{
