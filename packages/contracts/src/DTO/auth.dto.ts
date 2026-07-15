@@ -165,6 +165,11 @@ export const RegisterRequestDtoSchema = z
       description: "Min 12 chars with upper, lower, digit, and symbol",
     }),
     address: z.string().openapi({ description: "User's address", example: "12 Rue de la Paix, Paris" }),
+    acceptedTerms: z.literal(true).openapi({
+      description:
+        "Explicit acceptance of the Terms of Service and Privacy Policy. Must be true — GDPR Art. 6/7 lawful-basis consent.",
+      example: true,
+    }),
   })
   .openapi({ title: "RegisterRequest" });
 export type RegisterRequestDto = z.infer<typeof RegisterRequestDtoSchema>;

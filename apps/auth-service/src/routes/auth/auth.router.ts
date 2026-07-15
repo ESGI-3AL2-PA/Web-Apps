@@ -192,6 +192,10 @@ export const authRouter = s.router(authContract, {
   register: async ({ body }) => {
     const result = await registerUseCase(resolve("userReader"), resolve("authToken"))(body);
 
+    if (result === "terms-not-accepted") {
+      return { status: 400 as const, body: { message: "You must accept the Terms and Privacy Policy to register" } };
+    }
+
     if (result === "email-taken") {
       return { status: 409 as const, body: { message: "Email already in use" } };
     }

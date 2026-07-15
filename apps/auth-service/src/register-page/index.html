@@ -85,6 +85,29 @@
         margin-bottom: 1rem;
         display: none;
       }
+      .consent {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+        font-size: 0.875rem;
+      }
+      .consent input {
+        width: auto;
+        margin: 0.15rem 0 0 0;
+      }
+      .consent label {
+        margin-bottom: 0;
+        font-weight: 400;
+        line-height: 1.4;
+      }
+      .consent a {
+        color: #2563eb;
+        text-decoration: none;
+      }
+      .consent a:hover {
+        text-decoration: underline;
+      }
       .link {
         text-align: center;
         margin-top: 1rem;
@@ -122,6 +145,13 @@
         <input type="password" id="password" name="password" required minlength="12" autocomplete="new-password" />
         <label for="address">Address</label>
         <input type="text" id="address" name="address" required autocomplete="street-address" />
+        <div class="consent">
+          <input type="checkbox" id="acceptedTerms" name="acceptedTerms" required />
+          <label for="acceptedTerms">
+            I accept the <a href="/cgu" target="_blank" rel="noopener">Terms of Service</a> and
+            <a href="/privacy" target="_blank" rel="noopener">Privacy Policy</a>
+          </label>
+        </div>
         <button type="submit" id="submitBtn">Register</button>
       </form>
       <div class="link">Already have an account? <a id="loginLink" href="/login">Sign in</a></div>
@@ -153,12 +183,20 @@
         errorEl.style.display = "none";
         btn.disabled = true;
 
+        if (!document.getElementById("acceptedTerms").checked) {
+          errorEl.textContent = "You must accept the Terms and Privacy Policy to register.";
+          errorEl.style.display = "block";
+          btn.disabled = false;
+          return;
+        }
+
         const body = {
           firstName: document.getElementById("firstName").value,
           lastName: document.getElementById("lastName").value,
           email: document.getElementById("email").value,
           password: document.getElementById("password").value,
           address: document.getElementById("address").value,
+          acceptedTerms: true,
         };
 
         const phone = document.getElementById("phone").value.trim();
