@@ -19,8 +19,10 @@ export default function TagsList() {
   const [deleting, setDeleting] = useState<TagResponseDto | null>(null);
 
   const columns: Column<TagResponseDto>[] = [
-    { header: "Name", cell: (t) => t.name },
-    { header: "Description", cell: (t) => t.description ?? "—" },
+    { header: "Key", cell: (t) => <span className="font-mono text-xs">{t.name}</span> },
+    { header: "Label (FR)", cell: (t) => t.label.fr },
+    { header: "Label (EN)", cell: (t) => t.label.en },
+    { header: "Description (FR)", cell: (t) => t.description?.fr ?? "—" },
   ];
 
   return (
@@ -99,7 +101,10 @@ function TagEdit({
   onSaved: (created: boolean) => void;
 }) {
   const [name, setName] = useState(tag?.name ?? "");
-  const [description, setDescription] = useState(tag?.description ?? "");
+  const [labelFr, setLabelFr] = useState(tag?.label.fr ?? "");
+  const [labelEn, setLabelEn] = useState(tag?.label.en ?? "");
+  const [descFr, setDescFr] = useState(tag?.description?.fr ?? "");
+  const [descEn, setDescEn] = useState(tag?.description?.en ?? "");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -108,11 +113,15 @@ function TagEdit({
     setSubmitting(true);
     setError(null);
     try {
+      const label = { fr: labelFr, en: labelEn };
+      // Only emit description when at least one language is filled; keep it optional.
+      const description = descFr || descEn ? { fr: descFr || undefined, en: descEn || undefined } : undefined;
       if (tag) {
-        const body: UpdateTagDto = { name, description: description || undefined };
+        // `name` is the stable key — immutable on edit, so it is not sent.
+        const body: UpdateTagDto = { label, description };
         await updateTag(tag.id, body);
       } else {
-        const body: CreateTagDto = { name, description: description || undefined };
+        const body: CreateTagDto = { name, label, description };
         await createTag(body);
       }
       onSaved(!tag);
@@ -133,12 +142,30 @@ function TagEdit({
       submitting={submitting}
       error={error}
     >
-      <Field label="Name" required>
-        <input className="input" value={name} onChange={(e) => setName(e.target.value)} required />
+      <Field label="Key" required>
+        <input
+          className="input font-mono"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          disabled={!!tag}
+          placeholder="plumbing"
+          required
+        />
       </Field>
-      <Field label="Description">
-        <textarea className="textarea" rows={3} value={description} onChange={(e) => setDescription(e.target.value)} />
-      </Field>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <Field label="Label (FR)" required>
+          <input className="input" value={labelFr} onChange={(e) => setLabelFr(e.target.value)} required />
+        </Field>
+        <Field label="Label (EN)" required>
+          <input className="input" value={labelEn} onChange={(e) => setLabelEn(e.target.value)} required />
+        </Field>
+        <Field label="Description (FR)">
+          <textarea className="textarea" rows={3} value={descFr} onChange={(e) => setDescFr(e.target.value)} />
+        </Field>
+        <Field label="Description (EN)">
+          <textarea className="textarea" rows={3} value={descEn} onChange={(e) => setDescEn(e.target.value)} />
+        </Field>
+      </div>
     </FormModal>
   );
 }

@@ -30,7 +30,7 @@ export class SatanTagRepository implements ITagRepository {
   getTags(params: Parameters<ITagRepository["getTags"]>[0]) {
     const { search, districtId, page = 1, limit = 20 } = params;
     const clause = where([
-      search && containsAny(["name", "description"], search),
+      search && containsAny(["name", "label.fr", "label.en", "description.fr", "description.en"], search),
       districtId && eq("districtId", districtId),
     ]);
     return paginate<Tag>(this.satan, "tags", clause, { page, limit });

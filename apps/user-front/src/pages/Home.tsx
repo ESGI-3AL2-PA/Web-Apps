@@ -5,6 +5,7 @@ import { useAuth } from "@repo/hooks";
 import type { EventResponseDto, ListingResponseDto, TagResponseDto, VoteResponseDto } from "@repo/contracts";
 import { getListings } from "../api-service/listings.service";
 import { getTags } from "../api-service/tags.service";
+import { tagLabel } from "../lib/tag-label";
 import { getEvents } from "../api-service/events.service";
 import { getVotes } from "../api-service/votes.service";
 import ListingCard from "../components/ListingCard";
@@ -13,7 +14,7 @@ import { formatDateTime, formatPrice } from "../lib/format";
 
 export default function Home() {
   const navigate = useNavigate();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { user } = useAuth();
   const [listings, setListings] = useState<ListingResponseDto[]>([]);
   const [tags, setTags] = useState<TagResponseDto[]>([]);
@@ -68,7 +69,7 @@ export default function Home() {
                 onClick={() => navigate(`/recherche?tag=${encodeURIComponent(tag.name)}`)}
                 className="rounded-full border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-4 py-1.5 text-sm font-medium text-neutral-700 dark:text-neutral-200 hover:border-[color:var(--color-brand)] hover:text-[color:var(--color-brand)]"
               >
-                {tag.name}
+                {tagLabel(tag, i18n.language)}
               </button>
             ))}
           </div>
