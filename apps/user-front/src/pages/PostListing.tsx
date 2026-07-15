@@ -4,11 +4,12 @@ import { useTranslation } from "react-i18next";
 import type { CreateListingDto, TagResponseDto } from "@repo/contracts";
 import { createListing } from "../api-service/listings.service";
 import { getTags } from "../api-service/tags.service";
+import { tagLabel } from "../lib/tag-label";
 import { uploadImages } from "../api-service/uploads.service";
 
 export default function PostListing() {
   const navigate = useNavigate();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [tags, setTags] = useState<TagResponseDto[]>([]);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -118,7 +119,7 @@ export default function PostListing() {
             <option value="">{t("post.chooseCategory")}</option>
             {tags.map((t) => (
               <option key={t.id} value={t.name}>
-                {t.name}
+                {tagLabel(t, i18n.language)}
               </option>
             ))}
           </select>

@@ -2,8 +2,7 @@ import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "rea
 import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@repo/hooks";
-import type { TagResponseDto } from "@repo/contracts";
-import { getTags } from "../api-service/tags.service";
+import { useTags } from "../app/tags-context";
 import { getUserBalance } from "../api-service/transactions.service";
 import { formatPrice } from "../lib/format";
 import NotificationBell from "./NotificationBell";
@@ -59,18 +58,12 @@ export default function Header() {
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
   const { user, logout } = useAuth();
+  const { tags, label } = useTags();
   const [q, setQ] = useState("");
-  const [tags, setTags] = useState<TagResponseDto[]>([]);
   const [menuOpen, setMenuOpen] = useState(false);
   const [balance, setBalance] = useState<number | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
-
-  useEffect(() => {
-    getTags()
-      .then(setTags)
-      .catch(() => setTags([]));
-  }, []);
 
   // Live points balance in the avatar area (silent on 403).
   useEffect(() => {
@@ -260,7 +253,7 @@ export default function Header() {
               to={`/recherche?tag=${encodeURIComponent(tag.name)}`}
               className="shrink-0 capitalize hover:text-[color:var(--color-brand)]"
             >
-              {tag.name}
+              {label(tag)}
             </Link>
           ))}
         </nav>

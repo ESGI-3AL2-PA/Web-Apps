@@ -4,11 +4,12 @@ import { useTranslation } from "react-i18next";
 import type { ListingQueryDto, ListingResponseDto, TagResponseDto } from "@repo/contracts";
 import { getListings } from "../api-service/listings.service";
 import { getTags } from "../api-service/tags.service";
+import { tagLabel } from "../lib/tag-label";
 import { useFocusTrap } from "../lib/useFocusTrap";
 import ListingCard from "../components/ListingCard";
 
 export default function Search() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [params, setParams] = useSearchParams();
   const [listings, setListings] = useState<ListingResponseDto[]>([]);
   const [total, setTotal] = useState(0);
@@ -81,7 +82,7 @@ export default function Search() {
                   : "hover:bg-neutral-100 dark:hover:bg-neutral-800"
               }`}
             >
-              {tg.name}
+              {tagLabel(tg, i18n.language)}
             </button>
           ))}
         </div>

@@ -10,6 +10,7 @@ import { createContract } from "../api-service/contracts.service";
 import { formatDate, formatPrice, placeholderColor } from "../lib/format";
 import AuthedImage from "../components/AuthedImage";
 import { useDialog } from "../components/dialog-context";
+import { useTags } from "../app/tags-context";
 
 export default function ListingDetail() {
   const { id } = useParams();
@@ -17,6 +18,7 @@ export default function ListingDetail() {
   const { t } = useTranslation();
   const { user } = useAuth();
   const { alert } = useDialog();
+  const { labelFor } = useTags();
   const [listing, setListing] = useState<ListingResponseDto | null>(null);
   const [seller, setSeller] = useState<UserPublic | null>(null);
   const [active, setActive] = useState(0);
@@ -194,7 +196,7 @@ export default function ListingDetail() {
                 key={t}
                 className="rounded-full bg-neutral-100 dark:bg-neutral-800 px-3 py-1 text-xs font-medium text-neutral-600 dark:text-neutral-300"
               >
-                {t}
+                {labelFor(t)}
               </span>
             ))}
           </div>
