@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import {
   BanUserDtoSchema,
+  ConflictErrorSchema,
   CreateUserDtoSchema,
   ForbiddenErrorSchema,
   NotFoundErrorSchema,
@@ -64,6 +65,7 @@ export const usersContract = c.router({
       200: UserResponseDtoSchema,
       401: UnauthorizedErrorSchema,
       404: NotFoundErrorSchema,
+      409: ConflictErrorSchema,
     },
     summary: "Partially update a user (self or admin)",
     metadata: auth({

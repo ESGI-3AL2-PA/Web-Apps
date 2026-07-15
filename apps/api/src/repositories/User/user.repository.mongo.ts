@@ -14,6 +14,10 @@ export class MongoUserRepository implements IUserRepository {
   async ensureIndexes(): Promise<void> {
     // Backs district-scoped list filtering.
     await this.collection.createIndex({ districtId: 1 });
+    // One account per email — prevents two users sharing an address via create/update.
+    // NOTE: this build throws if the collection already holds duplicate emails; a real
+    // deploy must de-dupe existing data first (or build with a collation/partial filter).
+    await this.collection.createIndex({ email: 1 }, { unique: true });
   }
 
   async getUsers(params: {
