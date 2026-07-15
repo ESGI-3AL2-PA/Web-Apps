@@ -4,6 +4,7 @@ node_modules
 *.log
 *.tsbuildinfo
 **/test-results/
+**/coverage/
 dist
 *.local
 .env
