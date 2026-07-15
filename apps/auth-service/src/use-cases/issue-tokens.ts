@@ -3,7 +3,7 @@ import { SignJWT } from "jose";
 import type { UserRecord } from "../repositories/User/user-reader.repository.js";
 import type { IRefreshTokenRepository } from "../repositories/RefreshToken/refresh-token.repository.js";
 import type { IDistrictAdminReaderRepository } from "../repositories/DistrictAdmin/district-admin-reader.repository.js";
-import { getPrivateKey } from "../keys.js";
+import { getKeyId, getPrivateKey } from "../keys.js";
 
 export interface IssuedTokens {
   accessToken: string;
@@ -38,7 +38,7 @@ export const signAccessToken = (
     lastName: user.lastName,
     adminDistrictId,
   })
-    .setProtectedHeader({ alg: "RS256", kid: "auth-1" })
+    .setProtectedHeader({ alg: "RS256", kid: getKeyId() })
     .setSubject(user.id)
     .setIssuer("auth-service")
     .setAudience("api")

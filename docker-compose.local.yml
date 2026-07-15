@@ -11,8 +11,10 @@ services:
       MONGO_INITDB_ROOT_USERNAME: root
       MONGO_INITDB_ROOT_PASSWORD: root
 
+  # Unauthenticated Mongo admin UI — gated behind the `tools` profile so a bare
+  # `--profile core` never publishes it. Start explicitly with `--profile tools`.
   mongo-express:
-    profiles: [core]
+    profiles: [tools]
     image: mongo-express:1.0.2
     restart: on-failure
     ports:

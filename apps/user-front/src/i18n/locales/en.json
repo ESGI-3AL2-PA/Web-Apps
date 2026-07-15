@@ -13,6 +13,8 @@
   "common": {
     "appTitle": "Connected NeighBours — classifieds",
     "loading": "Loading…",
+    "loadError": "Something went wrong. We couldn't load this content.",
+    "retry": "Retry",
     "language": "Language",
     "misc": "Misc",
     "confirm": "Confirm",
@@ -108,6 +110,25 @@
       "title": "My points",
       "desc": "Usable to pay for a service between neighbours."
     },
+    "history": {
+      "title": "Points history",
+      "empty": "No transactions yet.",
+      "error": "Couldn't load the points history.",
+      "loadMore": "Load more",
+      "type": {
+        "credit": "Credit",
+        "debit": "Debit",
+        "transfer_in": "Received from a neighbour",
+        "transfer_out": "Sent to a neighbour"
+      },
+      "ref": {
+        "contract": "Contract",
+        "listing": "Ad",
+        "event": "Event",
+        "manual": "Manual adjustment",
+        "system": "System"
+      }
+    },
     "saveError": "Failed to save the profile."
   },
   "contracts": {
@@ -201,7 +222,19 @@
     "filters": "Filters",
     "results_one": "{{count}} result",
     "results_other": "{{count}} results",
-    "empty": "No ad matches your search."
+    "empty": "No ad matches your search.",
+    "type": "Type",
+    "allTypes": "All",
+    "type_offer": "Offers",
+    "type_request": "Requests",
+    "sortLabel": "Sort listings",
+    "sortRecent": "Most recent",
+    "sortPriceAsc": "Price: low to high",
+    "sortPriceDesc": "Price: high to low",
+    "loadMore": "Load more",
+    "loadedCount": "{{loaded}} of {{total}} shown",
+    "error": "Couldn't load listings.",
+    "retry": "Retry"
   },
   "detail": {
     "back": "← Back to ads",
@@ -211,6 +244,9 @@
     "contactError": "Unable to contact the seller right now.",
     "manageListing": "Manage my ad",
     "takeService": "Take this service ({{price}})",
+    "confirmTakeTitle": "Confirm taking the service",
+    "confirmTakeMessage": "{{price}} will be held in escrow until the service is complete. You will then need to sign the contract. Continue?",
+    "confirmTakeAction": "Confirm and sign",
     "taking": "Creating contract…",
     "alreadyTaken": "✓ Already taken — see My contracts",
     "takeError": "Could not create the contract (already taken or ad unavailable).",
@@ -221,13 +257,20 @@
   },
   "post": {
     "title": "Post an ad",
+    "typeLabel": "What are you posting?",
+    "type_offer": "An offer",
+    "type_request": "A request",
+    "typeHint_offer": "A service you provide to your neighbours.",
+    "typeHint_request": "Help you need from your neighbours.",
     "fieldTitle": "Title",
-    "titlePlaceholder": "e.g. City bike in good condition",
+    "titlePlaceholder_offer": "e.g. City bike in good condition",
+    "titlePlaceholder_request": "e.g. Looking for help moving a couch",
     "pricePoints": "Price (points)",
     "category": "Category",
     "chooseCategory": "— Choose a category —",
     "description": "Description",
-    "descriptionPlaceholder": "Describe your ad…",
+    "descriptionPlaceholder_offer": "Describe the service you're offering…",
+    "descriptionPlaceholder_request": "Describe the help you need…",
     "photos": "Photos (max 8)",
     "error": "Posting failed. Check the fields and try again.",
     "submit": "Publish the ad",
@@ -238,8 +281,20 @@
     "deposit": "+ Post",
     "empty": "You don't have any ads yet.",
     "delete": "Delete",
+    "edit": "Edit",
     "confirmDelete": "Delete this ad?",
-    "deleteError": "Could not delete."
+    "confirmDeleteActive": "This ad has an active contract. Delete it anyway?",
+    "deleteError": "Could not delete.",
+    "activeBadge": "Booked",
+    "editTitle": "Edit ad",
+    "editError": "Could not save changes. Check the fields and try again.",
+    "fieldType": "Type",
+    "typeOffer": "Offer",
+    "typeRequest": "Request",
+    "save": "Save",
+    "saving": "Saving…",
+    "loadError": "Could not load your ads.",
+    "retry": "Retry"
   },
   "messages": {
     "title": "Messages",

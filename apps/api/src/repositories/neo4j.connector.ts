@@ -18,6 +18,14 @@ export const connectNeo4j = async (): Promise<Driver> => {
   return d;
 };
 
+// Readiness check: verifies the driver can reach the cluster. Rejects if the
+// driver was never initialized or connectivity is lost. Neo4j is a projection
+// (Mongo is source of truth), so /readyz treats its failure as degraded, not down.
+export const pingNeo4j = async (): Promise<void> => {
+  if (!driver) throw new Error("Neo4j driver not initialized");
+  await driver.verifyConnectivity();
+};
+
 export const closeNeo4j = async (): Promise<void> => {
   if (driver) {
     await driver.close();

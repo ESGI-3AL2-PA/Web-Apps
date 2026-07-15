@@ -1,6 +1,7 @@
 import type { Message } from "../../entities/conversation.entity.js";
 import type { IConversationRepository } from "../../repositories/Conversation/conversation.repository.js";
-import { saveMessageImage } from "../../services/media-storage.service.js";
+import { ImageAttachError } from "../../middleware/error-handler.js";
+import { deleteMessageImage, saveMessageImage } from "../../services/media-storage.service.js";
 
 export const sendImageMessageUseCase = (conversationRepository: IConversationRepository) => {
   return async (
@@ -31,9 +32,24 @@ export const sendImageMessageUseCase = (conversationRepository: IConversationRep
       throw err;
     }
 
-    // 3) Point mediaUrl at the participant-checked stream (relative, like audio).
-    const updated = await conversationRepository.attachMedia(message.id, `/messages/${message.id}/image`, "image");
+    // 3) Point mediaUrl at the participant-checked stream (relative, like audio). If
+    //    attach throws OR reports no row, the image is stored but the message has no
+    //    mediaUrl — an orphan. Compensate (delete bytes + row, best-effort) and surface
+    //    a typed 500 rather than returning a broken "[image]" bubble.
+    let updated: Message | null;
+    try {
+      updated = await conversationRepository.attachMedia(message.id, `/messages/${message.id}/image`, "image");
+    } catch (err) {
+      await deleteMessageImage(message.id);
+      await conversationRepository.deleteMessage(message.id).catch(() => {});
+      throw err;
+    }
+    if (!updated) {
+      await deleteMessageImage(message.id);
+      await conversationRepository.deleteMessage(message.id).catch(() => {});
+      throw new ImageAttachError();
+    }
 
-    return { message: updated ?? message, participants: conversation.participants };
+    return { message: updated, participants: conversation.participants };
   };
 };
