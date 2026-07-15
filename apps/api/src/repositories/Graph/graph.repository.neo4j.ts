@@ -6,6 +6,8 @@ import type {
   IncidentNode,
   ListingNode,
   TagNode,
+  UserGraphExport,
+  UserGraphRelationship,
   UserNode,
   VoteNode,
 } from "./graph.repository.js";
@@ -34,6 +36,41 @@ export class Neo4jGraphRepository implements IGraphRepository {
 
   async reset(): Promise<void> {
     await this.run(`MATCH (n) DETACH DELETE n`);
+  }
+
+  // ─── GDPR export ──────────────────────────────────────────────────────────
+
+  async exportUserGraph(userId: string): Promise<UserGraphExport> {
+    const session = this.driver.session();
+    try {
+      const result = await session.run(
+        `MATCH (u:User {userId: $userId})
+         OPTIONAL MATCH (u)-[r]-(m)
+         RETURN u AS user,
+                collect(
+                  CASE WHEN r IS NULL THEN NULL ELSE {
+                    type: type(r),
+                    direction: CASE WHEN startNode(r) = u THEN 'out' ELSE 'in' END,
+                    properties: properties(r),
+                    other: { labels: labels(m), properties: properties(m) }
+                  } END
+                ) AS rels`,
+        { userId },
+      );
+      const record = result.records[0];
+      if (!record) return { nodes: [], relationships: [] };
+
+      const userNode = record.get("user") as { labels: string[]; properties: Record<string, unknown> };
+      const rels = (record.get("rels") as (UserGraphRelationship | null)[]).filter(
+        (rel): rel is UserGraphRelationship => rel !== null,
+      );
+      return {
+        nodes: [{ labels: userNode.labels, properties: userNode.properties }],
+        relationships: rels,
+      };
+    } finally {
+      await session.close();
+    }
   }
 
   // ─── Nodes ──────────────────────────────────────────────────────────────
