@@ -1,20 +1,25 @@
+import { lazy } from "react";
 import { createBrowserRouter } from "react-router-dom";
 import { ProtectedRoute } from "@repo/hooks";
 import { config } from "@repo/config";
 import MainLayout from "../layouts/MainLayout";
-import Home from "../pages/Home";
-import Search from "../pages/Search";
-import ListingDetail from "../pages/ListingDetail";
-import PostListing from "../pages/PostListing";
-import MyListings from "../pages/MyListings";
-import Messages from "../pages/Messages";
-import Events from "../pages/Events";
-import Votes from "../pages/Votes";
-import Settings from "../pages/Settings";
-import Contracts from "../pages/Contracts";
-import Profile from "../pages/Profile";
-import Incidents from "../pages/Incidents";
 import NotFound from "../pages/NotFound";
+
+// Route components are code-split: each becomes its own chunk fetched on
+// navigation, keeping the initial bundle small. NotFound stays eager since it
+// doubles as the router errorElement.
+const Home = lazy(() => import("../pages/Home"));
+const Search = lazy(() => import("../pages/Search"));
+const ListingDetail = lazy(() => import("../pages/ListingDetail"));
+const PostListing = lazy(() => import("../pages/PostListing"));
+const MyListings = lazy(() => import("../pages/MyListings"));
+const Messages = lazy(() => import("../pages/Messages"));
+const Events = lazy(() => import("../pages/Events"));
+const Votes = lazy(() => import("../pages/Votes"));
+const Settings = lazy(() => import("../pages/Settings"));
+const Contracts = lazy(() => import("../pages/Contracts"));
+const Profile = lazy(() => import("../pages/Profile"));
+const Incidents = lazy(() => import("../pages/Incidents"));
 
 export const router = createBrowserRouter([
   {
