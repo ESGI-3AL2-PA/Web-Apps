@@ -54,6 +54,7 @@ vi.mock("jose", () => {
 
 vi.mock("../keys.js", () => ({
   getPrivateKey: vi.fn(() => "fake-key"),
+  getKeyId: vi.fn(() => "test-kid"),
 }));
 
 import argon2 from "argon2";
