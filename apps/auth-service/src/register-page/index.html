@@ -85,6 +85,29 @@
         margin-bottom: 1rem;
         display: none;
       }
+      .consent {
+        display: flex;
+        align-items: flex-start;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+        font-size: 0.875rem;
+      }
+      .consent input {
+        width: auto;
+        margin: 0.15rem 0 0 0;
+      }
+      .consent label {
+        margin-bottom: 0;
+        font-weight: 400;
+        line-height: 1.4;
+      }
+      .consent a {
+        color: #2563eb;
+        text-decoration: none;
+      }
+      .consent a:hover {
+        text-decoration: underline;
+      }
       .link {
         text-align: center;
         margin-top: 1rem;
@@ -143,6 +166,15 @@
         <input type="password" id="password" name="password" required minlength="12" autocomplete="new-password" />
         <label for="address" data-i18n="address">Adresse</label>
         <input type="text" id="address" name="address" required autocomplete="street-address" />
+        <div class="consent">
+          <input type="checkbox" id="acceptedTerms" name="acceptedTerms" required />
+          <label for="acceptedTerms">
+            <span data-i18n="consentPre">J'accepte les</span>
+            <a href="/cgu" target="_blank" rel="noopener" data-i18n="termsOfService">conditions d'utilisation</a>
+            <span data-i18n="consentAnd">et la</span>
+            <a href="/privacy" target="_blank" rel="noopener" data-i18n="privacyPolicy">politique de confidentialité</a>
+          </label>
+        </div>
         <button type="submit" id="submitBtn" data-i18n="submit">S'inscrire</button>
       </form>
       <div class="link">
@@ -169,6 +201,12 @@
           password: "Mot de passe",
           address: "Adresse",
           submit: "S'inscrire",
+          consentPre: "J'accepte les",
+          termsOfService: "conditions d'utilisation",
+          consentAnd: "et la",
+          privacyPolicy: "politique de confidentialité",
+          mustAcceptTerms:
+            "Vous devez accepter les conditions d'utilisation et la politique de confidentialité pour vous inscrire.",
           haveAccount: "Vous avez déjà un compte ?",
           signIn: "Se connecter",
           registrationFailed: "Échec de l'inscription",
@@ -187,6 +225,11 @@
           password: "Password",
           address: "Address",
           submit: "Register",
+          consentPre: "I accept the",
+          termsOfService: "Terms of Service",
+          consentAnd: "and the",
+          privacyPolicy: "Privacy Policy",
+          mustAcceptTerms: "You must accept the Terms of Service and Privacy Policy to register.",
           haveAccount: "Already have an account?",
           signIn: "Sign in",
           registrationFailed: "Registration failed",
@@ -238,12 +281,20 @@
         errorEl.style.display = "none";
         btn.disabled = true;
 
+        if (!document.getElementById("acceptedTerms").checked) {
+          errorEl.textContent = t.mustAcceptTerms;
+          errorEl.style.display = "block";
+          btn.disabled = false;
+          return;
+        }
+
         const body = {
           firstName: document.getElementById("firstName").value,
           lastName: document.getElementById("lastName").value,
           email: document.getElementById("email").value,
           password: document.getElementById("password").value,
           address: document.getElementById("address").value,
+          acceptedTerms: true,
         };
 
         const phone = document.getElementById("phone").value.trim();
