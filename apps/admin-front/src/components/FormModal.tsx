@@ -1,4 +1,5 @@
 import { useId, type FormEvent, type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { ModalFrame } from "./ModalFrame";
 
 interface FormModalProps {
@@ -23,13 +24,14 @@ export function FormModal({
   title,
   onClose,
   onSubmit,
-  submitLabel = "Save",
+  submitLabel,
   submitting,
   error,
   children,
   readOnly,
   size = "md",
 }: FormModalProps) {
+  const { t } = useTranslation();
   const titleId = useId();
   const errorId = useId();
   if (!open) return null;
@@ -40,7 +42,12 @@ export function FormModal({
         <h3 id={titleId} className="text-lg font-semibold">
           {title}
         </h3>
-        <button type="button" className="btn btn-text btn-circle btn-sm" onClick={onClose} aria-label="Close">
+        <button
+          type="button"
+          className="btn btn-text btn-circle btn-sm"
+          onClick={onClose}
+          aria-label={t("common.close")}
+        >
           <span className="icon-[tabler--x] size-5" />
         </button>
       </div>
@@ -52,12 +59,12 @@ export function FormModal({
       )}
       <div className="flex justify-end gap-2 mt-6">
         <button type="button" className="btn btn-soft" onClick={onClose}>
-          {readOnly ? "Close" : "Cancel"}
+          {readOnly ? t("common.close") : t("common.cancel")}
         </button>
         {!readOnly && onSubmit && (
           <button type="submit" className="btn btn-primary" disabled={submitting}>
             {submitting && <span className="loading loading-spinner loading-xs" />}
-            {submitLabel}
+            {submitLabel ?? t("common.save")}
           </button>
         )}
       </div>

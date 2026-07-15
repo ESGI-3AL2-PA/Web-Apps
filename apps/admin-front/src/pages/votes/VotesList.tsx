@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@repo/hooks";
 import type { VoteResponseDto, VoteResultsResponseDto, VoteStatus } from "@repo/contracts";
 import { useScopedList } from "../../hooks/useScopedList";
@@ -17,6 +18,7 @@ import { formatDate } from "../../lib/format";
 const STATUSES: VoteStatus[] = ["draft", "open", "closed"];
 
 export default function VotesList() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const isSuperAdmin = user?.role === "superAdmin";
   const list = useScopedList<VoteResponseDto>(listVotes);
@@ -26,24 +28,24 @@ export default function VotesList() {
   const [deleting, setDeleting] = useState<VoteResponseDto | null>(null);
 
   const columns: Column<VoteResponseDto>[] = [
-    { header: "Question", cell: (v) => <span className="line-clamp-1 max-w-xs">{v.question}</span> },
-    { header: "Type", cell: (v) => v.voteType },
-    { header: "Status", cell: (v) => <StatusBadge value={v.status} /> },
-    { header: "Options", cell: (v) => v.options.length },
-    { header: "Ends", cell: (v) => formatDate(v.endDate) },
+    { header: t("votes.col.question"), cell: (v) => <span className="line-clamp-1 max-w-xs">{v.question}</span> },
+    { header: t("votes.col.type"), cell: (v) => v.voteType },
+    { header: t("votes.col.status"), cell: (v) => <StatusBadge value={v.status} /> },
+    { header: t("votes.col.options"), cell: (v) => v.options.length },
+    { header: t("votes.col.ends"), cell: (v) => formatDate(v.endDate) },
   ];
 
   return (
     <div className="space-y-2">
-      <h1 className="text-2xl font-semibold">Votes</h1>
+      <h1 className="text-2xl font-semibold">{t("votes.title")}</h1>
       <Toolbar
         search={list.search}
         onSearchChange={list.setSearch}
-        searchPlaceholder="Search votes…"
+        searchPlaceholder={t("votes.searchPlaceholder")}
         filters={[
           {
             key: "status",
-            label: "Status",
+            label: t("votes.statusFilter"),
             value: list.filters.status ?? "",
             options: STATUSES.map((s) => ({ value: s, label: s })),
             onChange: (v) => list.setFilter("status", v),
@@ -59,11 +61,11 @@ export default function VotesList() {
         actions={(v) => (
           <div className="flex justify-end gap-1">
             <button className="btn btn-xs btn-text" onClick={() => setViewing(v)}>
-              View
+              {t("votes.view")}
             </button>
             {isSuperAdmin && (
               <button className="btn btn-xs btn-text btn-error" onClick={() => setDeleting(v)}>
-                Delete
+                {t("votes.delete")}
               </button>
             )}
           </div>
@@ -74,8 +76,8 @@ export default function VotesList() {
       {viewing && <VoteView vote={viewing} onClose={() => setViewing(null)} />}
       <ConfirmDialog
         open={!!deleting}
-        title="Delete vote"
-        message={`Delete vote "${deleting?.question}"?`}
+        title={t("votes.deleteTitle")}
+        message={t("votes.deleteMessage", { question: deleting?.question })}
         busy={del.busy}
         error={del.error}
         onCancel={() => {
@@ -85,7 +87,7 @@ export default function VotesList() {
         onConfirm={() =>
           del.run(async () => {
             await deleteVote(deleting!.id);
-            toast.show("Vote deleted");
+            toast.show(t("votes.deleted"));
             setDeleting(null);
             list.refetch();
           })
@@ -96,6 +98,7 @@ export default function VotesList() {
 }
 
 function VoteView({ vote, onClose }: { vote: VoteResponseDto; onClose: () => void }) {
+  const { t } = useTranslation();
   const [results, setResults] = useState<VoteResultsResponseDto | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -103,30 +106,34 @@ function VoteView({ vote, onClose }: { vote: VoteResponseDto; onClose: () => voi
     let cancelled = false;
     getVoteResults(vote.id)
       .then((r) => !cancelled && setResults(r))
-      .catch((err) => !cancelled && setError(err?.response?.data?.message ?? err?.message ?? "Failed to load results"));
+      .catch(
+        (err) => !cancelled && setError(err?.response?.data?.message ?? err?.message ?? t("votes.loadResultsFailed")),
+      );
     return () => {
       cancelled = true;
     };
-  }, [vote.id]);
+  }, [vote.id, t]);
 
   const totalCount = results?.totalResponses ?? 0;
 
   return (
-    <FormModal open title="Vote" onClose={onClose} readOnly size="lg">
+    <FormModal open title={t("votes.detailTitle")} onClose={onClose} readOnly size="lg">
       <div className="grid grid-cols-2 gap-3 text-sm">
         <div className="col-span-2">
-          <p className="text-xs text-base-content/50">Question</p>
+          <p className="text-xs text-base-content/50">{t("votes.question")}</p>
           <p>{vote.question}</p>
         </div>
-        <Info label="Type" value={vote.voteType} />
-        <Info label="Status" value={vote.status} />
-        <Info label="Creator" value={<UserName id={vote.creatorId} />} />
-        <Info label="Districts" value={String(vote.districtIds.length)} />
-        <Info label="Start" value={formatDate(vote.startDate)} />
-        <Info label="End" value={formatDate(vote.endDate)} />
+        <Info label={t("votes.info.type")} value={vote.voteType} />
+        <Info label={t("votes.info.status")} value={vote.status} />
+        <Info label={t("votes.info.creator")} value={<UserName id={vote.creatorId} />} />
+        <Info label={t("votes.info.districts")} value={String(vote.districtIds.length)} />
+        <Info label={t("votes.info.start")} value={formatDate(vote.startDate)} />
+        <Info label={t("votes.info.end")} value={formatDate(vote.endDate)} />
       </div>
       <div>
-        <h4 className="font-medium mb-2">Results {results && `(${totalCount} responses)`}</h4>
+        <h4 className="font-medium mb-2">
+          {t("votes.results")} {results && t("votes.responsesCount", { total: totalCount })}
+        </h4>
         {error && <p className="text-sm text-error">{error}</p>}
         <ul className="space-y-2">
           {vote.options.map((opt) => {

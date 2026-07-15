@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { GeoJson } from "@repo/contracts";
+import i18n from "../../i18n";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "@geoman-io/leaflet-geoman-free/dist/leaflet-geoman.css";
@@ -29,6 +31,7 @@ interface DistrictMapEditorProps {
 }
 
 export function DistrictMapEditor({ value, onChange, className }: DistrictMapEditorProps) {
+  const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
   const onChangeRef = useRef(onChange);
   const [warning, setWarning] = useState<string | null>(null);
@@ -113,16 +116,12 @@ export function DistrictMapEditor({ value, onChange, className }: DistrictMapEdi
           group.addTo(map);
           readonlyLayer = group;
           map.fitBounds(group.getBounds());
-          setWarning(
-            "Existing boundary is a MultiPolygon and can't be edited here — drawing a new shape replaces it with a single Polygon.",
-          );
+          setWarning(i18n.t("district.warnMultiPolygon"));
         } else {
-          setWarning(
-            `Existing boundary has an unsupported shape (${value.type}) and can't be displayed — draw a new one to replace it.`,
-          );
+          setWarning(i18n.t("district.warnUnsupported", { type: value.type }));
         }
       } catch {
-        setWarning("Existing boundary data is invalid and can't be displayed — draw a new one to replace it.");
+        setWarning(i18n.t("district.warnInvalid"));
       }
     }
 
@@ -142,7 +141,7 @@ export function DistrictMapEditor({ value, onChange, className }: DistrictMapEdi
       <div
         ref={containerRef}
         role="application"
-        aria-label="District boundary map"
+        aria-label={t("district.mapAria")}
         className="flex-1 min-h-0 rounded-box overflow-hidden"
       />
     </div>

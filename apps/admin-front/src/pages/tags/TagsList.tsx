@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from "react";
+import { useTranslation } from "react-i18next";
 import type { CreateTagDto, TagResponseDto, UpdateTagDto } from "@repo/contracts";
 import { useList } from "../../hooks/useList";
 import { createTag, deleteTag, listTags, updateTag } from "../../api-service/tags";
@@ -12,6 +13,7 @@ import { useToast } from "../../components/Toast";
 import { useAsyncAction } from "../../hooks/useAsyncAction";
 
 export default function TagsList() {
+  const { t } = useTranslation();
   const list = useList<TagResponseDto>(listTags);
   const toast = useToast();
   const del = useAsyncAction();
@@ -19,20 +21,20 @@ export default function TagsList() {
   const [deleting, setDeleting] = useState<TagResponseDto | null>(null);
 
   const columns: Column<TagResponseDto>[] = [
-    { header: "Name", cell: (t) => t.name },
-    { header: "Description", cell: (t) => t.description ?? "—" },
+    { header: t("tags.name"), cell: (tag) => tag.name },
+    { header: t("tags.description"), cell: (tag) => tag.description ?? "—" },
   ];
 
   return (
     <div className="space-y-2">
-      <h1 className="text-2xl font-semibold">Tags</h1>
+      <h1 className="text-2xl font-semibold">{t("tags.title")}</h1>
       <Toolbar
         search={list.search}
         onSearchChange={list.setSearch}
-        searchPlaceholder="Search tags…"
+        searchPlaceholder={t("tags.searchPlaceholder")}
         actions={
           <button className="btn btn-sm btn-primary" onClick={() => setEditing("new")}>
-            <span className="icon-[tabler--plus] size-4" /> New tag
+            <span className="icon-[tabler--plus] size-4" /> {t("tags.new")}
           </button>
         }
       />
@@ -42,13 +44,13 @@ export default function TagsList() {
         rowKey={(t) => t.id}
         loading={list.loading}
         error={list.error}
-        actions={(t) => (
+        actions={(tag) => (
           <div className="flex justify-end gap-1">
-            <button className="btn btn-xs btn-text" onClick={() => setEditing(t)}>
-              Edit
+            <button className="btn btn-xs btn-text" onClick={() => setEditing(tag)}>
+              {t("tags.edit")}
             </button>
-            <button className="btn btn-xs btn-text btn-error" onClick={() => setDeleting(t)}>
-              Delete
+            <button className="btn btn-xs btn-text btn-error" onClick={() => setDeleting(tag)}>
+              {t("tags.delete")}
             </button>
           </div>
         )}
@@ -61,15 +63,15 @@ export default function TagsList() {
           onClose={() => setEditing(null)}
           onSaved={(created) => {
             setEditing(null);
-            toast.show(created ? "Tag created" : "Tag updated");
+            toast.show(created ? t("tags.created") : t("tags.updated"));
             list.refetch();
           }}
         />
       )}
       <ConfirmDialog
         open={!!deleting}
-        title="Delete tag"
-        message={`Delete tag "${deleting?.name}"?`}
+        title={t("tags.deleteTitle")}
+        message={t("tags.deleteMessage", { name: deleting?.name })}
         busy={del.busy}
         error={del.error}
         onCancel={() => {
@@ -79,7 +81,7 @@ export default function TagsList() {
         onConfirm={() =>
           del.run(async () => {
             await deleteTag(deleting!.id);
-            toast.show("Tag deleted");
+            toast.show(t("tags.deleted"));
             setDeleting(null);
             list.refetch();
           })
@@ -98,6 +100,7 @@ function TagEdit({
   onClose: () => void;
   onSaved: (created: boolean) => void;
 }) {
+  const { t } = useTranslation();
   const [name, setName] = useState(tag?.name ?? "");
   const [description, setDescription] = useState(tag?.description ?? "");
   const [submitting, setSubmitting] = useState(false);
@@ -118,7 +121,7 @@ function TagEdit({
       onSaved(!tag);
     } catch (err: unknown) {
       const e2 = err as { response?: { data?: { message?: string } }; message?: string };
-      setError(e2?.response?.data?.message ?? e2?.message ?? "Failed to save");
+      setError(e2?.response?.data?.message ?? e2?.message ?? t("common.failedToSave"));
     } finally {
       setSubmitting(false);
     }
@@ -127,16 +130,16 @@ function TagEdit({
   return (
     <FormModal
       open
-      title={tag ? `Edit ${tag.name}` : "New tag"}
+      title={tag ? t("tags.editTitle", { name: tag.name }) : t("tags.newTitle")}
       onClose={onClose}
       onSubmit={handleSubmit}
       submitting={submitting}
       error={error}
     >
-      <Field label="Name" required>
+      <Field label={t("tags.name")} required>
         <input className="input" value={name} onChange={(e) => setName(e.target.value)} required />
       </Field>
-      <Field label="Description">
+      <Field label={t("tags.description")}>
         <textarea className="textarea" rows={3} value={description} onChange={(e) => setDescription(e.target.value)} />
       </Field>
     </FormModal>

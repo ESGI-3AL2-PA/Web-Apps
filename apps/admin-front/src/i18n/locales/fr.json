@@ -1,0 +1,284 @@
+{
+  "common": {
+    "appTitle": "Connected NeighBours — Admin",
+    "titleSuffix": "{{title}} — Admin",
+    "language": "Langue",
+    "loading": "Chargement…",
+    "cancel": "Annuler",
+    "close": "Fermer",
+    "save": "Enregistrer",
+    "delete": "Supprimer",
+    "actions": "Actions",
+    "points": "pts",
+    "noResults": "Aucun résultat",
+    "failedToLoad": "Échec du chargement",
+    "failedToSave": "Échec de l'enregistrement"
+  },
+  "nav": {
+    "backToApp": "Retour à l'application",
+    "adminConsole": "Console d'administration",
+    "sections": {
+      "overview": "Vue d'ensemble",
+      "community": "Communauté",
+      "moderation": "Modération"
+    },
+    "dashboard": "Tableau de bord",
+    "users": "Utilisateurs",
+    "districts": "Quartier",
+    "tags": "Étiquettes",
+    "incidents": "Incidents",
+    "listings": "Annonces",
+    "events": "Événements",
+    "votes": "Votes"
+  },
+  "header": {
+    "openMenu": "Ouvrir le menu de navigation",
+    "skipToContent": "Aller au contenu",
+    "auditing": "Audit",
+    "districtToAudit": "Quartier à auditer",
+    "noDistrictAssigned": "Aucun quartier assigné",
+    "switchToLight": "Passer au thème clair",
+    "switchToDark": "Passer au thème sombre",
+    "logout": "Déconnexion"
+  },
+  "errorBoundary": {
+    "title": "Une erreur est survenue",
+    "reload": "Recharger"
+  },
+  "pagination": {
+    "aria": "Pagination",
+    "range": "{{from}}–{{to}} sur {{total}}",
+    "page": "Page {{page}} / {{totalPages}}",
+    "previous": "Page précédente",
+    "next": "Page suivante"
+  },
+  "toolbar": {
+    "searchPlaceholder": "Rechercher…",
+    "filterAll": "{{label}} : tous"
+  },
+  "toast": {
+    "dismiss": "Fermer la notification"
+  },
+  "dataTable": {
+    "loading": "Chargement…",
+    "empty": "Aucun résultat"
+  },
+  "form": {
+    "close": "Fermer"
+  },
+  "userAutocomplete": {
+    "placeholder": "Rechercher un utilisateur par nom…",
+    "searching": "Recherche…",
+    "noUserFound": "Aucun utilisateur trouvé",
+    "clear": "Effacer",
+    "fallbackName": "Utilisateur"
+  },
+  "userName": {
+    "fallbackName": "Utilisateur"
+  },
+  "dashboard": {
+    "title": "Tableau de bord",
+    "users": "Utilisateurs",
+    "listings": "Annonces",
+    "totalIncidents": "Total des incidents",
+    "openIncidents": "Incidents ouverts",
+    "byStatus": "Incidents par statut",
+    "byCategory": "Incidents par catégorie",
+    "noData": "Aucune donnée"
+  },
+  "district": {
+    "titleFallback": "Quartier",
+    "name": "Nom",
+    "save": "Enregistrer",
+    "saved": "Enregistré",
+    "districtSaved": "Quartier enregistré",
+    "loadFailed": "Échec du chargement du quartier.",
+    "invalidPolygon": "Dessinez un polygone valide (au moins 3 points distincts) avant d'enregistrer.",
+    "noDistrictInScope": "Aucun quartier dans le périmètre.",
+    "noBoundary": "Aucune limite définie — ce quartier ne correspondra à aucune adresse tant qu'une limite n'est pas dessinée.",
+    "mapAria": "Carte des limites du quartier",
+    "warnMultiPolygon": "La limite existante est un MultiPolygon et ne peut pas être modifiée ici — dessiner une nouvelle forme la remplacera par un seul Polygon.",
+    "warnUnsupported": "La limite existante a une forme non prise en charge ({{type}}) et ne peut pas être affichée — dessinez-en une nouvelle pour la remplacer.",
+    "warnInvalid": "Les données de la limite existante sont invalides et ne peuvent pas être affichées — dessinez-en une nouvelle pour la remplacer."
+  },
+  "users": {
+    "title": "Utilisateurs",
+    "searchPlaceholder": "Rechercher par nom ou e-mail…",
+    "col": {
+      "name": "Nom",
+      "email": "E-mail",
+      "role": "Rôle",
+      "status": "Statut",
+      "balance": "Solde",
+      "verified": "Vérifié",
+      "created": "Créé le"
+    },
+    "view": "Voir",
+    "resetPassword": "Réinitialiser le mot de passe",
+    "ban": "Bannir",
+    "unban": "Débannir",
+    "sendResetTitle": "Envoyer une réinitialisation de mot de passe",
+    "sendResetMessage": "Envoyer un lien de réinitialisation de mot de passe à {{email}} ? La personne définira elle-même un nouveau mot de passe.",
+    "sendLink": "Envoyer le lien",
+    "resetSent": "Lien de réinitialisation de mot de passe envoyé",
+    "banUserTitle": "Bannir l'utilisateur",
+    "unbanUserTitle": "Débannir l'utilisateur",
+    "unbanMessage": "Rétablir l'accès pour {{email}} ? La personne pourra à nouveau se connecter.",
+    "banMessage": "Bannir {{email}} ? La personne sera déconnectée et empêchée de se reconnecter.",
+    "userBanned": "Utilisateur banni",
+    "userUnbanned": "Utilisateur débanni",
+    "banned": "Banni",
+    "active": "Actif",
+    "recentTransactions": "Transactions récentes",
+    "noTransactions": "Aucune transaction",
+    "info": {
+      "email": "E-mail",
+      "phone": "Téléphone",
+      "role": "Rôle",
+      "status": "Statut",
+      "district": "Quartier",
+      "address": "Adresse",
+      "balance": "Solde"
+    }
+  },
+  "tags": {
+    "title": "Étiquettes",
+    "searchPlaceholder": "Rechercher des étiquettes…",
+    "new": "Nouvelle étiquette",
+    "edit": "Modifier",
+    "delete": "Supprimer",
+    "deleteTitle": "Supprimer l'étiquette",
+    "deleteMessage": "Supprimer l'étiquette « {{name}} » ?",
+    "created": "Étiquette créée",
+    "updated": "Étiquette mise à jour",
+    "deleted": "Étiquette supprimée",
+    "editTitle": "Modifier {{name}}",
+    "newTitle": "Nouvelle étiquette",
+    "name": "Nom",
+    "description": "Description"
+  },
+  "incidents": {
+    "title": "Incidents",
+    "searchPlaceholder": "Rechercher des incidents…",
+    "col": {
+      "category": "Catégorie",
+      "description": "Description",
+      "status": "Statut",
+      "assigned": "Assigné",
+      "created": "Créé le"
+    },
+    "statusFilter": "Statut",
+    "categoryPlaceholder": "Catégorie",
+    "categoryFilterAria": "Filtrer par catégorie",
+    "manage": "Gérer",
+    "delete": "Supprimer",
+    "deleteTitle": "Supprimer l'incident",
+    "deleteMessage": "Supprimer l'incident « {{category}} » ?",
+    "updated": "Incident mis à jour",
+    "deleted": "Incident supprimé",
+    "manageTitle": "Gérer l'incident",
+    "category": "Catégorie",
+    "reporter": "Déclarant",
+    "description": "Description",
+    "status": "Statut",
+    "assignedTo": "Assigné à",
+    "assignedHint": "Seuls les administrateurs peuvent être assignés.",
+    "historyNote": "Note d'historique",
+    "historyNoteHint": "Ajoutée à la chronologie lors de l'enregistrement.",
+    "history": "Historique",
+    "noHistory": "Aucun historique pour le moment",
+    "by": "par"
+  },
+  "listings": {
+    "title": "Annonces",
+    "searchPlaceholder": "Rechercher des annonces…",
+    "col": {
+      "title": "Titre",
+      "type": "Type",
+      "status": "Statut",
+      "price": "Prix",
+      "author": "Auteur",
+      "created": "Créé le"
+    },
+    "typeFilter": "Type",
+    "statusFilter": "Statut",
+    "view": "Voir",
+    "delete": "Supprimer",
+    "deleteTitle": "Supprimer l'annonce",
+    "deleteMessage": "Supprimer l'annonce « {{title}} » ?",
+    "deleted": "Annonce supprimée",
+    "info": {
+      "type": "Type",
+      "status": "Statut",
+      "price": "Prix",
+      "author": "Auteur",
+      "district": "Quartier",
+      "tags": "Étiquettes",
+      "created": "Créé le",
+      "expires": "Expire le",
+      "description": "Description"
+    }
+  },
+  "events": {
+    "title": "Événements",
+    "searchPlaceholder": "Rechercher des événements…",
+    "col": {
+      "title": "Titre",
+      "status": "Statut",
+      "location": "Lieu",
+      "seats": "Places",
+      "date": "Date"
+    },
+    "statusFilter": "Statut",
+    "view": "Voir",
+    "delete": "Supprimer",
+    "deleteTitle": "Supprimer l'événement",
+    "deleteMessage": "Supprimer l'événement « {{title}} » ?",
+    "deleted": "Événement supprimé",
+    "info": {
+      "status": "Statut",
+      "location": "Lieu",
+      "creator": "Organisateur",
+      "district": "Quartier",
+      "seats": "Places",
+      "registrants": "Inscrits",
+      "eventDate": "Date de l'événement",
+      "created": "Créé le",
+      "description": "Description"
+    }
+  },
+  "votes": {
+    "title": "Votes",
+    "searchPlaceholder": "Rechercher des votes…",
+    "col": {
+      "question": "Question",
+      "type": "Type",
+      "status": "Statut",
+      "options": "Options",
+      "ends": "Se termine le"
+    },
+    "statusFilter": "Statut",
+    "view": "Voir",
+    "delete": "Supprimer",
+    "deleteTitle": "Supprimer le vote",
+    "deleteMessage": "Supprimer le vote « {{question}} » ?",
+    "deleted": "Vote supprimé",
+    "detailTitle": "Vote",
+    "question": "Question",
+    "results": "Résultats",
+    "responsesCount": "({{total}} réponses)",
+    "loadResultsFailed": "Échec du chargement des résultats",
+    "info": {
+      "type": "Type",
+      "status": "Statut",
+      "creator": "Créateur",
+      "districts": "Quartiers",
+      "start": "Début",
+      "end": "Fin"
+    }
+  },
+  "confirm": {
+    "defaultConfirm": "Supprimer",
+    "cancel": "Annuler"
+  }
+}

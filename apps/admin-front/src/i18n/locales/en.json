@@ -1,0 +1,284 @@
+{
+  "common": {
+    "appTitle": "Connected NeighBours — Admin",
+    "titleSuffix": "{{title}} — Admin",
+    "language": "Language",
+    "loading": "Loading…",
+    "cancel": "Cancel",
+    "close": "Close",
+    "save": "Save",
+    "delete": "Delete",
+    "actions": "Actions",
+    "points": "pts",
+    "noResults": "No results",
+    "failedToLoad": "Failed to load",
+    "failedToSave": "Failed to save"
+  },
+  "nav": {
+    "backToApp": "Back to app",
+    "adminConsole": "Admin Console",
+    "sections": {
+      "overview": "Overview",
+      "community": "Community",
+      "moderation": "Moderation"
+    },
+    "dashboard": "Dashboard",
+    "users": "Users",
+    "districts": "District",
+    "tags": "Tags",
+    "incidents": "Incidents",
+    "listings": "Listings",
+    "events": "Events",
+    "votes": "Votes"
+  },
+  "header": {
+    "openMenu": "Open navigation menu",
+    "skipToContent": "Skip to content",
+    "auditing": "Auditing",
+    "districtToAudit": "District to audit",
+    "noDistrictAssigned": "No district assigned",
+    "switchToLight": "Switch to light theme",
+    "switchToDark": "Switch to dark theme",
+    "logout": "Logout"
+  },
+  "errorBoundary": {
+    "title": "Something went wrong",
+    "reload": "Reload"
+  },
+  "pagination": {
+    "aria": "Pagination",
+    "range": "{{from}}–{{to}} of {{total}}",
+    "page": "Page {{page}} / {{totalPages}}",
+    "previous": "Previous page",
+    "next": "Next page"
+  },
+  "toolbar": {
+    "searchPlaceholder": "Search…",
+    "filterAll": "{{label}}: all"
+  },
+  "toast": {
+    "dismiss": "Dismiss notification"
+  },
+  "dataTable": {
+    "loading": "Loading…",
+    "empty": "No results"
+  },
+  "form": {
+    "close": "Close"
+  },
+  "userAutocomplete": {
+    "placeholder": "Search a user by name…",
+    "searching": "Searching…",
+    "noUserFound": "No user found",
+    "clear": "Clear",
+    "fallbackName": "User"
+  },
+  "userName": {
+    "fallbackName": "User"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "users": "Users",
+    "listings": "Listings",
+    "totalIncidents": "Total incidents",
+    "openIncidents": "Open incidents",
+    "byStatus": "Incidents by status",
+    "byCategory": "Incidents by category",
+    "noData": "No data"
+  },
+  "district": {
+    "titleFallback": "District",
+    "name": "Name",
+    "save": "Save",
+    "saved": "Saved",
+    "districtSaved": "District saved",
+    "loadFailed": "Failed to load district.",
+    "invalidPolygon": "Draw a valid polygon (at least 3 distinct points) before saving.",
+    "noDistrictInScope": "No district in scope.",
+    "noBoundary": "No boundary set — this district won't match any addresses until one is drawn.",
+    "mapAria": "District boundary map",
+    "warnMultiPolygon": "Existing boundary is a MultiPolygon and can't be edited here — drawing a new shape replaces it with a single Polygon.",
+    "warnUnsupported": "Existing boundary has an unsupported shape ({{type}}) and can't be displayed — draw a new one to replace it.",
+    "warnInvalid": "Existing boundary data is invalid and can't be displayed — draw a new one to replace it."
+  },
+  "users": {
+    "title": "Users",
+    "searchPlaceholder": "Search name or email…",
+    "col": {
+      "name": "Name",
+      "email": "Email",
+      "role": "Role",
+      "status": "Status",
+      "balance": "Balance",
+      "verified": "Verified",
+      "created": "Created"
+    },
+    "view": "View",
+    "resetPassword": "Reset password",
+    "ban": "Ban",
+    "unban": "Unban",
+    "sendResetTitle": "Send password reset",
+    "sendResetMessage": "Email a password reset link to {{email}}? They'll set a new password themselves.",
+    "sendLink": "Send link",
+    "resetSent": "Password reset link sent",
+    "banUserTitle": "Ban user",
+    "unbanUserTitle": "Unban user",
+    "unbanMessage": "Restore access for {{email}}? They'll be able to log in again.",
+    "banMessage": "Ban {{email}}? They'll be logged out and blocked from signing in.",
+    "userBanned": "User banned",
+    "userUnbanned": "User unbanned",
+    "banned": "Banned",
+    "active": "Active",
+    "recentTransactions": "Recent transactions",
+    "noTransactions": "No transactions",
+    "info": {
+      "email": "Email",
+      "phone": "Phone",
+      "role": "Role",
+      "status": "Status",
+      "district": "District",
+      "address": "Address",
+      "balance": "Balance"
+    }
+  },
+  "tags": {
+    "title": "Tags",
+    "searchPlaceholder": "Search tags…",
+    "new": "New tag",
+    "edit": "Edit",
+    "delete": "Delete",
+    "deleteTitle": "Delete tag",
+    "deleteMessage": "Delete tag \"{{name}}\"?",
+    "created": "Tag created",
+    "updated": "Tag updated",
+    "deleted": "Tag deleted",
+    "editTitle": "Edit {{name}}",
+    "newTitle": "New tag",
+    "name": "Name",
+    "description": "Description"
+  },
+  "incidents": {
+    "title": "Incidents",
+    "searchPlaceholder": "Search incidents…",
+    "col": {
+      "category": "Category",
+      "description": "Description",
+      "status": "Status",
+      "assigned": "Assigned",
+      "created": "Created"
+    },
+    "statusFilter": "Status",
+    "categoryPlaceholder": "Category",
+    "categoryFilterAria": "Filter by category",
+    "manage": "Manage",
+    "delete": "Delete",
+    "deleteTitle": "Delete incident",
+    "deleteMessage": "Delete incident \"{{category}}\"?",
+    "updated": "Incident updated",
+    "deleted": "Incident deleted",
+    "manageTitle": "Manage incident",
+    "category": "Category",
+    "reporter": "Reporter",
+    "description": "Description",
+    "status": "Status",
+    "assignedTo": "Assigned to",
+    "assignedHint": "Only admins can be assigned.",
+    "historyNote": "History note",
+    "historyNoteHint": "Appended to the timeline on save.",
+    "history": "History",
+    "noHistory": "No history yet",
+    "by": "by"
+  },
+  "listings": {
+    "title": "Listings",
+    "searchPlaceholder": "Search listings…",
+    "col": {
+      "title": "Title",
+      "type": "Type",
+      "status": "Status",
+      "price": "Price",
+      "author": "Author",
+      "created": "Created"
+    },
+    "typeFilter": "Type",
+    "statusFilter": "Status",
+    "view": "View",
+    "delete": "Delete",
+    "deleteTitle": "Delete listing",
+    "deleteMessage": "Delete listing \"{{title}}\"?",
+    "deleted": "Listing deleted",
+    "info": {
+      "type": "Type",
+      "status": "Status",
+      "price": "Price",
+      "author": "Author",
+      "district": "District",
+      "tags": "Tags",
+      "created": "Created",
+      "expires": "Expires",
+      "description": "Description"
+    }
+  },
+  "events": {
+    "title": "Events",
+    "searchPlaceholder": "Search events…",
+    "col": {
+      "title": "Title",
+      "status": "Status",
+      "location": "Location",
+      "seats": "Seats",
+      "date": "Date"
+    },
+    "statusFilter": "Status",
+    "view": "View",
+    "delete": "Delete",
+    "deleteTitle": "Delete event",
+    "deleteMessage": "Delete event \"{{title}}\"?",
+    "deleted": "Event deleted",
+    "info": {
+      "status": "Status",
+      "location": "Location",
+      "creator": "Creator",
+      "district": "District",
+      "seats": "Seats",
+      "registrants": "Registrants",
+      "eventDate": "Event date",
+      "created": "Created",
+      "description": "Description"
+    }
+  },
+  "votes": {
+    "title": "Votes",
+    "searchPlaceholder": "Search votes…",
+    "col": {
+      "question": "Question",
+      "type": "Type",
+      "status": "Status",
+      "options": "Options",
+      "ends": "Ends"
+    },
+    "statusFilter": "Status",
+    "view": "View",
+    "delete": "Delete",
+    "deleteTitle": "Delete vote",
+    "deleteMessage": "Delete vote \"{{question}}\"?",
+    "deleted": "Vote deleted",
+    "detailTitle": "Vote",
+    "question": "Question",
+    "results": "Results",
+    "responsesCount": "({{total}} responses)",
+    "loadResultsFailed": "Failed to load results",
+    "info": {
+      "type": "Type",
+      "status": "Status",
+      "creator": "Creator",
+      "districts": "Districts",
+      "start": "Start",
+      "end": "End"
+    }
+  },
+  "confirm": {
+    "defaultConfirm": "Delete",
+    "cancel": "Cancel"
+  }
+}

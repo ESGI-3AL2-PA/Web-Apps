@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 
 export interface FilterSelect {
   key: string;
@@ -19,14 +20,8 @@ interface ToolbarProps {
   actions?: ReactNode;
 }
 
-export function Toolbar({
-  search,
-  onSearchChange,
-  searchPlaceholder = "Search…",
-  filters,
-  extraFilters,
-  actions,
-}: ToolbarProps) {
+export function Toolbar({ search, onSearchChange, searchPlaceholder, filters, extraFilters, actions }: ToolbarProps) {
+  const { t } = useTranslation();
   return (
     <div className="flex flex-wrap items-end gap-3 mb-4">
       {onSearchChange && (
@@ -35,7 +30,7 @@ export function Toolbar({
           <input
             type="search"
             value={search ?? ""}
-            placeholder={searchPlaceholder}
+            placeholder={searchPlaceholder ?? t("toolbar.searchPlaceholder")}
             onChange={(e) => onSearchChange(e.target.value)}
           />
         </label>
@@ -47,7 +42,7 @@ export function Toolbar({
           value={filter.value}
           onChange={(e) => filter.onChange(e.target.value)}
         >
-          <option value="">{filter.label}: all</option>
+          <option value="">{t("toolbar.filterAll", { label: filter.label })}</option>
           {filter.options.map((opt) => (
             <option key={opt.value} value={opt.value}>
               {opt.label}

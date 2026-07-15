@@ -4,6 +4,7 @@ import { RouterProvider } from "react-router-dom";
 import { router } from "./app/router";
 import Providers from "./app/providers";
 import { ErrorBoundary } from "./components/ErrorBoundary";
+import "./i18n"; // initialise i18next (fr/en) before first render
 
 ReactDOM.createRoot(document.getElementById("app")!).render(
   <React.StrictMode>

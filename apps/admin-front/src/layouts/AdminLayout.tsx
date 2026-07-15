@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation, useMatches } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "@repo/hooks";
 import { config } from "@repo/config";
 import { useDistrictScope } from "../app/DistrictScopeProvider";
@@ -7,35 +8,36 @@ import { useTheme } from "../hooks/useTheme";
 
 interface NavItem {
   to: string;
-  label: string;
+  labelKey: string;
   icon: string;
 }
 
-const NAV: { section: string; items: NavItem[] }[] = [
+const NAV: { sectionKey: string; items: NavItem[] }[] = [
   {
-    section: "Overview",
-    items: [{ to: "/", label: "Dashboard", icon: "icon-[tabler--layout-dashboard]" }],
+    sectionKey: "nav.sections.overview",
+    items: [{ to: "/", labelKey: "nav.dashboard", icon: "icon-[tabler--layout-dashboard]" }],
   },
   {
-    section: "Community",
+    sectionKey: "nav.sections.community",
     items: [
-      { to: "/users", label: "Users", icon: "icon-[tabler--users]" },
-      { to: "/districts", label: "Districts", icon: "icon-[tabler--map-2]" },
-      { to: "/tags", label: "Tags", icon: "icon-[tabler--tags]" },
-      { to: "/incidents", label: "Incidents", icon: "icon-[tabler--alert-triangle]" },
+      { to: "/users", labelKey: "nav.users", icon: "icon-[tabler--users]" },
+      { to: "/districts", labelKey: "nav.districts", icon: "icon-[tabler--map-2]" },
+      { to: "/tags", labelKey: "nav.tags", icon: "icon-[tabler--tags]" },
+      { to: "/incidents", labelKey: "nav.incidents", icon: "icon-[tabler--alert-triangle]" },
     ],
   },
   {
-    section: "Moderation",
+    sectionKey: "nav.sections.moderation",
     items: [
-      { to: "/listings", label: "Listings", icon: "icon-[tabler--clipboard-list]" },
-      { to: "/events", label: "Events", icon: "icon-[tabler--calendar-event]" },
-      { to: "/votes", label: "Votes", icon: "icon-[tabler--checkbox]" },
+      { to: "/listings", labelKey: "nav.listings", icon: "icon-[tabler--clipboard-list]" },
+      { to: "/events", labelKey: "nav.events", icon: "icon-[tabler--calendar-event]" },
+      { to: "/votes", labelKey: "nav.votes", icon: "icon-[tabler--checkbox]" },
     ],
   },
 ];
 
 export default function AdminLayout() {
+  const { t, i18n } = useTranslation();
   const { user, logout } = useAuth();
   const scope = useDistrictScope();
   const { theme, toggle } = useTheme();
@@ -47,17 +49,22 @@ export default function AdminLayout() {
   // Close the mobile drawer whenever the route changes.
   useEffect(() => setDrawerOpen(false), [location.pathname]);
 
-  // Keep the document title in sync with the active route's handle.
+  // Keep the document title in sync with the active route's handle (re-runs on language change).
   useEffect(() => {
-    const match = [...matches].reverse().find((m) => (m.handle as { title?: string })?.title);
-    const title = (match?.handle as { title?: string })?.title;
-    document.title = title ? `${title} — Admin` : "Connected NeighBours — Admin";
-  }, [matches]);
+    const match = [...matches].reverse().find((m) => (m.handle as { titleKey?: string })?.titleKey);
+    const titleKey = (match?.handle as { titleKey?: string })?.titleKey;
+    document.title = titleKey ? t("common.titleSuffix", { title: t(titleKey) }) : t("common.appTitle");
+  }, [matches, t, i18n.language]);
 
   const sidebar = (
     <>
       <div className="h-16 flex items-center gap-2 px-5 border-b border-base-content/10">
-        <a href={config.appUrl} className="btn btn-sm btn-circle btn-text" aria-label="Back to app" title="Back to app">
+        <a
+          href={config.appUrl}
+          className="btn btn-sm btn-circle btn-text"
+          aria-label={t("nav.backToApp")}
+          title={t("nav.backToApp")}
+        >
           <svg
             xmlns="http://www.w3.org/2000/svg"
             width="20"
@@ -75,13 +82,13 @@ export default function AdminLayout() {
           </svg>
         </a>
         <span className="icon-[tabler--building-community] size-6 text-primary" />
-        <span className="font-semibold">Admin Console</span>
+        <span className="font-semibold">{t("nav.adminConsole")}</span>
       </div>
       <nav className="flex-1 overflow-y-auto p-3 space-y-4">
         {NAV.map((group) => (
-          <div key={group.section}>
+          <div key={group.sectionKey}>
             <p className="px-3 mb-1 text-xs font-medium uppercase tracking-wide text-base-content/50">
-              {group.section}
+              {t(group.sectionKey)}
             </p>
             <ul className="menu p-0 gap-0.5">
               {group.items.map((item) => (
@@ -96,7 +103,7 @@ export default function AdminLayout() {
                     }
                   >
                     <span className={`${item.icon} size-5`} />
-                    {item.label}
+                    {t(item.labelKey)}
                   </NavLink>
                 </li>
               ))}
@@ -113,7 +120,7 @@ export default function AdminLayout() {
         href="#main"
         className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-primary focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-primary-content"
       >
-        Skip to content
+        {t("header.skipToContent")}
       </a>
       {/* Static sidebar (desktop) */}
       <aside className="hidden lg:flex w-64 shrink-0 bg-base-100 border-e border-base-content/10 flex-col">
@@ -136,7 +143,7 @@ export default function AdminLayout() {
             <button
               className="btn btn-sm btn-text btn-circle lg:hidden"
               onClick={() => setDrawerOpen(true)}
-              aria-label="Open navigation menu"
+              aria-label={t("header.openMenu")}
             >
               <span className="icon-[tabler--menu-2] size-5" />
             </button>
@@ -147,13 +154,13 @@ export default function AdminLayout() {
               ) : (
                 <>
                   <span className="hidden sm:inline text-xs uppercase tracking-wide text-base-content/50">
-                    Auditing
+                    {t("header.auditing")}
                   </span>
                   <select
                     className="select select-sm max-w-[12rem]"
                     value={scope.districtId ?? ""}
                     onChange={(e) => scope.setDistrictId(e.target.value)}
-                    aria-label="District to audit"
+                    aria-label={t("header.districtToAudit")}
                   >
                     {scope.districts.map((d) => (
                       <option key={d.id} value={d.id}>
@@ -171,7 +178,7 @@ export default function AdminLayout() {
                 {scope.districtName}
               </span>
             ) : (
-              <span className="text-xs text-warning">No district assigned</span>
+              <span className="text-xs text-warning">{t("header.noDistrictAssigned")}</span>
             )}
           </div>
 
@@ -179,7 +186,7 @@ export default function AdminLayout() {
             <button
               className="btn btn-sm btn-text btn-circle"
               onClick={toggle}
-              aria-label={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
+              aria-label={theme === "dark" ? t("header.switchToLight") : t("header.switchToDark")}
             >
               <span className={`${theme === "dark" ? "icon-[tabler--sun]" : "icon-[tabler--moon]"} size-5`} />
             </button>
@@ -203,8 +210,17 @@ export default function AdminLayout() {
                 <path d="M9 12h12l-3 -3" />
                 <path d="M18 15l3 -3" />
               </svg>
-              <span className="hidden sm:inline">Logout</span>
+              <span className="hidden sm:inline">{t("header.logout")}</span>
             </button>
+            <select
+              value={i18n.resolvedLanguage}
+              onChange={(e) => i18n.changeLanguage(e.target.value)}
+              aria-label={t("common.language")}
+              className="select select-sm w-auto"
+            >
+              <option value="fr">FR</option>
+              <option value="en">EN</option>
+            </select>
           </div>
         </header>
         <main id="main" tabIndex={-1} className="flex-1 overflow-y-auto p-4 sm:p-6 outline-none">
