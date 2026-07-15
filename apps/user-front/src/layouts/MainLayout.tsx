@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { Outlet } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import Header from "../components/Header";
@@ -15,7 +16,10 @@ export default function MainLayout() {
       </a>
       <Header />
       <main id="main" tabIndex={-1} className="mx-auto max-w-6xl px-4 py-6 pb-24 outline-none md:pb-6">
-        <Outlet />
+        {/* Suspense boundary for the lazy-loaded route chunks. */}
+        <Suspense fallback={<p className="text-neutral-500 dark:text-neutral-400">{t("common.loading")}</p>}>
+          <Outlet />
+        </Suspense>
       </main>
       <BottomNav />
     </div>
