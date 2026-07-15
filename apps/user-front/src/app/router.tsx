@@ -4,6 +4,7 @@ import { ProtectedRoute } from "@repo/hooks";
 import { config } from "@repo/config";
 import MainLayout from "../layouts/MainLayout";
 import NotFound from "../pages/NotFound";
+import ServerError from "../pages/ServerError";
 
 // Route components are code-split: each becomes its own chunk fetched on
 // navigation, keeping the initial bundle small. NotFound stays eager since it
@@ -28,8 +29,8 @@ export const router = createBrowserRouter([
         <MainLayout />
       </ProtectedRoute>
     ),
-    // Renders a themed page for router errors instead of the raw dev screen.
-    errorElement: <NotFound />,
+    // Renders a themed 500 page for genuine loader/render errors (NotFound is the catch-all 404 below).
+    errorElement: <ServerError />,
     children: [
       { path: "/", element: <Home /> },
       { path: "/recherche", element: <Search /> },
