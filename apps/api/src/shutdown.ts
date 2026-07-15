@@ -1,4 +1,5 @@
 import type { Server } from "http";
+import { logger } from "./logger.js";
 
 const FORCE_EXIT_MS = 10_000;
 
@@ -19,7 +20,7 @@ export const setupGracefulShutdown = (
   const shutdown = (signal: string) => {
     if (shuttingDown) return; // ignore repeat signals (e.g. double Ctrl-C) while draining
     shuttingDown = true;
-    console.warn(`\n${signal} received — shutting down gracefully…`);
+    logger.info({ signal }, "Signal received — shutting down gracefully");
 
     beforeClose?.();
 
@@ -30,10 +31,10 @@ export const setupGracefulShutdown = (
       cleaned = true;
       try {
         await cleanup();
-        console.warn("Closed HTTP server and DB connection — bye");
+        logger.info("Closed HTTP server and DB connection — bye");
         process.exit(code);
       } catch (err) {
-        console.error("Error during shutdown:", err);
+        logger.error({ err }, "Error during shutdown");
         process.exit(1);
       }
     };
@@ -41,7 +42,7 @@ export const setupGracefulShutdown = (
     const force = setTimeout(() => {
       // Draining stalled — still close the DB connections before exiting, so they
       // aren't dropped uncleanly (previously this force-exited without cleanup).
-      console.error("Shutdown timed out — running cleanup then forcing exit");
+      logger.error("Shutdown timed out — running cleanup then forcing exit");
       void runCleanup(1);
     }, FORCE_EXIT_MS);
     force.unref(); // don't let the watchdog itself keep the process alive

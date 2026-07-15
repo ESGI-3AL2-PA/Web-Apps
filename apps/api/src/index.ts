@@ -3,6 +3,8 @@ import express, { type Application, type RequestHandler } from "express";
 import cors from "cors";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
+import { pinoHttp } from "pino-http";
+import { logger } from "./logger.js";
 
 import { createExpressEndpoints } from "@ts-rest/express";
 import {
@@ -65,6 +67,10 @@ const trustProxy = process.env.TRUST_PROXY;
 if (trustProxy) {
   app.set("trust proxy", /^\d+$/.test(trustProxy) ? Number(trustProxy) : trustProxy === "true" ? true : trustProxy);
 }
+
+// Per-request access logging + correlation id (req.id, exposed as req.log child
+// logger). Mounted first so every request — including /health and /docs — is logged.
+app.use(pinoHttp({ logger }));
 
 // Security headers. CSP is disabled because the Scalar /docs UI loads its own
 // assets; the rest (X-Frame-Options, HSTS, X-Content-Type-Options, …) still apply.
@@ -248,15 +254,15 @@ app.use(errorHandler);
 // entirely when SATAN_REPOS=false.
 const maybeConnectSatan = async (): Promise<SatanClient | undefined> => {
   if (process.env.SATAN_REPOS === "false") {
-    console.warn("😈 SATAN repositories disabled (SATAN_REPOS=false) — using Mongo repositories");
+    logger.warn("SATAN repositories disabled (SATAN_REPOS=false) — using Mongo repositories");
     return undefined;
   }
   try {
     const client = await connectSatan();
-    console.warn("😈 SATAN repositories active");
+    logger.info("SATAN repositories active");
     return client;
   } catch (err) {
-    console.error("😈 SATAN worker unavailable — falling back to Mongo repositories:", (err as Error).message);
+    logger.warn({ err }, "SATAN worker unavailable — falling back to Mongo repositories");
     return undefined;
   }
 };
@@ -271,15 +277,10 @@ Promise.all([connectDB(), connectNeo4j()])
     setupSocketIo(httpServer);
 
     httpServer.listen(port, () => {
-      const localUrl = `http://localhost:${port}`;
-
-      console.warn("");
-      console.warn(" 🚀  API Server Running !");
-      console.warn("");
-      console.warn(` ➜  Local:   \x1b[36m${localUrl}\x1b[0m`);
-      console.warn(` ➜  Socket:  \x1b[36mws://localhost:${port}\x1b[0m`);
-      console.warn("");
-      console.warn(`\x1b[33m⚡ Ready to accept connections\x1b[0m`);
+      logger.info(
+        { port, url: `http://localhost:${port}`, socket: `ws://localhost:${port}` },
+        "API server running — ready to accept connections",
+      );
     });
     setupGracefulShutdown(
       httpServer,
@@ -290,6 +291,6 @@ Promise.all([connectDB(), connectNeo4j()])
     );
   })
   .catch((err) => {
-    console.error("Failed to connect to databases:", err);
+    logger.fatal({ err }, "Failed to connect to databases");
     process.exit(1);
   });

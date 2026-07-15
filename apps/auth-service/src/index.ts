@@ -9,7 +9,9 @@ import cookieParser from "cookie-parser";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import { createExpressEndpoints } from "@ts-rest/express";
+import { pinoHttp } from "pino-http";
 import { authContract } from "@repo/contracts";
+import { logger } from "./logger.js";
 
 import { authRouter } from "./routes/auth/auth.router.js";
 import { jwksHandler } from "./routes/jwks.router.js";
@@ -38,6 +40,10 @@ const trustProxy = process.env.TRUST_PROXY;
 if (trustProxy) {
   app.set("trust proxy", /^\d+$/.test(trustProxy) ? Number(trustProxy) : trustProxy === "true" ? true : trustProxy);
 }
+
+// Per-request access logging + correlation id (req.id, exposed as req.log child
+// logger). Mounted first so every request is logged.
+app.use(pinoHttp({ logger }));
 
 // Security headers. CSP allows the inline script/style on the login & register
 // pages while forbidding framing (clickjacking) and plugins.
@@ -117,7 +123,7 @@ app.post("/internal/sessions/purge", (req, res) => {
     .deleteAllForUser(userId)
     .then(() => res.status(204).end())
     .catch((err) => {
-      console.error("Failed to purge sessions for user:", err);
+      req.log.error({ err, userId }, "Failed to purge sessions for user");
       res.status(500).json({ message: "Failed to purge sessions" });
     });
 });
@@ -185,24 +191,24 @@ connectDB()
     // Built directly from `db` (not via resolve) since the repo is a stateless wrapper.
     await new MongoRefreshTokenRepository(db)
       .ensureIndexes()
-      .catch((err) => console.error("Failed to ensure refresh-token indexes:", err));
+      .catch((err) => logger.error({ err }, "Failed to ensure refresh-token indexes"));
 
     const server = app.listen(port, () => {
       const localUrl = `http://localhost:${port}`;
-
-      console.warn("");
-      console.warn(" 🔐  Auth Service Running !");
-      console.warn("");
-      console.warn(` ➜  Local:   \x1b[36m${localUrl}\x1b[0m`);
-      console.warn(` ➜  Login:   \x1b[36m${localUrl}/login\x1b[0m`);
-      console.warn(` ➜  Register:\x1b[36m${localUrl}/register\x1b[0m`);
-      console.warn(` ➜  JWKS:    \x1b[36m${localUrl}/.well-known/jwks.json\x1b[0m`);
-      console.warn("");
-      console.warn(`\x1b[33m⚡ Ready to accept connections\x1b[0m`);
+      logger.info(
+        {
+          port,
+          url: localUrl,
+          login: `${localUrl}/login`,
+          register: `${localUrl}/register`,
+          jwks: `${localUrl}/.well-known/jwks.json`,
+        },
+        "Auth service running — ready to accept connections",
+      );
     });
     setupGracefulShutdown(server, closeDB);
   })
   .catch((err) => {
-    console.error("Failed to start auth-service:", err);
+    logger.fatal({ err }, "Failed to start auth-service");
     process.exit(1);
   });

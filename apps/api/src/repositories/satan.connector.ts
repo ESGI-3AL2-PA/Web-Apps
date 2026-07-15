@@ -1,4 +1,5 @@
 import { createSatanClient, type SatanClient } from "@repo/satan";
+import { logger } from "../logger.js";
 
 let client: SatanClient | null = null;
 
@@ -23,7 +24,7 @@ export const connectSatan = async (): Promise<SatanClient> => {
   const stderr: string[] = [];
   c.on("stderr", (line: string) => {
     stderr.push(line);
-    if (process.env.SATAN_DEBUG) console.error(`[satan] ${line}`);
+    if (process.env.SATAN_DEBUG) logger.info({ line }, "satan stderr");
   });
 
   const verify = c.query("FIND _healthcheck");

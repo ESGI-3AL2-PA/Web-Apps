@@ -37,7 +37,7 @@ export const contractPdfHandler = async (req: Request, res: Response) => {
   try {
     pdf = await documensoService.fetchSignedPdf(contract.documensoDocumentId);
   } catch (err) {
-    console.error("fetchSignedPdf failed:", err);
+    req.log.error({ err }, "fetchSignedPdf failed");
     res.status(502).json({ message: "Could not fetch the signed PDF" });
     return;
   }

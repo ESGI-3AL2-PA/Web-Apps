@@ -7,10 +7,12 @@
  * route these mutations through an outbox / message queue to guarantee
  * eventual consistency.
  */
+import { logger } from "../../logger.js";
+
 export const syncGraph = async (label: string, fn: () => Promise<void>): Promise<void> => {
   try {
     await fn();
   } catch (err) {
-    console.error(`[graph-sync] ${label} failed:`, err);
+    logger.error({ err, label }, "graph-sync failed");
   }
 };

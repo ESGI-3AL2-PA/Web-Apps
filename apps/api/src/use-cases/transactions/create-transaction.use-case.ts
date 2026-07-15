@@ -3,6 +3,7 @@ import type { Transaction } from "../../entities/transaction.entity.js";
 import type { ITransactionRepository } from "../../repositories/Transaction/transaction.repository.js";
 import type { IUserRepository } from "../../repositories/User/user.repository.js";
 import { runInTransaction } from "../../repositories/tx.js";
+import { logger } from "../../logger.js";
 
 export type CreateTransactionResult =
   | { kind: "ok"; entries: Transaction[] }
@@ -115,15 +116,16 @@ export const createTransactionUseCase = (
       // audit collection exists yet (see PR note) so we emit a structured log line
       // identifying the actor, which the ledger entries alone do not capture.
       if (isSuperAdmin || isDistrictAdmin) {
-        console.warn(
-          JSON.stringify({
+        logger.info(
+          {
             audit: "transaction.create",
             actorSub: actor.sub,
             actorRole: actor.role,
             fromUserId: fromUserId ?? null,
             toUserId: toUserId ?? null,
             amount,
-          }),
+          },
+          "Admin-initiated balance movement",
         );
       }
 

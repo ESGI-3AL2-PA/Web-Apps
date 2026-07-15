@@ -1,6 +1,7 @@
 import type { ClientSession } from "mongodb";
 import type { Contract } from "../../entities/contract.entity.js";
 import type { IContractRepository } from "../../repositories/Contract/contract.repository.js";
+import { logger } from "../../logger.js";
 import type { ITransactionRepository } from "../../repositories/Transaction/transaction.repository.js";
 import { runInTransaction } from "../../repositories/tx.js";
 import { mapDocumensoStatus, type DocumensoWebhookEvent } from "../../services/documenso.service.js";
@@ -37,7 +38,7 @@ const credit = async (
     // settled the escrow and the atomic gate fired, so keep the ledger write best-effort
     // — a failure here must not 500 the webhook and cause a re-credit on retry.
     await ledgerWrite.catch((err) =>
-      console.error(`[contracts] escrow-settle ledger write failed for ${contract.id}:`, err),
+      logger.error({ err, contractId: contract.id }, "escrow-settle ledger write failed"),
     );
   }
 };

@@ -182,13 +182,14 @@ export const authorize: RequestHandler = async (req, res, next) => {
     // read-only fix, conversation writes no longer carry districtField, so a district grant
     // on a conversation resource can only be a moderation read of a DM the admin isn't in.
     if (districtGrant && isRead && scope.resource === "conversation") {
-      console.warn(
-        JSON.stringify({
-          event: "moderation.conversation.read",
+      req.log.info(
+        {
+          audit: "moderation.conversation.read",
           actorSub: user.sub,
           actorRole: user.role,
           conversationId: id,
-        }),
+        },
+        "Non-participant admin read of a private conversation",
       );
     }
 

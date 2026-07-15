@@ -1,11 +1,12 @@
 import { Resend } from "resend";
 import nodemailer from "nodemailer";
+import { logger } from "../logger.js";
 
 const apiKey = process.env.RESEND_API_KEY;
 const fromEmail = process.env.FROM_EMAIL ?? "no-reply@example.com";
 const appName = process.env.APP_NAME ?? "Web-Apps";
 
-// Transport priority: SMTP (dev — e.g. the local mailpit sink) → Resend (prod) → console.
+// Transport priority: SMTP (dev — e.g. the local mailpit sink) → Resend (prod) → logger.
 // Setting SMTP_HOST routes all mail to that server, letting local dev inspect
 // verification/reset emails in mailpit's UI instead of hitting a real provider.
 const smtpHost = process.env.SMTP_HOST;
@@ -19,11 +20,11 @@ const smtpTransport = smtpHost
     })
   : null;
 
-// Falls back to console.log when neither SMTP nor Resend is configured (dev without a provider).
+// Falls back to a structured log line when neither SMTP nor Resend is configured (dev without a provider).
 const resend = apiKey ? new Resend(apiKey) : null;
 
 const logFallback = (subject: string, to: string, body: string) => {
-  console.warn(`\n📧  [email-fallback] To: ${to}\n    Subject: ${subject}\n    ${body.replace(/\n/g, "\n    ")}\n`);
+  logger.info({ to, subject, body }, "email-fallback (no SMTP/Resend configured)");
 };
 
 const send = async (to: string, subject: string, html: string, text: string) => {
@@ -43,7 +44,7 @@ const send = async (to: string, subject: string, html: string, text: string) => 
   }
   const { error } = await resend.emails.send({ from: fromEmail, to, subject, html, text });
   if (error) {
-    console.error("Resend send failed:", error);
+    logger.error({ err: error }, "Resend send failed");
     throw new Error("Email send failed");
   }
 };

@@ -1,6 +1,7 @@
 import type { IUserRepository } from "../../repositories/User/user.repository.js";
 import type { IGraphRepository } from "../../repositories/Graph/graph.repository.js";
 import type { IConversationRepository } from "../../repositories/Conversation/conversation.repository.js";
+import { logger } from "../../logger.js";
 import type { IVoteRepository } from "../../repositories/Vote/vote.repository.js";
 import type { INotificationRepository } from "../../repositories/Notification/notification.repository.js";
 import type { IListingRepository } from "../../repositories/Listing/listing.repository.js";
@@ -131,10 +132,10 @@ export const deleteUserUseCase = (deps: DeleteUserDeps) => {
           body: JSON.stringify({ userId: id }),
         });
         if (!purgeRes.ok) {
-          console.error(`auth-service session purge failed for user ${id}: HTTP ${purgeRes.status}`);
+          logger.error({ userId: id, status: purgeRes.status }, "auth-service session purge failed");
         }
       } catch (err) {
-        console.error(`auth-service session purge errored for user ${id}:`, err);
+        logger.error({ err, userId: id }, "auth-service session purge errored");
       }
     }
     return deleted;
