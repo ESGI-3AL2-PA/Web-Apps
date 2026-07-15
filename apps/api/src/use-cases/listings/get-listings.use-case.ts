@@ -1,3 +1,4 @@
+import type { ListingSort } from "@repo/contracts";
 import type { IListingRepository } from "../../repositories/Listing/listing.repository.js";
 
 export const getListingsUseCase = (listingRepository: IListingRepository) => {
@@ -8,6 +9,7 @@ export const getListingsUseCase = (listingRepository: IListingRepository) => {
     districtId?: string;
     authorId?: string;
     tag?: string;
+    sort?: ListingSort;
     page?: number;
     limit?: number;
   }) => {
