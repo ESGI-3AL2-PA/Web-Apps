@@ -13,6 +13,8 @@
   "common": {
     "appTitle": "Connected NeighBours — petites annonces",
     "loading": "Chargement…",
+    "loadError": "Une erreur est survenue. Impossible de charger les données.",
+    "retry": "Réessayer",
     "language": "Langue",
     "misc": "Divers",
     "confirm": "Confirmer",
