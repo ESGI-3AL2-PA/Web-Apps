@@ -14,9 +14,9 @@ import { useDialog } from "../components/dialog-context";
 
 function Card({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-5">
+    <section className="card border border-base-content/10 bg-base-100 p-5">
       <div className="flex items-center justify-between gap-3">
-        <h2 className="text-lg font-bold text-neutral-900 dark:text-neutral-50">{title}</h2>
+        <h2 className="text-lg font-bold text-base-content">{title}</h2>
       </div>
       <div className="mt-4">{children}</div>
     </section>
@@ -26,14 +26,13 @@ function Card({ title, children }: { title: string; children: React.ReactNode })
 function Info({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <div className="text-xs font-semibold uppercase tracking-wide text-neutral-500">{label}</div>
-      <div className="text-sm text-neutral-800 dark:text-neutral-100">{value}</div>
+      <div className="text-xs font-semibold uppercase tracking-wide text-base-content/60">{label}</div>
+      <div className="text-sm text-base-content/80">{value}</div>
     </div>
   );
 }
 
-const inputClass =
-  "mt-1 h-10 w-full rounded-lg border border-neutral-300 dark:border-neutral-700 px-3 text-sm outline-none focus:border-[color:var(--color-brand)]";
+const inputClass = "input mt-1 w-full";
 
 export default function Profile() {
   const { t } = useTranslation();
@@ -144,39 +143,31 @@ export default function Profile() {
     setEditing(false);
   };
 
-  if (!user) return <p className="text-neutral-500 dark:text-neutral-400">{t("common.loading")}</p>;
+  if (!user) return <p className="text-base-content/60">{t("common.loading")}</p>;
 
   const none = "—";
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
-      <h1 className="text-2xl font-extrabold text-neutral-900 dark:text-neutral-50">{t("profile.title")}</h1>
+      <h1 className="text-2xl font-extrabold text-base-content">{t("profile.title")}</h1>
 
       {/* Identity */}
       <Card title={t("profile.identity.title")}>
-        <p className="mb-2 text-sm text-neutral-500 dark:text-neutral-400">{t("profile.identity.desc")}</p>
+        <p className="mb-2 text-sm text-base-content/60">{t("profile.identity.desc")}</p>
         <div className="flex items-center gap-2">
-          <code className="flex-1 break-all rounded-lg bg-neutral-100 dark:bg-neutral-800 px-3 py-2 text-sm">
-            {user.id}
-          </code>
-          <button
-            onClick={copyId}
-            className="shrink-0 rounded-lg bg-[color:var(--color-brand)] px-3 py-2 text-sm font-semibold text-white hover:bg-[color:var(--color-brand-dark)]"
-          >
+          <code className="flex-1 break-all rounded-lg bg-base-200 px-3 py-2 text-sm">{user.id}</code>
+          <button onClick={copyId} className="btn btn-primary shrink-0">
             {copied ? t("profile.identity.copied") : t("profile.identity.copy")}
           </button>
         </div>
       </Card>
 
       {/* Info */}
-      <section className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-5">
+      <section className="card border border-base-content/10 bg-base-100 p-5">
         <div className="flex items-center justify-between gap-3">
-          <h2 className="text-lg font-bold text-neutral-900 dark:text-neutral-50">{t("profile.info.title")}</h2>
+          <h2 className="text-lg font-bold text-base-content">{t("profile.info.title")}</h2>
           {!editing && (
-            <button
-              onClick={() => setEditing(true)}
-              className="rounded-lg border border-neutral-300 dark:border-neutral-700 px-3 py-1.5 text-sm font-medium text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-800"
-            >
+            <button onClick={() => setEditing(true)} className="btn btn-soft btn-sm">
               {t("profile.info.edit")}
             </button>
           )}
@@ -196,7 +187,7 @@ export default function Profile() {
         ) : (
           <div className="mt-4 space-y-3">
             <label className="block">
-              <span className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
+              <span className="text-xs font-semibold uppercase tracking-wide text-base-content/60">
                 {t("profile.info.firstName")}
               </span>
               <input
@@ -206,7 +197,7 @@ export default function Profile() {
               />
             </label>
             <label className="block">
-              <span className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
+              <span className="text-xs font-semibold uppercase tracking-wide text-base-content/60">
                 {t("profile.info.lastName")}
               </span>
               <input
@@ -216,7 +207,7 @@ export default function Profile() {
               />
             </label>
             <label className="block">
-              <span className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
+              <span className="text-xs font-semibold uppercase tracking-wide text-base-content/60">
                 {t("profile.info.phone")}
               </span>
               <input
@@ -226,7 +217,7 @@ export default function Profile() {
               />
             </label>
             <label className="block">
-              <span className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
+              <span className="text-xs font-semibold uppercase tracking-wide text-base-content/60">
                 {t("profile.info.address")}
               </span>
               <input
@@ -236,18 +227,11 @@ export default function Profile() {
               />
             </label>
             <div className="flex justify-end gap-2">
-              <button
-                onClick={cancelEdit}
-                disabled={saving}
-                className="rounded-lg border border-neutral-300 dark:border-neutral-700 px-4 py-2 text-sm font-semibold text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-800 disabled:opacity-60"
-              >
+              <button onClick={cancelEdit} disabled={saving} className="btn btn-soft">
                 {t("common.cancel")}
               </button>
-              <button
-                onClick={save}
-                disabled={saving}
-                className="rounded-lg bg-[color:var(--color-brand)] px-4 py-2 text-sm font-semibold text-white hover:bg-[color:var(--color-brand-dark)] disabled:opacity-60"
-              >
+              <button onClick={save} disabled={saving} className="btn btn-primary">
+                {saving && <span className="loading loading-spinner loading-sm" />}
                 {saving ? t("profile.info.saving") : t("profile.info.save")}
               </button>
             </div>
@@ -266,9 +250,9 @@ export default function Profile() {
               ["votes", stats.votes],
             ] as const
           ).map(([key, value]) => (
-            <div key={key} className="rounded-lg bg-neutral-50 dark:bg-neutral-800 p-3 text-center">
-              <div className="text-2xl font-extrabold text-neutral-900 dark:text-neutral-50">{value}</div>
-              <div className="text-xs text-neutral-500 dark:text-neutral-400">{t(`profile.stats.${key}`)}</div>
+            <div key={key} className="rounded-lg bg-base-200 p-3 text-center">
+              <div className="text-2xl font-extrabold text-base-content">{value}</div>
+              <div className="text-xs text-base-content/60">{t(`profile.stats.${key}`)}</div>
             </div>
           ))}
         </div>
@@ -276,10 +260,8 @@ export default function Profile() {
 
       {/* Points */}
       <Card title={t("profile.points.title")}>
-        <p className="text-3xl font-extrabold text-[color:var(--color-brand)]">
-          {formatPrice(balance ?? user.balance)}
-        </p>
-        <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">{t("profile.points.desc")}</p>
+        <p className="text-3xl font-extrabold text-primary">{formatPrice(balance ?? user.balance)}</p>
+        <p className="mt-1 text-sm text-base-content/60">{t("profile.points.desc")}</p>
       </Card>
     </div>
   );

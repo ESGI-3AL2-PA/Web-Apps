@@ -59,14 +59,12 @@ export default function Search() {
   const filterControls = (
     <>
       <div>
-        <h3 className="mb-2 text-sm font-bold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
-          {t("search.category")}
-        </h3>
+        <h3 className="mb-2 text-sm font-bold uppercase tracking-wide text-base-content/60">{t("search.category")}</h3>
         <div className="flex flex-col gap-1 text-sm">
           <button
             onClick={() => setFilter("tag", "")}
             aria-pressed={!tag}
-            className={`rounded px-2 py-1.5 text-left ${!tag ? "bg-[color:var(--color-brand-soft)] font-semibold text-[color:var(--color-brand-dark)]" : "hover:bg-neutral-100 dark:hover:bg-neutral-800"}`}
+            className={`rounded px-2 py-1.5 text-left ${!tag ? "bg-primary/10 font-semibold text-primary" : "hover:bg-base-200"}`}
           >
             {t("search.allCategories")}
           </button>
@@ -76,9 +74,7 @@ export default function Search() {
               onClick={() => setFilter("tag", tg.name)}
               aria-pressed={tag === tg.name}
               className={`rounded px-2 py-1.5 text-left ${
-                tag === tg.name
-                  ? "bg-[color:var(--color-brand-soft)] font-semibold text-[color:var(--color-brand-dark)]"
-                  : "hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                tag === tg.name ? "bg-primary/10 font-semibold text-primary" : "hover:bg-base-200"
               }`}
             >
               {tg.name}
@@ -96,34 +92,25 @@ export default function Search() {
 
       <section>
         <div className="mb-4 flex items-center justify-between gap-3">
-          <h1 className="truncate text-xl font-bold text-neutral-900 dark:text-neutral-50">
+          <h1 className="truncate text-xl font-bold text-base-content">
             {search ? `« ${search} »` : t("search.allListings")}
           </h1>
           <div className="flex shrink-0 items-center gap-3">
-            <span className="hidden text-sm text-neutral-500 dark:text-neutral-400 sm:inline">
+            <span className="hidden text-sm text-base-content/60 sm:inline">
               {t("search.results", { count: total })}
             </span>
             {/* Mobile filter trigger */}
-            <button
-              onClick={() => setFiltersOpen(true)}
-              className="flex items-center gap-1.5 rounded-lg border border-neutral-300 dark:border-neutral-700 px-3 py-1.5 text-sm font-medium text-neutral-700 dark:text-neutral-200 md:hidden"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-                <path d="M4 6h16M7 12h10M10 18h4" strokeLinecap="round" />
-              </svg>
+            <button onClick={() => setFiltersOpen(true)} className="btn btn-soft btn-sm md:hidden">
+              <span className="icon-[tabler--adjustments-horizontal] size-4" />
               {t("search.filters")}
-              {activeFilters > 0 && (
-                <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-[color:var(--color-brand)] px-1 text-[10px] font-bold text-white">
-                  {activeFilters}
-                </span>
-              )}
+              {activeFilters > 0 && <span className="badge badge-primary badge-sm">{activeFilters}</span>}
             </button>
           </div>
         </div>
         {loading ? (
-          <p className="text-neutral-500 dark:text-neutral-400">{t("common.loading")}</p>
+          <p className="text-base-content/60">{t("common.loading")}</p>
         ) : listings.length === 0 ? (
-          <p className="text-neutral-500 dark:text-neutral-400">{t("search.empty")}</p>
+          <p className="text-base-content/60">{t("search.empty")}</p>
         ) : (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
             {listings.map((l) => (
@@ -149,17 +136,14 @@ export default function Search() {
           <div
             ref={sheetRef}
             tabIndex={-1}
-            className="absolute inset-x-0 bottom-0 max-h-[80vh] overflow-y-auto rounded-t-2xl bg-white dark:bg-neutral-900 p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] shadow-2xl outline-none"
+            className="modal-box absolute inset-x-0 bottom-0 max-h-[80vh] overflow-y-auto rounded-t-2xl bg-base-100 p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] shadow-2xl outline-none"
           >
             <h2 id="filter-sheet-title" className="sr-only">
               {t("search.filters")}
             </h2>
-            <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-neutral-300" />
+            <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-base-content/20" />
             <div className="space-y-6">{filterControls}</div>
-            <button
-              onClick={() => setFiltersOpen(false)}
-              className="mt-6 w-full rounded-lg bg-[color:var(--color-brand)] py-3 font-semibold text-white"
-            >
+            <button onClick={() => setFiltersOpen(false)} className="btn btn-primary btn-block mt-6">
               {t("search.results", { count: total })}
             </button>
           </div>

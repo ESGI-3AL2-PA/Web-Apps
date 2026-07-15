@@ -58,21 +58,14 @@ export default function PostListing() {
     }
   };
 
-  const field =
-    "w-full rounded-lg border border-neutral-300 dark:border-neutral-700 px-3 py-2 text-sm outline-none focus:border-[color:var(--color-brand)]";
+  const label = "mb-1 block text-sm font-semibold text-base-content/80";
 
   return (
     <div className="mx-auto max-w-2xl">
-      <h1 className="mb-6 text-2xl font-extrabold text-neutral-900 dark:text-neutral-50">{t("post.title")}</h1>
-      <form
-        onSubmit={onSubmit}
-        className="space-y-5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-6"
-      >
+      <h1 className="mb-6 text-2xl font-extrabold text-base-content">{t("post.title")}</h1>
+      <form onSubmit={onSubmit} className="card space-y-5 border border-base-content/10 bg-base-100 p-6">
         <div>
-          <label
-            htmlFor="post-title"
-            className="mb-1 block text-sm font-semibold text-neutral-700 dark:text-neutral-200"
-          >
+          <label htmlFor="post-title" className={label}>
             {t("post.fieldTitle")}
           </label>
           <input
@@ -81,7 +74,7 @@ export default function PostListing() {
             onChange={(e) => setTitle(e.target.value)}
             required
             maxLength={300}
-            className={field}
+            className="input w-full"
             placeholder={t("post.titlePlaceholder")}
             aria-invalid={error ? true : undefined}
             aria-describedby={error ? "post-error" : undefined}
@@ -89,10 +82,7 @@ export default function PostListing() {
         </div>
 
         <div>
-          <label
-            htmlFor="post-price"
-            className="mb-1 block text-sm font-semibold text-neutral-700 dark:text-neutral-200"
-          >
+          <label htmlFor="post-price" className={label}>
             {t("post.pricePoints")}
           </label>
           <input
@@ -102,19 +92,16 @@ export default function PostListing() {
             type="number"
             min={0}
             required
-            className={field}
+            className="input w-full"
             placeholder="0"
           />
         </div>
 
         <div>
-          <label
-            htmlFor="post-category"
-            className="mb-1 block text-sm font-semibold text-neutral-700 dark:text-neutral-200"
-          >
+          <label htmlFor="post-category" className={label}>
             {t("post.category")}
           </label>
-          <select id="post-category" value={tag} onChange={(e) => setTag(e.target.value)} className={field}>
+          <select id="post-category" value={tag} onChange={(e) => setTag(e.target.value)} className="select w-full">
             <option value="">{t("post.chooseCategory")}</option>
             {tags.map((t) => (
               <option key={t.id} value={t.name}>
@@ -125,10 +112,7 @@ export default function PostListing() {
         </div>
 
         <div>
-          <label
-            htmlFor="post-description"
-            className="mb-1 block text-sm font-semibold text-neutral-700 dark:text-neutral-200"
-          >
+          <label htmlFor="post-description" className={label}>
             {t("post.description")}
           </label>
           <textarea
@@ -137,16 +121,13 @@ export default function PostListing() {
             onChange={(e) => setDescription(e.target.value)}
             required
             rows={5}
-            className={field}
+            className="textarea w-full"
             placeholder={t("post.descriptionPlaceholder")}
           />
         </div>
 
         <div>
-          <label
-            htmlFor="post-photos"
-            className="mb-1 block text-sm font-semibold text-neutral-700 dark:text-neutral-200"
-          >
+          <label htmlFor="post-photos" className={label}>
             {t("post.photos")}
           </label>
           <input
@@ -155,7 +136,7 @@ export default function PostListing() {
             accept="image/*"
             multiple
             onChange={(e) => onFiles(e.target.files)}
-            className="text-sm"
+            className="input w-full"
           />
           {previews.length > 0 && (
             <div className="mt-3 flex flex-wrap gap-2">
@@ -164,7 +145,7 @@ export default function PostListing() {
                   key={src}
                   src={src}
                   alt=""
-                  className="h-20 w-20 rounded-lg border border-neutral-200 dark:border-neutral-700 object-cover"
+                  className="h-20 w-20 rounded-lg border border-base-content/10 object-cover"
                 />
               ))}
             </div>
@@ -172,16 +153,13 @@ export default function PostListing() {
         </div>
 
         {error && (
-          <p id="post-error" role="alert" className="text-sm text-red-600">
+          <p id="post-error" role="alert" className="text-sm text-error">
             {error}
           </p>
         )}
 
-        <button
-          type="submit"
-          disabled={submitting}
-          className="w-full rounded-lg bg-[color:var(--color-brand)] py-3 font-semibold text-white hover:bg-[color:var(--color-brand-dark)] disabled:opacity-60"
-        >
+        <button type="submit" disabled={submitting} className="btn btn-primary btn-block">
+          {submitting && <span className="loading loading-spinner loading-sm" />}
           {submitting ? t("post.submitting") : t("post.submit")}
         </button>
       </form>

@@ -72,8 +72,8 @@ export default function ListingDetail() {
     }
   };
 
-  if (loading) return <p className="text-neutral-500 dark:text-neutral-400">{t("common.loading")}</p>;
-  if (!listing) return <p className="text-neutral-500 dark:text-neutral-400">{t("detail.notFound")}</p>;
+  if (loading) return <p className="text-base-content/60">{t("common.loading")}</p>;
+  if (!listing) return <p className="text-base-content/60">{t("detail.notFound")}</p>;
 
   const images = listing.images ?? [];
   const isOwner = user?.id === listing.authorId;
@@ -82,17 +82,15 @@ export default function ListingDetail() {
 
   return (
     <div className="space-y-4">
-      <Link
-        to="/recherche"
-        className="text-sm text-neutral-500 dark:text-neutral-400 hover:text-[color:var(--color-brand)]"
-      >
+      <Link to="/recherche" className="inline-flex items-center gap-1 text-sm text-base-content/60 hover:text-primary">
+        <span className="icon-[tabler--chevron-left] size-4" />
         {t("detail.back")}
       </Link>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_340px]">
         {/* Gallery */}
-        <div className="overflow-hidden rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900">
-          <div className="aspect-video w-full bg-neutral-100 dark:bg-neutral-800">
+        <div className="overflow-hidden rounded-xl border border-base-content/10 bg-base-100">
+          <div className="aspect-video w-full bg-base-200">
             {images.length > 0 ? (
               <AuthedImage src={images[active]!} alt={listing.title} className="h-full w-full object-contain" />
             ) : (
@@ -111,7 +109,7 @@ export default function ListingDetail() {
                   key={src}
                   onClick={() => setActive(i)}
                   className={`h-16 w-16 shrink-0 overflow-hidden rounded border-2 ${
-                    i === active ? "border-[color:var(--color-brand)]" : "border-transparent"
+                    i === active ? "border-primary" : "border-transparent"
                   }`}
                 >
                   <AuthedImage src={src} alt="" className="h-full w-full object-cover" />
@@ -123,59 +121,46 @@ export default function ListingDetail() {
 
         {/* Sidebar */}
         <aside className="space-y-4">
-          <div className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-5">
-            <h1 className="text-xl font-bold text-neutral-900 dark:text-neutral-50">{listing.title}</h1>
-            <p className="mt-1 text-2xl font-extrabold text-[color:var(--color-brand)]">{formatPrice(listing.price)}</p>
-            <p className="mt-1 text-xs text-neutral-500">
+          <div className="rounded-xl border border-base-content/10 bg-base-100 p-5">
+            <h1 className="text-xl font-bold text-base-content">{listing.title}</h1>
+            <p className="mt-1 text-2xl font-extrabold text-primary">{formatPrice(listing.price)}</p>
+            <p className="mt-1 text-xs text-base-content/60">
               {t("detail.publishedOn", { date: formatDate(listing.createdAt) })}
             </p>
 
             {canTake && (
-              <button
-                onClick={takeService}
-                disabled={taking}
-                className="mt-4 w-full rounded-lg bg-[color:var(--color-brand)] py-2.5 font-semibold text-white hover:bg-[color:var(--color-brand-dark)] disabled:opacity-60"
-              >
+              <button onClick={takeService} disabled={taking} className="btn btn-primary btn-block mt-4">
                 {taking ? t("detail.taking") : t("detail.takeService", { price: formatPrice(listing.price) })}
               </button>
             )}
             {!isOwner && alreadyTaken && (
               <Link
                 to="/mes-contrats"
-                className="mt-4 block rounded-lg border border-green-200 bg-green-50 px-3 py-2.5 text-center text-sm font-medium text-green-800 hover:bg-green-100"
+                className="mt-4 block rounded-lg border border-success/30 bg-success/10 px-3 py-2.5 text-center text-sm font-medium text-success hover:bg-success/20"
               >
                 {t("detail.alreadyTaken")}
               </Link>
             )}
             {!isOwner && (
-              <button
-                onClick={contactSeller}
-                disabled={contacting}
-                className="mt-2 w-full rounded-lg border border-neutral-300 dark:border-neutral-700 py-2.5 font-semibold text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-800 disabled:opacity-60"
-              >
+              <button onClick={contactSeller} disabled={contacting} className="btn btn-soft btn-block mt-2">
                 {contacting ? t("detail.contacting") : t("detail.contactSeller")}
               </button>
             )}
             {isOwner && (
-              <Link
-                to="/mes-annonces"
-                className="mt-4 block w-full rounded-lg border border-neutral-300 dark:border-neutral-700 py-2.5 text-center font-semibold text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-800"
-              >
+              <Link to="/mes-annonces" className="btn btn-soft btn-block mt-4">
                 {t("detail.manageListing")}
               </Link>
             )}
           </div>
 
           {seller && (
-            <div className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-5">
-              <h3 className="text-sm font-bold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
-                {t("detail.seller")}
-              </h3>
+            <div className="rounded-xl border border-base-content/10 bg-base-100 p-5">
+              <h3 className="text-sm font-bold uppercase tracking-wide text-base-content/60">{t("detail.seller")}</h3>
               <div className="mt-2 flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[color:var(--color-brand-soft)] font-bold text-[color:var(--color-brand-dark)]">
+                <div className="flex size-10 items-center justify-center rounded-full bg-primary/10 font-bold text-primary">
                   {seller.firstName.charAt(0)}
                 </div>
-                <span className="font-medium text-neutral-800 dark:text-neutral-100">
+                <span className="font-medium text-base-content">
                   {seller.firstName} {seller.lastName}
                 </span>
               </div>
@@ -184,16 +169,13 @@ export default function ListingDetail() {
         </aside>
       </div>
 
-      <div className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-5">
-        <h2 className="mb-2 text-lg font-bold text-neutral-900 dark:text-neutral-50">{t("detail.description")}</h2>
-        <p className="whitespace-pre-wrap text-neutral-700 dark:text-neutral-200">{listing.description}</p>
+      <div className="rounded-xl border border-base-content/10 bg-base-100 p-5">
+        <h2 className="mb-2 text-lg font-bold text-base-content">{t("detail.description")}</h2>
+        <p className="whitespace-pre-wrap text-base-content/80">{listing.description}</p>
         {listing.tags && listing.tags.length > 0 && (
           <div className="mt-4 flex flex-wrap gap-2">
             {listing.tags.map((t) => (
-              <span
-                key={t}
-                className="rounded-full bg-neutral-100 dark:bg-neutral-800 px-3 py-1 text-xs font-medium text-neutral-600 dark:text-neutral-300"
-              >
+              <span key={t} className="badge badge-soft">
                 {t}
               </span>
             ))}

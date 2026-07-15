@@ -10,10 +10,10 @@ import { useDialog } from "../components/dialog-context";
 const CATEGORIES = ["cleanliness", "safety", "vandalism", "noise", "other"] as const;
 
 const STATUS_CLASS: Record<IncidentStatus, string> = {
-  open: "bg-amber-100 text-amber-800",
-  in_progress: "bg-blue-100 text-blue-800",
-  resolved: "bg-green-100 text-green-800",
-  closed: "bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-200",
+  open: "badge badge-warning badge-soft",
+  in_progress: "badge badge-info badge-soft",
+  resolved: "badge badge-success badge-soft",
+  closed: "badge badge-neutral badge-soft",
 };
 
 export default function Incidents() {
@@ -67,25 +67,18 @@ export default function Incidents() {
   return (
     <div className="mx-auto max-w-2xl space-y-6">
       <div>
-        <h1 className="text-2xl font-extrabold text-neutral-900 dark:text-neutral-50">{t("incidents.title")}</h1>
-        <p className="text-neutral-500 dark:text-neutral-400">{t("incidents.subtitle")}</p>
+        <h1 className="text-2xl font-extrabold text-base-content">{t("incidents.title")}</h1>
+        <p className="text-base-content/60">{t("incidents.subtitle")}</p>
       </div>
 
       {/* Report form */}
-      <form
-        onSubmit={submit}
-        className="space-y-3 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-5"
-      >
-        <h2 className="text-lg font-bold text-neutral-900 dark:text-neutral-50">{t("incidents.report")}</h2>
+      <form onSubmit={submit} className="space-y-3 rounded-box border border-base-content/10 bg-base-100 p-5">
+        <h2 className="text-lg font-bold text-base-content">{t("incidents.report")}</h2>
         <label className="block">
-          <span className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
+          <span className="text-xs font-semibold uppercase tracking-wide text-base-content/60">
             {t("incidents.category")}
           </span>
-          <select
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
-            className="mt-1 h-10 w-full rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-3 text-sm outline-none focus:border-[color:var(--color-brand)]"
-          >
+          <select value={category} onChange={(e) => setCategory(e.target.value)} className="select mt-1 w-full">
             {CATEGORIES.map((c) => (
               <option key={c} value={c}>
                 {t(`incidents.categories.${c}`)}
@@ -94,7 +87,7 @@ export default function Incidents() {
           </select>
         </label>
         <label className="block">
-          <span className="text-xs font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
+          <span className="text-xs font-semibold uppercase tracking-wide text-base-content/60">
             {t("incidents.description")}
           </span>
           <textarea
@@ -102,42 +95,33 @@ export default function Incidents() {
             onChange={(e) => setDescription(e.target.value)}
             rows={3}
             placeholder={t("incidents.descriptionPlaceholder")}
-            className="mt-1 w-full rounded-lg border border-neutral-300 dark:border-neutral-700 px-3 py-2 text-sm outline-none focus:border-[color:var(--color-brand)]"
+            className="textarea mt-1 w-full"
           />
         </label>
-        <button
-          type="submit"
-          disabled={submitting || !description.trim() || !districtId}
-          className="rounded-lg bg-[color:var(--color-brand)] px-4 py-2 text-sm font-semibold text-white hover:bg-[color:var(--color-brand-dark)] disabled:opacity-60"
-        >
+        <button type="submit" disabled={submitting || !description.trim() || !districtId} className="btn btn-primary">
           {submitting ? t("incidents.submitting") : t("incidents.submit")}
         </button>
       </form>
 
       {/* My incidents */}
       <section>
-        <h2 className="mb-3 text-lg font-bold text-neutral-900 dark:text-neutral-50">{t("incidents.mine")}</h2>
+        <h2 className="mb-3 text-lg font-bold text-base-content">{t("incidents.mine")}</h2>
         {loading ? (
-          <p className="text-sm text-neutral-500 dark:text-neutral-400">{t("common.loading")}</p>
+          <p className="text-sm text-base-content/60">{t("common.loading")}</p>
         ) : incidents.length === 0 ? (
-          <p className="text-sm text-neutral-500 dark:text-neutral-400">{t("incidents.empty")}</p>
+          <p className="text-sm text-base-content/60">{t("incidents.empty")}</p>
         ) : (
           <ul className="space-y-3">
             {incidents.map((i) => (
-              <li
-                key={i.id}
-                className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-4"
-              >
+              <li key={i.id} className="rounded-box border border-base-content/10 bg-base-100 p-4">
                 <div className="flex items-center justify-between gap-3">
-                  <span className="text-sm font-semibold text-neutral-900 dark:text-neutral-50">
+                  <span className="text-sm font-semibold text-base-content">
                     {t(`incidents.categories.${i.category}`, { defaultValue: i.category })}
                   </span>
-                  <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${STATUS_CLASS[i.status]}`}>
-                    {t(`incidents.status.${i.status}`)}
-                  </span>
+                  <span className={STATUS_CLASS[i.status]}>{t(`incidents.status.${i.status}`)}</span>
                 </div>
-                <p className="mt-1 text-sm text-neutral-700 dark:text-neutral-200">{i.description}</p>
-                <p className="mt-1 text-xs text-neutral-500">{formatRelative(i.createdAt)}</p>
+                <p className="mt-1 text-sm text-base-content/80">{i.description}</p>
+                <p className="mt-1 text-xs text-base-content/60">{formatRelative(i.createdAt)}</p>
               </li>
             ))}
           </ul>

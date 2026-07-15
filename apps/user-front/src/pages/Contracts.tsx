@@ -12,10 +12,10 @@ import { useDialog } from "../components/dialog-context";
 pdfjs.GlobalWorkerOptions.workerSrc = new URL("pdfjs-dist/build/pdf.worker.min.mjs", import.meta.url).toString();
 
 const STATUS_CLASS: Record<ContractSignatureStatus, string> = {
-  draft: "bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-200",
-  pending: "bg-amber-100 text-amber-800",
-  completed: "bg-green-100 text-green-800",
-  rejected: "bg-red-100 text-red-800",
+  draft: "badge badge-neutral badge-soft",
+  pending: "badge badge-warning badge-soft",
+  completed: "badge badge-success badge-soft",
+  rejected: "badge badge-error badge-soft",
 };
 
 export default function Contracts() {
@@ -71,65 +71,45 @@ export default function Contracts() {
   const canDispute = (c: ContractResponseDto) =>
     !c.disputed && (c.signatureStatus === "pending" || c.signatureStatus === "completed");
 
-  if (loading) return <p className="text-neutral-500 dark:text-neutral-400">{t("common.loading")}</p>;
+  if (loading) return <p className="text-base-content/60">{t("common.loading")}</p>;
 
   return (
     <div className="mx-auto max-w-3xl">
-      <h1 className="mb-6 text-2xl font-extrabold text-neutral-900 dark:text-neutral-50">{t("contracts.title")}</h1>
+      <h1 className="mb-6 text-2xl font-extrabold text-base-content">{t("contracts.title")}</h1>
 
       {contracts.length === 0 ? (
-        <p className="text-neutral-500 dark:text-neutral-400">{t("contracts.empty")}</p>
+        <p className="text-base-content/60">{t("contracts.empty")}</p>
       ) : (
         <ul className="space-y-3">
           {contracts.map((c) => (
-            <li
-              key={c.id}
-              className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-4"
-            >
+            <li key={c.id} className="rounded-box border border-base-content/10 bg-base-100 p-4">
               <div className="flex items-center justify-between gap-4">
                 <div>
-                  <p className="font-semibold text-neutral-900 dark:text-neutral-50">
-                    {t("contracts.number", { id: c.id.slice(0, 8) })}
-                  </p>
-                  <p className="text-sm text-neutral-500 dark:text-neutral-400">{formatPrice(c.price)}</p>
+                  <p className="font-semibold text-base-content">{t("contracts.number", { id: c.id.slice(0, 8) })}</p>
+                  <p className="text-sm text-base-content/60">{formatPrice(c.price)}</p>
                 </div>
                 <div className="flex items-center gap-2">
-                  {c.disputed && (
-                    <span className="rounded-full bg-red-100 px-2.5 py-1 text-xs font-medium text-red-800">
-                      {t("contracts.disputed")}
-                    </span>
-                  )}
-                  <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${STATUS_CLASS[c.signatureStatus]}`}>
-                    {t(`contracts.status.${c.signatureStatus}`)}
-                  </span>
+                  {c.disputed && <span className="badge badge-error badge-soft">{t("contracts.disputed")}</span>}
+                  <span className={STATUS_CLASS[c.signatureStatus]}>{t(`contracts.status.${c.signatureStatus}`)}</span>
                 </div>
               </div>
 
               <div className="mt-3 flex flex-wrap gap-2">
                 {/* Signing happens on Documenso; the api hands us the caller's signing URL. */}
                 {c.signingUrl && (
-                  <a
-                    href={c.signingUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="rounded-lg bg-[color:var(--color-brand)] px-3 py-1.5 text-sm font-semibold text-white hover:bg-[color:var(--color-brand-dark)]"
-                  >
+                  <a href={c.signingUrl} target="_blank" rel="noopener noreferrer" className="btn btn-primary btn-sm">
                     {t("contracts.sign")}
                   </a>
                 )}
                 {c.signingUrl && (
-                  <button
-                    onClick={() => onResend(c.id)}
-                    disabled={busyId === c.id}
-                    className="rounded-lg border border-neutral-300 dark:border-neutral-700 px-3 py-1.5 text-sm font-medium text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-800 disabled:opacity-60"
-                  >
+                  <button onClick={() => onResend(c.id)} disabled={busyId === c.id} className="btn btn-soft btn-sm">
                     {busyId === c.id ? t("contracts.resending") : t("contracts.resend")}
                   </button>
                 )}
                 {c.signatureStatus === "completed" && (
                   <button
                     onClick={() => setPreviewId(previewId === c.id ? null : c.id)}
-                    className="rounded-lg border border-neutral-300 dark:border-neutral-700 px-3 py-1.5 text-sm font-medium text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-800"
+                    className="btn btn-soft btn-sm"
                   >
                     {previewId === c.id ? t("contracts.hidePdf") : t("contracts.viewPdf")}
                   </button>
@@ -138,7 +118,7 @@ export default function Contracts() {
                   <button
                     onClick={() => setDisputeFor(c)}
                     disabled={busyId === c.id}
-                    className="rounded-lg border border-red-300 dark:border-red-800 px-3 py-1.5 text-sm font-medium text-red-700 dark:text-red-300 hover:bg-red-50 dark:hover:bg-red-950 disabled:opacity-60"
+                    className="btn btn-soft btn-error btn-sm"
                   >
                     {t("contracts.dispute")}
                   </button>
@@ -192,21 +172,17 @@ function DisputeModal({
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center" role="dialog" aria-modal="true">
       <button aria-label={t("common.cancel")} onClick={onClose} className="absolute inset-0 bg-black/40" />
-      <div className="relative w-full max-w-sm rounded-t-2xl bg-white dark:bg-neutral-900 p-5 shadow-2xl sm:rounded-2xl">
+      <div className="modal-box relative w-full max-w-sm rounded-t-2xl bg-base-100 shadow-2xl sm:rounded-2xl">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-bold text-neutral-900 dark:text-neutral-50">
+          <h2 className="text-lg font-bold text-base-content">
             {t("contracts.dispute")} · {t("contracts.number", { id: contract.id.slice(0, 8) })}
           </h2>
-          <button
-            onClick={onClose}
-            aria-label={t("common.cancel")}
-            className="text-2xl leading-none text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300"
-          >
-            ×
+          <button onClick={onClose} aria-label={t("common.cancel")} className="btn btn-text btn-circle btn-sm">
+            <span className="icon-[tabler--x] size-5" />
           </button>
         </div>
         <form onSubmit={submit}>
-          <label htmlFor="dispute-reason" className="mb-1.5 block text-sm text-neutral-600 dark:text-neutral-300">
+          <label htmlFor="dispute-reason" className="mb-1.5 block text-sm text-base-content/70">
             {t("contracts.disputeReason")}
           </label>
           <textarea
@@ -215,22 +191,14 @@ function DisputeModal({
             onChange={(e) => setReason(e.target.value)}
             rows={4}
             autoFocus
-            className="w-full rounded-lg border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 p-2.5 text-sm text-neutral-900 dark:text-neutral-50 focus:outline-none focus:ring-2 focus:ring-[color:var(--color-brand)]"
+            className="textarea w-full"
           />
-          {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+          {error && <p className="mt-2 text-sm text-error">{error}</p>}
           <div className="mt-5 flex justify-end gap-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-lg border border-neutral-300 dark:border-neutral-700 px-4 py-2 text-sm font-semibold text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-800"
-            >
+            <button type="button" onClick={onClose} className="btn btn-soft">
               {t("common.cancel")}
             </button>
-            <button
-              type="submit"
-              disabled={busy}
-              className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60"
-            >
+            <button type="submit" disabled={busy} className="btn btn-error">
               {busy ? t("contracts.resending") : t("contracts.disputeSubmit")}
             </button>
           </div>
@@ -259,11 +227,11 @@ function ContractPdf({ id }: { id: string }) {
     };
   }, [id]);
 
-  if (failed) return <p className="mt-3 text-sm text-red-700">{t("contracts.pdfError")}</p>;
-  if (!file) return <p className="mt-3 text-sm text-neutral-500 dark:text-neutral-400">{t("contracts.pdfLoading")}</p>;
+  if (failed) return <p className="mt-3 text-sm text-error">{t("contracts.pdfError")}</p>;
+  if (!file) return <p className="mt-3 text-sm text-base-content/60">{t("contracts.pdfLoading")}</p>;
 
   return (
-    <div className="mt-3 overflow-x-auto rounded-lg border border-neutral-200 dark:border-neutral-700">
+    <div className="mt-3 overflow-x-auto rounded-box border border-base-content/10">
       <Document file={file} onLoadSuccess={({ numPages }) => setPages(numPages)} loading={t("contracts.pdfLoading")}>
         {Array.from({ length: pages }, (_, i) => (
           <Page key={i} pageNumber={i + 1} width={640} />

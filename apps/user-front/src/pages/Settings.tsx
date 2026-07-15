@@ -36,9 +36,9 @@ function describeDevice(ua: string | null, fallback: string): string {
 
 function Card({ title, description, children }: { title: string; description?: string; children: React.ReactNode }) {
   return (
-    <section className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-5">
-      <h2 className="text-lg font-bold text-neutral-900 dark:text-neutral-50">{title}</h2>
-      {description && <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">{description}</p>}
+    <section className="card border border-base-content/10 bg-base-100 p-5">
+      <h2 className="text-lg font-bold text-base-content">{title}</h2>
+      {description && <p className="mt-1 text-sm text-base-content/60">{description}</p>}
       <div className="mt-4">{children}</div>
     </section>
   );
@@ -175,11 +175,11 @@ export default function Settings() {
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
-      <h1 className="text-2xl font-extrabold text-neutral-900 dark:text-neutral-50">{t("settings.title")}</h1>
+      <h1 className="text-2xl font-extrabold text-base-content">{t("settings.title")}</h1>
 
       {/* Appearance */}
       <Card title={t("settings.appearance.title")} description={t("settings.appearance.desc")}>
-        <div className="inline-flex overflow-hidden rounded-lg border border-neutral-300 dark:border-neutral-700">
+        <div className="inline-flex overflow-hidden rounded-lg border border-base-content/20">
           {(["light", "dark"] as const).map((mode) => (
             <button
               key={mode}
@@ -187,8 +187,8 @@ export default function Settings() {
               aria-pressed={theme === mode}
               className={`px-4 py-2 text-sm font-semibold ${
                 theme === mode
-                  ? "bg-[color:var(--color-brand)] text-white"
-                  : "bg-white dark:bg-neutral-900 text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-800"
+                  ? "bg-primary text-primary-content"
+                  : "bg-base-100 text-base-content/80 hover:bg-base-200"
               }`}
             >
               {t(`settings.appearance.${mode}`)}
@@ -200,13 +200,9 @@ export default function Settings() {
       {/* Password */}
       <Card title={t("settings.password.title")} description={t("settings.password.desc")}>
         {pwSent ? (
-          <p className="text-sm font-medium text-green-700">{t("settings.password.sent")}</p>
+          <p className="text-sm font-medium text-success">{t("settings.password.sent")}</p>
         ) : (
-          <button
-            onClick={onResetPassword}
-            disabled={busy === "password"}
-            className="rounded-lg bg-[color:var(--color-brand)] px-4 py-2 text-sm font-semibold text-white hover:bg-[color:var(--color-brand-dark)] disabled:opacity-60"
-          >
+          <button onClick={onResetPassword} disabled={busy === "password"} className="btn btn-primary">
             {t("settings.password.action")}
           </button>
         )}
@@ -215,26 +211,26 @@ export default function Settings() {
       {/* Active sessions */}
       <Card title={t("settings.sessions.title")} description={t("settings.sessions.desc")}>
         {loadingSessions ? (
-          <p className="text-sm text-neutral-500 dark:text-neutral-400">{t("common.loading")}</p>
+          <p className="text-sm text-base-content/60">{t("common.loading")}</p>
         ) : sessions.length === 0 ? (
-          <p className="text-sm text-neutral-500 dark:text-neutral-400">{t("settings.sessions.empty")}</p>
+          <p className="text-sm text-base-content/60">{t("settings.sessions.empty")}</p>
         ) : (
           <>
-            <ul className="divide-y divide-neutral-100 dark:divide-neutral-800">
+            <ul className="divide-y divide-base-content/10">
               {sessions.map((s) => (
                 <li key={s.id} className="flex items-center gap-3 py-3">
                   <div className="min-w-0 flex-1">
-                    <p className="flex items-center gap-2 text-sm font-semibold text-neutral-900 dark:text-neutral-50">
+                    <p className="flex items-center gap-2 text-sm font-semibold text-base-content">
                       <span className="truncate">
                         {describeDevice(s.userAgent, t("settings.sessions.unknownDevice"))}
                       </span>
                       {s.current && (
-                        <span className="shrink-0 rounded-full bg-[color:var(--color-brand-soft)] px-2 py-0.5 text-[11px] font-semibold text-[color:var(--color-brand-dark)]">
+                        <span className="badge badge-primary badge-soft badge-sm shrink-0">
                           {t("settings.sessions.current")}
                         </span>
                       )}
                     </p>
-                    <p className="mt-0.5 truncate text-xs text-neutral-500 dark:text-neutral-400">
+                    <p className="mt-0.5 truncate text-xs text-base-content/60">
                       {s.ip ?? "—"} ·{" "}
                       {t("settings.sessions.lastUsed", { when: formatRelative(s.lastUsedAt ?? s.createdAt) })}
                     </p>
@@ -242,7 +238,7 @@ export default function Settings() {
                   <button
                     onClick={() => onRevoke(s)}
                     disabled={busy === `revoke:${s.id}`}
-                    className="shrink-0 rounded-lg border border-neutral-300 dark:border-neutral-700 px-3 py-1.5 text-sm font-medium text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-800 disabled:opacity-60"
+                    className="btn btn-soft btn-sm shrink-0"
                   >
                     {s.current ? t("settings.sessions.logout") : t("settings.sessions.revoke")}
                   </button>
@@ -250,11 +246,7 @@ export default function Settings() {
               ))}
             </ul>
             {hasOthers && (
-              <button
-                onClick={onRevokeOthers}
-                disabled={busy === "revoke-others"}
-                className="mt-3 rounded-lg border border-neutral-300 dark:border-neutral-700 px-4 py-2 text-sm font-semibold text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-800 disabled:opacity-60"
-              >
+              <button onClick={onRevokeOthers} disabled={busy === "revoke-others"} className="btn btn-soft btn-sm mt-3">
                 {t("settings.sessions.revokeOthers")}
               </button>
             )}
@@ -264,24 +256,16 @@ export default function Settings() {
 
       {/* GDPR data export */}
       <Card title={t("settings.data.title")} description={t("settings.data.desc")}>
-        <button
-          onClick={onExport}
-          disabled={busy === "export"}
-          className="rounded-lg border border-neutral-300 dark:border-neutral-700 px-4 py-2 text-sm font-semibold text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-800 disabled:opacity-60"
-        >
+        <button onClick={onExport} disabled={busy === "export"} className="btn btn-soft">
           {t("settings.data.action")}
         </button>
       </Card>
 
       {/* Danger zone */}
-      <section className="rounded-xl border border-red-200 bg-red-50 p-5">
-        <h2 className="text-lg font-bold text-red-700">{t("settings.danger.title")}</h2>
-        <p className="mt-1 text-sm text-red-700">{t("settings.danger.desc")}</p>
-        <button
-          onClick={onDelete}
-          disabled={busy === "delete"}
-          className="mt-4 rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60"
-        >
+      <section className="rounded-box border border-error/30 bg-error/10 p-5">
+        <h2 className="text-lg font-bold text-error">{t("settings.danger.title")}</h2>
+        <p className="mt-1 text-sm text-error">{t("settings.danger.desc")}</p>
+        <button onClick={onDelete} disabled={busy === "delete"} className="btn btn-error mt-4">
           {t("settings.danger.action")}
         </button>
       </section>
