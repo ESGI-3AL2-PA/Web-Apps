@@ -25,11 +25,12 @@ export class ImageAttachError extends AppError {
   }
 }
 
-export const errorHandler = (err: Error, _req: Request, res: Response, _next: NextFunction) => {
+export const errorHandler = (err: Error, req: Request, res: Response, _next: NextFunction) => {
   if (err instanceof AppError) {
     return res.status(err.statusCode).json({ message: err.message });
   }
 
-  console.error("Unhandled error:", err);
+  // req.log is the pino-http per-request child logger (carries the correlation id).
+  req.log.error({ err }, "Unhandled error");
   return res.status(500).json({ message: "Internal server error" });
 };

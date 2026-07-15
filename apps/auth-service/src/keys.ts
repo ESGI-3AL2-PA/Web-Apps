@@ -1,5 +1,6 @@
 import { readFileSync } from "fs";
 import { generateKeyPair, exportJWK, importPKCS8, importSPKI, type CryptoKey, type JWK, type KeyObject } from "jose";
+import { logger } from "./logger.js";
 
 type KeyLike = CryptoKey | KeyObject;
 
@@ -45,7 +46,7 @@ export const initKeys = async () => {
       "AUTH_PRIVATE_KEY and AUTH_PUBLIC_KEY must both be set in production (refusing to generate ephemeral keys)",
     );
   } else {
-    console.warn("⚠  No AUTH_PRIVATE_KEY / AUTH_PUBLIC_KEY found — generating ephemeral dev keys");
+    logger.warn("No AUTH_PRIVATE_KEY / AUTH_PUBLIC_KEY found — generating ephemeral dev keys");
     const pair = await generateKeyPair("RS256");
     privateKey = pair.privateKey;
     publicKey = pair.publicKey;

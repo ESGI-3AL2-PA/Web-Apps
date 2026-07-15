@@ -1,6 +1,7 @@
 import type { IUserRepository } from "../../repositories/User/user.repository.js";
 import type { IGraphRepository } from "../../repositories/Graph/graph.repository.js";
 import type { IConversationRepository } from "../../repositories/Conversation/conversation.repository.js";
+import { logger } from "../../logger.js";
 import type { IVoteRepository } from "../../repositories/Vote/vote.repository.js";
 import type { INotificationRepository } from "../../repositories/Notification/notification.repository.js";
 import type { IListingRepository } from "../../repositories/Listing/listing.repository.js";
@@ -51,15 +52,12 @@ const purgeAuthSessions = async (userId: string): Promise<boolean> => {
         body: JSON.stringify({ userId }),
       });
       if (purgeRes.ok) return true;
-      console.error(
-        `auth-service session purge failed for user ${userId}: HTTP ${purgeRes.status} ` +
-          `(attempt ${attempt}/${PURGE_MAX_ATTEMPTS})`,
+      logger.error(
+        { userId, status: purgeRes.status, attempt, maxAttempts: PURGE_MAX_ATTEMPTS },
+        "auth-service session purge failed",
       );
     } catch (err) {
-      console.error(
-        `auth-service session purge errored for user ${userId} (attempt ${attempt}/${PURGE_MAX_ATTEMPTS}):`,
-        err,
-      );
+      logger.error({ err, userId, attempt, maxAttempts: PURGE_MAX_ATTEMPTS }, "auth-service session purge errored");
     }
     if (attempt < PURGE_MAX_ATTEMPTS) await sleep(PURGE_RETRY_BASE_MS * attempt);
   }
@@ -175,7 +173,7 @@ export const deleteUserUseCase = (deps: DeleteUserDeps) => {
     // sessions are the only thing left to reconcile.
     const purged = await purgeAuthSessions(id);
     if (!purged) {
-      console.error(`erasure incomplete for user ${id}: auth sessions not purged after ${PURGE_MAX_ATTEMPTS} attempts`);
+      logger.error({ userId: id, maxAttempts: PURGE_MAX_ATTEMPTS }, "erasure incomplete: auth sessions not purged");
       return { kind: "sessions-purge-failed" };
     }
 
