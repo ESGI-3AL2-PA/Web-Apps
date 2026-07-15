@@ -305,5 +305,17 @@
     "error": "Vote impossible (sondage fermé ou déjà voté).",
     "responses_one": "{{count}} réponse",
     "responses_other": "{{count}} réponses"
+  },
+  "legal": {
+    "draftBadge": "BROUILLON —",
+    "draftBanner": "document provisoire, en attente de relecture juridique. Les bases légales, durées de conservation et coordonnées doivent être confirmées avant publication.",
+    "lastUpdated": "Dernière mise à jour : [à compléter à la publication]",
+    "backToApp": "Retour à l'application",
+    "nav": {
+      "privacy": "Confidentialité",
+      "terms": "CGU",
+      "cookies": "Cookies",
+      "notice": "Mentions légales"
+    }
   }
 }

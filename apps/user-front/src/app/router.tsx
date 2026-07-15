@@ -15,8 +15,25 @@ import Contracts from "../pages/Contracts";
 import Profile from "../pages/Profile";
 import Incidents from "../pages/Incidents";
 import NotFound from "../pages/NotFound";
+import LegalLayout from "../pages/legal/LegalLayout";
+import LegalPage from "../pages/legal/LegalPage";
+import { cookieDoc, legalNoticeDoc, privacyDoc, termsDoc } from "../pages/legal/content";
 
 export const router = createBrowserRouter([
+  {
+    // Public legal notices — intentionally outside ProtectedRoute so they are
+    // reachable without an account (GDPR Art. 12–14 accessibility).
+    element: <LegalLayout />,
+    children: [
+      { path: "/privacy", element: <LegalPage doc={privacyDoc} /> },
+      { path: "/confidentialite", element: <LegalPage doc={privacyDoc} /> },
+      { path: "/cgu", element: <LegalPage doc={termsDoc} /> },
+      { path: "/terms", element: <LegalPage doc={termsDoc} /> },
+      { path: "/cookies", element: <LegalPage doc={cookieDoc} /> },
+      { path: "/legal", element: <LegalPage doc={legalNoticeDoc} /> },
+      { path: "/mentions-legales", element: <LegalPage doc={legalNoticeDoc} /> },
+    ],
+  },
   {
     element: (
       <ProtectedRoute roles={["user", "admin"]} forbiddenRedirect={config.adminUrl}>

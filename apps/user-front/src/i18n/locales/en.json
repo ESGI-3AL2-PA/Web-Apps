@@ -305,5 +305,17 @@
     "error": "Vote failed (poll closed or already voted).",
     "responses_one": "{{count}} response",
     "responses_other": "{{count}} responses"
+  },
+  "legal": {
+    "draftBadge": "DRAFT —",
+    "draftBanner": "provisional document, pending legal review. Lawful bases, retention periods and contact details must be confirmed before publication.",
+    "lastUpdated": "Last updated: [to be set at publication]",
+    "backToApp": "Back to the app",
+    "nav": {
+      "privacy": "Privacy",
+      "terms": "Terms",
+      "cookies": "Cookies",
+      "notice": "Legal notice"
+    }
   }
 }

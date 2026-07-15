@@ -37,7 +37,17 @@ export interface Dict {
   features: { eyebrow: string; title: string; items: Feature[] };
   how: { eyebrow: string; title: string; steps: Step[] };
   cta: { title: string; body: string; primary: string; secondary: string };
-  footer: { tagline: string; product: string; scoped: string; rights: string };
+  footer: {
+    tagline: string;
+    product: string;
+    scoped: string;
+    rights: string;
+    legal: string;
+    privacy: string;
+    terms: string;
+    cookies: string;
+    notice: string;
+  };
 }
 
 export const translations: Record<Lang, Dict> = {
@@ -123,6 +133,11 @@ export const translations: Record<Lang, Dict> = {
       product: "Produit",
       scoped: "Chaque quartier, son propre réseau.",
       rights: "Connected NeighBours",
+      legal: "Légal",
+      privacy: "Confidentialité",
+      terms: "CGU",
+      cookies: "Cookies",
+      notice: "Mentions légales",
     },
   },
   en: {
@@ -207,6 +222,11 @@ export const translations: Record<Lang, Dict> = {
       product: "Product",
       scoped: "Every neighbourhood, its own network.",
       rights: "Connected NeighBours",
+      legal: "Legal",
+      privacy: "Privacy",
+      terms: "Terms",
+      cookies: "Cookies",
+      notice: "Legal notice",
     },
   },
 };
