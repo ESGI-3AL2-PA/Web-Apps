@@ -1,5 +1,5 @@
 import { z } from "../zod";
-import { UserResponseDtoSchema } from "./user.dto";
+import { UserResponseDtoSchema, LangSchema } from "./user.dto";
 import { StrongPasswordSchema } from "./password.schema";
 
 export const LoginRequestDtoSchema = z
@@ -165,6 +165,9 @@ export const RegisterRequestDtoSchema = z
       description: "Min 12 chars with upper, lower, digit, and symbol",
     }),
     address: z.string().openapi({ description: "User's address", example: "12 Rue de la Paix, Paris" }),
+    lang: LangSchema.optional().openapi({
+      description: "Active UI language for transactional emails; falls back to Accept-Language, then fr",
+    }),
   })
   .openapi({ title: "RegisterRequest" });
 export type RegisterRequestDto = z.infer<typeof RegisterRequestDtoSchema>;

@@ -4,6 +4,9 @@ import { StrongPasswordSchema } from "./password.schema";
 export const UserRoleSchema = z.enum(["user", "admin", "superAdmin"]);
 export type UserRole = z.infer<typeof UserRoleSchema>;
 
+export const LangSchema = z.enum(["fr", "en"]);
+export type Lang = z.infer<typeof LangSchema>;
+
 export const UserResponseDtoSchema = z
   .object({
     id: z.string().openapi({ description: "Unique user identifier" }),
@@ -23,6 +26,9 @@ export const UserResponseDtoSchema = z
     banned: z.boolean().optional().openapi({ description: "Whether the account is banned (blocked from logging in)" }),
     emailVerified: z.boolean().openapi({ description: "Whether the email has been verified" }),
     totpEnabled: z.boolean().openapi({ description: "Whether the user has TOTP MFA enabled" }),
+    lang: LangSchema.optional().openapi({
+      description: "Preferred language for transactional emails (defaults to fr)",
+    }),
     createdAt: z.string().datetime().openapi({ description: "Creation timestamp" }),
     updatedAt: z.string().datetime().openapi({ description: "Last update timestamp" }),
   })
@@ -39,6 +45,9 @@ export const CreateUserDtoSchema = z
       description: "Min 12 chars with upper, lower, digit, and symbol",
     }),
     address: z.string().openapi({ description: "User's address", example: "12 Rue de la Paix, Paris" }),
+    lang: LangSchema.optional().openapi({
+      description: "Preferred language for transactional emails (defaults to fr)",
+    }),
   })
   .openapi({ title: "CreateUser" });
 export type CreateUserDto = z.infer<typeof CreateUserDtoSchema>;
@@ -61,6 +70,7 @@ export const UpdateUserDtoSchema = z
       description: "New password — min 12 chars with upper, lower, digit, and symbol",
     }),
     address: z.string().optional().openapi({ description: "User's address", example: "12 Rue de la Paix, Paris" }),
+    lang: LangSchema.optional().openapi({ description: "Preferred language for transactional emails" }),
   })
   .refine((data) => !data.newPassword || !!data.currentPassword, {
     message: "currentPassword is required when setting newPassword",

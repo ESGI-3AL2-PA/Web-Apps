@@ -6,6 +6,8 @@ import { sendVerificationEmailUseCase } from "./send-verification-email.use-case
 
 const API_URL = process.env.API_URL || "http://localhost:3000";
 
+type Lang = "fr" | "en";
+
 interface RegisterInput {
   firstName: string;
   lastName: string;
@@ -13,14 +15,30 @@ interface RegisterInput {
   phone?: string;
   password: string;
   address: string;
+  lang?: Lang;
 }
+
+// Picks fr/en from an Accept-Language header, defaulting to fr. Only the two
+// supported locales matter, so this is a first-match scan, not a full q-value parse.
+const langFromAcceptLanguage = (header?: string): Lang => {
+  if (!header) return "fr";
+  for (const part of header.toLowerCase().split(",")) {
+    const tag = part.trim().split(";")[0] ?? "";
+    if (tag.startsWith("en")) return "en";
+    if (tag.startsWith("fr")) return "fr";
+  }
+  return "fr";
+};
 
 export type RegisterResult = "ok" | "email-taken";
 
 export const registerUseCase = (userReader: IUserReaderRepository, authTokenRepo: IAuthTokenRepository) => {
-  return async (data: RegisterInput): Promise<RegisterResult> => {
+  return async (data: RegisterInput, acceptLanguage?: string): Promise<RegisterResult> => {
     const existing = await userReader.findByEmail(data.email);
     if (existing) return "email-taken";
+
+    // Prefer the explicit UI language from the front, then the browser's Accept-Language, then fr.
+    const lang = data.lang ?? langFromAcceptLanguage(acceptLanguage);
 
     // Short-lived service JWT to authenticate with the API (POST /users).
     const serviceToken = await new SignJWT({
@@ -37,7 +55,7 @@ export const registerUseCase = (userReader: IUserReaderRepository, authTokenRepo
     const apiRes = await fetch(`${API_URL}/users`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${serviceToken}` },
-      body: JSON.stringify(data),
+      body: JSON.stringify({ ...data, lang }),
     });
 
     if (!apiRes.ok) {
@@ -50,7 +68,7 @@ export const registerUseCase = (userReader: IUserReaderRepository, authTokenRepo
 
     // Email verification — user can't log in until they click the link. In dev the
     // mail lands in mailpit (:8025) instead of a real inbox.
-    await sendVerificationEmailUseCase(authTokenRepo)(user.id, user.email);
+    await sendVerificationEmailUseCase(authTokenRepo)(user.id, user.email, lang);
 
     return "ok";
   };

@@ -189,8 +189,11 @@ export const authRouter = s.router(authContract, {
     return { status: 200 as const, body: { success: true } };
   },
 
-  register: async ({ body }) => {
-    const result = await registerUseCase(resolve("userReader"), resolve("authToken"))(body);
+  register: async ({ body, req }) => {
+    const result = await registerUseCase(resolve("userReader"), resolve("authToken"))(
+      body,
+      req.headers["accept-language"],
+    );
 
     if (result === "email-taken") {
       return { status: 409 as const, body: { message: "Email already in use" } };

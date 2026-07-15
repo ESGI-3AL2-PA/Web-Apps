@@ -19,6 +19,7 @@ export const updateUserUseCase = (userRepository: IUserRepository, graphReposito
     if (data.email !== undefined) update.email = data.email;
     if (data.phone !== undefined) update.phone = data.phone;
     if (data.address !== undefined) update.address = data.address;
+    if (data.lang !== undefined) update.lang = data.lang;
 
     if (newPassword) {
       const existing = await userRepository.getUserById(id);
