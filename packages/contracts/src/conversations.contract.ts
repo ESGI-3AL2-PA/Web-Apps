@@ -182,9 +182,11 @@ export const conversationsContract = c.router({
       404: NotFoundErrorSchema,
     },
     summary: "Attach media (photo/audio/file) to an existing message (sender only)",
+    // security-M2 follow-up: media attach is sender-only. No districtField — a district admin
+    // who is not the message sender must not be able to attach media to a private message.
     metadata: auth({
       audience: "api",
-      scope: { resource: "message", ownerField: "senderId", districtField: "districtId", notFoundOnDeny: true },
+      scope: { resource: "message", ownerField: "senderId", notFoundOnDeny: true },
     }),
   },
 });

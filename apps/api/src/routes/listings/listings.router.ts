@@ -13,7 +13,7 @@ import { deleteListingUseCase } from "../../use-cases/listings/delete-listing.us
 const s = initServer();
 
 export const listingsRouter = s.router(listingsContract, {
-  getListings: async ({ query: { page, limit, search, type, status, districtId, authorId, tag }, req }) => {
+  getListings: async ({ query: { page, limit, search, type, status, districtId, authorId, tag, sort }, req }) => {
     const scope = resolveListDistrictScope(req.user!, districtId);
     if ("empty" in scope) {
       return { status: 200, body: { data: [], total: 0, page, limit } };
@@ -25,6 +25,7 @@ export const listingsRouter = s.router(listingsContract, {
       districtId: scope.districtId,
       authorId,
       tag,
+      sort,
       page,
       limit,
     });

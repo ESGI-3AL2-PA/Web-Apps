@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import type { CreateListingDto, TagResponseDto } from "@repo/contracts";
+import type { CreateListingDto, ListingType, TagResponseDto } from "@repo/contracts";
 import { createListing } from "../api-service/listings.service";
 import { getTags } from "../api-service/tags.service";
 import { uploadImages } from "../api-service/uploads.service";
@@ -10,6 +10,7 @@ export default function PostListing() {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const [tags, setTags] = useState<TagResponseDto[]>([]);
+  const [type, setType] = useState<ListingType>("offer");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState("");
@@ -44,7 +45,7 @@ export default function PostListing() {
       const body: CreateListingDto = {
         title: title.trim(),
         description: description.trim(),
-        type: "offer",
+        type,
         price: Number(price) || 0,
         ...(tag ? { tags: [tag] } : {}),
         ...(images.length ? { images } : {}),
@@ -68,6 +69,38 @@ export default function PostListing() {
         onSubmit={onSubmit}
         className="space-y-5 rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-6"
       >
+        <fieldset>
+          <legend className="mb-1 block text-sm font-semibold text-neutral-700 dark:text-neutral-200">
+            {t("post.typeLabel")}
+          </legend>
+          <div
+            role="radiogroup"
+            aria-label={t("post.typeLabel")}
+            className="grid grid-cols-2 gap-1 rounded-lg border border-neutral-300 dark:border-neutral-700 p-1"
+          >
+            {(["offer", "request"] as const).map((value) => {
+              const active = type === value;
+              return (
+                <button
+                  key={value}
+                  type="button"
+                  role="radio"
+                  aria-checked={active}
+                  onClick={() => setType(value)}
+                  className={`rounded-md px-3 py-2 text-sm font-semibold transition-colors ${
+                    active
+                      ? "bg-[color:var(--color-brand)] text-white"
+                      : "text-neutral-700 dark:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                  }`}
+                >
+                  {t(`post.type_${value}`)}
+                </button>
+              );
+            })}
+          </div>
+          <p className="mt-1 text-xs text-neutral-500 dark:text-neutral-400">{t(`post.typeHint_${type}`)}</p>
+        </fieldset>
+
         <div>
           <label
             htmlFor="post-title"
@@ -82,7 +115,7 @@ export default function PostListing() {
             required
             maxLength={300}
             className={field}
-            placeholder={t("post.titlePlaceholder")}
+            placeholder={t(`post.titlePlaceholder_${type}`)}
             aria-invalid={error ? true : undefined}
             aria-describedby={error ? "post-error" : undefined}
           />
@@ -138,7 +171,7 @@ export default function PostListing() {
             required
             rows={5}
             className={field}
-            placeholder={t("post.descriptionPlaceholder")}
+            placeholder={t(`post.descriptionPlaceholder_${type}`)}
           />
         </div>
 

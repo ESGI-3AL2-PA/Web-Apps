@@ -12,6 +12,9 @@ export type ListingType = z.infer<typeof ListingTypeSchema>;
 export const ListingStatusSchema = z.enum(["active", "closed", "expired"]);
 export type ListingStatus = z.infer<typeof ListingStatusSchema>;
 
+export const ListingSortSchema = z.enum(["recent", "price_asc", "price_desc"]);
+export type ListingSort = z.infer<typeof ListingSortSchema>;
+
 export const ListingResponseDtoSchema = z
   .object({
     id: z.string().openapi({ description: "Unique listing identifier" }),
@@ -92,6 +95,9 @@ export const ListingQueryDtoSchema = z
       .max(200)
       .optional()
       .openapi({ description: "Filter listings by a single tag name (Mongo array match)" }),
+    sort: ListingSortSchema.optional()
+      .default("recent")
+      .openapi({ description: "Server-side ordering: newest first, or by ascending/descending price" }),
   })
   .openapi({ title: "ListingQuery" });
 export type ListingQueryDto = z.infer<typeof ListingQueryDtoSchema>;

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation, useMatches } from "react-router-dom";
 import { useAuth } from "@repo/hooks";
 import { config } from "@repo/config";
@@ -208,7 +208,10 @@ export default function AdminLayout() {
           </div>
         </header>
         <main id="main" tabIndex={-1} className="flex-1 overflow-y-auto p-4 sm:p-6 outline-none">
-          <Outlet />
+          {/* Suspense boundary for the lazy-loaded route chunks. */}
+          <Suspense fallback={<div className="h-32 w-full rounded bg-base-200 animate-pulse" />}>
+            <Outlet />
+          </Suspense>
         </main>
       </div>
     </div>

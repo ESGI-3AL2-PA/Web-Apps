@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@repo/hooks";
@@ -8,6 +8,7 @@ import { getTags } from "../api-service/tags.service";
 import { getEvents } from "../api-service/events.service";
 import { getVotes } from "../api-service/votes.service";
 import ListingCard from "../components/ListingCard";
+import ErrorBanner from "../components/ErrorBanner";
 import { formatDateTime, formatPrice } from "../lib/format";
 
 export default function Home() {
@@ -19,23 +20,28 @@ export default function Home() {
   const [events, setEvents] = useState<EventResponseDto[]>([]);
   const [votes, setVotes] = useState<VoteResponseDto[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
-  useEffect(() => {
+  const load = useCallback(() => {
+    setLoading(true);
+    setError(false);
     Promise.all([
       getListings({ status: "active", limit: 24 }),
       getTags(),
       getEvents({ status: "upcoming", limit: 3 }).catch(() => []),
       getVotes({ status: "open", limit: 3 }).catch(() => []),
     ])
-      .then(([page, t, ev, vo]) => {
+      .then(([page, tags, ev, vo]) => {
         setListings(page.data);
-        setTags(t);
+        setTags(tags);
         setEvents(ev);
         setVotes(vo);
       })
-      .catch(() => setListings([]))
+      .catch(() => setError(true))
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(load, [load]);
 
   return (
     <div className="space-y-8">
@@ -150,6 +156,8 @@ export default function Home() {
         </div>
         {loading ? (
           <p className="text-neutral-500 dark:text-neutral-400">{t("common.loading")}</p>
+        ) : error ? (
+          <ErrorBanner onRetry={load} />
         ) : listings.length === 0 ? (
           <p className="text-neutral-500 dark:text-neutral-400">{t("home.empty")}</p>
         ) : (

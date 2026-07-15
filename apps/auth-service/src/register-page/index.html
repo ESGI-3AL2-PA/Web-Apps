@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="en">
+<html lang="fr">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Register</title>
+    <title>Inscription</title>
     <style>
       *,
       *::before,
@@ -97,38 +97,123 @@
       .link a:hover {
         text-decoration: underline;
       }
+      .lang-toggle {
+        text-align: center;
+        margin-top: 1.25rem;
+        font-size: 0.8125rem;
+        color: #9ca3af;
+      }
+      .lang-toggle a {
+        color: #6b7280;
+        text-decoration: none;
+        margin: 0 0.25rem;
+      }
+      .lang-toggle a:hover {
+        text-decoration: underline;
+      }
+      .lang-toggle a.active {
+        color: #2563eb;
+        font-weight: 600;
+      }
     </style>
   </head>
   <body>
     <div class="card">
-      <h1>Create Account</h1>
+      <h1 data-i18n="title">Créer un compte</h1>
       <div id="error" class="error"></div>
       <form id="registerForm">
         <div class="row">
           <div class="field">
-            <label for="firstName">First name</label>
+            <label for="firstName" data-i18n="firstName">Prénom</label>
             <input type="text" id="firstName" name="firstName" required autocomplete="given-name" />
           </div>
           <div class="field">
-            <label for="lastName">Last name</label>
+            <label for="lastName" data-i18n="lastName">Nom</label>
             <input type="text" id="lastName" name="lastName" required autocomplete="family-name" />
           </div>
         </div>
-        <label for="email">Email</label>
+        <label for="email" data-i18n="email">E-mail</label>
         <input type="email" id="email" name="email" required autocomplete="email" />
-        <label for="phone">Phone <span style="color: #9ca3af">(optional)</span></label>
+        <label for="phone"
+          ><span data-i18n="phone">Téléphone</span>
+          <span style="color: #9ca3af" data-i18n="optional">(facultatif)</span></label
+        >
         <input type="tel" id="phone" name="phone" autocomplete="tel" />
-        <label for="password">Password</label>
+        <label for="password" data-i18n="password">Mot de passe</label>
         <input type="password" id="password" name="password" required minlength="12" autocomplete="new-password" />
-        <label for="address">Address</label>
+        <label for="address" data-i18n="address">Adresse</label>
         <input type="text" id="address" name="address" required autocomplete="street-address" />
-        <button type="submit" id="submitBtn">Register</button>
+        <button type="submit" id="submitBtn" data-i18n="submit">S'inscrire</button>
       </form>
-      <div class="link">Already have an account? <a id="loginLink" href="/login">Sign in</a></div>
+      <div class="link">
+        <span data-i18n="haveAccount">Vous avez déjà un compte ?</span>
+        <a id="loginLink" href="/login" data-i18n="signIn">Se connecter</a>
+      </div>
+      <div class="lang-toggle">
+        <a data-lang="fr" href="?lang=fr">Français</a> ·
+        <a data-lang="en" href="?lang=en">English</a>
+      </div>
     </div>
 
     <script>
       const ALLOWED_REDIRECT_ORIGINS = __ALLOWED_REDIRECT_ORIGINS__;
+
+      const I18N = {
+        fr: {
+          title: "Créer un compte",
+          firstName: "Prénom",
+          lastName: "Nom",
+          email: "E-mail",
+          phone: "Téléphone",
+          optional: "(facultatif)",
+          password: "Mot de passe",
+          address: "Adresse",
+          submit: "S'inscrire",
+          haveAccount: "Vous avez déjà un compte ?",
+          signIn: "Se connecter",
+          registrationFailed: "Échec de l'inscription",
+          checkInbox: "Vérifiez votre boîte mail",
+          verifyEmail:
+            "Nous vous avons envoyé un e-mail de vérification — cliquez sur le lien pour activer votre compte.",
+          backToSignIn: "Retour à la connexion",
+        },
+        en: {
+          title: "Create Account",
+          firstName: "First name",
+          lastName: "Last name",
+          email: "Email",
+          phone: "Phone",
+          optional: "(optional)",
+          password: "Password",
+          address: "Address",
+          submit: "Register",
+          haveAccount: "Already have an account?",
+          signIn: "Sign in",
+          registrationFailed: "Registration failed",
+          checkInbox: "Check your inbox",
+          verifyEmail: "We sent you a verification email — click the link to activate your account.",
+          backToSignIn: "Back to sign in",
+        },
+      };
+
+      const params = new URLSearchParams(window.location.search);
+      const lang = params.get("lang") === "en" ? "en" : "fr";
+      const t = I18N[lang];
+
+      // Localize static content and reflect the active language on <html>.
+      document.documentElement.lang = lang;
+      document.title = t.title;
+      document.querySelectorAll("[data-i18n]").forEach((el) => {
+        const key = el.getAttribute("data-i18n");
+        if (t[key] != null) el.textContent = t[key];
+      });
+      // Wire the language toggle, preserving the current query params.
+      document.querySelectorAll(".lang-toggle a").forEach((a) => {
+        const p = new URLSearchParams(window.location.search);
+        p.set("lang", a.getAttribute("data-lang"));
+        a.href = "?" + p.toString();
+        if (a.getAttribute("data-lang") === lang) a.classList.add("active");
+      });
 
       function safeRedirect(raw) {
         if (!raw) return "/";
@@ -140,11 +225,11 @@
         return "/";
       }
 
-      const params = new URLSearchParams(window.location.search);
       const redirectUri = safeRedirect(params.get("redirect_uri"));
 
-      // Preserve redirect_uri on the login link
-      document.getElementById("loginLink").href = "/login?redirect_uri=" + encodeURIComponent(redirectUri);
+      // Preserve redirect_uri and lang on the login link
+      document.getElementById("loginLink").href =
+        "/login?redirect_uri=" + encodeURIComponent(redirectUri) + "&lang=" + lang;
 
       document.getElementById("registerForm").addEventListener("submit", async (e) => {
         e.preventDefault();
@@ -174,17 +259,23 @@
 
           if (!res.ok) {
             const data = await res.json();
-            throw new Error(data.message || "Registration failed");
+            throw new Error(data.message || t.registrationFailed);
           }
 
           // 202 — server emailed a verification link. Show that and stop.
           const data = await res.json().catch(() => ({}));
           document.querySelector(".card").innerHTML =
-            '<h1>Check your inbox</h1><p style="text-align:center">' +
-            (data.message || "We sent you a verification email — click the link to activate your account.") +
+            "<h1>" +
+            t.checkInbox +
+            '</h1><p style="text-align:center">' +
+            (data.message || t.verifyEmail) +
             '</p><p class="link"><a href="/login?redirect_uri=' +
             encodeURIComponent(redirectUri) +
-            '">Back to sign in</a></p>';
+            "&lang=" +
+            lang +
+            '">' +
+            t.backToSignIn +
+            "</a></p>";
           return;
         } catch (err) {
           errorEl.textContent = err.message;

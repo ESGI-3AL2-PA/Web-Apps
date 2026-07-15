@@ -88,7 +88,7 @@ export const SubmitVoteResponseDtoSchema = z
     chosenOptions: z.array(z.string()).optional().openapi({ description: "Options multiples (multiple_choice)" }),
   })
   .refine((data) => Boolean(data.chosenOption) || Boolean(data.chosenOptions && data.chosenOptions.length > 0), {
-    message: "chosenOption ou chosenOptions est requis",
+    message: "chosenOption or chosenOptions is required",
   })
   .openapi({ title: "SubmitVoteResponse" });
 export type SubmitVoteResponseDto = z.infer<typeof SubmitVoteResponseDtoSchema>;

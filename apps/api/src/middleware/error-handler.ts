@@ -16,6 +16,15 @@ export class NotFoundError extends AppError {
   }
 }
 
+// Raised when a message's media bytes were stored but the mediaUrl could not be
+// attached to the row. The use-case compensates (deletes bytes + row) before
+// throwing this so no orphan is left behind.
+export class ImageAttachError extends AppError {
+  constructor() {
+    super(500, "Failed to attach image to message");
+  }
+}
+
 export const errorHandler = (err: Error, req: Request, res: Response, _next: NextFunction) => {
   if (err instanceof AppError) {
     return res.status(err.statusCode).json({ message: err.message });

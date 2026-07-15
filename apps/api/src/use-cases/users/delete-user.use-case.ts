@@ -25,6 +25,45 @@ export class CannotDeleteSuperAdminError extends Error {
   }
 }
 
+// Outcome of an erasure attempt. `sessions-purge-failed` means the Mongo + graph PII
+// was erased but the auth-service session purge (retained IP/UA history) did not
+// complete after retries — a PARTIAL erasure the router surfaces as a 5xx so the
+// caller retries, rather than a false 204 (GDPR Art. 17).
+export type DeleteUserResult = { kind: "not-found" } | { kind: "ok" } | { kind: "sessions-purge-failed" };
+
+// Bounded retry for the cross-service session purge. Attempts are spaced with a small
+// linear backoff; a transient auth-service blip is absorbed, a sustained outage still
+// surfaces as a failure rather than silently leaving PII behind.
+const PURGE_MAX_ATTEMPTS = 3;
+const PURGE_RETRY_BASE_MS = 200;
+
+const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
+
+const purgeAuthSessions = async (userId: string): Promise<boolean> => {
+  const authServiceUrl = process.env.AUTH_SERVICE_URL ?? "http://localhost:3001";
+  for (let attempt = 1; attempt <= PURGE_MAX_ATTEMPTS; attempt++) {
+    try {
+      const purgeRes = await fetch(`${authServiceUrl}/internal/sessions/purge`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-internal-token": process.env.INTERNAL_SERVICE_TOKEN ?? "",
+        },
+        body: JSON.stringify({ userId }),
+      });
+      if (purgeRes.ok) return true;
+      logger.error(
+        { userId, status: purgeRes.status, attempt, maxAttempts: PURGE_MAX_ATTEMPTS },
+        "auth-service session purge failed",
+      );
+    } catch (err) {
+      logger.error({ err, userId, attempt, maxAttempts: PURGE_MAX_ATTEMPTS }, "auth-service session purge errored");
+    }
+    if (attempt < PURGE_MAX_ATTEMPTS) await sleep(PURGE_RETRY_BASE_MS * attempt);
+  }
+  return false;
+};
+
 export interface DeleteUserDeps {
   userRepository: IUserRepository;
   graphRepository: IGraphRepository;
@@ -41,7 +80,8 @@ export interface DeleteUserDeps {
 
 // Self-service account deletion (the route scopes this to the caller's own id). The
 // superAdmin guardrail is enforced here too, defence-in-depth, so it holds regardless
-// of how the route is scoped. Returns false if the user no longer exists.
+// of how the route is scoped. Returns a DeleteUserResult so the caller can distinguish a
+// missing user, a clean erasure, and a partial erasure (auth sessions not purged).
 //
 // GDPR Art. 17: erasure must cascade across every collection keyed to the user — not
 // just the `users` row + graph node. We fan out to messages (incl. voice media), vote
@@ -49,7 +89,7 @@ export interface DeleteUserDeps {
 // and incidents, and pseudonymise the escrow ledger (accounting-retention exception:
 // keep the financial record, sever the identity link).
 export const deleteUserUseCase = (deps: DeleteUserDeps) => {
-  return async (params: { id: string }): Promise<boolean> => {
+  return async (params: { id: string }): Promise<DeleteUserResult> => {
     const {
       userRepository,
       graphRepository,
@@ -66,7 +106,7 @@ export const deleteUserUseCase = (deps: DeleteUserDeps) => {
 
     const id = params.id;
     const user = await userRepository.getUserById(id);
-    if (!user) return false;
+    if (!user) return { kind: "not-found" };
     if (user.role === "superAdmin") throw new CannotDeleteSuperAdminError();
 
     // Fan out erasure BEFORE removing the user row, so a mid-way failure leaves the
@@ -113,31 +153,30 @@ export const deleteUserUseCase = (deps: DeleteUserDeps) => {
       }
     }
 
-    const deleted = await userRepository.deleteUser(id);
-    if (deleted) {
-      // DETACH DELETE in Neo4j removes all the user's relationships too.
-      await syncGraph(`deleteUser(${id})`, () => graphRepository.deleteUser(id));
+    // Graph projection erasure (gdpr-M1): runs regardless of the Mongo delete result.
+    // The graph node holds PII (User.name/email, LIVES_IN.address) and DETACH DELETE is
+    // idempotent, so tying it to `deleted` risked orphaning that PII if the Mongo delete
+    // reported nothing or the process died between the two steps. A deleted user is never
+    // re-projected (rebuild-graph reads Mongo).
+    await syncGraph(`deleteUser(${id})`, () => graphRepository.deleteUser(id));
 
-      // Cross-service erasure: the api owns no auth data, so ask auth-service to
-      // hard-delete this user's refresh-token sessions (incl. retained IP/UA history).
-      // Best-effort — api-side erasure must succeed even if auth-service is unreachable.
-      try {
-        const authServiceUrl = process.env.AUTH_SERVICE_URL ?? "http://localhost:3001";
-        const purgeRes = await fetch(`${authServiceUrl}/internal/sessions/purge`, {
-          method: "POST",
-          headers: {
-            "content-type": "application/json",
-            "x-internal-token": process.env.INTERNAL_SERVICE_TOKEN ?? "",
-          },
-          body: JSON.stringify({ userId: id }),
-        });
-        if (!purgeRes.ok) {
-          logger.error({ userId: id, status: purgeRes.status }, "auth-service session purge failed");
-        }
-      } catch (err) {
-        logger.error({ err, userId: id }, "auth-service session purge errored");
-      }
+    const deleted = await userRepository.deleteUser(id);
+    // The user existed at the top of this call, so a false here is a concurrent-delete
+    // race: another request already erased the row (and will run its own purge).
+    if (!deleted) return { kind: "not-found" };
+
+    // Cross-service erasure (gdpr-M2): the api owns no auth data, so ask auth-service to
+    // hard-delete this user's refresh-token sessions (incl. retained IP/UA history).
+    // Art. 17 requires this to actually happen — retry, and if it still fails we report a
+    // partial failure so the caller gets a 5xx and retries, NOT a false 204. The Mongo +
+    // graph erasure already ran and is intentionally not rolled back; the lingering
+    // sessions are the only thing left to reconcile.
+    const purged = await purgeAuthSessions(id);
+    if (!purged) {
+      logger.error({ userId: id, maxAttempts: PURGE_MAX_ATTEMPTS }, "erasure incomplete: auth sessions not purged");
+      return { kind: "sessions-purge-failed" };
     }
-    return deleted;
+
+    return { kind: "ok" };
   };
 };

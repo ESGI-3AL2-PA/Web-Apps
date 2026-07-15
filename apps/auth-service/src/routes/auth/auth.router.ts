@@ -35,15 +35,10 @@ const COOKIE_OPTIONS = {
 };
 
 // Double-submit pair: the cookie is sent automatically by the browser; the SPA
-// fetches the token via GET /auth/csrf and echoes it in X-CSRF-Token. Same
-// path/sameSite as the refresh cookie so they travel together.
-const CSRF_COOKIE_OPTIONS = {
-  httpOnly: true,
-  secure: process.env.NODE_ENV === "production",
-  sameSite: "lax" as const,
-  maxAge: 7 * 24 * 60 * 60 * 1000,
-  path: "/auth",
-};
+// fetches the token via GET /auth/csrf and echoes it in X-CSRF-Token. Shares the
+// refresh cookie's attributes (same path/sameSite/httpOnly) so they travel
+// together — kept as a spread so the two can't drift.
+const CSRF_COOKIE_OPTIONS = { ...COOKIE_OPTIONS };
 
 const generateCsrf = () => randomBytes(32).toString("hex");
 
@@ -189,8 +184,11 @@ export const authRouter = s.router(authContract, {
     return { status: 200 as const, body: { success: true } };
   },
 
-  register: async ({ body }) => {
-    const result = await registerUseCase(resolve("userReader"), resolve("authToken"))(body);
+  register: async ({ body, req }) => {
+    const result = await registerUseCase(resolve("userReader"), resolve("authToken"))(
+      body,
+      req.headers["accept-language"],
+    );
 
     if (result === "email-taken") {
       return { status: 409 as const, body: { message: "Email already in use" } };

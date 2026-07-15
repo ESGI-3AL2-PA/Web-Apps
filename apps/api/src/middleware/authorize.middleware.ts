@@ -78,7 +78,7 @@ const loaders: Partial<Record<ResourceKind, RecordLoader>> = {
   },
 };
 
-const ownsRecord = (rec: Record_, scope: AuthScope, sub: string): boolean => {
+export const ownsRecord = (rec: Record_, scope: AuthScope, sub: string): boolean => {
   if (scope.ownerField && rec[scope.ownerField] === sub) return true;
   if (scope.ownerFields?.some((f) => rec[f] === sub)) return true;
   if (scope.ownerArrayField && Array.isArray(rec[scope.ownerArrayField])) {
@@ -87,7 +87,7 @@ const ownsRecord = (rec: Record_, scope: AuthScope, sub: string): boolean => {
   return false;
 };
 
-const inDistrict = (rec: Record_, scope: AuthScope, adminDistrictId: string | null): boolean => {
+export const inDistrict = (rec: Record_, scope: AuthScope, adminDistrictId: string | null): boolean => {
   // Degrades safely: until the adminDistrictId claim is minted, district never matches.
   if (!adminDistrictId) return false;
   if (scope.districtField) return rec[scope.districtField] === adminDistrictId;
@@ -97,7 +97,7 @@ const inDistrict = (rec: Record_, scope: AuthScope, adminDistrictId: string | nu
   return false;
 };
 
-const hasRecordCheck = (scope: AuthScope): boolean =>
+export const hasRecordCheck = (scope: AuthScope): boolean =>
   Boolean(
     scope.ownerField || scope.ownerFields || scope.ownerArrayField || scope.districtField || scope.districtArrayField,
   );
