@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="en">
+<html lang="fr">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Login</title>
+    <title>Connexion</title>
     <style>
       *,
       *::before,
@@ -90,24 +90,97 @@
       .link a:hover {
         text-decoration: underline;
       }
+      .lang-toggle {
+        text-align: center;
+        margin-top: 1.25rem;
+        font-size: 0.8125rem;
+        color: #9ca3af;
+      }
+      .lang-toggle a {
+        color: #6b7280;
+        text-decoration: none;
+        margin: 0 0.25rem;
+      }
+      .lang-toggle a:hover {
+        text-decoration: underline;
+      }
+      .lang-toggle a.active {
+        color: #2563eb;
+        font-weight: 600;
+      }
     </style>
   </head>
   <body>
     <div class="card">
-      <h1>Sign In</h1>
+      <h1 data-i18n="title">Se connecter</h1>
       <div id="error" class="error"></div>
       <form id="loginForm">
-        <label for="email">Email</label>
+        <label for="email" data-i18n="email">E-mail</label>
         <input type="email" id="email" name="email" required autocomplete="email" />
-        <label for="password">Password</label>
+        <label for="password" data-i18n="password">Mot de passe</label>
         <input type="password" id="password" name="password" required autocomplete="current-password" />
-        <button type="submit" id="submitBtn">Sign In</button>
+        <button type="submit" id="submitBtn" data-i18n="submit">Se connecter</button>
       </form>
-      <div class="link">Don't have an account? <a id="registerLink" href="/register">Register</a></div>
+      <div class="link">
+        <span data-i18n="noAccount">Vous n'avez pas de compte ?</span>
+        <a id="registerLink" href="/register" data-i18n="register">S'inscrire</a>
+      </div>
+      <div class="lang-toggle">
+        <a data-lang="fr" href="?lang=fr">Français</a> ·
+        <a data-lang="en" href="?lang=en">English</a>
+      </div>
     </div>
 
     <script>
       const ALLOWED_REDIRECT_ORIGINS = __ALLOWED_REDIRECT_ORIGINS__;
+
+      const I18N = {
+        fr: {
+          title: "Se connecter",
+          email: "E-mail",
+          password: "Mot de passe",
+          submit: "Se connecter",
+          noAccount: "Vous n'avez pas de compte ?",
+          register: "S'inscrire",
+          loginFailed: "Échec de la connexion",
+          mfaTitle: "Code à deux facteurs",
+          mfaLabel: "Code à 6 chiffres de votre application d'authentification",
+          mfaVerify: "Vérifier",
+          invalidCode: "Code invalide",
+        },
+        en: {
+          title: "Sign In",
+          email: "Email",
+          password: "Password",
+          submit: "Sign In",
+          noAccount: "Don't have an account?",
+          register: "Register",
+          loginFailed: "Login failed",
+          mfaTitle: "Two-factor code",
+          mfaLabel: "6-digit code from your authenticator",
+          mfaVerify: "Verify",
+          invalidCode: "Invalid code",
+        },
+      };
+
+      const params = new URLSearchParams(window.location.search);
+      const lang = params.get("lang") === "en" ? "en" : "fr";
+      const t = I18N[lang];
+
+      // Localize static content and reflect the active language on <html>.
+      document.documentElement.lang = lang;
+      document.title = t.title;
+      document.querySelectorAll("[data-i18n]").forEach((el) => {
+        const key = el.getAttribute("data-i18n");
+        if (t[key] != null) el.textContent = t[key];
+      });
+      // Wire the language toggle, preserving the current query params.
+      document.querySelectorAll(".lang-toggle a").forEach((a) => {
+        const p = new URLSearchParams(window.location.search);
+        p.set("lang", a.getAttribute("data-lang"));
+        a.href = "?" + p.toString();
+        if (a.getAttribute("data-lang") === lang) a.classList.add("active");
+      });
 
       // Loopback (desktop): pass access token in URL.
       // Web SPA keeps cookie flow.
@@ -147,11 +220,11 @@
         window.location.href = u.href;
       }
 
-      const params = new URLSearchParams(window.location.search);
       const redirectUri = safeRedirect(params.get("redirect_uri"));
 
-      // Keep redirect_uri on register link.
-      document.getElementById("registerLink").href = "/register?redirect_uri=" + encodeURIComponent(redirectUri);
+      // Keep redirect_uri and lang on register link.
+      document.getElementById("registerLink").href =
+        "/register?redirect_uri=" + encodeURIComponent(redirectUri) + "&lang=" + lang;
 
       // Desktop loopback: try silent refresh on load.
       // If refresh cookie is valid, return token without login form.
@@ -202,7 +275,7 @@
           }
 
           if (!res.ok) {
-            throw new Error(data.message || "Login failed");
+            throw new Error(data.message || t.loginFailed);
           }
 
           redirectWithToken(data.access_token);
@@ -215,12 +288,18 @@
 
       function showMfaForm(mfaToken) {
         document.querySelector(".card").innerHTML =
-          "<h1>Two-factor code</h1>" +
+          "<h1>" +
+          t.mfaTitle +
+          "</h1>" +
           '<div id="error" class="error"></div>' +
           '<form id="mfaForm">' +
-          '<label for="code">6-digit code from your authenticator</label>' +
+          '<label for="code">' +
+          t.mfaLabel +
+          "</label>" +
           '<input type="text" id="code" name="code" required inputmode="numeric" pattern="\\d{6}" maxlength="6" autocomplete="one-time-code">' +
-          '<button type="submit" id="mfaBtn">Verify</button>' +
+          '<button type="submit" id="mfaBtn">' +
+          t.mfaVerify +
+          "</button>" +
           "</form>";
         const errEl = document.getElementById("error");
         const btn2 = document.getElementById("mfaBtn");
@@ -237,7 +316,7 @@
             });
             const d = await r.json().catch(() => ({}));
             if (!r.ok) {
-              throw new Error(d.message || "Invalid code");
+              throw new Error(d.message || t.invalidCode);
             }
             redirectWithToken(d.access_token);
           } catch (e) {
