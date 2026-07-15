@@ -3,8 +3,24 @@ import {
   assertAllowedDownloadUrl,
   documensoWebhookEventSchema,
   documensoWebhookReplayKey,
+  mapDocumensoStatus,
   WebhookReplayCache,
 } from "./documenso.service.js";
+
+describe("mapDocumensoStatus", () => {
+  it("maps every known Documenso status to its contract status", () => {
+    expect(mapDocumensoStatus("COMPLETED")).toBe("completed");
+    expect(mapDocumensoStatus("REJECTED")).toBe("rejected");
+    expect(mapDocumensoStatus("PENDING")).toBe("pending");
+    expect(mapDocumensoStatus("DRAFT")).toBe("draft");
+  });
+
+  it("returns null for an unknown status so the event is ignored, not coerced to draft", () => {
+    expect(mapDocumensoStatus("SOMETHING_NEW")).toBeNull();
+    expect(mapDocumensoStatus("completed")).toBeNull(); // case-sensitive
+    expect(mapDocumensoStatus(undefined)).toBeNull();
+  });
+});
 
 describe("assertAllowedDownloadUrl (SSRF guard)", () => {
   const allowed = ["minio:9000", "documenso:3030"];
