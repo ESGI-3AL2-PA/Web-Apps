@@ -122,6 +122,33 @@ app.post("/internal/sessions/purge", (req, res) => {
     });
 });
 
+// GDPR Art. 15/20 export counterpart to the purge above: the api aggregates a user's
+// full data export and calls this to fold in the refresh-token session history (IP /
+// User-Agent / timestamps) it doesn't own. Same shared-secret guard. Token hashes are
+// stripped — they're secrets, never part of the subject's personal data.
+app.post("/internal/sessions/export", (req, res) => {
+  if (!internalTokenValid(req.header("x-internal-token"))) {
+    res.status(401).json({ message: "Unauthorized" });
+    return;
+  }
+  const userId = (req.body as { userId?: unknown } | undefined)?.userId;
+  if (typeof userId !== "string" || userId.length === 0) {
+    res.status(400).json({ message: "userId is required" });
+    return;
+  }
+  const refreshTokenRepo: IRefreshTokenRepository = resolve("refreshToken");
+  refreshTokenRepo
+    .listAllForUser(userId)
+    .then((sessions) => {
+      const sanitized = sessions.map(({ tokenHash: _tokenHash, ...rest }) => rest);
+      res.status(200).json({ sessions: sanitized });
+    })
+    .catch((err) => {
+      console.error("Failed to export sessions for user:", err);
+      res.status(500).json({ message: "Failed to export sessions" });
+    });
+});
+
 // Rate limits — mounted before the ts-rest handlers so they run first.
 // In-memory store: fine for single-instance, swap for Redis if scaled.
 const limiterMessage = { message: "Too many requests — try again later" };

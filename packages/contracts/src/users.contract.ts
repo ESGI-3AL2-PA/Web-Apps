@@ -11,6 +11,7 @@ import {
   UserParamsDtoSchema,
   UserQueryDtoSchema,
   UserResponseDtoSchema,
+  UserDataExportResponseDtoSchema,
   PaginatedResponseDtoSchema,
 } from "./DTO";
 import { auth } from "./auth-meta";
@@ -41,6 +42,25 @@ export const usersContract = c.router({
     metadata: auth({
       audience: "api",
       scope: { resource: "user", selfParam: "id", bypassRoles: ["superAdmin"] },
+    }),
+  },
+
+  exportUserData: {
+    method: "GET",
+    path: "/users/:id/export",
+    pathParams: UserParamsDtoSchema,
+    responses: {
+      200: UserDataExportResponseDtoSchema,
+      404: NotFoundErrorSchema,
+    },
+    // GDPR Art. 15/20: canonical server-side export of ALL of the caller's personal
+    // data in one authenticated call. Strictly self-scoped (selfParam:"id", NO admin
+    // bypass — this dumps private messages/sessions; an admin has no business pulling
+    // another user's full export here). notFoundOnDeny hides other users' existence.
+    summary: "Export all of your personal data as a single JSON document (self only).",
+    metadata: auth({
+      audience: "api",
+      scope: { resource: "user", selfParam: "id", notFoundOnDeny: true },
     }),
   },
 

@@ -10,6 +10,9 @@ export interface IRefreshTokenRepository {
   findByTokenHash(tokenHash: string): Promise<RefreshToken | null>;
   // Active (non-revoked, non-expired) sessions for the "active sessions" view.
   findActiveByUserId(userId: string): Promise<RefreshToken[]>;
+  // Every (not-yet-TTL-purged) session row for a user, active or revoked — the
+  // retained IP/User-Agent/timestamp history for the GDPR data export.
+  listAllForUser(userId: string): Promise<RefreshToken[]>;
   revokeByTokenHash(tokenHash: string): Promise<boolean>;
   // Revoke one session by id, scoped to its owner. Returns false if not found/not theirs.
   revokeById(id: string, userId: string): Promise<boolean>;
