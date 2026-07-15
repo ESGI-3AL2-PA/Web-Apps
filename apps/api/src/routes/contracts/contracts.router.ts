@@ -20,7 +20,7 @@ import {
   disputeContractUseCase,
   InvalidDisputeStateError,
 } from "../../use-cases/contracts/dispute-contract.use-case.js";
-import { resolveDisputeUseCase } from "../../use-cases/contracts/resolve-dispute.use-case.js";
+import { resolveDisputeUseCase, UnsettleableDisputeError } from "../../use-cases/contracts/resolve-dispute.use-case.js";
 import { deleteContractUseCase } from "../../use-cases/contracts/delete-contract.use-case.js";
 
 const s = initServer();
@@ -170,13 +170,27 @@ export const contractsRouter = s.router(contractsContract, {
     }
   },
 
-  resolveDispute: async ({ params: { id }, req }) => {
+  resolveDispute: async ({ params: { id }, body, req }) => {
     // District-admin-only authorization is enforced by the contract-metadata middleware.
-    const contract = await resolveDisputeUseCase(resolve("contract"))({ id });
-    if (!contract) {
-      return { status: 404, body: { message: "Contract not found" } };
+    try {
+      const contract = await resolveDisputeUseCase(
+        resolve("contract"),
+        resolve("transaction"),
+      )({
+        id,
+        resolution: body.resolution,
+      });
+      if (!contract) {
+        return { status: 404, body: { message: "Contract not found" } };
+      }
+      return { status: 200, body: toResponse(contract, req.user!.sub) };
+    } catch (err) {
+      // A refund was requested on a contract whose escrow is already settled to the provider.
+      if (err instanceof UnsettleableDisputeError) {
+        return { status: 409, body: { message: err.message } };
+      }
+      throw err;
     }
-    return { status: 200, body: toResponse(contract, req.user!.sub) };
   },
 
   deleteContract: async ({ params: { id } }) => {

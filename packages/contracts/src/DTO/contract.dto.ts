@@ -49,6 +49,17 @@ export const DisputeContractDtoSchema = z
   .openapi({ title: "DisputeContract" });
 export type DisputeContractDto = z.infer<typeof DisputeContractDtoSchema>;
 
+export const ResolveDisputeDtoSchema = z
+  .object({
+    // The admin's settlement choice: release the held escrow to the provider, or refund
+    // it to the beneficiary. Drives the money movement when the dispute is resolved.
+    resolution: z
+      .enum(["release", "refund"])
+      .openapi({ description: "Escrow settlement outcome: release to provider or refund to beneficiary" }),
+  })
+  .openapi({ title: "ResolveDispute" });
+export type ResolveDisputeDto = z.infer<typeof ResolveDisputeDtoSchema>;
+
 export const ContractParamsDtoSchema = z.object({ id: z.string() }).openapi({ title: "ContractParams" });
 export type ContractParamsDto = z.infer<typeof ContractParamsDtoSchema>;
 

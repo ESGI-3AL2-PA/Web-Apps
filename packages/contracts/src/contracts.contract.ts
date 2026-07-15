@@ -7,6 +7,7 @@ import {
   ContractResponseDtoSchema,
   CreateContractDtoSchema,
   DisputeContractDtoSchema,
+  ResolveDisputeDtoSchema,
   NotFoundErrorSchema,
   ForbiddenErrorSchema,
   BadRequestErrorSchema,
@@ -106,13 +107,17 @@ export const contractsContract = c.router({
     method: "POST",
     path: "/contracts/:id/resolve-dispute",
     pathParams: ContractParamsDtoSchema,
-    body: c.noBody(),
+    body: ResolveDisputeDtoSchema,
     responses: {
       200: ContractResponseDtoSchema,
       403: ForbiddenErrorSchema,
       404: NotFoundErrorSchema,
+      // The dispute targets a contract whose escrow is already settled to the provider —
+      // a refund would need a clawback this path doesn't perform.
+      409: ConflictErrorSchema,
     },
-    summary: "Clear the disputed flag on a contract (district admin only)",
+    summary:
+      "Resolve a dispute, settling the escrow to the provider (release) or beneficiary (refund) (district admin only)",
     // No ownerFields: only a district admin (matching districtId) or superAdmin may
     // resolve — the parties can raise a dispute but not clear it themselves.
     metadata: auth({
