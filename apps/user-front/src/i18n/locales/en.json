@@ -134,7 +134,13 @@
   "contracts": {
     "title": "My contracts",
     "empty": "You don't have any contracts yet.",
+    "loadError": "We couldn't load your contracts.",
+    "retry": "Retry",
     "number": "Contract #{{id}}",
+    "withProvider": "Provided by {{name}}",
+    "withBeneficiary": "For {{name}}",
+    "youProvide": "You provide",
+    "youReceive": "You receive",
     "disputed": "Dispute",
     "sign": "Sign",
     "resend": "Resend invitation",

@@ -134,7 +134,13 @@
   "contracts": {
     "title": "Mes contrats",
     "empty": "Vous n'avez aucun contrat pour le moment.",
+    "loadError": "Impossible de charger vos contrats.",
+    "retry": "Réessayer",
     "number": "Contrat #{{id}}",
+    "withProvider": "Fourni par {{name}}",
+    "withBeneficiary": "Pour {{name}}",
+    "youProvide": "Vous fournissez",
+    "youReceive": "Vous recevez",
     "disputed": "Litige",
     "sign": "Signer",
     "resend": "Renvoyer l'invitation",

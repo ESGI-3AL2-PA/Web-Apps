@@ -1,7 +1,10 @@
 import { lazy, Suspense, useCallback, useEffect, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
+import { useAuth } from "@repo/hooks";
 import type { ContractResponseDto, ContractSignatureStatus } from "@repo/contracts";
 import { disputeContract, getContracts, resendContract } from "../api-service/contracts.service";
+import { getListingById } from "../api-service/listings.service";
+import { getUserPublic } from "../api-service/users.service";
 import { formatPrice } from "../lib/format";
 import { useDialog } from "../components/dialog-context";
 
@@ -16,21 +19,33 @@ const STATUS_CLASS: Record<ContractSignatureStatus, string> = {
   rejected: "bg-red-100 text-red-800",
 };
 
+// The counterparty is the party the current user is *not* — provider looks at the beneficiary and vice versa.
+const counterpartyId = (c: ContractResponseDto, userId: string | undefined) =>
+  c.providerId === userId ? c.beneficiaryId : c.providerId;
+
 export default function Contracts() {
   const { t } = useTranslation();
   const { alert } = useDialog();
+  const { user } = useAuth();
+  const currentUserId = user?.id;
   const [contracts, setContracts] = useState<ContractResponseDto[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [previewId, setPreviewId] = useState<string | null>(null);
   const [disputeFor, setDisputeFor] = useState<ContractResponseDto | null>(null);
+  // Resolved context, keyed by id — populated lazily so a row can render before its labels arrive.
+  const [listingTitles, setListingTitles] = useState<Record<string, string>>({});
+  const [partyNames, setPartyNames] = useState<Record<string, string>>({});
 
   const load = useCallback(async () => {
     setLoading(true);
+    setError(false);
     try {
       const res = await getContracts();
       setContracts(res.data);
     } catch {
+      setError(true);
       setContracts([]);
     } finally {
       setLoading(false);
@@ -40,6 +55,34 @@ export default function Contracts() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  // Resolve listing titles + counterparty names once per distinct id (getUserPublic is itself cached).
+  useEffect(() => {
+    if (contracts.length === 0) return;
+    let cancelled = false;
+
+    const listingIds = [...new Set(contracts.map((c) => c.listingId))];
+    for (const id of listingIds) {
+      getListingById(id)
+        .then((listing) => {
+          if (!cancelled) setListingTitles((prev) => ({ ...prev, [id]: listing.title }));
+        })
+        .catch(() => {});
+    }
+
+    const userIds = [...new Set(contracts.map((c) => counterpartyId(c, currentUserId)))];
+    for (const id of userIds) {
+      getUserPublic(id)
+        .then((u) => {
+          if (!cancelled) setPartyNames((prev) => ({ ...prev, [id]: `${u.firstName} ${u.lastName}` }));
+        })
+        .catch(() => {});
+    }
+
+    return () => {
+      cancelled = true;
+    };
+  }, [contracts, currentUserId]);
 
   const onResend = async (id: string) => {
     setBusyId(id);
@@ -75,85 +118,113 @@ export default function Contracts() {
     <div className="mx-auto max-w-3xl">
       <h1 className="mb-6 text-2xl font-extrabold text-neutral-900 dark:text-neutral-50">{t("contracts.title")}</h1>
 
-      {contracts.length === 0 ? (
+      {error ? (
+        <div className="rounded-xl border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/40 p-4">
+          <p className="text-sm text-red-700 dark:text-red-300">{t("contracts.loadError")}</p>
+          <button
+            onClick={() => void load()}
+            className="mt-3 rounded-lg border border-red-300 dark:border-red-800 px-3 py-1.5 text-sm font-medium text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-950"
+          >
+            {t("contracts.retry")}
+          </button>
+        </div>
+      ) : contracts.length === 0 ? (
         <p className="text-neutral-500 dark:text-neutral-400">{t("contracts.empty")}</p>
       ) : (
         <ul className="space-y-3">
-          {contracts.map((c) => (
-            <li
-              key={c.id}
-              className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-4"
-            >
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <p className="font-semibold text-neutral-900 dark:text-neutral-50">
-                    {t("contracts.number", { id: c.id.slice(0, 8) })}
-                  </p>
-                  <p className="text-sm text-neutral-500 dark:text-neutral-400">{formatPrice(c.price)}</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  {c.disputed && (
-                    <span className="rounded-full bg-red-100 px-2.5 py-1 text-xs font-medium text-red-800">
-                      {t("contracts.disputed")}
+          {contracts.map((c) => {
+            const isProvider = c.providerId === currentUserId;
+            const counterparty = partyNames[counterpartyId(c, currentUserId)];
+            const listingTitle = listingTitles[c.listingId];
+            return (
+              <li
+                key={c.id}
+                className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-4"
+              >
+                <div className="flex items-center justify-between gap-4">
+                  <div className="min-w-0">
+                    <p className="truncate font-semibold text-neutral-900 dark:text-neutral-50">
+                      {listingTitle ?? t("contracts.number", { id: c.id.slice(0, 8) })}
+                    </p>
+                    <p className="truncate text-sm text-neutral-500 dark:text-neutral-400">
+                      {(isProvider
+                        ? t("contracts.withBeneficiary", { name: counterparty ?? "…" })
+                        : t("contracts.withProvider", { name: counterparty ?? "…" })) +
+                        " · " +
+                        formatPrice(c.price)}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <span
+                      className={`rounded-full px-2.5 py-1 text-xs font-medium ${
+                        isProvider ? "bg-blue-100 text-blue-800" : "bg-purple-100 text-purple-800"
+                      }`}
+                    >
+                      {isProvider ? t("contracts.youProvide") : t("contracts.youReceive")}
                     </span>
-                  )}
-                  <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${STATUS_CLASS[c.signatureStatus]}`}>
-                    {t(`contracts.status.${c.signatureStatus}`)}
-                  </span>
+                    {c.disputed && (
+                      <span className="rounded-full bg-red-100 px-2.5 py-1 text-xs font-medium text-red-800">
+                        {t("contracts.disputed")}
+                      </span>
+                    )}
+                    <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${STATUS_CLASS[c.signatureStatus]}`}>
+                      {t(`contracts.status.${c.signatureStatus}`)}
+                    </span>
+                  </div>
                 </div>
-              </div>
 
-              <div className="mt-3 flex flex-wrap gap-2">
-                {/* Signing happens on Documenso; the api hands us the caller's signing URL. */}
-                {c.signingUrl && (
-                  <a
-                    href={c.signingUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="rounded-lg bg-[color:var(--color-brand)] px-3 py-1.5 text-sm font-semibold text-white hover:bg-[color:var(--color-brand-dark)]"
-                  >
-                    {t("contracts.sign")}
-                  </a>
-                )}
-                {c.signingUrl && (
-                  <button
-                    onClick={() => onResend(c.id)}
-                    disabled={busyId === c.id}
-                    className="rounded-lg border border-neutral-300 dark:border-neutral-700 px-3 py-1.5 text-sm font-medium text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-800 disabled:opacity-60"
-                  >
-                    {busyId === c.id ? t("contracts.resending") : t("contracts.resend")}
-                  </button>
-                )}
-                {c.signatureStatus === "completed" && (
-                  <button
-                    onClick={() => setPreviewId(previewId === c.id ? null : c.id)}
-                    className="rounded-lg border border-neutral-300 dark:border-neutral-700 px-3 py-1.5 text-sm font-medium text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-800"
-                  >
-                    {previewId === c.id ? t("contracts.hidePdf") : t("contracts.viewPdf")}
-                  </button>
-                )}
-                {canDispute(c) && (
-                  <button
-                    onClick={() => setDisputeFor(c)}
-                    disabled={busyId === c.id}
-                    className="rounded-lg border border-red-300 dark:border-red-800 px-3 py-1.5 text-sm font-medium text-red-700 dark:text-red-300 hover:bg-red-50 dark:hover:bg-red-950 disabled:opacity-60"
-                  >
-                    {t("contracts.dispute")}
-                  </button>
-                )}
-              </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {/* Signing happens on Documenso; the api hands us the caller's signing URL. */}
+                  {c.signingUrl && (
+                    <a
+                      href={c.signingUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="rounded-lg bg-[color:var(--color-brand)] px-3 py-1.5 text-sm font-semibold text-white hover:bg-[color:var(--color-brand-dark)]"
+                    >
+                      {t("contracts.sign")}
+                    </a>
+                  )}
+                  {c.signingUrl && (
+                    <button
+                      onClick={() => onResend(c.id)}
+                      disabled={busyId === c.id}
+                      className="rounded-lg border border-neutral-300 dark:border-neutral-700 px-3 py-1.5 text-sm font-medium text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-800 disabled:opacity-60"
+                    >
+                      {busyId === c.id ? t("contracts.resending") : t("contracts.resend")}
+                    </button>
+                  )}
+                  {c.signatureStatus === "completed" && (
+                    <button
+                      onClick={() => setPreviewId(previewId === c.id ? null : c.id)}
+                      className="rounded-lg border border-neutral-300 dark:border-neutral-700 px-3 py-1.5 text-sm font-medium text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-800"
+                    >
+                      {previewId === c.id ? t("contracts.hidePdf") : t("contracts.viewPdf")}
+                    </button>
+                  )}
+                  {canDispute(c) && (
+                    <button
+                      onClick={() => setDisputeFor(c)}
+                      disabled={busyId === c.id}
+                      className="rounded-lg border border-red-300 dark:border-red-800 px-3 py-1.5 text-sm font-medium text-red-700 dark:text-red-300 hover:bg-red-50 dark:hover:bg-red-950 disabled:opacity-60"
+                    >
+                      {t("contracts.dispute")}
+                    </button>
+                  )}
+                </div>
 
-              {previewId === c.id && (
-                <Suspense
-                  fallback={
-                    <p className="mt-3 text-sm text-neutral-500 dark:text-neutral-400">{t("contracts.pdfLoading")}</p>
-                  }
-                >
-                  <ContractPdf id={c.id} />
-                </Suspense>
-              )}
-            </li>
-          ))}
+                {previewId === c.id && (
+                  <Suspense
+                    fallback={
+                      <p className="mt-3 text-sm text-neutral-500 dark:text-neutral-400">{t("contracts.pdfLoading")}</p>
+                    }
+                  >
+                    <ContractPdf id={c.id} />
+                  </Suspense>
+                )}
+              </li>
+            );
+          })}
         </ul>
       )}
 
