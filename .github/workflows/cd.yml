@@ -145,10 +145,10 @@ jobs:
             set -euo pipefail
             cd "${{ vars.DEPLOY_PATH }}"
             RAW="https://raw.githubusercontent.com/${{ github.repository }}/${SHA}"
-            for f in docker-compose.prod.yml docker-compose.deploy.yml deploy/Caddyfile deploy/secrets/prod.enc.env; do
+            for f in docker-compose.deploy.yml deploy/Caddyfile deploy/secrets/prod.enc.env; do
               curl -fsSL "$RAW/$f" --create-dirs -o "$f"
             done
-            C="docker compose -f docker-compose.prod.yml -f docker-compose.deploy.yml"
+            C="docker compose -f docker-compose.deploy.yml"
             sops exec-env deploy/secrets/prod.enc.env "\
               $C pull && \
               $C run --rm api npx tsx apps/api/src/scripts/migrate.ts && \

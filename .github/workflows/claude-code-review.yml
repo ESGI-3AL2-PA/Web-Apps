@@ -37,7 +37,7 @@ jobs:
 
             ## Repository architecture
 
-            This is a **Turborepo monorepo** using **npm workspaces** (npm 11, Node, TypeScript 6). Workspaces are declared in the root `package.json` as `apps/*`, `packages/*`, and `playwright_testbook`. Builds are orchestrated by `turbo.json`. The whole stack runs in Docker via `docker-compose.yml` (dev) / `docker-compose.prod.yml` (prod).
+            This is a **Turborepo monorepo** using **npm workspaces** (npm 11, Node, TypeScript 6). Workspaces are declared in the root `package.json` as `apps/*`, `packages/*`, and `playwright_testbook`. Builds are orchestrated by `turbo.json`. The whole stack runs in Docker via `docker-compose.yml` (dev) / `docker-compose.deploy.yml` (prod).
 
             ### Apps (`apps/`)
             - **`api/`** — Node + Express 4 backend.

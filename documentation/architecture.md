@@ -25,8 +25,8 @@ The project is a **Turborepo monorepo** built entirely in TypeScript, following 
 │   ├── eslint-config/ # Shared ESLint flat-config rules
 │   └── typescript-config/ # Shared tsconfig bases
 ├── playwright_testbook/   # End-to-end API and Front tests
-├── docker-compose.yml           # Dev stack (hot reload, pinned images)
-└── docker-compose.prod.yml      # Production stack (nginx, compiled dist)
+├── docker-compose.yml           # Dev stack (hot reload, builds from source)
+└── docker-compose.deploy.yml    # Prod stack (GHCR images, Caddy TLS)
 ```
 
 ---
@@ -141,7 +141,7 @@ ESLint 9 flat-config rules, composed per environment:
 
 The stack is orchestrated with Docker Compose. There are no profiles — `docker compose up` starts the whole stack (app services + datastores + fronts + the Documenso e-signature services).
 
-Both compose files define the same topology and differ in intent. `docker-compose.yml` is the **dev** compose (the default a bare `docker compose` picks up): it builds the `dev` Dockerfile target with source bind-mounts for hot reload, uses zero-config local credentials, and pins exact image versions. `docker-compose.prod.yml` is the **production** compose: it builds the `prod` target (compiled `dist/` served by a hardened nginx) and takes all secrets from `.env`. Either way, `docker compose up` brings up the full stack; in dev the apps can also be run directly on the host with `npm run dev`.
+Both compose files define the same topology and differ in intent. `docker-compose.yml` is the **dev** compose (the default a bare `docker compose` picks up): it builds the `dev` Dockerfile target with source bind-mounts for hot reload, uses zero-config local credentials, and pins exact image versions. `docker-compose.deploy.yml` is the **production** compose: it has no `build:` — every app runs from the `ghcr.io/esgi-3al2-pa/web-apps/<app>` image CD built (compiled `dist/` served by a hardened nginx), a Caddy reverse proxy terminates TLS, and all secrets + URLs come from the SOPS-decrypted env at deploy. In dev the apps can also be run directly on the host with `npm run dev`.
 
 ### Datastores
 

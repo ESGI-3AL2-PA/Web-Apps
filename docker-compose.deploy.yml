@@ -1,36 +1,289 @@
-# Deploy overlay — layered on top of docker-compose.prod.yml to run the app services from the
-# images CD pushed to GHCR (instead of building on the host) and to front everything with a
-# Caddy reverse proxy (automatic HTTPS). Used by the CD deploy job on the VM:
+# Production / deploy stack — runs the app services from the images CD pushed to GHCR
+# (never builds on the host) and fronts everything with a Caddy reverse proxy (automatic HTTPS).
 #
-#   docker compose -f docker-compose.prod.yml -f docker-compose.deploy.yml pull
-#   docker compose -f docker-compose.prod.yml -f docker-compose.deploy.yml up -d --no-build
+# This is the ONLY production compose: `docker-compose.yml` is dev, this is prod. Images are the
+# artifact — there is no `build:` here; CI builds each app from apps/<app>/Dockerfile and pushes
+# it to ghcr.io/esgi-3al2-pa/web-apps/<app>. The CD deploy job runs it on the VM:
 #
-# Contains no secrets. DOMAIN / ACME_EMAIL come from the SOPS-decrypted environment at deploy.
+#   docker compose -f docker-compose.deploy.yml pull
+#   docker compose -f docker-compose.deploy.yml up -d --no-build
+#
+# Every secret AND every environment URL comes from the SOPS-decrypted env (deploy/secrets/prod.enc.env)
+# via `sops exec-env` — nothing plaintext lives here. Front URLs (VITE_*) are baked into the bundles at
+# CI build time, so they are NOT read here. auth-service needs a STABLE RS256 keypair (ephemeral keys
+# rotate on restart and break JWT verification): generate one with scripts/gen-auth-keys.sh into
+# ./docker/auth/ — it is mounted read-only below.
 services:
-  # ── App images from GHCR (override the build: from prod). ports:[] removes the host
-  #    publishing — Caddy is the only ingress. Seeds reuse the api/auth images. ─────────
   api:
     image: ghcr.io/esgi-3al2-pa/web-apps/api:latest
-    ports: !reset []
+    restart: always
+    environment:
+      NODE_ENV: production
+      API_PORT: 3000
+      MONGODB_URL: mongodb://${MONGO_ROOT_USERNAME:?set in the SOPS env}:${MONGO_ROOT_PASSWORD:?set in the SOPS env}@mongodb:27017
+      MONGODB_DB: ${MONGODB_DB:-db}
+      AUTH_JWKS_URL: http://auth-service:3001/.well-known/jwks.json
+      AUTH_SERVICE_URL: http://auth-service:3001
+      INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN:?set in the SOPS env}
+      NEO4J_URL: bolt://neo4j:7687
+      NEO4J_USER: neo4j
+      NEO4J_PASSWORD: ${NEO4J_PASSWORD:?set in the SOPS env}
+      CORS_ORIGINS: ${CORS_ORIGINS:?set in the SOPS env}
+      # Behind Caddy: TRUST_PROXY is the number of trusted hops.
+      TRUST_PROXY: ${TRUST_PROXY:-1}
+      # Voice-message + listing-image storage in MinIO (buckets made by minio-createbucket).
+      MESSAGES_MINIO_ENDPOINT: http://minio:9000
+      MESSAGES_MINIO_BUCKET: messages
+      MESSAGES_MINIO_ACCESS_KEY: ${DOCUMENSO_S3_ACCESS_KEY:?set in the SOPS env}
+      MESSAGES_MINIO_SECRET_KEY: ${DOCUMENSO_S3_SECRET_KEY:?set in the SOPS env}
+      LISTINGS_MINIO_ENDPOINT: http://minio:9000
+      LISTINGS_MINIO_BUCKET: listings
+      LISTINGS_MINIO_ACCESS_KEY: ${DOCUMENSO_S3_ACCESS_KEY:?set in the SOPS env}
+      LISTINGS_MINIO_SECRET_KEY: ${DOCUMENSO_S3_SECRET_KEY:?set in the SOPS env}
+      # Documenso reached in-network; secrets come from the SOPS env (created once in the UI).
+      DOCUMENSO_URL: http://documenso:3030
+      DOCUMENSO_API_TOKEN: ${DOCUMENSO_API_TOKEN:-}
+      DOCUMENSO_TEMPLATE_ID: ${DOCUMENSO_TEMPLATE_ID:-}
+      DOCUMENSO_WEBHOOK_SECRET: ${DOCUMENSO_WEBHOOK_SECRET:-}
+      DOCUMENSO_SIGNING_LANGUAGE: ${DOCUMENSO_SIGNING_LANGUAGE:-fr}
+      DOCUMENSO_DOWNLOAD_HOSTS: ${DOCUMENSO_DOWNLOAD_HOSTS:-minio:9000}
+      CONTRACTS_SIGN_REDIRECT_URL: ${CONTRACTS_SIGN_REDIRECT_URL:?set in the SOPS env}
+    # Wait for the datastores to be READY, not just started — the api connects to
+    # Mongo + Neo4j at boot and fails fast otherwise.
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      neo4j:
+        condition: service_healthy
+      auth-service:
+        condition: service_started
+      minio-createbucket:
+        condition: service_completed_successfully
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://localhost:3000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
   auth-service:
     image: ghcr.io/esgi-3al2-pa/web-apps/auth-service:latest
-    ports: !reset []
+    restart: always
+    # Stable RS256 keys (read-only). Generate with scripts/gen-auth-keys.sh → ./docker/auth/.
+    volumes:
+      - ./docker/auth:/run/auth-keys:ro
+    environment:
+      NODE_ENV: production
+      AUTH_PORT: 3001
+      MONGODB_URL: mongodb://${MONGO_ROOT_USERNAME:?set in the SOPS env}:${MONGO_ROOT_PASSWORD:?set in the SOPS env}@mongodb:27017
+      MONGODB_DB: ${MONGODB_DB:-db}
+      API_URL: http://api:3000
+      AUTH_PUBLIC_URL: ${AUTH_PUBLIC_URL:?set in the SOPS env}
+      CORS_ORIGINS: ${CORS_ORIGINS:?set in the SOPS env}
+      INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN:?set in the SOPS env}
+      AUTH_PRIVATE_KEY_FILE: /run/auth-keys/private.pem
+      AUTH_PUBLIC_KEY_FILE: /run/auth-keys/public.pem
+      TOTP_ISSUER: ${TOTP_ISSUER:-Connected-Neighboors}
+      # Email via Resend in prod (no mailpit). Mail is a no-op if RESEND_API_KEY is unset.
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      FROM_EMAIL: ${FROM_EMAIL:?set in the SOPS env}
+      APP_NAME: ${APP_NAME:-Connected-Neighboors}
+    depends_on:
+      mongodb:
+        condition: service_healthy
+
+  # Fronts serve pre-built static bundles (VITE_* URLs baked in at CI build time). No host ports —
+  # Caddy is the only ingress.
   admin-front:
     image: ghcr.io/esgi-3al2-pa/web-apps/admin-front:latest
-    ports: !reset []
+    restart: always
+    depends_on:
+      - auth-service
+
   user-front:
     image: ghcr.io/esgi-3al2-pa/web-apps/user-front:latest
-    ports: !reset []
+    restart: always
+    depends_on:
+      - api
+      - auth-service
+
   landing:
     image: ghcr.io/esgi-3al2-pa/web-apps/landing:latest
-    ports: !reset []
+    restart: always
+
+  # ── Datastores ───────────────────────────────────────────────────────────────
+  mongodb:
+    image: mongo:8
+    restart: always
+    # No host port: reachable only over the internal compose network. Never expose a
+    # datastore to the host in prod (0.0.0.0 binding = internet-reachable DB).
+    volumes:
+      - mongodb_data:/data/db
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME:?set in the SOPS env}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:?set in the SOPS env}
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  mongo-express:
+    image: mongo-express:1.0.2
+    restart: on-failure
+    # No host port: the DB admin UI must never be internet-reachable. Reach it in prod
+    # via an SSH tunnel or behind the authenticated reverse proxy, not a raw host port.
+    environment:
+      ME_CONFIG_MONGODB_ADMINUSERNAME: ${MONGO_ROOT_USERNAME:?set in the SOPS env}
+      ME_CONFIG_MONGODB_ADMINPASSWORD: ${MONGO_ROOT_PASSWORD:?set in the SOPS env}
+      ME_CONFIG_MONGODB_URL: mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongodb:27017/
+      # Protect the admin UI with HTTP basic auth (required in prod).
+      ME_CONFIG_BASICAUTH_USERNAME: ${MONGO_EXPRESS_USERNAME:?set in the SOPS env}
+      ME_CONFIG_BASICAUTH_PASSWORD: ${MONGO_EXPRESS_PASSWORD:?set in the SOPS env}
+    depends_on:
+      - mongodb
+
+  neo4j:
+    image: neo4j:5
+    restart: always
+    # No host port: reachable only over the internal compose network (see mongodb).
+    volumes:
+      - neo4j_data:/data
+    environment:
+      NEO4J_AUTH: neo4j/${NEO4J_PASSWORD:?set in the SOPS env}
+    healthcheck:
+      test: ["CMD-SHELL", 'cypher-shell -u neo4j -p "${NEO4J_PASSWORD}" ''RETURN 1''']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # S3-compatible object storage shared by the core app (voice messages, listing
+  # images) and Documenso.
+  minio:
+    image: minio/minio:RELEASE.2024-01-16T16-07-38Z
+    restart: always
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio_data:/data
+    environment:
+      MINIO_ROOT_USER: ${DOCUMENSO_S3_ACCESS_KEY:?set in the SOPS env}
+      MINIO_ROOT_PASSWORD: ${DOCUMENSO_S3_SECRET_KEY:?set in the SOPS env}
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # One-shot: create the buckets (documenso PDFs + voice messages + listings), then exit.
+  minio-createbucket:
+    image: minio/mc:RELEASE.2024-01-18T07-03-39Z
+    depends_on:
+      minio:
+        condition: service_started
+    entrypoint:
+      - /bin/sh
+      - -c
+      - >
+        until mc alias set local http://minio:9000 "${DOCUMENSO_S3_ACCESS_KEY}" "${DOCUMENSO_S3_SECRET_KEY}"; do sleep 1; done;
+        mc mb --ignore-existing local/documenso;
+        mc mb --ignore-existing local/messages;
+        mc mb --ignore-existing local/listings;
+        exit 0;
+
+  # ── Documenso e-signature (self-hosted) — prod values come from the SOPS env ──
+  documenso-db:
+    image: postgres:15
+    restart: always
+    volumes:
+      - documenso_db:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: ${DOCUMENSO_DB_USER:?set in the SOPS env}
+      POSTGRES_PASSWORD: ${DOCUMENSO_DB_PASSWORD:?set in the SOPS env}
+      POSTGRES_DB: ${DOCUMENSO_DB_NAME:-documenso}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DOCUMENSO_DB_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # E-signature UI — no host port; Caddy fronts it with TLS (signing links must be https).
+  documenso:
+    image: documenso/documenso:v2.15.0
+    restart: always
+    depends_on:
+      documenso-db:
+        condition: service_healthy
+      minio-createbucket:
+        condition: service_completed_successfully
+    volumes:
+      - ${DOCUMENSO_CERT_PATH:-./docker/documenso/cert.p12}:/opt/documenso/cert.p12:ro
+    environment:
+      PORT: "${DOCUMENSO_PORT:-3030}"
+      NEXTAUTH_SECRET: ${DOCUMENSO_NEXTAUTH_SECRET:?set in the SOPS env}
+      NEXT_PRIVATE_ENCRYPTION_KEY: ${DOCUMENSO_ENCRYPTION_KEY:?set in the SOPS env}
+      NEXT_PRIVATE_ENCRYPTION_SECONDARY_KEY: ${DOCUMENSO_ENCRYPTION_SECONDARY_KEY:?set in the SOPS env}
+      NEXT_PUBLIC_WEBAPP_URL: ${DOCUMENSO_PUBLIC_URL:?set in the SOPS env}
+      NEXT_PRIVATE_INTERNAL_WEBAPP_URL: http://documenso:${DOCUMENSO_PORT:-3030}
+      NEXT_PRIVATE_WEBHOOK_SSRF_BYPASS_HOSTS: api
+      NEXT_PRIVATE_DATABASE_URL: postgres://${DOCUMENSO_DB_USER}:${DOCUMENSO_DB_PASSWORD}@documenso-db:5432/${DOCUMENSO_DB_NAME:-documenso}
+      NEXT_PRIVATE_DIRECT_DATABASE_URL: postgres://${DOCUMENSO_DB_USER}:${DOCUMENSO_DB_PASSWORD}@documenso-db:5432/${DOCUMENSO_DB_NAME:-documenso}
+      NEXT_PUBLIC_UPLOAD_TRANSPORT: s3
+      NEXT_PRIVATE_UPLOAD_ENDPOINT: http://minio:9000
+      NEXT_PRIVATE_UPLOAD_FORCE_PATH_STYLE: "true"
+      NEXT_PRIVATE_UPLOAD_REGION: ${DOCUMENSO_S3_REGION:-us-east-1}
+      NEXT_PRIVATE_UPLOAD_BUCKET: ${DOCUMENSO_S3_BUCKET:-documenso}
+      NEXT_PRIVATE_UPLOAD_ACCESS_KEY_ID: ${DOCUMENSO_S3_ACCESS_KEY}
+      NEXT_PRIVATE_UPLOAD_SECRET_ACCESS_KEY: ${DOCUMENSO_S3_SECRET_KEY}
+      NEXT_PRIVATE_SMTP_TRANSPORT: smtp-auth
+      NEXT_PRIVATE_SMTP_HOST: smtp.resend.com
+      NEXT_PRIVATE_SMTP_PORT: "465"
+      NEXT_PRIVATE_SMTP_SECURE: "true"
+      NEXT_PRIVATE_SMTP_USERNAME: resend
+      NEXT_PRIVATE_SMTP_PASSWORD: ${RESEND_API_KEY:?set in the SOPS env}
+      NEXT_PRIVATE_SMTP_FROM_NAME: ${APP_NAME:-Connected-Neighboors}
+      NEXT_PRIVATE_SMTP_FROM_ADDRESS: ${FROM_EMAIL:?set in the SOPS env}
+      NEXT_PRIVATE_SIGNING_LOCAL_FILE_PATH: /opt/documenso/cert.p12
+      NEXT_PRIVATE_SIGNING_PASSPHRASE: ${DOCUMENSO_SIGNING_PASSPHRASE:-}
+
+  # One-shot: seed MongoDB + Neo4j with sample data, then exit. Idempotent; re-runs
+  # safely on every `up`. Reuses the api image.
   api-seed:
     image: ghcr.io/esgi-3al2-pa/web-apps/api:latest
+    restart: "no"
+    command: ["npx", "tsx", "apps/api/src/scripts/seed.ts"]
+    environment:
+      NODE_ENV: production
+      MONGODB_URL: mongodb://${MONGO_ROOT_USERNAME:?set in the SOPS env}:${MONGO_ROOT_PASSWORD:?set in the SOPS env}@mongodb:27017
+      MONGODB_DB: ${MONGODB_DB:-db}
+      NEO4J_URL: bolt://neo4j:7687
+      NEO4J_USER: neo4j
+      NEO4J_PASSWORD: ${NEO4J_PASSWORD:?set in the SOPS env}
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      neo4j:
+        condition: service_healthy
+
+  # One-shot: seed/promote the superAdmin account (idempotent, keyed on email).
   auth-seed:
     image: ghcr.io/esgi-3al2-pa/web-apps/auth-service:latest
-  # E-signature UI — front it with TLS via Caddy too (signing links must be https), no raw port.
-  documenso:
-    ports: !reset []
+    restart: "no"
+    command: ["npx", "tsx", "apps/auth-service/src/seed-superadmin.ts"]
+    environment:
+      NODE_ENV: production
+      MONGODB_URL: mongodb://${MONGO_ROOT_USERNAME:?set in the SOPS env}:${MONGO_ROOT_PASSWORD:?set in the SOPS env}@mongodb:27017
+      MONGODB_DB: ${MONGODB_DB:-db}
+      SEED_SUPERADMIN_EMAIL: ${SEED_SUPERADMIN_EMAIL:-superadmin@local.dev}
+      SEED_SUPERADMIN_PASSWORD: ${SEED_SUPERADMIN_PASSWORD:?set in the SOPS env}
+    depends_on:
+      mongodb:
+        condition: service_healthy
 
   # ── TLS-terminating reverse proxy. Routes subdomains to the app containers over the
   #    compose network; obtains + renews Let's Encrypt certs automatically. ─────────────
@@ -44,7 +297,7 @@ services:
       DOMAIN: ${DOMAIN:?set in the SOPS env}
       ACME_EMAIL: ${ACME_EMAIL:-}
     volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
       - caddy_config:/config
     depends_on:
@@ -55,5 +308,9 @@ services:
       - landing
 
 volumes:
+  mongodb_data:
+  neo4j_data:
+  documenso_db:
+  minio_data:
   caddy_data:
   caddy_config:
