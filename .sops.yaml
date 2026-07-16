@@ -2,14 +2,15 @@
 # be committed safely to this public repo. Only the values are encrypted; keys stay readable.
 #
 # One-time setup:
-#   1. Generate a key:   age-keygen -o key.txt          (keep key.txt OUT of git)
+#   1. Generate a key:   age-keygen -o age-key.txt        (keep age-key.txt OUT of git)
 #      → the public key ("age1…") goes below; the private key goes on the VM
 #        (~/.config/sops/age/keys.txt) and into the GitHub secret SOPS_AGE_KEY.
-#   2. Author secrets:   cp .env.dist deploy/secrets/prod.env   (fill in real values + prod URLs)
-#   3. Encrypt + commit: sops -e deploy/secrets/prod.env > deploy/secrets/prod.enc.env
-#      (deploy/secrets/prod.env stays gitignored; only *.enc.env is committed)
-#   4. Edit later with:  sops deploy/secrets/prod.enc.env
+#   2. Author secrets:   cp .env.dist prod.env            (fill in real values + prod URLs)
+#   3. Encrypt + commit: sops -e prod.env > prod.enc.env  (prod.env stays gitignored;
+#      only prod.enc.env is committed)
+#   4. Edit later with:  sops prod.enc.env
 creation_rules:
-  - path_regex: deploy/secrets/.*\.enc\.env$
-    # Replace with your team's age public key(s) (comma-separated for multiple recipients).
-    age: age1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqREPLACE
+  - path_regex: (^|/)prod\.enc\.env$
+    # Repo-dedicated recipient (private key: age-key.txt, gitignored). Add more
+    # comma-separated recipients to grant additional decryptors.
+    age: age14854y7u2fvpgwuj4qgura5x402z4j0ze4p7t3n83stcd44zugfzqhsy3ku

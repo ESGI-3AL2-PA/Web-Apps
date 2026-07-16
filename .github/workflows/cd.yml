@@ -4,7 +4,7 @@ name: CD
 # GHCR, and (optionally) rolling it out to the self-hosted VM over SSH. Triggered by hand
 # from the Actions tab so deploys are deliberate.
 #
-# One SOPS-encrypted file (deploy/secrets/prod.enc.env) is the single source of truth for
+# One SOPS-encrypted file (prod.enc.env) is the single source of truth for
 # every secret AND every environment URL. CI decrypts only the public VITE_* URLs (via the
 # SOPS_AGE_KEY secret) to bake into the front bundles; the VM decrypts the whole file at
 # runtime with its own age key.
@@ -78,7 +78,7 @@ jobs:
           curl -fsSL https://github.com/getsops/sops/releases/download/v3.9.1/sops-v3.9.1.linux.amd64 -o /usr/local/bin/sops
           chmod +x /usr/local/bin/sops
           for k in VITE_AUTH_SERVICE_URL VITE_API_URL VITE_APP_URL VITE_ADMIN_URL; do
-            echo "$k=$(sops -d --input-type dotenv --extract "[\"$k\"]" deploy/secrets/prod.enc.env)" >> "$GITHUB_ENV"
+            echo "$k=$(sops -d --input-type dotenv --extract "[\"$k\"]" prod.enc.env)" >> "$GITHUB_ENV"
           done
 
       - name: Build & push (prod target)
@@ -145,11 +145,11 @@ jobs:
             set -euo pipefail
             cd "${{ vars.DEPLOY_PATH }}"
             RAW="https://raw.githubusercontent.com/${{ github.repository }}/${SHA}"
-            for f in docker-compose.deploy.yml Caddyfile deploy/secrets/prod.enc.env; do
+            for f in docker-compose.deploy.yml Caddyfile prod.enc.env; do
               curl -fsSL "$RAW/$f" --create-dirs -o "$f"
             done
             C="docker compose -f docker-compose.deploy.yml"
-            sops exec-env deploy/secrets/prod.enc.env "\
+            sops exec-env prod.enc.env "\
               $C pull && \
               $C run --rm api node apps/api/dist/scripts/migrate.js && \
               $C up -d --no-build"

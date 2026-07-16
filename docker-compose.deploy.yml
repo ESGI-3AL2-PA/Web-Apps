@@ -8,7 +8,7 @@
 #   docker compose -f docker-compose.deploy.yml pull
 #   docker compose -f docker-compose.deploy.yml up -d --no-build
 #
-# Every secret AND every environment URL comes from the SOPS-decrypted env (deploy/secrets/prod.enc.env)
+# Every secret AND every environment URL comes from the SOPS-decrypted env (prod.enc.env)
 # via `sops exec-env` — nothing plaintext lives here. Front URLs (VITE_*) are baked into the bundles at
 # CI build time, so they are NOT read here. auth-service needs a STABLE RS256 keypair (ephemeral keys
 # rotate on restart and break JWT verification): generate one with scripts/gen-auth-keys.sh into
