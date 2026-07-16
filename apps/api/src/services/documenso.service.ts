@@ -7,6 +7,9 @@ import { logger } from "../logger.js";
 // self-hosted service and owns the signing UI, emails, and certificate; we only
 // orchestrate document creation (from a pre-configured template) and react to
 // its webhooks. See documentation/documenso-integration.md.
+//
+// The v1 API is deprecated-but-supported under Documenso v2.x (it still backs every
+// endpoint we call); new work should target the v2 API.
 
 export interface DocumensoParty {
   email: string;

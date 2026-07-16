@@ -52,7 +52,7 @@ BACKUP_BUCKETS="${BACKUP_BUCKETS:-messages listings documenso}"
 
 BACKUP_DIR="${BACKUP_DIR:-./backups}"
 USE_DOCKER="${USE_DOCKER:-0}"
-COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.local.yml}"
+COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.yml}"
 
 TIMESTAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 OUT_DIR="${BACKUP_DIR%/}/${TIMESTAMP}"

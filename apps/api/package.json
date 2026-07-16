@@ -8,6 +8,7 @@
     "dev": "tsx --watch src/index.ts",
     "start": "node ./dist/index.js",
     "test": "vitest run",
+    "seed": "tsx src/scripts/seed.ts",
     "graph:rebuild": "tsx src/scripts/rebuild-graph.ts",
     "tags:backfill": "tsx src/scripts/backfill-tag-labels.ts",
     "migrate": "tsx src/scripts/migrate.ts up",

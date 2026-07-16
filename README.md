@@ -41,17 +41,12 @@ npm install
 npm run dev
 ```
 
-Databases and the optional e-signature stack run via Docker Compose, which uses **profiles**:
+Databases and the Documenso e-signature stack run via Docker Compose. There are no profiles — one command brings up the whole stack:
 
 ```bash
-# app + Mongo / Neo4j / fronts
-docker compose -f docker-compose.local.yml --profile core up
-
-# also bring up the Documenso e-signature stack (Documenso / Postgres / MinIO / mailpit)
-docker compose -f docker-compose.local.yml --profile core --profile contracts up
+# app + Mongo / Neo4j / MinIO / fronts + Documenso e-signature (Documenso / Postgres / mailpit)
+docker compose up
 ```
-
-A bare `docker compose up` (no profile) starts nothing.
 
 Copy `.env.dist` to `.env` and fill in what differs from the localhost defaults.
 

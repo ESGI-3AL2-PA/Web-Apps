@@ -3,6 +3,23 @@ import type { Tag } from "../../entities/tag.entity.js";
 import type { ITagRepository } from "./tag.repository.js";
 import { containsAny, eq, paginate, where } from "../satan.helpers.js";
 
+// Legacy tag docs predate per-language fields (label absent, description a plain
+// string). SATAN returns raw rows, so normalize them the way the Mongo repo's
+// `toTag` does — otherwise responses violate TagResponseDtoSchema.
+type RawTag = Omit<Tag, "label" | "description"> & {
+  label?: Tag["label"];
+  description?: Tag["description"] | string;
+};
+
+function normalizeTag(row: RawTag): Tag {
+  const { label, description, ...rest } = row;
+  return {
+    ...rest,
+    label: label ?? { fr: row.name, en: row.name },
+    description: typeof description === "string" ? { fr: description, en: description } : description,
+  };
+}
+
 /** SATAN QL for id lookup, the `IN`-list name lookup, the id delete and the
  *  paginated list (COUNT + CONTAINS search). */
 export class SatanTagRepository implements ITagRepository {
@@ -12,14 +29,17 @@ export class SatanTagRepository implements ITagRepository {
   ) {}
 
   async getTagById(id: string): Promise<Tag | null> {
-    const rows = (await this.satan.query(`FIND tags WHERE _id = ${quote(id)}`)) as Tag[];
-    return rows[0] ?? null;
+    const rows = (await this.satan.query(`FIND tags WHERE _id = ${quote(id)}`)) as RawTag[];
+    return rows[0] ? normalizeTag(rows[0]) : null;
   }
 
   async getTagsByNames(districtId: string, names: string[]): Promise<Tag[]> {
     if (names.length === 0) return [];
     const list = names.map((n) => quote(n)).join(", ");
-    return (await this.satan.query(`FIND tags WHERE districtId = ${quote(districtId)} AND name IN (${list})`)) as Tag[];
+    const rows = (await this.satan.query(
+      `FIND tags WHERE districtId = ${quote(districtId)} AND name IN (${list})`,
+    )) as RawTag[];
+    return rows.map(normalizeTag);
   }
 
   async deleteTag(id: string): Promise<boolean> {
@@ -27,13 +47,14 @@ export class SatanTagRepository implements ITagRepository {
     return res.deletedCount > 0;
   }
 
-  getTags(params: Parameters<ITagRepository["getTags"]>[0]) {
+  async getTags(params: Parameters<ITagRepository["getTags"]>[0]) {
     const { search, districtId, page = 1, limit = 20 } = params;
     const clause = where([
       search && containsAny(["name", "label.fr", "label.en", "description.fr", "description.en"], search),
       districtId && eq("districtId", districtId),
     ]);
-    return paginate<Tag>(this.satan, "tags", clause, { page, limit });
+    const res = await paginate<RawTag>(this.satan, "tags", clause, { page, limit });
+    return { ...res, data: res.data.map(normalizeTag) };
   }
 
   // --- delegated to Mongo (server-generated fields) ---

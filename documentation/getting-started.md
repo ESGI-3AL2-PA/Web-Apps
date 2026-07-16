@@ -31,34 +31,29 @@ This installs dependencies for all apps and packages in the monorepo (Turborepo 
 
 ## 3. Start the stack
 
-Both Compose files use **profiles**, so a bare `docker compose up` (no profile) starts **zero** containers. Pick a profile:
-
-- `--profile core` — the app + databases + fronts (MongoDB, Neo4j, api, auth-service, admin/user fronts)
-- `--profile contracts` — adds the Documenso e-signature stack (Documenso, Postgres, MinIO, mailpit)
-
-Combine them (`--profile core --profile contracts`) to bring up everything.
+The dev compose (`docker-compose.yml`, the default) has no profiles — `docker compose up` starts the whole stack: the app + databases + fronts (MongoDB, Neo4j, MinIO, api, auth-service, admin/user/landing fronts) plus the Documenso e-signature stack (Documenso, Postgres, mailpit).
 
 ### Option A — Local dev (recommended)
 
-`npm run dev` brings up the `core` compose stack and then runs Turborepo in watch mode. It is equivalent to:
+`npm run dev` brings the compose stack up and then runs Turborepo in watch mode. It is equivalent to:
 
 ```bash
-docker compose -f docker-compose.local.yml --profile core up -d
+docker compose up -d
 nvm install latest && nvm use latest
 npm run dev
 ```
 
-The `docker-compose.local.yml` services bind-mount the repo for hot reload. Add `--profile contracts` to the compose command if you need the e-signature stack.
+The dev compose (`docker-compose.yml`) services bind-mount the repo for hot reload.
 
 ### Option B — Full stack in Docker
 
 Run everything from the root compose file inside Docker:
 
 ```bash
-docker compose --profile core up
+docker compose up
 ```
 
-> The containers bind-mount the repo root and watch for changes, so live reload still works. Add `--profile contracts` for the Documenso e-signature stack.
+> The containers bind-mount the repo root and watch for changes, so live reload still works.
 
 ## 4. Verify everything is running
 
@@ -93,8 +88,8 @@ docker compose --profile core up
 │   ├── eslint-config/
 │   └── typescript-config/
 ├── documentation/
-├── docker-compose.yml        # App + DBs, profile-gated (core / contracts)
-└── docker-compose.local.yml  # Local dev, profile-gated (core / contracts)
+├── docker-compose.yml        # Dev stack (hot reload) — one command brings up everything
+└── docker-compose.prod.yml   # Production stack (nginx, compiled)
 ```
 
 ## Common commands

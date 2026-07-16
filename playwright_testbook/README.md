@@ -25,7 +25,7 @@ removed. This README documents what a real harness needs.
 1. **The Compose stack up.** From the repo root:
 
    ```bash
-   docker compose -f docker-compose.local.yml --profile core up
+   docker compose up
    ```
 
    This brings up `api` (:3000), `auth-service` (:3001), the fronts, Mongo and Neo4j.

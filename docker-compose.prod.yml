@@ -1,17 +1,16 @@
 # Production stack — immutable, source-baked images.
 #
-# Unlike docker-compose.local.yml this compose:
+# Unlike docker-compose.yml (dev) this compose:
 #   • builds the `prod` Dockerfile target for every app (no `dev` / tsx --watch),
 #   • has NO source bind-mounts — the image is the artifact,
 #   • serves each front's built `dist/` from a hardened, non-root nginx
 #     (listening on 8080) instead of `vite preview`,
 #   • runs the backends from their compiled `dist/` with `node`.
 #
-# Profiles mirror the other composes: `core` = app + datastores + fronts,
-# `contracts` adds the Documenso e-signature stack.
+# `docker compose up` starts the whole stack — app + datastores + fronts + the
+# Documenso e-signature services (no profiles).
 #
-#   docker compose -f docker-compose.prod.yml --profile core up -d --build
-#   docker compose -f docker-compose.prod.yml --profile core --profile contracts up -d --build
+#   docker compose -f docker-compose.prod.yml up -d --build
 #
 # Frontend service URLs are baked into the SPA bundles at BUILD time (Vite inlines
 # VITE_* — see packages/config), so set the VITE_* values in .env before building.
@@ -20,7 +19,6 @@
 # into ./docker/auth/ — it is mounted read-only below.
 services:
   api:
-    profiles: [core]
     restart: always
     build:
       context: .
@@ -59,11 +57,17 @@ services:
       DOCUMENSO_SIGNING_LANGUAGE: ${DOCUMENSO_SIGNING_LANGUAGE:-fr}
       DOCUMENSO_DOWNLOAD_HOSTS: ${DOCUMENSO_DOWNLOAD_HOSTS:-minio:9000}
       CONTRACTS_SIGN_REDIRECT_URL: ${CONTRACTS_SIGN_REDIRECT_URL:-http://localhost:${USER_PORT:-5000}/mes-contrats}
+    # Wait for the datastores to be READY, not just started — the api connects to
+    # Mongo + Neo4j at boot and fails fast otherwise.
     depends_on:
-      - mongodb
-      - neo4j
-      - auth-service
-      - minio-createbucket
+      mongodb:
+        condition: service_healthy
+      neo4j:
+        condition: service_healthy
+      auth-service:
+        condition: service_started
+      minio-createbucket:
+        condition: service_completed_successfully
     healthcheck:
       test:
         - CMD
@@ -76,7 +80,6 @@ services:
       start_period: 30s
 
   auth-service:
-    profiles: [core]
     restart: always
     build:
       context: .
@@ -104,10 +107,10 @@ services:
       FROM_EMAIL: ${FROM_EMAIL:?set in .env}
       APP_NAME: ${APP_NAME:-Connected-Neighboors}
     depends_on:
-      - mongodb
+      mongodb:
+        condition: service_healthy
 
   admin-front:
-    profiles: [core]
     restart: always
     build:
       context: .
@@ -124,7 +127,6 @@ services:
       - auth-service
 
   user-front:
-    profiles: [core]
     restart: always
     build:
       context: .
@@ -142,7 +144,6 @@ services:
       - auth-service
 
   landing:
-    profiles: [core]
     restart: always
     build:
       context: .
@@ -158,7 +159,6 @@ services:
 
   # ── Datastores ───────────────────────────────────────────────────────────────
   mongodb:
-    profiles: [core]
     image: mongo:8
     restart: always
     ports:
@@ -168,9 +168,14 @@ services:
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME:?set in .env}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:?set in .env}
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
 
   mongo-express:
-    profiles: [core]
     image: mongo-express:1.0.2
     restart: on-failure
     ports:
@@ -186,7 +191,6 @@ services:
       - mongodb
 
   neo4j:
-    profiles: [core]
     image: neo4j:5
     restart: always
     ports:
@@ -196,12 +200,17 @@ services:
       - neo4j_data:/data
     environment:
       NEO4J_AUTH: neo4j/${NEO4J_PASSWORD:?set in .env}
+    healthcheck:
+      test: ["CMD-SHELL", 'cypher-shell -u neo4j -p "${NEO4J_PASSWORD}" ''RETURN 1''']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   # S3-compatible object storage shared by the core app (voice messages, listing
-  # images) and Documenso (contracts). Runs in both profiles.
+  # images) and Documenso.
   minio:
-    profiles: [core, contracts]
-    image: minio/minio:latest
+    image: minio/minio:RELEASE.2024-01-16T16-07-38Z
     restart: always
     command: server /data --console-address ":9001"
     volumes:
@@ -217,8 +226,7 @@ services:
 
   # One-shot: create the buckets (documenso PDFs + voice messages + listings), then exit.
   minio-createbucket:
-    profiles: [core, contracts]
-    image: minio/mc:latest
+    image: minio/mc:RELEASE.2024-01-18T07-03-39Z
     depends_on:
       minio:
         condition: service_started
@@ -234,7 +242,6 @@ services:
 
   # ── Documenso e-signature (self-hosted) — prod values come from env ──────────
   documenso-db:
-    profiles: [contracts]
     image: postgres:15
     restart: always
     volumes:
@@ -250,8 +257,7 @@ services:
       retries: 5
 
   documenso:
-    profiles: [contracts]
-    image: documenso/documenso:latest
+    image: documenso/documenso:v2.15.0
     restart: always
     depends_on:
       documenso-db:
@@ -289,6 +295,46 @@ services:
       NEXT_PRIVATE_SMTP_FROM_ADDRESS: ${FROM_EMAIL:?set in .env}
       NEXT_PRIVATE_SIGNING_LOCAL_FILE_PATH: /opt/documenso/cert.p12
       NEXT_PRIVATE_SIGNING_PASSPHRASE: ${DOCUMENSO_SIGNING_PASSPHRASE:-}
+
+  # One-shot: seed MongoDB + Neo4j with sample data, then exit. Idempotent; re-runs
+  # safely on every `up`. Reuses the api image.
+  api-seed:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      target: prod
+    restart: "no"
+    command: ["npx", "tsx", "apps/api/src/scripts/seed.ts"]
+    environment:
+      NODE_ENV: production
+      MONGODB_URL: mongodb://${MONGO_ROOT_USERNAME:?set in .env}:${MONGO_ROOT_PASSWORD:?set in .env}@mongodb:27017
+      MONGODB_DB: ${MONGODB_DB:-db}
+      NEO4J_URL: bolt://neo4j:7687
+      NEO4J_USER: neo4j
+      NEO4J_PASSWORD: ${NEO4J_PASSWORD:?set in .env}
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      neo4j:
+        condition: service_healthy
+
+  # One-shot: seed/promote the superAdmin account (idempotent, keyed on email).
+  auth-seed:
+    build:
+      context: .
+      dockerfile: apps/auth-service/Dockerfile
+      target: prod
+    restart: "no"
+    command: ["npx", "tsx", "apps/auth-service/src/seed-superadmin.ts"]
+    environment:
+      NODE_ENV: production
+      MONGODB_URL: mongodb://${MONGO_ROOT_USERNAME:?set in .env}:${MONGO_ROOT_PASSWORD:?set in .env}@mongodb:27017
+      MONGODB_DB: ${MONGODB_DB:-db}
+      SEED_SUPERADMIN_EMAIL: ${SEED_SUPERADMIN_EMAIL:-superadmin@local.dev}
+      SEED_SUPERADMIN_PASSWORD: ${SEED_SUPERADMIN_PASSWORD:?set in .env}
+    depends_on:
+      mongodb:
+        condition: service_healthy
 
 volumes:
   mongodb_data:

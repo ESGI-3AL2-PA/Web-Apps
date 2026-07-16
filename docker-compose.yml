@@ -1,6 +1,173 @@
 services:
+  mongodb:
+    image: mongo:8
+    restart: unless-stopped
+    ports:
+      - "${MONGO_PORT:-27017}:27017"
+    volumes:
+      - mongodb_data:/data/db
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: root
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  # Unauthenticated Mongo admin UI on :8081 (dev only — the prod compose puts it
+  # behind HTTP basic auth).
+  mongo-express:
+    image: mongo-express:1.0.2
+    restart: on-failure
+    ports:
+      - "${MONGO_EXPRESS_PORT:-8081}:8081"
+    environment:
+      ME_CONFIG_MONGODB_ADMINUSERNAME: root
+      ME_CONFIG_MONGODB_ADMINPASSWORD: root
+      ME_CONFIG_MONGODB_URL: mongodb://root:root@mongodb:27017/
+      ME_CONFIG_BASICAUTH: false
+    depends_on:
+      - mongodb
+
+  neo4j:
+    image: neo4j:5
+    restart: unless-stopped
+    ports:
+      - "${NEO4J_HTTP_PORT:-7474}:7474"
+      - "${NEO4J_BOLT_PORT:-7687}:7687"
+    volumes:
+      - neo4j_data:/data
+    environment:
+      NEO4J_AUTH: neo4j/password
+    healthcheck:
+      test: ["CMD-SHELL", "cypher-shell -u neo4j -p password 'RETURN 1'"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # Local SMTP sink. Documenso requires an SMTP transport to boot; mailpit
+  # accepts everything and exposes a web UI on 8025 so we can read the signing
+  # invitation emails (and grab the signing links) during local E2E testing.
+  mailpit:
+    image: axllent/mailpit:v1.20.0
+    ports:
+      - "${MAILPIT_SMTP_PORT:-1025}:1025"
+      - "${MAILPIT_UI_PORT:-8025}:8025"
+
+  # Dedicated Postgres for Documenso (it is Prisma/Postgres; cannot share Mongo).
+  documenso-db:
+    image: postgres:15
+    ports:
+      - "${DOCUMENSO_DB_PORT:-5432}:5432"
+    volumes:
+      - documenso_db:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: documenso
+      POSTGRES_PASSWORD: documenso
+      POSTGRES_DB: documenso
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U documenso"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Self-hosted Documenso (community edition). Stores uploaded/signed PDFs in MinIO
+  # (S3 transport — required for the api to download the PDF for in-app preview),
+  # mails via mailpit, signs with a local dev P12 cert (scripts/gen-documenso-cert.sh).
+  # Browser-facing on http://localhost:${DOCUMENSO_PORT:-3030}; the api reaches it
+  # in-network at http://documenso:3030 and its webhooks reach the api at api:3000.
+  documenso:
+    image: documenso/documenso:v2.15.0
+    depends_on:
+      documenso-db:
+        condition: service_healthy
+      mailpit:
+        condition: service_started
+      minio-createbucket:
+        condition: service_completed_successfully
+    # Same host/container port so the app's internal job queue (which posts jobs —
+    # incl. outbound email — to NEXT_PUBLIC_WEBAPP_URL) can reach itself over loopback.
+    ports:
+      - "${DOCUMENSO_PORT:-3030}:${DOCUMENSO_PORT:-3030}"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./docker/documenso/cert.p12:/opt/documenso/cert.p12:ro
+    environment:
+      PORT: "${DOCUMENSO_PORT:-3030}"
+      NEXTAUTH_SECRET: ${DOCUMENSO_NEXTAUTH_SECRET:-documenso-dev-nextauth-secret}
+      NEXT_PRIVATE_ENCRYPTION_KEY: ${DOCUMENSO_ENCRYPTION_KEY:-documenso-dev-encryption-key-primary}
+      NEXT_PRIVATE_ENCRYPTION_SECONDARY_KEY: ${DOCUMENSO_ENCRYPTION_SECONDARY_KEY:-documenso-dev-encryption-key-secondary}
+      NEXT_PUBLIC_WEBAPP_URL: http://localhost:${DOCUMENSO_PORT:-3030}
+      NEXT_PRIVATE_INTERNAL_WEBAPP_URL: http://localhost:${DOCUMENSO_PORT:-3030}
+      # Documenso blocks webhooks to private/loopback addresses (SSRF guard). Our
+      # api runs in-network as `api`, so allowlist it (host.docker.internal kept for
+      # the case where the api is run on the host via `npm run dev`).
+      NEXT_PRIVATE_WEBHOOK_SSRF_BYPASS_HOSTS: api,host.docker.internal,localhost
+      NEXT_PRIVATE_DATABASE_URL: postgres://documenso:documenso@documenso-db:5432/documenso
+      NEXT_PRIVATE_DIRECT_DATABASE_URL: postgres://documenso:documenso@documenso-db:5432/documenso
+      # S3 (MinIO) storage so the api can download the PDF via the v1 API for preview.
+      NEXT_PUBLIC_UPLOAD_TRANSPORT: s3
+      NEXT_PRIVATE_UPLOAD_ENDPOINT: http://minio:9000
+      NEXT_PRIVATE_UPLOAD_FORCE_PATH_STYLE: "true"
+      NEXT_PRIVATE_UPLOAD_REGION: us-east-1
+      NEXT_PRIVATE_UPLOAD_BUCKET: documenso
+      NEXT_PRIVATE_UPLOAD_ACCESS_KEY_ID: minioadmin
+      NEXT_PRIVATE_UPLOAD_SECRET_ACCESS_KEY: minioadmin
+      # SMTP → mailpit (no auth, plaintext).
+      NEXT_PRIVATE_SMTP_TRANSPORT: smtp-auth
+      NEXT_PRIVATE_SMTP_HOST: mailpit
+      NEXT_PRIVATE_SMTP_PORT: "1025"
+      NEXT_PRIVATE_SMTP_SECURE: "false"
+      NEXT_PRIVATE_SMTP_UNSAFE_IGNORE_TLS: "true"
+      NEXT_PRIVATE_SMTP_FROM_NAME: Documenso Local
+      NEXT_PRIVATE_SMTP_FROM_ADDRESS: documenso@local.dev
+      # Local dev signing certificate.
+      NEXT_PRIVATE_SIGNING_LOCAL_FILE_PATH: /opt/documenso/cert.p12
+      NEXT_PRIVATE_SIGNING_PASSPHRASE: ""
+
+  # S3-compatible object storage. Documenso stores its signed PDFs here, and the
+  # core app stores voice messages + listing images here.
+  minio:
+    image: minio/minio:RELEASE.2024-01-16T16-07-38Z
+    command: server /data --console-address ":9001"
+    ports:
+      - "${MINIO_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - minio_data:/data
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # One-shot: create the buckets (documenso PDFs + voice messages), then exit.
+  minio-createbucket:
+    image: minio/mc:RELEASE.2024-01-18T07-03-39Z
+    depends_on:
+      minio:
+        condition: service_started
+    entrypoint:
+      - /bin/sh
+      - -c
+      - >
+        until mc alias set local http://minio:9000 minioadmin minioadmin; do sleep 1; done;
+        mc mb --ignore-existing local/documenso;
+        mc mb --ignore-existing local/messages;
+        mc mb --ignore-existing local/listings;
+        exit 0;
+
+  # ── Application services (dev target, hot-reload via bind mount) ─────────────
+  # Running the api in-network means it reaches documenso:3030 and minio:9000 by
+  # name — no host/container split-horizon for the PDF proxy or webhooks.
   api:
-    profiles: [core]
     restart: unless-stopped
     build:
       context: .
@@ -14,35 +181,45 @@ services:
       - /app/apps/api/node_modules
     environment:
       NODE_ENV: development
-      API_PORT: 3000 # container-internal port; host side is ${API_PORT}
-      MONGODB_URL: mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongodb:27017
+      API_PORT: 3000
+      MONGODB_URL: mongodb://root:root@mongodb:27017
       MONGODB_DB: db
-      AUTH_JWKS_URL: http://auth-service:3001/.well-known/jwks.json
       NEO4J_URL: bolt://neo4j:7687
-      NEO4J_USER: ${NEO4J_USER:-neo4j}
-      NEO4J_PASSWORD: ${NEO4J_PASSWORD:?set in .env}
-      # Documenso (contracts). Reached over the docker network; the token/template/
-      # secret come from .env (created once in the Documenso UI). Signing URLs that
-      # Documenso returns already use its public URL (localhost:3030), browser-reachable.
+      NEO4J_USER: neo4j
+      NEO4J_PASSWORD: password
+      AUTH_JWKS_URL: http://auth-service:3001/.well-known/jwks.json
+      # Reach auth-service in-network to purge sessions on account deletion (GDPR erasure).
+      AUTH_SERVICE_URL: http://auth-service:3001
+      INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN:-dev-internal-service-token}
+      # Documenso reached in-network; secrets come from .env (created once in the UI).
       DOCUMENSO_URL: http://documenso:3030
       DOCUMENSO_API_TOKEN: ${DOCUMENSO_API_TOKEN:-}
       DOCUMENSO_TEMPLATE_ID: ${DOCUMENSO_TEMPLATE_ID:-}
       DOCUMENSO_WEBHOOK_SECRET: ${DOCUMENSO_WEBHOOK_SECRET:-}
       DOCUMENSO_SIGNING_LANGUAGE: ${DOCUMENSO_SIGNING_LANGUAGE:-fr}
-      # SSRF allowlist for the signed-PDF download URL Documenso hands us. Documenso
-      # presigns it against its object-store upload endpoint (NEXT_PRIVATE_UPLOAD_ENDPOINT
-      # = http://minio:9000), which this api reaches in-network — allow that host.
-      DOCUMENSO_DOWNLOAD_HOSTS: ${DOCUMENSO_DOWNLOAD_HOSTS:-minio:9000}
       CONTRACTS_SIGN_REDIRECT_URL: ${CONTRACTS_SIGN_REDIRECT_URL:-http://localhost:${USER_PORT:-5000}/mes-contrats}
-    # No hard dependency on `documenso` (contracts profile): the api calls it lazily
-    # per contract request and 502s if it's absent, so core can run without it.
+      # Voice-message storage in MinIO (bucket created by minio-createbucket).
+      MESSAGES_MINIO_ENDPOINT: http://minio:9000
+      MESSAGES_MINIO_BUCKET: messages
+      MESSAGES_MINIO_ACCESS_KEY: minioadmin
+      MESSAGES_MINIO_SECRET_KEY: minioadmin
+      LISTINGS_MINIO_ENDPOINT: http://minio:9000
+      LISTINGS_MINIO_BUCKET: listings
+      LISTINGS_MINIO_ACCESS_KEY: minioadmin
+      LISTINGS_MINIO_SECRET_KEY: minioadmin
+    # No hard dependency on `documenso`: the api calls it lazily per contract
+    # request and 502s if it's absent, so the app can run without it.
+    # Wait for the datastores to be READY, not just started — the api connects to
+    # Mongo + Neo4j at boot and fails fast (tsx --watch won't auto-retry) otherwise.
     depends_on:
       mongodb:
         condition: service_healthy
       neo4j:
         condition: service_healthy
       auth-service:
-        condition: service_healthy
+        condition: service_started
+      minio-createbucket:
+        condition: service_completed_successfully
     healthcheck:
       test:
         - CMD
@@ -55,7 +232,6 @@ services:
       start_period: 30s
 
   auth-service:
-    profiles: [core]
     restart: unless-stopped
     build:
       context: .
@@ -69,26 +245,27 @@ services:
       - /app/apps/auth-service/node_modules
     environment:
       NODE_ENV: development
-      AUTH_PORT: 3001 # container-internal port; host side is ${AUTH_PORT}
-      MONGODB_URL: mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongodb:27017
+      AUTH_PORT: 3001
+      MONGODB_URL: mongodb://root:root@mongodb:27017
       MONGODB_DB: db
       API_URL: http://api:3000
+      # Shared secret for the api→auth-service internal session-purge call (must match api).
+      INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN:-dev-internal-service-token}
+      # No AUTH_*_KEY[_FILE] set → auth-service generates ephemeral RS256 keys on boot.
+      # Fine for dev (keys rotate on restart; the api's JWKS set refetches on the next
+      # verification miss). Provide stable keys via AUTH_*_KEY_FILE for prod.
+      # Dev email → mailpit (SMTP branch of email.service.ts). Verification/reset
+      # links are read from mailpit's UI (:8025). MFA is opt-in, so no auth bypasses.
+      SMTP_HOST: mailpit
+      SMTP_PORT: "1025"
+      SMTP_SECURE: "false"
     depends_on:
       mongodb:
         condition: service_healthy
-    healthcheck:
-      test:
-        - CMD
-        - node
-        - -e
-        - "fetch('http://localhost:3001/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
-      interval: 15s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
+      mailpit:
+        condition: service_started
 
   admin-front:
-    profiles: [core]
     restart: unless-stopped
     build:
       context: .
@@ -102,24 +279,12 @@ services:
       - /app/apps/admin-front/node_modules
     environment:
       NODE_ENV: development
-      ADMIN_PORT: 4000 # container-internal port; host side is ${ADMIN_PORT}
+      ADMIN_PORT: 4000
       VITE_AUTH_SERVICE_URL: http://localhost:${AUTH_PORT:-3001}
     depends_on:
-      auth-service:
-        condition: service_healthy
-    healthcheck:
-      test:
-        - CMD
-        - node
-        - -e
-        - "fetch('http://localhost:4000/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
-      interval: 15s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
+      - auth-service
 
   user-front:
-    profiles: [core]
     restart: unless-stopped
     build:
       context: .
@@ -133,169 +298,75 @@ services:
       - /app/apps/user-front/node_modules
     environment:
       NODE_ENV: development
-      USER_PORT: 5000 # container-internal port; host side is ${USER_PORT}
+      USER_PORT: 5000
       VITE_AUTH_SERVICE_URL: http://localhost:${AUTH_PORT:-3001}
       VITE_API_URL: http://localhost:${API_PORT:-3000}
       VITE_ADMIN_URL: http://localhost:${ADMIN_PORT:-4000}
     depends_on:
-      api:
-        condition: service_healthy
-      auth-service:
-        condition: service_healthy
-    healthcheck:
-      test:
-        - CMD
-        - node
-        - -e
-        - "fetch('http://localhost:5000/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
-      interval: 15s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
+      - api
+      - auth-service
 
-  mongodb:
-    profiles: [core]
-    image: mongo:8
-    restart: always
+  landing:
+    restart: unless-stopped
+    build:
+      context: .
+      dockerfile: apps/landing/Dockerfile
+      target: dev
     ports:
-      - "${MONGO_PORT:-27017}:27017"
+      - "${LANDING_PORT:-6060}:6060"
     volumes:
-      - mongodb_data:/data/db
+      - .:/app
+      - /app/node_modules
+      - /app/apps/landing/node_modules
     environment:
-      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME:?set in .env}
-      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:?set in .env}
-    healthcheck:
-      test: ["CMD-SHELL", 'mongosh --quiet --eval "db.adminCommand(''ping'').ok" | grep -q 1']
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 20s
-
-  mongo-express:
-    # Behind the `tools` profile so `--profile core` never exposes the Mongo admin UI.
-    profiles: [tools]
-    image: mongo-express:1.0.2
-    restart: on-failure
-    ports:
-      - "${MONGO_EXPRESS_PORT:-8081}:8081"
-    environment:
-      ME_CONFIG_MONGODB_ADMINUSERNAME: ${MONGO_ROOT_USERNAME:?set in .env}
-      ME_CONFIG_MONGODB_ADMINPASSWORD: ${MONGO_ROOT_PASSWORD:?set in .env}
-      ME_CONFIG_MONGODB_URL: mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongodb:27017/
-      # Protect the admin UI with HTTP basic auth (credentials required in prod).
-      ME_CONFIG_BASICAUTH_USERNAME: ${MONGO_EXPRESS_USERNAME:?set in .env}
-      ME_CONFIG_BASICAUTH_PASSWORD: ${MONGO_EXPRESS_PASSWORD:?set in .env}
+      NODE_ENV: development
+      LANDING_PORT: 6060
+      VITE_AUTH_SERVICE_URL: http://localhost:${AUTH_PORT:-3001}
+      VITE_API_URL: http://localhost:${API_PORT:-3000}
+      VITE_APP_URL: http://localhost:${USER_PORT:-5000}
+      VITE_ADMIN_URL: http://localhost:${ADMIN_PORT:-4000}
     depends_on:
-      - mongodb
+      - auth-service
 
-  neo4j:
-    profiles: [core]
-    image: neo4j:5
-    restart: always
-    ports:
-      - "${NEO4J_HTTP_PORT:-7474}:7474"
-      - "${NEO4J_BOLT_PORT:-7687}:7687"
-    volumes:
-      - neo4j_data:/data
+  # One-shot: seed MongoDB + Neo4j with sample data, then exit. Idempotent (keyed on
+  # deterministic seed IDs), so it re-runs safely on every `up`. Reuses the api image.
+  api-seed:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      target: dev
+    restart: "no"
+    command: ["npx", "tsx", "apps/api/src/scripts/seed.ts"]
     environment:
-      NEO4J_AUTH: ${NEO4J_USER:-neo4j}/${NEO4J_PASSWORD:?set in .env}
-    healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:7474 || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 20s
-
-  # ── Documenso e-signature (self-hosted) — prod values come from env ──────────
-  documenso-db:
-    profiles: [contracts]
-    image: postgres:15
-    restart: always
-    volumes:
-      - documenso_db:/var/lib/postgresql/data
-    environment:
-      POSTGRES_USER: ${DOCUMENSO_DB_USER:?set in .env}
-      POSTGRES_PASSWORD: ${DOCUMENSO_DB_PASSWORD:?set in .env}
-      POSTGRES_DB: ${DOCUMENSO_DB_NAME:-documenso}
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DOCUMENSO_DB_USER}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  minio:
-    profiles: [contracts]
-    image: minio/minio:RELEASE.2024-01-16T16-07-38Z
-    restart: always
-    command: server /data --console-address ":9001"
-    volumes:
-      - minio_data:/data
-    environment:
-      MINIO_ROOT_USER: ${DOCUMENSO_S3_ACCESS_KEY:?set in .env}
-      MINIO_ROOT_PASSWORD: ${DOCUMENSO_S3_SECRET_KEY:?set in .env}
-    healthcheck:
-      test: ["CMD", "mc", "ready", "local"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
-  minio-createbucket:
-    profiles: [contracts]
-    image: minio/mc:RELEASE.2024-01-18T07-03-39Z
+      NODE_ENV: development
+      MONGODB_URL: mongodb://root:root@mongodb:27017
+      MONGODB_DB: db
+      NEO4J_URL: bolt://neo4j:7687
+      NEO4J_USER: neo4j
+      NEO4J_PASSWORD: password
     depends_on:
-      minio:
-        condition: service_started
-    entrypoint:
-      - /bin/sh
-      - -c
-      - >
-        until mc alias set local http://minio:9000 "${DOCUMENSO_S3_ACCESS_KEY}" "${DOCUMENSO_S3_SECRET_KEY}"; do sleep 1; done;
-        mc mb --ignore-existing "local/${DOCUMENSO_S3_BUCKET:-documenso}";
-        exit 0;
-
-  documenso:
-    profiles: [contracts]
-    image: documenso/documenso:v1.5.6
-    restart: always
-    depends_on:
-      documenso-db:
+      mongodb:
         condition: service_healthy
-      minio-createbucket:
-        condition: service_completed_successfully
-    ports:
-      - "${DOCUMENSO_PORT:-3030}:${DOCUMENSO_PORT:-3030}"
-    volumes:
-      - ${DOCUMENSO_CERT_PATH:-./docker/documenso/cert.p12}:/opt/documenso/cert.p12:ro
+      neo4j:
+        condition: service_healthy
+
+  # One-shot: seed/promote the superAdmin account (idempotent, keyed on email).
+  auth-seed:
+    build:
+      context: .
+      dockerfile: apps/auth-service/Dockerfile
+      target: dev
+    restart: "no"
+    command: ["npx", "tsx", "apps/auth-service/src/seed-superadmin.ts"]
     environment:
-      PORT: "${DOCUMENSO_PORT:-3030}"
-      NEXTAUTH_SECRET: ${DOCUMENSO_NEXTAUTH_SECRET:?set in .env}
-      NEXT_PRIVATE_ENCRYPTION_KEY: ${DOCUMENSO_ENCRYPTION_KEY:?set in .env}
-      NEXT_PRIVATE_ENCRYPTION_SECONDARY_KEY: ${DOCUMENSO_ENCRYPTION_SECONDARY_KEY:?set in .env}
-      # Public URL the browser uses for signing pages; internal URL for the job queue.
-      NEXT_PUBLIC_WEBAPP_URL: ${DOCUMENSO_PUBLIC_URL:?set in .env}
-      NEXT_PRIVATE_INTERNAL_WEBAPP_URL: http://documenso:${DOCUMENSO_PORT:-3030}
-      # Webhooks post to the in-network api; keep the SSRF guard armed for all else.
-      NEXT_PRIVATE_WEBHOOK_SSRF_BYPASS_HOSTS: api
-      NEXT_PRIVATE_DATABASE_URL: postgres://${DOCUMENSO_DB_USER}:${DOCUMENSO_DB_PASSWORD}@documenso-db:5432/${DOCUMENSO_DB_NAME:-documenso}
-      NEXT_PRIVATE_DIRECT_DATABASE_URL: postgres://${DOCUMENSO_DB_USER}:${DOCUMENSO_DB_PASSWORD}@documenso-db:5432/${DOCUMENSO_DB_NAME:-documenso}
-      NEXT_PUBLIC_UPLOAD_TRANSPORT: s3
-      NEXT_PRIVATE_UPLOAD_ENDPOINT: http://minio:9000
-      NEXT_PRIVATE_UPLOAD_FORCE_PATH_STYLE: "true"
-      NEXT_PRIVATE_UPLOAD_REGION: ${DOCUMENSO_S3_REGION:-us-east-1}
-      NEXT_PRIVATE_UPLOAD_BUCKET: ${DOCUMENSO_S3_BUCKET:-documenso}
-      NEXT_PRIVATE_UPLOAD_ACCESS_KEY_ID: ${DOCUMENSO_S3_ACCESS_KEY}
-      NEXT_PRIVATE_UPLOAD_SECRET_ACCESS_KEY: ${DOCUMENSO_S3_SECRET_KEY}
-      # SMTP reuses Resend (same provider as auth-service; no second provider).
-      NEXT_PRIVATE_SMTP_TRANSPORT: smtp-auth
-      NEXT_PRIVATE_SMTP_HOST: smtp.resend.com
-      NEXT_PRIVATE_SMTP_PORT: "465"
-      NEXT_PRIVATE_SMTP_SECURE: "true"
-      NEXT_PRIVATE_SMTP_USERNAME: resend
-      NEXT_PRIVATE_SMTP_PASSWORD: ${RESEND_API_KEY:?set in .env}
-      NEXT_PRIVATE_SMTP_FROM_NAME: ${APP_NAME:-Connected-Neighboors}
-      NEXT_PRIVATE_SMTP_FROM_ADDRESS: ${FROM_EMAIL:?set in .env}
-      NEXT_PRIVATE_SIGNING_LOCAL_FILE_PATH: /opt/documenso/cert.p12
-      NEXT_PRIVATE_SIGNING_PASSPHRASE: ${DOCUMENSO_SIGNING_PASSPHRASE:-}
+      NODE_ENV: development
+      MONGODB_URL: mongodb://root:root@mongodb:27017
+      MONGODB_DB: db
+      SEED_SUPERADMIN_EMAIL: ${SEED_SUPERADMIN_EMAIL:-superadmin@local.dev}
+      SEED_SUPERADMIN_PASSWORD: ${SEED_SUPERADMIN_PASSWORD:-ChangeMe!2345}
+    depends_on:
+      mongodb:
+        condition: service_healthy
 
 volumes:
   mongodb_data:

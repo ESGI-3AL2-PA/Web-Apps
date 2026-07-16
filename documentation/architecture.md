@@ -25,8 +25,8 @@ The project is a **Turborepo monorepo** built entirely in TypeScript, following 
 │   ├── eslint-config/ # Shared ESLint flat-config rules
 │   └── typescript-config/ # Shared tsconfig bases
 ├── playwright_testbook/   # End-to-end API and Front tests
-├── docker-compose.yml           # Full stack (apps + databases) — production
-└── docker-compose.local.yml     # Full stack for local/dev (pinned image versions)
+├── docker-compose.yml           # Dev stack (hot reload, pinned images)
+└── docker-compose.prod.yml      # Production stack (nginx, compiled dist)
 ```
 
 ---
@@ -145,27 +145,24 @@ ESLint 9 flat-config rules, composed per environment:
 
 ## Infrastructure & Databases
 
-The stack is orchestrated with Docker Compose. Both compose files use **profiles** so `docker compose up` with no profile starts nothing:
+The stack is orchestrated with Docker Compose. There are no profiles — `docker compose up` starts the whole stack (app services + datastores + fronts + the Documenso e-signature services).
 
-- `--profile core` — app services (api, auth-service, admin-front, user-front) plus their datastores (Mongo, mongo-express, Neo4j).
-- `--profile contracts` — the Documenso e-signature stack (Documenso, Postgres, MinIO, mailpit).
-
-Both compose files define the same topology — the app services plus their datastores — and differ in intent. `docker-compose.yml` is the **production** compose: it builds the app images and tracks rolling `:latest` image tags. `docker-compose.local.yml` is for **local/dev**: it pins exact image versions for reproducibility and additionally exposes MinIO and mailpit under the `core` profile (in production those live under `contracts` only). Either way, `--profile core` brings up the full app stack; apps can also be run directly on the host with `npm run dev`.
+Both compose files define the same topology and differ in intent. `docker-compose.yml` is the **dev** compose (the default a bare `docker compose` picks up): it builds the `dev` Dockerfile target with source bind-mounts for hot reload, uses zero-config local credentials, and pins exact image versions. `docker-compose.prod.yml` is the **production** compose: it builds the `prod` target (compiled `dist/` served by a hardened nginx) and takes all secrets from `.env`. Either way, `docker compose up` brings up the full stack; in dev the apps can also be run directly on the host with `npm run dev`.
 
 ### Datastores
 
-| Store             | Image                 | Port(s)                   | Profile     | Purpose                                                                                                                                                                                                                                        |
-| ----------------- | --------------------- | ------------------------- | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **MongoDB**       | `mongo:8`             | 27017                     | `core`      | Primary document store — users, districts, listings, events, votes, incidents, conversations, messages, notifications, refresh tokens, transactions, contracts (see `documentation/MCD/mongo.md`)                                              |
-| **mongo-express** | `mongo-express`       | 8081                      | `core`      | Web admin UI for MongoDB                                                                                                                                                                                                                       |
-| **Neo4j**         | `neo4j:5`             | 7474 (HTTP), 7687 (Bolt)  | `core`      | Graph of neighbourhood relationships — `User`, `District`, `Event` nodes with `LIVES_IN`, `KNOWS`, `CREATED`, `REGISTERED_FOR`, `ATTENDED`, `CONTAINS` edges (see `documentation/MCD/neo4j.md`); backs recommendations and district boundaries |
-| **Postgres**      | `postgres:15`         | 5432                      | `contracts` | Backing database for Documenso (e-signature)                                                                                                                                                                                                   |
-| **Documenso**     | `documenso/documenso` | 3030 (web/API)            | `contracts` | Self-hosted e-signature service for contracts (see `documentation/documenso-integration.md`)                                                                                                                                                   |
-| **MinIO**         | `minio/minio`         | 9000 (S3), 9001 (console) | `contracts` | S3-compatible object storage for Documenso document files                                                                                                                                                                                      |
-| **mailpit**       | `axllent/mailpit`     | 8025 (UI), 1025 (SMTP)    | `contracts` | Local SMTP catch-all for inspecting outgoing mail in dev                                                                                                                                                                                       |
+| Store             | Image                 | Port(s)                   | Purpose                                                                                                                                                                                                                                        |
+| ----------------- | --------------------- | ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **MongoDB**       | `mongo:8`             | 27017                     | Primary document store — users, districts, listings, events, votes, incidents, conversations, messages, notifications, refresh tokens, transactions, contracts (see `documentation/MCD/mongo.md`)                                              |
+| **mongo-express** | `mongo-express`       | 8081                      | Web admin UI for MongoDB                                                                                                                                                                                                                       |
+| **Neo4j**         | `neo4j:5`             | 7474 (HTTP), 7687 (Bolt)  | Graph of neighbourhood relationships — `User`, `District`, `Event` nodes with `LIVES_IN`, `KNOWS`, `CREATED`, `REGISTERED_FOR`, `ATTENDED`, `CONTAINS` edges (see `documentation/MCD/neo4j.md`); backs recommendations and district boundaries |
+| **Postgres**      | `postgres:15`         | 5432                      | Backing database for Documenso (e-signature)                                                                                                                                                                                                   |
+| **Documenso**     | `documenso/documenso` | 3030 (web/API)            | Self-hosted e-signature service for contracts (see `documentation/documenso-integration.md`)                                                                                                                                                   |
+| **MinIO**         | `minio/minio`         | 9000 (S3), 9001 (console) | S3-compatible object storage for Documenso document files                                                                                                                                                                                      |
+| **mailpit**       | `axllent/mailpit`     | 8025 (UI), 1025 (SMTP)    | Local SMTP catch-all for inspecting outgoing mail in dev                                                                                                                                                                                       |
 
 ### Data ownership
 
 - The **api** reads and writes MongoDB (domain data) and Neo4j (the social/district graph).
 - The **auth-service** stores credentials and refresh tokens in MongoDB.
-- **Documenso** is an external integration the api calls over HTTP (`DOCUMENSO_URL`); it owns its own Postgres + MinIO and is only started under the `contracts` profile.
+- **Documenso** is an external integration the api calls over HTTP (`DOCUMENSO_URL`); it owns its own Postgres + MinIO and starts alongside the rest of the stack.
