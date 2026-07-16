@@ -33,6 +33,7 @@ const NAV: { section: string; items: NavItem[] }[] = [
     section: "nav.moderation",
     items: [
       { to: "/listings", label: "nav.listings", icon: "icon-[tabler--clipboard-list]" },
+      { to: "/disputes", label: "nav.disputes", icon: "icon-[tabler--gavel]" },
       { to: "/events", label: "nav.events", icon: "icon-[tabler--calendar-event]" },
       { to: "/votes", label: "nav.votes", icon: "icon-[tabler--checkbox]" },
     ],

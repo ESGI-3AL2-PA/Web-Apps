@@ -106,6 +106,7 @@
     "tags": "Tags",
     "incidents": "Incidents",
     "listings": "Annonces",
+    "disputes": "Litiges",
     "events": "Événements",
     "votes": "Votes",
     "adminConsole": "Console d'administration",
@@ -201,6 +202,22 @@
     "deleteTitle": "Supprimer l'annonce",
     "deleteMessage": "Supprimer l'annonce « {{title}} » ?",
     "deleted": "Annonce supprimée"
+  },
+  "disputes": {
+    "title": "Litiges",
+    "subtitle": "Contrats contestés par une partie. Résoudre solde l'escrow retenu.",
+    "empty": "Aucun contrat en litige dans ce quartier.",
+    "provider": "Prestataire",
+    "beneficiary": "Bénéficiaire",
+    "reason": "Motif",
+    "resolve": "Résoudre",
+    "resolved": "Litige résolu",
+    "resolveTitle": "Résoudre le litige",
+    "resolution": "Règlement",
+    "release": "Verser au prestataire",
+    "refund": "Rembourser le bénéficiaire",
+    "releaseHint": "Les points retenus vont au prestataire — le service est considéré comme rendu.",
+    "refundHint": "Les points retenus sont rendus au bénéficiaire — le service est considéré comme non rendu."
   },
   "events": {
     "title": "Événements",

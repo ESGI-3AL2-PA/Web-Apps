@@ -106,6 +106,7 @@
     "tags": "Tags",
     "incidents": "Incidents",
     "listings": "Listings",
+    "disputes": "Disputes",
     "events": "Events",
     "votes": "Votes",
     "adminConsole": "Admin Console",
@@ -201,6 +202,22 @@
     "deleteTitle": "Delete listing",
     "deleteMessage": "Delete listing \"{{title}}\"?",
     "deleted": "Listing deleted"
+  },
+  "disputes": {
+    "title": "Disputes",
+    "subtitle": "Contracts a party has disputed. Resolving settles the held escrow.",
+    "empty": "No disputed contracts in this district.",
+    "provider": "Provider",
+    "beneficiary": "Beneficiary",
+    "reason": "Reason",
+    "resolve": "Resolve",
+    "resolved": "Dispute resolved",
+    "resolveTitle": "Resolve dispute",
+    "resolution": "Settlement",
+    "release": "Release to provider",
+    "refund": "Refund to beneficiary",
+    "releaseHint": "The held points go to the provider — the service is considered delivered.",
+    "refundHint": "The held points are returned to the beneficiary — the service is considered not delivered."
   },
   "events": {
     "title": "Events",

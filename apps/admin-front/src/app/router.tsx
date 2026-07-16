@@ -14,6 +14,7 @@ const DistrictPage = lazy(() => import("../pages/districts/DistrictPage"));
 const TagsList = lazy(() => import("../pages/tags/TagsList"));
 const IncidentsList = lazy(() => import("../pages/incidents/IncidentsList"));
 const ListingsList = lazy(() => import("../pages/listings/ListingsList"));
+const DisputesList = lazy(() => import("../pages/disputes/DisputesList"));
 const EventsList = lazy(() => import("../pages/events/EventsList"));
 const VotesList = lazy(() => import("../pages/votes/VotesList"));
 
@@ -35,6 +36,7 @@ export const router = createBrowserRouter([
       { path: "/tags", element: <TagsList />, handle: { title: "nav.tags" } },
       { path: "/incidents", element: <IncidentsList />, handle: { title: "nav.incidents" } },
       { path: "/listings", element: <ListingsList />, handle: { title: "nav.listings" } },
+      { path: "/disputes", element: <DisputesList />, handle: { title: "nav.disputes" } },
       { path: "/events", element: <EventsList />, handle: { title: "nav.events" } },
       { path: "/votes", element: <VotesList />, handle: { title: "nav.votes" } },
       { path: "*", element: <NotFound /> },
