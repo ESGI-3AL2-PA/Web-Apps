@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import type { ListingResponseDto, TagResponseDto, UpdateListingDto } from "@repo/contracts";
 import { updateListing } from "../api-service/listings.service";
 import { getTags } from "../api-service/tags.service";
+import { tagLabel } from "../lib/tag-label";
 import { useFocusTrap } from "../lib/useFocusTrap";
 
 // Self-contained edit form for a single listing. Kept inside MyListings' scope on
@@ -17,7 +18,7 @@ export default function EditListingModal({
   onClose: () => void;
   onUpdated: (listing: ListingResponseDto) => void;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const panelRef = useFocusTrap<HTMLDivElement>(true, onClose);
   const [tags, setTags] = useState<TagResponseDto[]>([]);
   const [title, setTitle] = useState(listing.title);
@@ -140,7 +141,7 @@ export default function EditListingModal({
               <option value="">{t("post.chooseCategory")}</option>
               {tags.map((tg) => (
                 <option key={tg.id} value={tg.name}>
-                  {tg.name}
+                  {tagLabel(tg, i18n.language)}
                 </option>
               ))}
             </select>
