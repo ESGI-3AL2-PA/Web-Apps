@@ -104,7 +104,7 @@ export const rebuildGraphUseCase = (deps: RebuildGraphDeps) => {
 
     // 6. Listings: node + author + tags.
     for (const l of listings) {
-      await graph.upsertListing({ id: l.id, type: l.type, category: l.tags[0] });
+      await graph.upsertListing({ id: l.id, category: l.tags[0] });
       await graph.linkUserPublishedListing(l.authorId, l.id);
       for (const tagName of l.tags) {
         await graph.linkListingTagged(l.id, tagName);

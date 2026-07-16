@@ -15,7 +15,7 @@ export const createListingUseCase = (listingRepository: IListingRepository, grap
 
     // Mirror the listing into the graph: node + author + tag edges.
     await syncGraph(`upsertListing(${listing.id})`, () =>
-      graphRepository.upsertListing({ id: listing.id, type: listing.type }),
+      graphRepository.upsertListing({ id: listing.id, category: listing.tags[0] }),
     );
     if (listing.authorId) {
       await syncGraph(`linkUserPublishedListing(${listing.authorId}->${listing.id})`, () =>

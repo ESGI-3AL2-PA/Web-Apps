@@ -4,7 +4,6 @@ import type { IListingRepository } from "../../repositories/Listing/listing.repo
 export const getListingsUseCase = (listingRepository: IListingRepository) => {
   return async (params: {
     search?: string;
-    type?: string;
     status?: string;
     districtId?: string;
     authorId?: string;

@@ -96,10 +96,6 @@
     "admin": "Admin",
     "superAdmin": "Super admin"
   },
-  "type": {
-    "offer": "Offre",
-    "request": "Demande"
-  },
   "nav": {
     "overview": "Vue d'ensemble",
     "community": "Communauté",

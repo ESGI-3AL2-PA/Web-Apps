@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import type { ListingQueryInput, ListingResponseDto, ListingType, TagResponseDto } from "@repo/contracts";
+import type { ListingQueryInput, ListingResponseDto, TagResponseDto } from "@repo/contracts";
 import { getListings } from "../api-service/listings.service";
 import { getTags } from "../api-service/tags.service";
 import { tagLabel } from "../lib/tag-label";
@@ -9,7 +9,6 @@ import { useFocusTrap } from "../lib/useFocusTrap";
 import ListingCard from "../components/ListingCard";
 
 const PAGE_SIZE = 24;
-const LISTING_TYPES: ListingType[] = ["offer", "request"];
 const SORTS = ["recent", "price-asc", "price-desc"] as const;
 type Sort = (typeof SORTS)[number];
 
@@ -30,11 +29,9 @@ export default function Search() {
 
   const search = params.get("search") ?? "";
   const tag = params.get("tag") ?? "";
-  const rawType = params.get("type") ?? "";
-  const type = (LISTING_TYPES as string[]).includes(rawType) ? (rawType as ListingType) : "";
   const rawSort = params.get("sort") ?? "";
   const sort: Sort = (SORTS as readonly string[]).includes(rawSort) ? (rawSort as Sort) : "recent";
-  const activeFilters = (tag ? 1 : 0) + (type ? 1 : 0);
+  const activeFilters = tag ? 1 : 0;
 
   // Server-supported filters only (search / tag / type / status). Sort and price
   // ordering are NOT backend query params, so they are applied client-side below.
@@ -44,9 +41,8 @@ export default function Search() {
       limit: PAGE_SIZE,
       ...(search ? { search } : {}),
       ...(tag ? { tag } : {}),
-      ...(type ? { type } : {}),
     }),
-    [search, tag, type],
+    [search, tag],
   );
 
   useEffect(() => {
@@ -114,39 +110,12 @@ export default function Search() {
   };
 
   const pill = (active: boolean) =>
-    `rounded px-2 py-1.5 text-left ${
-      active
-        ? "bg-primary/10 font-semibold text-primary"
-        : "hover:bg-base-200"
-    }`;
+    `rounded px-2 py-1.5 text-left ${active ? "bg-primary/10 font-semibold text-primary" : "hover:bg-base-200"}`;
 
   const filterControls = (
     <>
       <div>
-        <h3 className="mb-2 text-sm font-bold uppercase tracking-wide text-base-content/60">
-          {t("search.type")}
-        </h3>
-        <div className="flex flex-col gap-1 text-sm">
-          <button onClick={() => setFilter("type", "")} aria-pressed={!type} className={pill(!type)}>
-            {t("search.allTypes")}
-          </button>
-          {LISTING_TYPES.map((ty) => (
-            <button
-              key={ty}
-              onClick={() => setFilter("type", ty)}
-              aria-pressed={type === ty}
-              className={pill(type === ty)}
-            >
-              {t(`search.type_${ty}`)}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div>
-        <h3 className="mb-2 text-sm font-bold uppercase tracking-wide text-base-content/60">
-          {t("search.category")}
-        </h3>
+        <h3 className="mb-2 text-sm font-bold uppercase tracking-wide text-base-content/60">{t("search.category")}</h3>
         <div className="flex flex-col gap-1 text-sm">
           <button onClick={() => setFilter("tag", "")} aria-pressed={!tag} className={pill(!tag)}>
             {t("search.allCategories")}
@@ -213,10 +182,7 @@ export default function Search() {
         {loading ? (
           <p className="text-base-content/60">{t("common.loading")}</p>
         ) : error ? (
-          <div
-            role="alert"
-            className="rounded-lg border border-error/20 bg-error/10 p-4 text-sm text-error"
-          >
+          <div role="alert" className="rounded-lg border border-error/20 bg-error/10 p-4 text-sm text-error">
             <p className="font-medium">{t("search.error")}</p>
             <button
               onClick={() => setReloadKey((k) => k + 1)}

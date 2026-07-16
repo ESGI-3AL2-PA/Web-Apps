@@ -1,7 +1,7 @@
 import { randomUUID } from "crypto";
 import type { Collection, Db, Filter, Sort } from "mongodb";
 import type { ListingSort } from "@repo/contracts";
-import type { Listing, ListingType, ListingStatus } from "../../entities/listing.entity.js";
+import type { Listing, ListingStatus } from "../../entities/listing.entity.js";
 import { escapeRegex } from "../escape-regex.js";
 import type { IListingRepository } from "./listing.repository.js";
 
@@ -35,7 +35,6 @@ export class MongoListingRepository implements IListingRepository {
 
   async getListings(params: {
     search?: string;
-    type?: string;
     status?: string;
     districtId?: string;
     authorId?: string;
@@ -49,7 +48,7 @@ export class MongoListingRepository implements IListingRepository {
     page: number;
     limit: number;
   }> {
-    const { search, type, status, districtId, authorId, tag, sort, page = 1, limit = 20 } = params;
+    const { search, status, districtId, authorId, tag, sort, page = 1, limit = 20 } = params;
 
     const filter: Filter<ListingDoc> = {};
 
@@ -57,7 +56,6 @@ export class MongoListingRepository implements IListingRepository {
       const safe = escapeRegex(search);
       filter.$or = [{ title: { $regex: safe, $options: "i" } }, { description: { $regex: safe, $options: "i" } }];
     }
-    if (type) filter.type = type as ListingType;
     if (status) filter.status = status as ListingStatus;
     if (districtId) filter.districtId = districtId;
     if (authorId) filter.authorId = authorId;

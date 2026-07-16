@@ -31,7 +31,6 @@ export interface EventNode {
 
 export interface ListingNode {
   id: string;
-  type: string;
   category?: string;
 }
 

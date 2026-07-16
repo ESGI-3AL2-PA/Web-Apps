@@ -6,7 +6,6 @@ export interface IListingRepository {
 
   getListings(params: {
     search?: string;
-    type?: string;
     status?: string;
     districtId?: string;
     authorId?: string;

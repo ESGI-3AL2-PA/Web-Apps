@@ -6,9 +6,6 @@ const imageUrl = z
   .url()
   .refine((u) => /^https?:\/\//i.test(u), { message: "Image URL must be http(s)" });
 
-export const ListingTypeSchema = z.enum(["offer", "request"]);
-export type ListingType = z.infer<typeof ListingTypeSchema>;
-
 export const ListingStatusSchema = z.enum(["active", "closed", "expired"]);
 export type ListingStatus = z.infer<typeof ListingStatusSchema>;
 
@@ -22,7 +19,6 @@ export const ListingResponseDtoSchema = z
     districtId: z.string().openapi({ description: "ID of the district this listing belongs to" }),
     title: z.string().openapi({ description: "Listing title", example: "Plumber available for small repairs" }),
     description: z.string().openapi({ description: "Detailed description of the listing" }),
-    type: ListingTypeSchema.openapi({ description: "Whether this is an offer or a request" }),
     price: z.number().int().openapi({ description: "Price in tokens", example: 10 }),
     status: ListingStatusSchema.openapi({ description: "Current status of the listing" }),
     tags: z
@@ -48,7 +44,6 @@ export const CreateListingDtoSchema = z
       .max(300)
       .openapi({ description: "Listing title", example: "Plumber available for small repairs" }),
     description: z.string().min(1).openapi({ description: "Detailed description" }),
-    type: ListingTypeSchema.openapi({ description: "offer or request" }),
     price: z.number().int().min(0).openapi({ description: "Price in tokens", example: 10 }),
     tags: z
       .array(z.string())
@@ -68,7 +63,6 @@ export const UpdateListingDtoSchema = z
   .object({
     title: z.string().min(1).max(300).optional(),
     description: z.string().min(1).optional(),
-    type: ListingTypeSchema.optional(),
     price: z.number().int().min(0).optional(),
     status: ListingStatusSchema.optional(),
     tags: z.array(z.string()).optional(),
@@ -86,7 +80,6 @@ export const ListingQueryDtoSchema = z
     page: z.coerce.number().int().min(1).optional().default(1),
     limit: z.coerce.number().int().min(1).max(100).optional().default(20),
     search: z.string().max(200).optional(),
-    type: ListingTypeSchema.optional(),
     status: ListingStatusSchema.optional(),
     districtId: z.string().optional(),
     authorId: z.string().optional(),
