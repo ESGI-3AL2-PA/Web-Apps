@@ -1,0 +1,36 @@
+# Caddy reverse proxy for the production stack. DOMAIN and ACME_EMAIL are read from the
+# container environment (fed from the SOPS-decrypted env by the deploy job). Caddy obtains
+# and renews Let's Encrypt certificates automatically for every host block below.
+{
+	email {$ACME_EMAIL}
+}
+
+# Marketing site at the apex.
+{$DOMAIN} {
+	reverse_proxy landing:8080
+}
+
+# Resident SPA.
+app.{$DOMAIN} {
+	reverse_proxy user-front:8080
+}
+
+# Admin console.
+admin.{$DOMAIN} {
+	reverse_proxy admin-front:8080
+}
+
+# Resource API.
+api.{$DOMAIN} {
+	reverse_proxy api:3000
+}
+
+# Auth service (login/register pages, JWKS, token endpoints).
+auth.{$DOMAIN} {
+	reverse_proxy auth-service:3001
+}
+
+# Documenso e-signature (signing links + webhook). Must be HTTPS.
+documenso.{$DOMAIN} {
+	reverse_proxy documenso:3030
+}

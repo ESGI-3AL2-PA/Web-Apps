@@ -16,3 +16,8 @@ graphify-out
 backups/
 
 docker/documenso/cert.p12
+
+# RS256 auth signing keys — generated on the host (scripts/gen-auth-keys.sh), never committed.
+docker/auth/
+# Plaintext prod secrets — only the SOPS-encrypted *.enc.env is committed.
+deploy/secrets/prod.env

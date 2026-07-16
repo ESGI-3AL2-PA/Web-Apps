@@ -1,0 +1,59 @@
+# Deploy overlay — layered on top of docker-compose.prod.yml to run the app services from the
+# images CD pushed to GHCR (instead of building on the host) and to front everything with a
+# Caddy reverse proxy (automatic HTTPS). Used by the CD deploy job on the VM:
+#
+#   docker compose -f docker-compose.prod.yml -f docker-compose.deploy.yml pull
+#   docker compose -f docker-compose.prod.yml -f docker-compose.deploy.yml up -d --no-build
+#
+# Contains no secrets. DOMAIN / ACME_EMAIL come from the SOPS-decrypted environment at deploy.
+services:
+  # ── App images from GHCR (override the build: from prod). ports:[] removes the host
+  #    publishing — Caddy is the only ingress. Seeds reuse the api/auth images. ─────────
+  api:
+    image: ghcr.io/esgi-3al2-pa/web-apps/api:latest
+    ports: !reset []
+  auth-service:
+    image: ghcr.io/esgi-3al2-pa/web-apps/auth-service:latest
+    ports: !reset []
+  admin-front:
+    image: ghcr.io/esgi-3al2-pa/web-apps/admin-front:latest
+    ports: !reset []
+  user-front:
+    image: ghcr.io/esgi-3al2-pa/web-apps/user-front:latest
+    ports: !reset []
+  landing:
+    image: ghcr.io/esgi-3al2-pa/web-apps/landing:latest
+    ports: !reset []
+  api-seed:
+    image: ghcr.io/esgi-3al2-pa/web-apps/api:latest
+  auth-seed:
+    image: ghcr.io/esgi-3al2-pa/web-apps/auth-service:latest
+  # E-signature UI — front it with TLS via Caddy too (signing links must be https), no raw port.
+  documenso:
+    ports: !reset []
+
+  # ── TLS-terminating reverse proxy. Routes subdomains to the app containers over the
+  #    compose network; obtains + renews Let's Encrypt certs automatically. ─────────────
+  caddy:
+    image: caddy:2-alpine
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN:?set in the SOPS env}
+      ACME_EMAIL: ${ACME_EMAIL:-}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api
+      - auth-service
+      - admin-front
+      - user-front
+      - landing
+
+volumes:
+  caddy_data:
+  caddy_config:
