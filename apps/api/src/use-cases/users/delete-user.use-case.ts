@@ -11,7 +11,7 @@ import type { ITransactionRepository } from "../../repositories/Transaction/tran
 import type { IContractRepository } from "../../repositories/Contract/contract.repository.js";
 import type { IDocumensoService } from "../../services/documenso.service.js";
 import { syncGraph } from "../../repositories/Graph/graph.sync.js";
-import { deleteAudio } from "../../services/media-storage.service.js";
+import { deleteAudio, deleteMessageImage } from "../../services/media-storage.service.js";
 import { deleteImage, imageKeyFromUrl } from "../../services/image-storage.service.js";
 import { deleteContractUseCase } from "../contracts/delete-contract.use-case.js";
 
@@ -112,16 +112,22 @@ export const deleteUserUseCase = (deps: DeleteUserDeps) => {
     // Fan out erasure BEFORE removing the user row, so a mid-way failure leaves the
     // account intact and the deletion can be safely retried.
 
-    // Messages first: we need the audio message ids before the rows are gone, so the
-    // .webm files on disk can be removed too (deleteAudio was previously never called).
-    const audioMessageIds = await conversationRepository.deleteUserMessages(id);
-    await Promise.all(audioMessageIds.map((mid) => deleteAudio(mid)));
+    // Messages first: we need the media message ids before the rows are gone, so their
+    // stored objects (voice notes + conversation images) can be removed too — both are
+    // keyed by message id in their private buckets.
+    const { audioIds, imageIds } = await conversationRepository.deleteUserMessages(id);
+    await Promise.all([...audioIds.map((mid) => deleteAudio(mid)), ...imageIds.map((mid) => deleteMessageImage(mid))]);
 
-    // Same for listing images: collect their storage keys before the rows are gone,
-    // so the objects can be removed from MinIO after the cascade.
+    // Same for listing images and incident photos: collect their storage keys before the
+    // rows are gone, so the objects can be removed from MinIO after the cascade.
+    // imageKeyFromUrl returns null for URLs that aren't our own uploads, so external
+    // incident photo URLs are safely left untouched.
     const { data: authoredListings } = await listingRepository.getListings({ authorId: id, limit: 10_000 });
-    const imageKeys = authoredListings
-      .flatMap((listing) => listing.images)
+    const { data: reportedIncidents } = await incidentRepository.getIncidents({ reporterId: id, limit: 10_000 });
+    const imageKeys = [
+      ...authoredListings.flatMap((listing) => listing.images),
+      ...reportedIncidents.map((incident) => incident.photoUrl).filter((u): u is string => u != null),
+    ]
       .map(imageKeyFromUrl)
       .filter((k): k is string => k !== null);
 
