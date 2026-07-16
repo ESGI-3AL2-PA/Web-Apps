@@ -297,7 +297,7 @@ services:
       DOMAIN: ${DOMAIN:?set in the SOPS env}
       ACME_EMAIL: ${ACME_EMAIL:-}
     volumes:
-      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
       - caddy_config:/config
     depends_on:
