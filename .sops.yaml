@@ -5,7 +5,7 @@
 #   1. Generate a key:   age-keygen -o key.txt          (keep key.txt OUT of git)
 #      → the public key ("age1…") goes below; the private key goes on the VM
 #        (~/.config/sops/age/keys.txt) and into the GitHub secret SOPS_AGE_KEY.
-#   2. Author secrets:   cp deploy/secrets/prod.env.example deploy/secrets/prod.env  (fill values)
+#   2. Author secrets:   cp .env.dist deploy/secrets/prod.env   (fill in real values + prod URLs)
 #   3. Encrypt + commit: sops -e deploy/secrets/prod.env > deploy/secrets/prod.enc.env
 #      (deploy/secrets/prod.env stays gitignored; only *.enc.env is committed)
 #   4. Edit later with:  sops deploy/secrets/prod.enc.env
