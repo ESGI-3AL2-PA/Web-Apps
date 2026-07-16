@@ -189,13 +189,28 @@ if (docsEnabled) {
   );
 }
 
+// Rate limiting (per client IP; req.ip honours the TRUST_PROXY setting above).
+// Defined up-front so even the pre-auth Documenso webhook can be throttled. Mirrors
+// the auth-service limiter — 1-minute window, draft-7 headers. Endpoints that trigger
+// external work (Documenso/email on create, an S3 fetch on the PDF proxy) get tighter
+// caps below. NOTE: in-memory store — fine single-instance, move to a shared store
+// (Redis) before scaling the api horizontally.
+const rateLimitMessage = { message: "Too many requests — try again later" };
+const makeLimiter = (limit: number) =>
+  rateLimit({ windowMs: 60_000, limit, standardHeaders: "draft-7", legacyHeaders: false, message: rateLimitMessage });
+
 // Documenso posts signing events here. It authenticates with a shared secret
-// (verified inside the handler), not our JWT, so it must sit ABOVE requireAuth.
-app.post("/contracts/webhook", documensoWebhookHandler);
+// (verified inside the handler), not our JWT, so it must sit ABOVE requireAuth — which
+// also puts it above the global limiter. It settles/refunds escrow, so it carries a
+// tight limiter of its own to blunt online brute-forcing of the shared secret.
+app.post("/contracts/webhook", makeLimiter(30), documensoWebhookHandler);
 
 // Everything below /health, /openapi.json and /docs requires a valid access token.
 // requireAuth verifies the JWT (iss/aud) and sets req.user.
 app.use(requireAuth);
+// Global cap first, so it also covers the raw handlers below (public search, public
+// profile, media streams) — not only the ts-rest contract routes.
+app.use(makeLimiter(120));
 app.get("/users/public/search", userSearchHandler);
 app.get("/users/:id/public", userPublicHandler);
 // The voice/image message POSTs are ts-rest contract routes (conversationsContract).
@@ -204,17 +219,6 @@ app.get("/users/:id/public", userPublicHandler);
 // own participant check — a photo/voice note in a conversation is participant-private.
 app.get("/messages/:id/audio", audioStreamHandler);
 app.get("/messages/:id/image", imageMessageStreamHandler);
-
-// Rate limiting (per client IP; req.ip honours the TRUST_PROXY setting above).
-// Mirrors the auth-service limiter — 1-minute window, draft-7 headers. A generous
-// global cap protects every authenticated route; the two endpoints that trigger
-// external work (Documenso/email on create, an S3 fetch on the PDF proxy) get
-// tighter caps below. NOTE: in-memory store — fine single-instance, move to a
-// shared store (Redis) before scaling the api horizontally.
-const rateLimitMessage = { message: "Too many requests — try again later" };
-const makeLimiter = (limit: number) =>
-  rateLimit({ windowMs: 60_000, limit, standardHeaders: "draft-7", legacyHeaders: false, message: rateLimitMessage });
-app.use(makeLimiter(120));
 
 // Binary passthrough for the signed contract PDF (proxied from Documenso so the
 // front never talks to Documenso/S3 directly). Raw handler — does its own party/
