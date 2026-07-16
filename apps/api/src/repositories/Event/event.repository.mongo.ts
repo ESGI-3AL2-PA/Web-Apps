@@ -1,10 +1,11 @@
 import { randomUUID } from "crypto";
 import type { Collection, Db, Filter } from "mongodb";
+import { toEntity, type WithMongoId } from "@repo/server-kit";
 import type { Event } from "../../entities/event.entity.js";
 import { escapeRegex } from "../escape-regex.js";
 import type { IEventRepository } from "./event.repository.js";
 
-type EventDoc = Omit<Event, "id"> & { _id: string };
+type EventDoc = WithMongoId<Event>;
 
 // Per-user attendance/interest signals — the durable source of truth, mirrored
 // into Neo4j (best-effort) for the recommendation engine.
@@ -91,25 +92,25 @@ export class MongoEventRepository implements IEventRepository {
         .toArray(),
     ]);
 
-    return { data: docs.map(this.toEvent), total, page, limit };
+    return { data: docs.map((d) => toEntity<Event>(d)), total, page, limit };
   }
 
   async getEventById(id: string): Promise<Event | null> {
     const doc = await this.collection.findOne({ _id: id });
-    return doc ? this.toEvent(doc) : null;
+    return doc ? toEntity<Event>(doc) : null;
   }
 
   async getEventsByIds(ids: string[]): Promise<Event[]> {
     if (ids.length === 0) return [];
     const docs = await this.collection.find({ _id: { $in: ids } }).toArray();
-    return docs.map(this.toEvent);
+    return docs.map((d) => toEntity<Event>(d));
   }
 
   async createEvent(data: Omit<Event, "id" | "createdAt">): Promise<Event> {
     const now = new Date().toISOString();
     const doc: EventDoc = { ...data, _id: randomUUID(), createdAt: now };
     await this.collection.insertOne(doc);
-    return this.toEvent(doc);
+    return toEntity<Event>(doc);
   }
 
   async updateEvent(id: string, data: Partial<Omit<Event, "id" | "createdAt">>): Promise<Event | null> {
@@ -118,7 +119,7 @@ export class MongoEventRepository implements IEventRepository {
       { $set: { ...data } },
       { returnDocument: "after" },
     );
-    return result ? this.toEvent(result) : null;
+    return result ? toEntity<Event>(result) : null;
   }
 
   async deleteEvent(id: string): Promise<boolean> {
@@ -132,7 +133,7 @@ export class MongoEventRepository implements IEventRepository {
       { $addToSet: { registrants: userId }, $inc: { remainingSeats: -1 } },
       { returnDocument: "after" },
     );
-    return result ? this.toEvent(result) : null;
+    return result ? toEntity<Event>(result) : null;
   }
 
   async removeRegistrant(id: string, userId: string): Promise<Event | null> {
@@ -141,7 +142,7 @@ export class MongoEventRepository implements IEventRepository {
       { $pull: { registrants: userId }, $inc: { remainingSeats: 1 } },
       { returnDocument: "after" },
     );
-    return result ? this.toEvent(result) : null;
+    return result ? toEntity<Event>(result) : null;
   }
 
   async recordAttendance(eventId: string, userId: string, rating?: number): Promise<void> {
@@ -181,10 +182,5 @@ export class MongoEventRepository implements IEventRepository {
       { registrants: userId },
       { $pull: { registrants: userId }, $inc: { remainingSeats: 1 } },
     );
-  }
-
-  private toEvent(doc: EventDoc): Event {
-    const { _id, ...rest } = doc;
-    return { id: _id, ...rest };
   }
 }

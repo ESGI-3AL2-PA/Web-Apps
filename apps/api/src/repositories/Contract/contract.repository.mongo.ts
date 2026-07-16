@@ -1,9 +1,10 @@
 import { randomUUID } from "crypto";
 import type { ClientSession, Collection, Db, Filter } from "mongodb";
+import { toEntity, type WithMongoId } from "@repo/server-kit";
 import type { Contract, ContractSignatureStatus } from "../../entities/contract.entity.js";
 import type { IContractRepository } from "./contract.repository.js";
 
-type ContractDoc = Omit<Contract, "id"> & { _id: string };
+type ContractDoc = WithMongoId<Contract>;
 
 export class MongoContractRepository implements IContractRepository {
   private collection: Collection<ContractDoc>;
@@ -76,17 +77,17 @@ export class MongoContractRepository implements IContractRepository {
         .toArray(),
     ]);
 
-    return { data: docs.map(this.toContract), total, page, limit };
+    return { data: docs.map((d) => toEntity<Contract>(d)), total, page, limit };
   }
 
   async getContractById(id: string): Promise<Contract | null> {
     const doc = await this.collection.findOne({ _id: id });
-    return doc ? this.toContract(doc) : null;
+    return doc ? toEntity<Contract>(doc) : null;
   }
 
   async getContractByDocumensoDocumentId(documentId: number): Promise<Contract | null> {
     const doc = await this.collection.findOne({ documensoDocumentId: documentId });
-    return doc ? this.toContract(doc) : null;
+    return doc ? toEntity<Contract>(doc) : null;
   }
 
   async completeContract(id: string, session?: ClientSession): Promise<Contract | null> {
@@ -100,7 +101,7 @@ export class MongoContractRepository implements IContractRepository {
       { $set: { signatureStatus: "completed", providerSigningUrl: null, beneficiarySigningUrl: null } },
       { returnDocument: "after", session },
     );
-    return result ? this.toContract(result) : null;
+    return result ? toEntity<Contract>(result) : null;
   }
 
   async rejectContract(id: string, session?: ClientSession): Promise<Contract | null> {
@@ -117,7 +118,7 @@ export class MongoContractRepository implements IContractRepository {
       },
       { returnDocument: "after", session },
     );
-    return result ? this.toContract(result) : null;
+    return result ? toEntity<Contract>(result) : null;
   }
 
   async disputeContract(id: string, reason: string, session?: ClientSession): Promise<Contract | null> {
@@ -130,7 +131,7 @@ export class MongoContractRepository implements IContractRepository {
       { $set: { disputed: true, disputeReason: reason } },
       { returnDocument: "after", session },
     );
-    return result ? this.toContract(result) : null;
+    return result ? toEntity<Contract>(result) : null;
   }
 
   async resolveDispute(
@@ -156,7 +157,7 @@ export class MongoContractRepository implements IContractRepository {
       },
       { returnDocument: "before", session },
     );
-    return result ? this.toContract(result) : null;
+    return result ? toEntity<Contract>(result) : null;
   }
 
   async applyNonTerminalStatus(id: string, status: ContractSignatureStatus): Promise<Contract | null> {
@@ -167,7 +168,7 @@ export class MongoContractRepository implements IContractRepository {
       { $set: { signatureStatus: status } },
       { returnDocument: "after" },
     );
-    return result ? this.toContract(result) : null;
+    return result ? toEntity<Contract>(result) : null;
   }
 
   async findActiveContract(params: {
@@ -181,14 +182,14 @@ export class MongoContractRepository implements IContractRepository {
       beneficiaryId: params.beneficiaryId,
       signatureStatus: { $in: ["draft", "pending"] },
     });
-    return doc ? this.toContract(doc) : null;
+    return doc ? toEntity<Contract>(doc) : null;
   }
 
   async createContract(data: Omit<Contract, "id" | "createdAt">): Promise<Contract> {
     const now = new Date().toISOString();
     const doc: ContractDoc = { ...data, _id: randomUUID(), createdAt: now };
     await this.collection.insertOne(doc);
-    return this.toContract(doc);
+    return toEntity<Contract>(doc);
   }
 
   async updateContract(id: string, data: Partial<Omit<Contract, "id" | "createdAt">>): Promise<Contract | null> {
@@ -197,18 +198,13 @@ export class MongoContractRepository implements IContractRepository {
       { $set: { ...data } },
       { returnDocument: "after" },
     );
-    return result ? this.toContract(result) : null;
+    return result ? toEntity<Contract>(result) : null;
   }
 
   async deleteContract(id: string, session?: ClientSession): Promise<Contract | null> {
     // findOneAndDelete returns the removed doc with its state at deletion, so the
     // caller can atomically decide whether to refund a still-held escrow.
     const result = await this.collection.findOneAndDelete({ _id: id }, { session });
-    return result ? this.toContract(result) : null;
-  }
-
-  private toContract(doc: ContractDoc): Contract {
-    const { _id, ...rest } = doc;
-    return { id: _id, ...rest };
+    return result ? toEntity<Contract>(result) : null;
   }
 }

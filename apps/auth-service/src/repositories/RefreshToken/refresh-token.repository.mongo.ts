@@ -1,10 +1,11 @@
 import { randomUUID } from "crypto";
 import type { Collection, Db } from "mongodb";
+import { toEntity, type WithMongoId } from "@repo/server-kit";
 import type { RefreshToken } from "../../entities/refresh-token.entity.js";
 import type { IRefreshTokenRepository } from "./refresh-token.repository.js";
 
 export class MongoRefreshTokenRepository implements IRefreshTokenRepository {
-  private collection: Collection<Omit<RefreshToken, "id"> & { _id: string }>;
+  private collection: Collection<WithMongoId<RefreshToken>>;
 
   constructor(db: Db) {
     this.collection = db.collection("refresh_tokens");
@@ -41,12 +42,12 @@ export class MongoRefreshTokenRepository implements IRefreshTokenRepository {
   async create(data: Omit<RefreshToken, "id">): Promise<RefreshToken> {
     const doc = { ...data, _id: randomUUID() };
     await this.collection.insertOne(doc);
-    return this.toEntity(doc);
+    return toEntity<RefreshToken>(doc);
   }
 
   async findActiveByTokenHash(tokenHash: string): Promise<RefreshToken | null> {
     const doc = await this.collection.findOne({ tokenHash, revokedAt: null });
-    return doc ? this.toEntity(doc) : null;
+    return doc ? toEntity<RefreshToken>(doc) : null;
   }
 
   async claimByTokenHash(tokenHash: string): Promise<RefreshToken | null> {
@@ -56,15 +57,13 @@ export class MongoRefreshTokenRepository implements IRefreshTokenRepository {
       { returnDocument: "before" },
     );
     // mongodb <6 returned { value }, >=6 returns the document directly — handle both.
-    const doc = (res && "value" in res ? (res as { value: unknown }).value : res) as
-      | (Omit<RefreshToken, "id"> & { _id: string })
-      | null;
-    return doc ? this.toEntity(doc) : null;
+    const doc = (res && "value" in res ? (res as { value: unknown }).value : res) as WithMongoId<RefreshToken> | null;
+    return doc ? toEntity<RefreshToken>(doc) : null;
   }
 
   async findByTokenHash(tokenHash: string): Promise<RefreshToken | null> {
     const doc = await this.collection.findOne({ tokenHash });
-    return doc ? this.toEntity(doc) : null;
+    return doc ? toEntity<RefreshToken>(doc) : null;
   }
 
   async findActiveByUserId(userId: string): Promise<RefreshToken[]> {
@@ -73,12 +72,12 @@ export class MongoRefreshTokenRepository implements IRefreshTokenRepository {
       .find({ userId, revokedAt: null, expiresAt: { $gt: now } })
       .sort({ lastUsedAt: -1, createdAt: -1 })
       .toArray();
-    return docs.map((d) => this.toEntity(d));
+    return docs.map((d) => toEntity<RefreshToken>(d));
   }
 
   async listAllForUser(userId: string): Promise<RefreshToken[]> {
     const docs = await this.collection.find({ userId }).sort({ createdAt: -1 }).toArray();
-    return docs.map((d) => this.toEntity(d));
+    return docs.map((d) => toEntity<RefreshToken>(d));
   }
 
   async revokeById(id: string, userId: string): Promise<boolean> {
@@ -115,10 +114,5 @@ export class MongoRefreshTokenRepository implements IRefreshTokenRepository {
 
   async deleteAllForUser(userId: string): Promise<void> {
     await this.collection.deleteMany({ userId });
-  }
-
-  private toEntity(doc: Omit<RefreshToken, "id"> & { _id: string }): RefreshToken {
-    const { _id, ...rest } = doc;
-    return { id: _id, ...rest };
   }
 }

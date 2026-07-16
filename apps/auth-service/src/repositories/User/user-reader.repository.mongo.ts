@@ -1,5 +1,5 @@
 import type { Collection, Db } from "mongodb";
-import { USERS_COLLECTION, type WithMongoId } from "@repo/server-kit";
+import { USERS_COLLECTION, toEntity, type WithMongoId } from "@repo/server-kit";
 import type { IUserReaderRepository, UserRecord } from "./user-reader.repository.js";
 
 type UserDoc = WithMongoId<UserRecord>;
@@ -13,12 +13,12 @@ export class MongoUserReaderRepository implements IUserReaderRepository {
 
   async findByEmail(email: string): Promise<UserRecord | null> {
     const doc = await this.collection.findOne({ email });
-    return doc ? this.toEntity(doc) : null;
+    return doc ? toEntity<UserRecord>(doc) : null;
   }
 
   async findById(id: string): Promise<UserRecord | null> {
     const doc = await this.collection.findOne({ _id: id });
-    return doc ? this.toEntity(doc) : null;
+    return doc ? toEntity<UserRecord>(doc) : null;
   }
 
   async setEmailVerified(userId: string): Promise<void> {
@@ -47,10 +47,5 @@ export class MongoUserReaderRepository implements IUserReaderRepository {
       { $set: { lastTotpStep: step, updatedAt: new Date().toISOString() } },
     );
     return res.modifiedCount === 1;
-  }
-
-  private toEntity(doc: UserDoc): UserRecord {
-    const { _id, ...rest } = doc;
-    return { id: _id, ...rest };
   }
 }

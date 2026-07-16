@@ -1,9 +1,10 @@
 import { randomUUID } from "crypto";
 import type { ClientSession, Collection, Db, Filter } from "mongodb";
+import { toEntity, type WithMongoId } from "@repo/server-kit";
 import type { Transaction, TransactionRefType, TransactionType } from "../../entities/transaction.entity.js";
 import type { ITransactionRepository } from "./transaction.repository.js";
 
-type TransactionDoc = Omit<Transaction, "id"> & { _id: string };
+type TransactionDoc = WithMongoId<Transaction>;
 type UserBalanceDoc = { _id: string; balance: number };
 
 export class MongoTransactionRepository implements ITransactionRepository {
@@ -51,7 +52,7 @@ export class MongoTransactionRepository implements ITransactionRepository {
         .toArray(),
     ]);
 
-    return { data: docs.map(this.toTransaction), total, page, limit };
+    return { data: docs.map((d) => toEntity<Transaction>(d)), total, page, limit };
   }
 
   async createTransactions(
@@ -66,7 +67,7 @@ export class MongoTransactionRepository implements ITransactionRepository {
     }));
     if (docs.length === 0) return [];
     await this.transactions.insertMany(docs, { session });
-    return docs.map(this.toTransaction);
+    return docs.map((d) => toEntity<Transaction>(d));
   }
 
   async adjustBalance(userId: string, delta: number, session?: ClientSession): Promise<number | null> {
@@ -98,10 +99,5 @@ export class MongoTransactionRepository implements ITransactionRepository {
   async pseudonymiseUser(userId: string): Promise<void> {
     // Keep the ledger rows (accounting retention) but sever the identity link.
     await this.transactions.updateMany({ userId }, { $set: { userId: "[deleted]" } });
-  }
-
-  private toTransaction(doc: TransactionDoc): Transaction {
-    const { _id, ...rest } = doc;
-    return { id: _id, ...rest };
   }
 }

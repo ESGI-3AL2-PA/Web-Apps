@@ -1,11 +1,12 @@
 import { randomUUID } from "crypto";
 import type { ClientSession, Collection, Db, Filter } from "mongodb";
+import { toEntity, type WithMongoId } from "@repo/server-kit";
 import type { Vote, VoteResponseEntity, VoteStatus } from "../../entities/vote.entity.js";
 import { escapeRegex } from "../escape-regex.js";
 import type { IVoteRepository } from "./vote.repository.js";
 
-type VoteDoc = Omit<Vote, "id"> & { _id: string };
-type VoteResponseDoc = Omit<VoteResponseEntity, "id"> & { _id: string };
+type VoteDoc = WithMongoId<Vote>;
+type VoteResponseDoc = WithMongoId<VoteResponseEntity>;
 
 export class MongoVoteRepository implements IVoteRepository {
   private votes: Collection<VoteDoc>;
@@ -136,7 +137,7 @@ export class MongoVoteRepository implements IVoteRepository {
       { session },
     );
 
-    return this.toVoteResponse(doc);
+    return toEntity<VoteResponseEntity>(doc);
   }
 
   async clearUserResponses(voteId: string, userId: string, session?: ClientSession): Promise<string[]> {
@@ -196,10 +197,5 @@ export class MongoVoteRepository implements IVoteRepository {
     const { _id, ...rest } = doc;
     const totalResponses = rest.results.reduce((sum, r) => sum + r.count, 0);
     return { id: _id, ...rest, totalResponses };
-  }
-
-  private toVoteResponse(doc: VoteResponseDoc): VoteResponseEntity {
-    const { _id, ...rest } = doc;
-    return { id: _id, ...rest };
   }
 }

@@ -1,12 +1,12 @@
 import { randomUUID } from "crypto";
 import type { Collection, Db, Filter } from "mongodb";
-import { USERS_COLLECTION } from "@repo/server-kit";
+import { USERS_COLLECTION, toEntity, type WithMongoId } from "@repo/server-kit";
 import type { User } from "../../entities/user.entity.js";
 import { escapeRegex } from "../escape-regex.js";
 import type { IUserRepository } from "./user.repository.js";
 
 export class MongoUserRepository implements IUserRepository {
-  private collection: Collection<Omit<User, "id"> & { _id: string }>;
+  private collection: Collection<WithMongoId<User>>;
 
   constructor(db: Db) {
     this.collection = db.collection(USERS_COLLECTION);
@@ -35,7 +35,7 @@ export class MongoUserRepository implements IUserRepository {
   }> {
     const { search, districtId, role, page = 1, limit = 10 } = params;
 
-    const filter: Filter<Omit<User, "id"> & { _id: string }> = {};
+    const filter: Filter<WithMongoId<User>> = {};
     if (search) {
       const safe = escapeRegex(search);
       filter.$or = [
@@ -56,24 +56,24 @@ export class MongoUserRepository implements IUserRepository {
         .toArray(),
     ]);
 
-    return { data: docs.map(this.toUser), total, page, limit };
+    return { data: docs.map((d) => toEntity<User>(d)), total, page, limit };
   }
 
   async getUserById(id: string): Promise<User | null> {
     const doc = await this.collection.findOne({ _id: id });
-    return doc ? this.toUser(doc) : null;
+    return doc ? toEntity<User>(doc) : null;
   }
 
   async getUserByEmail(email: string): Promise<User | null> {
     const doc = await this.collection.findOne({ email });
-    return doc ? this.toUser(doc) : null;
+    return doc ? toEntity<User>(doc) : null;
   }
 
   async createUser(data: Omit<User, "id" | "createdAt" | "updatedAt">): Promise<User> {
     const now = new Date().toISOString();
     const doc = { ...data, _id: randomUUID(), createdAt: now, updatedAt: now };
     await this.collection.insertOne(doc);
-    return this.toUser(doc);
+    return toEntity<User>(doc);
   }
 
   async updateUser(id: string, data: Partial<Omit<User, "id" | "createdAt" | "updatedAt">>): Promise<User | null> {
@@ -82,7 +82,7 @@ export class MongoUserRepository implements IUserRepository {
       { $set: { ...data, updatedAt: new Date().toISOString() } },
       { returnDocument: "after" },
     );
-    return result ? this.toUser(result) : null;
+    return result ? toEntity<User>(result) : null;
   }
 
   async setBanned(id: string, banned: boolean): Promise<User | null> {
@@ -91,16 +91,11 @@ export class MongoUserRepository implements IUserRepository {
       { $set: { banned, updatedAt: new Date().toISOString() } },
       { returnDocument: "after" },
     );
-    return result ? this.toUser(result) : null;
+    return result ? toEntity<User>(result) : null;
   }
 
   async deleteUser(id: string): Promise<boolean> {
     const result = await this.collection.deleteOne({ _id: id });
     return result.deletedCount === 1;
-  }
-
-  private toUser(doc: Omit<User, "id"> & { _id: string }): User {
-    const { _id, ...rest } = doc;
-    return { id: _id, ...rest };
   }
 }
