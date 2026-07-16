@@ -256,7 +256,7 @@ services:
   api-seed:
     image: ghcr.io/esgi-3al2-pa/web-apps/api:latest
     restart: "no"
-    command: ["npx", "tsx", "apps/api/src/scripts/seed.ts"]
+    command: ["node", "apps/api/dist/scripts/seed.js"]
     environment:
       NODE_ENV: production
       MONGODB_URL: mongodb://${MONGO_ROOT_USERNAME:?set in the SOPS env}:${MONGO_ROOT_PASSWORD:?set in the SOPS env}@mongodb:27017
@@ -274,7 +274,7 @@ services:
   auth-seed:
     image: ghcr.io/esgi-3al2-pa/web-apps/auth-service:latest
     restart: "no"
-    command: ["npx", "tsx", "apps/auth-service/src/seed-superadmin.ts"]
+    command: ["node", "apps/auth-service/dist/seed-superadmin.js"]
     environment:
       NODE_ENV: production
       MONGODB_URL: mongodb://${MONGO_ROOT_USERNAME:?set in the SOPS env}:${MONGO_ROOT_PASSWORD:?set in the SOPS env}@mongodb:27017

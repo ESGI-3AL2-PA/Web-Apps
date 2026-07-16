@@ -151,6 +151,6 @@ jobs:
             C="docker compose -f docker-compose.deploy.yml"
             sops exec-env deploy/secrets/prod.enc.env "\
               $C pull && \
-              $C run --rm api npx tsx apps/api/src/scripts/migrate.ts && \
+              $C run --rm api node apps/api/dist/scripts/migrate.js && \
               $C up -d --no-build"
             docker image prune -f

@@ -19,14 +19,26 @@ COPY apps/auth-service/src/ ./apps/auth-service/src/
 EXPOSE 3001
 CMD ["npx", "tsx", "--watch", "apps/auth-service/src/index.ts"]
 
-# PROD
-FROM deps AS prod
+# BUILD — compile TS → dist with the full toolchain (needs devDeps).
+FROM deps AS build
 ENV NODE_ENV=production
 COPY packages/ ./packages/
 COPY apps/auth-service/ ./apps/auth-service/
 RUN npx turbo run build --filter=auth-service
+
+# PROD — prod-only deps + compiled output. No toolchain (tsx/tsc/turbo/eslint) ships at
+# runtime; the superadmin seed one-shot runs the compiled dist, not tsx on source.
+FROM base AS prod
+ENV NODE_ENV=production
+# Only the workspaces on auth-service's PROD dependency path — omit the *-config workspaces so
+# their build-only deps (typescript-eslint/eslint/tsc) aren't pulled in by npm ci --omit=dev.
+COPY package*.json ./
+COPY packages/contracts/package*.json ./packages/contracts/
+COPY apps/auth-service/package*.json ./apps/auth-service/
+RUN npm ci --omit=dev
+COPY --from=build /app/packages/contracts/dist ./packages/contracts/dist
+COPY --from=build /app/apps/auth-service/dist ./apps/auth-service/dist
 # Drop root: the node:*-alpine image ships an unprivileged `node` user (uid 1000).
-# Build runs as root (writes to /app); the runtime only reads the compiled dist.
 USER node
 EXPOSE 3001
 CMD ["node", "apps/auth-service/dist/index.js"]
