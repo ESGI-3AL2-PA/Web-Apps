@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import type { IncidentStatsDto } from "@repo/contracts";
 import { getIncidentStats } from "../../api-service/incidents";
 import { listUsers } from "../../api-service/users";
@@ -15,6 +16,7 @@ interface StatCard {
 }
 
 export default function Dashboard() {
+  const { t } = useTranslation();
   const { districtId } = useDistrictScope();
   const [stats, setStats] = useState<IncidentStatsDto | null>(null);
   const [userCount, setUserCount] = useState<number | null>(null);
@@ -39,7 +41,7 @@ export default function Dashboard() {
         setListingCount(l.total);
       })
       .catch((err) => {
-        if (!cancelled) setError(err?.response?.data?.message ?? err?.message ?? "Failed to load");
+        if (!cancelled) setError(err?.response?.data?.message ?? err?.message ?? t("common.states.failedToLoad"));
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -47,26 +49,32 @@ export default function Dashboard() {
     return () => {
       cancelled = true;
     };
-  }, [districtId]);
+  }, [districtId, t]);
 
   const cards: StatCard[] = [
-    { label: "Users", value: userCount ?? 0, icon: "icon-[tabler--users]", to: "/users", accent: "text-primary" },
     {
-      label: "Listings",
+      label: t("dashboard.cardUsers"),
+      value: userCount ?? 0,
+      icon: "icon-[tabler--users]",
+      to: "/users",
+      accent: "text-primary",
+    },
+    {
+      label: t("dashboard.cardListings"),
       value: listingCount ?? 0,
       icon: "icon-[tabler--clipboard-list]",
       to: "/listings",
       accent: "text-info",
     },
     {
-      label: "Total incidents",
+      label: t("dashboard.cardTotalIncidents"),
       value: stats?.total ?? 0,
       icon: "icon-[tabler--alert-triangle]",
       to: "/incidents",
       accent: "text-warning",
     },
     {
-      label: "Open incidents",
+      label: t("dashboard.cardOpenIncidents"),
       value: stats?.byStatus.open ?? 0,
       icon: "icon-[tabler--flame]",
       to: "/incidents",
@@ -76,7 +84,7 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold">Dashboard</h1>
+      <h1 className="text-2xl font-semibold">{t("dashboard.title")}</h1>
       {error && <p className="text-error text-sm">{error}</p>}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -101,8 +109,11 @@ export default function Dashboard() {
 
       {stats && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <StatsBlock title="Incidents by status" entries={Object.entries(stats.byStatus)} />
-          <StatsBlock title="Incidents by category" entries={Object.entries(stats.byCategory)} />
+          <StatsBlock
+            title={t("dashboard.byStatus")}
+            entries={Object.entries(stats.byStatus).map(([k, v]) => [t(`status.${k}`, k), v])}
+          />
+          <StatsBlock title={t("dashboard.byCategory")} entries={Object.entries(stats.byCategory)} />
         </div>
       )}
     </div>
@@ -110,11 +121,12 @@ export default function Dashboard() {
 }
 
 function StatsBlock({ title, entries }: { title: string; entries: [string, number][] }) {
+  const { t } = useTranslation();
   return (
     <div className="bg-base-100 rounded-box border border-base-content/10 p-5">
       <h2 className="font-medium mb-3">{title}</h2>
       {entries.length === 0 ? (
-        <p className="text-sm text-base-content/60">No data</p>
+        <p className="text-sm text-base-content/60">{t("common.states.noData")}</p>
       ) : (
         <ul className="space-y-1.5">
           {entries.map(([key, value]) => (

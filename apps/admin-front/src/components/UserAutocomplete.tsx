@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { UserResponseDto } from "@repo/contracts";
 import { getUserPublic, listUsers } from "../api-service/users";
 
@@ -16,6 +17,7 @@ type UserAutocompleteProps = {
 // Name-based user picker backed by GET /users (district-scoped server-side). Resolves the
 // initial value's id to a name, then lets the admin search by name and pick — writes the id back.
 export function UserAutocomplete({ value, onChange, placeholder, role, id }: UserAutocompleteProps) {
+  const { t } = useTranslation();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<UserResponseDto[]>([]);
   const [open, setOpen] = useState(false);
@@ -31,11 +33,11 @@ export function UserAutocomplete({ value, onChange, placeholder, role, id }: Use
     let cancelled = false;
     getUserPublic(value)
       .then((u) => !cancelled && setQuery(`${u.firstName} ${u.lastName}`))
-      .catch(() => !cancelled && setQuery("Utilisateur"));
+      .catch(() => !cancelled && setQuery(t("common.userFallback")));
     return () => {
       cancelled = true;
     };
-  }, [value]);
+  }, [value, t]);
 
   // Debounced search (300ms). Skipped while a selection is reflected in the field.
   useEffect(() => {
@@ -80,7 +82,7 @@ export function UserAutocomplete({ value, onChange, placeholder, role, id }: Use
         <input
           id={id}
           value={query}
-          placeholder={placeholder ?? "Search a user by name…"}
+          placeholder={placeholder ?? t("common.userSearchPlaceholder")}
           onChange={(e) => {
             setQuery(e.target.value);
             setOpen(true);
@@ -91,7 +93,7 @@ export function UserAutocomplete({ value, onChange, placeholder, role, id }: Use
         {value && (
           <button
             type="button"
-            aria-label="Clear"
+            aria-label={t("common.actions.clear")}
             className="btn btn-circle btn-text btn-xs"
             onClick={() => {
               onChange("");
@@ -105,9 +107,11 @@ export function UserAutocomplete({ value, onChange, placeholder, role, id }: Use
       </label>
       {open && query.trim().length >= 2 && (
         <ul className="menu absolute z-10 mt-1 w-full rounded-box border border-base-content/10 bg-base-100 shadow-lg max-h-56 overflow-y-auto flex-nowrap">
-          {loading && <li className="disabled px-3 py-2 text-sm text-base-content/60">Searching…</li>}
+          {loading && (
+            <li className="disabled px-3 py-2 text-sm text-base-content/60">{t("common.states.searching")}</li>
+          )}
           {!loading && results.length === 0 && (
-            <li className="disabled px-3 py-2 text-sm text-base-content/60">No user found</li>
+            <li className="disabled px-3 py-2 text-sm text-base-content/60">{t("common.noUserFound")}</li>
           )}
           {results.map((u) => (
             <li key={u.id}>

@@ -1,3 +1,5 @@
+import { useTranslation } from "react-i18next";
+
 // Maps known status/enum strings to a flyonui badge color. Unknown values fall back to neutral.
 const COLORS: Record<string, string> = {
   // incident
@@ -34,6 +36,9 @@ const COLORS: Record<string, string> = {
 };
 
 export function StatusBadge({ value }: { value: string }) {
+  const { t, i18n } = useTranslation();
   const color = COLORS[value] ?? "badge-neutral";
-  return <span className={`badge badge-sm ${color}`}>{value}</span>;
+  // Resolve a label from the status/role/type namespaces, falling back to the raw value.
+  const key = ["status", "role", "type"].map((ns) => `${ns}.${value}`).find((k) => i18n.exists(k));
+  return <span className={`badge badge-sm ${color}`}>{key ? t(key) : value}</span>;
 }
