@@ -22,6 +22,7 @@ export default function AudioRecorder({
   const chunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const autoStartedRef = useRef(false);
 
   useEffect(
     () => () => {
@@ -34,6 +35,13 @@ export default function AudioRecorder({
 
   const start = async () => {
     setError(null);
+    // getUserMedia only exists in a secure context (https, or http on localhost). Over
+    // plain http on a LAN IP/hostname `mediaDevices` is undefined — surface why, don't
+    // fall through to the generic "check your permissions" message.
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setError(t("messages.micUnsupported"));
+      return;
+    }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
@@ -64,6 +72,15 @@ export default function AudioRecorder({
     setRecording(false);
     if (timerRef.current) clearInterval(timerRef.current);
   };
+
+  // Start capturing immediately on mount: the parent only shows this panel once the user
+  // has already tapped the mic, so a second "start" tap is redundant. The ref guards against
+  // React StrictMode's double-invoke in dev.
+  useEffect(() => {
+    if (autoStartedRef.current) return;
+    autoStartedRef.current = true;
+    void start();
+  }, []);
 
   const reset = () => {
     if (previewUrl) URL.revokeObjectURL(previewUrl);
