@@ -1,6 +1,6 @@
 import { randomUUID } from "crypto";
 import type { Collection, Db, Filter } from "mongodb";
-import { toEntity, type WithMongoId } from "@repo/server-kit";
+import { toEntity, type WithMongoId } from "@repo/shared";
 import type { Conversation, Message } from "../../entities/conversation.entity.js";
 import type { IConversationRepository } from "./conversation.repository.js";
 

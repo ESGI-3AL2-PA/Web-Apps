@@ -1,6 +1,6 @@
 import { randomBytes, createHash, randomUUID } from "crypto";
 import { SignJWT } from "jose";
-import { TOKEN_ISSUER, TOKEN_ALG, TOKEN_AUDIENCE, type AccessTokenClaims } from "@repo/server-kit";
+import { TOKEN_ISSUER, TOKEN_ALG, TOKEN_AUDIENCE, type AccessTokenClaims } from "@repo/shared";
 import type { UserRecord } from "../repositories/User/user-reader.repository.js";
 import type { IRefreshTokenRepository } from "../repositories/RefreshToken/refresh-token.repository.js";
 import type { IDistrictAdminReaderRepository } from "../repositories/DistrictAdmin/district-admin-reader.repository.js";

@@ -1,6 +1,6 @@
 import { randomUUID } from "crypto";
 import type { ClientSession, Collection, Db, Filter } from "mongodb";
-import { toEntity, type WithMongoId } from "@repo/server-kit";
+import { toEntity, type WithMongoId } from "@repo/shared";
 import type { Contract, ContractSignatureStatus } from "../../entities/contract.entity.js";
 import type { IContractRepository } from "./contract.repository.js";
 

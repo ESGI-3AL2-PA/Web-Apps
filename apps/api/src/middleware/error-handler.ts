@@ -1,8 +1,8 @@
-// AppError / NotFoundError / errorHandler are shared — see @repo/server-kit. Re-exported
+// AppError / NotFoundError / errorHandler are shared — see @repo/shared. Re-exported
 // here (single class identity across both backends) so local import paths stay stable.
-import { AppError } from "@repo/server-kit";
+import { AppError } from "@repo/shared";
 
-export { AppError, NotFoundError, errorHandler } from "@repo/server-kit";
+export { AppError, NotFoundError, errorHandler } from "@repo/shared";
 
 // Raised when a message's media bytes were stored but the mediaUrl could not be
 // attached to the row. The use-case compensates (deletes bytes + row) before

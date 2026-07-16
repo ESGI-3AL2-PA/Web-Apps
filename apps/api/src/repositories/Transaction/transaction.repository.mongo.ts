@@ -1,6 +1,6 @@
 import { randomUUID } from "crypto";
 import type { ClientSession, Collection, Db, Filter } from "mongodb";
-import { toEntity, type WithMongoId } from "@repo/server-kit";
+import { toEntity, type WithMongoId } from "@repo/shared";
 import type { Transaction, TransactionRefType, TransactionType } from "../../entities/transaction.entity.js";
 import type { ITransactionRepository } from "./transaction.repository.js";
 

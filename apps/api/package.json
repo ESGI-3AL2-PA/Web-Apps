@@ -32,7 +32,7 @@
   "dependencies": {
     "@repo/contracts": "*",
     "@repo/satan": "*",
-    "@repo/server-kit": "*",
+    "@repo/shared": "*",
     "@scalar/express-api-reference": "^0.9.5",
     "@ts-rest/express": "^3.52.1",
     "@ts-rest/open-api": "^3.52.1",

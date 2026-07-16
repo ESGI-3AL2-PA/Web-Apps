@@ -3,7 +3,7 @@
 // copy-pasted; this is the single source of truth for it.
 //
 // NOTE: `./load-env` is intentionally NOT re-exported here — import it for its side
-// effect FIRST (`import "@repo/server-kit/load-env"`) before any env-reading module.
+// effect FIRST (`import "@repo/shared/load-env"`) before any env-reading module.
 
 export { logger, createLogger } from "./logger.js";
 export { createMongoConnector, type MongoConnector } from "./mongo-connector.js";

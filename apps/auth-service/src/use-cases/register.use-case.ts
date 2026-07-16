@@ -1,5 +1,5 @@
 import { SignJWT } from "jose";
-import { TOKEN_ISSUER, TOKEN_ALG, TOKEN_AUDIENCE_INTERNAL } from "@repo/server-kit";
+import { TOKEN_ISSUER, TOKEN_ALG, TOKEN_AUDIENCE_INTERNAL } from "@repo/shared";
 import type { IUserReaderRepository } from "../repositories/User/user-reader.repository.js";
 import type { IAuthTokenRepository } from "../repositories/AuthToken/auth-token.repository.js";
 import { getKeyId, getPrivateKey } from "../keys.js";

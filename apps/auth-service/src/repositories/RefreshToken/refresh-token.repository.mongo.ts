@@ -1,6 +1,6 @@
 import { randomUUID } from "crypto";
 import type { Collection, Db } from "mongodb";
-import { toEntity, type WithMongoId } from "@repo/server-kit";
+import { toEntity, type WithMongoId } from "@repo/shared";
 import type { RefreshToken } from "../../entities/refresh-token.entity.js";
 import type { IRefreshTokenRepository } from "./refresh-token.repository.js";
 

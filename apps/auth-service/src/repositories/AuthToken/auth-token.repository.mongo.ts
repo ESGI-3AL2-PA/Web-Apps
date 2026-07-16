@@ -1,6 +1,6 @@
 import { randomUUID } from "crypto";
 import type { Collection, Db } from "mongodb";
-import { toEntity, type WithMongoId } from "@repo/server-kit";
+import { toEntity, type WithMongoId } from "@repo/shared";
 import type { AuthToken, AuthTokenType } from "../../entities/auth-token.entity.js";
 import type { IAuthTokenRepository } from "./auth-token.repository.js";
 

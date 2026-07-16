@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { logger } from "@repo/server-kit";
+import { logger } from "@repo/shared";
 import type { User } from "../../entities/user.entity.js";
 import type { Contract } from "../../entities/contract.entity.js";
 import type { Listing } from "../../entities/listing.entity.js";

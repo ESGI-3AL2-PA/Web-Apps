@@ -1,5 +1,5 @@
 import type { CreateContractDto } from "@repo/contracts";
-import { logger } from "@repo/server-kit";
+import { logger } from "@repo/shared";
 import type { Contract } from "../../entities/contract.entity.js";
 import type { IContractRepository } from "../../repositories/Contract/contract.repository.js";
 import type { IListingRepository } from "../../repositories/Listing/listing.repository.js";

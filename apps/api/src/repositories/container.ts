@@ -1,7 +1,7 @@
 import type { Db } from "mongodb";
 import type { Driver } from "neo4j-driver";
 import type { SatanClient } from "@repo/satan";
-import { createContainer } from "@repo/server-kit";
+import { createContainer } from "@repo/shared";
 import { logger } from "../logger.js";
 
 import type { IUserRepository } from "./User/user.repository.js";

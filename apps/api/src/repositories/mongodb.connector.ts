@@ -1,6 +1,6 @@
-import { createMongoConnector } from "@repo/server-kit";
+import { createMongoConnector } from "@repo/shared";
 
-// One shared client for the whole app. The connector logic lives in @repo/server-kit;
+// One shared client for the whole app. The connector logic lives in @repo/shared;
 // this binds it to the api's env and re-exports the functions the app imports.
 const connector = createMongoConnector();
 

@@ -1,6 +1,6 @@
 import { randomUUID } from "crypto";
 import type { Collection, Db, Filter, UpdateFilter } from "mongodb";
-import { toEntity, type WithMongoId } from "@repo/server-kit";
+import { toEntity, type WithMongoId } from "@repo/shared";
 import type { District, GeoJson } from "../../entities/district.entity.js";
 import { escapeRegex } from "../escape-regex.js";
 import type { IDistrictRepository, UpdateDistrictData } from "./district.repository.js";

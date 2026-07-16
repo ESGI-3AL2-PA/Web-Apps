@@ -1,6 +1,6 @@
 import { randomUUID } from "crypto";
 import type { Collection, Db, Filter } from "mongodb";
-import { USERS_COLLECTION, toEntity, type WithMongoId } from "@repo/server-kit";
+import { USERS_COLLECTION, toEntity, type WithMongoId } from "@repo/shared";
 import type { User } from "../../entities/user.entity.js";
 import { escapeRegex } from "../escape-regex.js";
 import type { IUserRepository } from "./user.repository.js";

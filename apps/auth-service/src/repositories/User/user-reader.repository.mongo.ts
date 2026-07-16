@@ -1,5 +1,5 @@
 import type { Collection, Db } from "mongodb";
-import { USERS_COLLECTION, toEntity, type WithMongoId } from "@repo/server-kit";
+import { USERS_COLLECTION, toEntity, type WithMongoId } from "@repo/shared";
 import type { IUserReaderRepository, UserRecord } from "./user-reader.repository.js";
 
 type UserDoc = WithMongoId<UserRecord>;

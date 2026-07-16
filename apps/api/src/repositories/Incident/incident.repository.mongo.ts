@@ -1,6 +1,6 @@
 import { randomUUID } from "crypto";
 import type { Collection, Db, Filter } from "mongodb";
-import { toEntity, type WithMongoId } from "@repo/server-kit";
+import { toEntity, type WithMongoId } from "@repo/shared";
 import type { Incident, IncidentStatus } from "../../entities/incident.entity.js";
 import { escapeRegex } from "../escape-regex.js";
 import type { IIncidentRepository } from "./incident.repository.js";

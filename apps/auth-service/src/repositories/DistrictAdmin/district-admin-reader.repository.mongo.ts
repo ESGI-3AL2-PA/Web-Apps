@@ -1,5 +1,5 @@
 import type { Collection, Db } from "mongodb";
-import { DISTRICT_ADMINS_COLLECTION, type DistrictAdminDocument, type WithMongoId } from "@repo/server-kit";
+import { DISTRICT_ADMINS_COLLECTION, type DistrictAdminDocument, type WithMongoId } from "@repo/shared";
 import type { IDistrictAdminReaderRepository } from "./district-admin-reader.repository.js";
 
 type DistrictAdminDoc = WithMongoId<DistrictAdminDocument>;

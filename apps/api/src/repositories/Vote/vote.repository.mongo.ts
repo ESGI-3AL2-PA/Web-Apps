@@ -1,6 +1,6 @@
 import { randomUUID } from "crypto";
 import type { ClientSession, Collection, Db, Filter } from "mongodb";
-import { toEntity, type WithMongoId } from "@repo/server-kit";
+import { toEntity, type WithMongoId } from "@repo/shared";
 import type { Vote, VoteResponseEntity, VoteStatus } from "../../entities/vote.entity.js";
 import { escapeRegex } from "../escape-regex.js";
 import type { IVoteRepository } from "./vote.repository.js";

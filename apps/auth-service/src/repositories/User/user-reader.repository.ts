@@ -1,7 +1,7 @@
-import type { UserDocument } from "@repo/server-kit";
+import type { UserDocument } from "@repo/shared";
 
 // The `users` collection is shared with the api; its shape is the single source of
-// truth in @repo/server-kit. auth-service reads the same document (incl. totpSecret /
+// truth in @repo/shared. auth-service reads the same document (incl. totpSecret /
 // lastTotpStep the api doesn't touch), so UserRecord IS the shared document type.
 export type UserRecord = UserDocument;
 

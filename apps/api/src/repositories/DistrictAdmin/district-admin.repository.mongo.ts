@@ -1,6 +1,6 @@
 import { randomUUID } from "crypto";
 import type { Collection, Db, Filter } from "mongodb";
-import { DISTRICT_ADMINS_COLLECTION, toEntity, type WithMongoId } from "@repo/server-kit";
+import { DISTRICT_ADMINS_COLLECTION, toEntity, type WithMongoId } from "@repo/shared";
 import type { DistrictAdmin } from "../../entities/district-admin.entity.js";
 import type { IDistrictAdminRepository } from "./district-admin.repository.js";
 

@@ -1,6 +1,6 @@
 import { createRemoteJWKSet, jwtVerify } from "jose";
 import type { RequestHandler } from "express";
-import { TOKEN_ISSUER, TOKEN_ALG, TOKEN_AUDIENCE, TOKEN_AUDIENCE_INTERNAL } from "@repo/server-kit";
+import { TOKEN_ISSUER, TOKEN_ALG, TOKEN_AUDIENCE, TOKEN_AUDIENCE_INTERNAL } from "@repo/shared";
 import { resolve } from "../repositories/container.js";
 import type { IUserRepository } from "../repositories/User/user.repository.js";
 

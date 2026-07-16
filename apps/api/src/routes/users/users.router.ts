@@ -1,5 +1,5 @@
 import { initServer } from "@ts-rest/express";
-import { logger } from "@repo/server-kit";
+import { logger } from "@repo/shared";
 import { usersContract } from "@repo/contracts";
 import type { UserResponseDto } from "@repo/contracts";
 import type { User } from "../../entities/user.entity.js";

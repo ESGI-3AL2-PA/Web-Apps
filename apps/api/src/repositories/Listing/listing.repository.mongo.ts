@@ -1,6 +1,6 @@
 import { randomUUID } from "crypto";
 import type { Collection, Db, Filter, Sort } from "mongodb";
-import type { WithMongoId } from "@repo/server-kit";
+import type { WithMongoId } from "@repo/shared";
 import type { ListingSort } from "@repo/contracts";
 import type { Listing, ListingStatus } from "../../entities/listing.entity.js";
 import { escapeRegex } from "../escape-regex.js";

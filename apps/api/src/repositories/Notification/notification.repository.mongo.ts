@@ -1,6 +1,6 @@
 import { randomUUID } from "crypto";
 import type { Collection, Db, Filter } from "mongodb";
-import { toEntity, type WithMongoId } from "@repo/server-kit";
+import { toEntity, type WithMongoId } from "@repo/shared";
 import type { Notification, NotificationType } from "../../entities/notification.entity.js";
 import type { INotificationRepository } from "./notification.repository.js";
 

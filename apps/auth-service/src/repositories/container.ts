@@ -1,5 +1,5 @@
 import type { Db } from "mongodb";
-import { createContainer } from "@repo/server-kit";
+import { createContainer } from "@repo/shared";
 import { MongoRefreshTokenRepository } from "./RefreshToken/refresh-token.repository.mongo.js";
 import { MongoUserReaderRepository } from "./User/user-reader.repository.mongo.js";
 import { MongoAuthTokenRepository } from "./AuthToken/auth-token.repository.mongo.js";

@@ -1,5 +1,5 @@
 import type { ClientSession } from "mongodb";
-import { logger } from "@repo/server-kit";
+import { logger } from "@repo/shared";
 import type { Contract } from "../../entities/contract.entity.js";
 import type { IContractRepository } from "../../repositories/Contract/contract.repository.js";
 import type { ITransactionRepository } from "../../repositories/Transaction/transaction.repository.js";
