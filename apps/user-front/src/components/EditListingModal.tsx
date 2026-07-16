@@ -29,9 +29,17 @@ export default function EditListingModal({
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    let ignore = false;
     getTags()
-      .then(setTags)
-      .catch(() => setTags([]));
+      .then((tgs) => {
+        if (!ignore) setTags(tgs);
+      })
+      .catch(() => {
+        if (!ignore) setTags([]);
+      });
+    return () => {
+      ignore = true;
+    };
   }, []);
 
   const submit = async (e: FormEvent) => {

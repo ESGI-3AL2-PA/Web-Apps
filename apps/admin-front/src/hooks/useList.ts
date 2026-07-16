@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { ListParams, Paginated } from "../api-service/types";
 
 export interface UseListResult<T> {
@@ -67,14 +67,20 @@ export function useList<T>(
 
   // Serialize so the object identity (recreated each render by callers) doesn't drive effects.
   const extraParamsKey = JSON.stringify(options.extraParams ?? {});
-
-  // A scope change (new extraParams) resets to the first page — the current page may not exist
-  // within the newly scoped result set.
-  useEffect(() => {
-    setPage(1);
-  }, [extraParamsKey]);
+  const scopeRef = useRef(extraParamsKey);
 
   useEffect(() => {
+    // A scope change (new extraParams) resets to the first page — the current page may not
+    // exist within the newly scoped result set. Reset inline (not in a separate effect) so
+    // the reset and fetch share one path: a scope change from page>1 fires a single request.
+    if (scopeRef.current !== extraParamsKey) {
+      scopeRef.current = extraParamsKey;
+      if (page !== 1) {
+        setPage(1);
+        return;
+      }
+    }
+
     let cancelled = false;
     setLoading(true);
     setError(null);

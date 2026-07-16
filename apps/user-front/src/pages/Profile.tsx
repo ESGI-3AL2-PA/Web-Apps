@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@repo/hooks";
 import type {
@@ -141,8 +141,16 @@ export default function Profile() {
   const [form, setForm] = useState({ firstName: "", lastName: "", phone: "", address: "" });
   const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState(false);
+  const copyTimerRef = useRef<number | null>(null);
 
   const uid = user?.id;
+
+  useEffect(
+    () => () => {
+      if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
+    },
+    [],
+  );
 
   useEffect(() => {
     if (!uid) return;
@@ -200,7 +208,8 @@ export default function Profile() {
     try {
       await navigator.clipboard.writeText(uid);
       setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
+      copyTimerRef.current = window.setTimeout(() => setCopied(false), 2000);
     } catch {
       // clipboard may be unavailable; ignore
     }

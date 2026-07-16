@@ -1,4 +1,4 @@
-import { type ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import { useAuth } from "./useAuth";
 
 interface ProtectedRouteProps {
@@ -42,12 +42,29 @@ function Spinner() {
 export function ProtectedRoute({ children, roles, forbiddenRedirect }: ProtectedRouteProps) {
   const { isAuthenticated, isLoading, user, authServiceUrl, logout } = useAuth();
 
+  const needsLogin = !isLoading && !isAuthenticated;
+  const redirectForbidden =
+    !isLoading && isAuthenticated && !!roles && !!user && !roles.includes(user.role) && !!forbiddenRedirect;
+
+  // Navigate in an effect, not the render body: assigning window.location.href while
+  // rendering is a side effect (and double-fires under StrictMode).
+  useEffect(() => {
+    if (needsLogin) {
+      window.location.href = `${authServiceUrl}/login?redirect_uri=${encodeURIComponent(window.location.href)}`;
+    }
+  }, [needsLogin, authServiceUrl]);
+
+  useEffect(() => {
+    if (redirectForbidden) {
+      window.location.href = forbiddenRedirect!;
+    }
+  }, [redirectForbidden, forbiddenRedirect]);
+
   if (isLoading) {
     return <Spinner />;
   }
 
   if (!isAuthenticated) {
-    window.location.href = `${authServiceUrl}/login?redirect_uri=${encodeURIComponent(window.location.href)}`;
     return <Spinner />;
   }
 
@@ -56,7 +73,6 @@ export function ProtectedRoute({ children, roles, forbiddenRedirect }: Protected
     if (!user) return <Spinner />;
     if (!roles.includes(user.role)) {
       if (forbiddenRedirect) {
-        window.location.href = forbiddenRedirect;
         return <Spinner />;
       }
       return (

@@ -28,15 +28,25 @@ export default function ListingDetail() {
 
   useEffect(() => {
     if (!id) return;
+    let ignore = false;
     setLoading(true);
     getListingById(id)
       .then((l) => {
-        setListing(l);
+        if (!ignore) setListing(l);
         return getUserPublic(l.authorId).catch(() => null);
       })
-      .then((s) => setSeller(s))
-      .catch(() => setListing(null))
-      .finally(() => setLoading(false));
+      .then((s) => {
+        if (!ignore) setSeller(s);
+      })
+      .catch(() => {
+        if (!ignore) setListing(null);
+      })
+      .finally(() => {
+        if (!ignore) setLoading(false);
+      });
+    return () => {
+      ignore = true;
+    };
   }, [id]);
 
   const contactSeller = async () => {

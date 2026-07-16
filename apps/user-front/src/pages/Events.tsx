@@ -74,12 +74,22 @@ export default function Events() {
   const [busy, setBusy] = useState<string | null>(null);
 
   const load = useCallback(() => {
+    let ignore = false;
     setLoading(true);
     setError(false);
     getEvents()
-      .then(setEvents)
-      .catch(() => setError(true))
-      .finally(() => setLoading(false));
+      .then((e) => {
+        if (!ignore) setEvents(e);
+      })
+      .catch(() => {
+        if (!ignore) setError(true);
+      })
+      .finally(() => {
+        if (!ignore) setLoading(false);
+      });
+    return () => {
+      ignore = true;
+    };
   }, []);
 
   useEffect(load, [load]);
@@ -87,11 +97,21 @@ export default function Events() {
   // Personalized "for you" strip (collaborative filtering, requires auth).
   useEffect(() => {
     if (!user?.id) return;
+    let ignore = false;
     setLoadingReco(true);
     getRecommendedEvents(6)
-      .then(setRecommended)
-      .catch(() => setRecommended([]))
-      .finally(() => setLoadingReco(false));
+      .then((r) => {
+        if (!ignore) setRecommended(r);
+      })
+      .catch(() => {
+        if (!ignore) setRecommended([]);
+      })
+      .finally(() => {
+        if (!ignore) setLoadingReco(false);
+      });
+    return () => {
+      ignore = true;
+    };
   }, [user?.id]);
 
   const toggle = async (ev: EventResponseDto) => {

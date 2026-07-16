@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useRef, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
 type ToastType = "success" | "error" | "info";
@@ -29,6 +29,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const { t } = useTranslation();
   const [items, setItems] = useState<ToastItem[]>([]);
   const idRef = useRef(0);
+  const timersRef = useRef<number[]>([]);
 
   const dismiss = useCallback((id: number) => {
     setItems((prev) => prev.filter((t) => t.id !== id));
@@ -38,13 +39,23 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     (message: string, type: ToastType = "success") => {
       const id = ++idRef.current;
       setItems((prev) => [...prev, { id, message, type }]);
-      setTimeout(() => dismiss(id), 4000);
+      timersRef.current.push(window.setTimeout(() => dismiss(id), 4000));
     },
     [dismiss],
   );
 
+  // Clear any pending auto-dismiss timers on unmount so they don't setState afterwards.
+  useEffect(
+    () => () => {
+      timersRef.current.forEach((timer) => clearTimeout(timer));
+    },
+    [],
+  );
+
+  const value = useMemo(() => ({ show }), [show]);
+
   return (
-    <ToastContext.Provider value={{ show }}>
+    <ToastContext.Provider value={value}>
       {children}
       <div className="fixed bottom-4 end-4 z-[60] flex flex-col gap-2">
         {items.map((item) => (

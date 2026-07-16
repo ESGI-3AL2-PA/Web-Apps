@@ -24,6 +24,7 @@ export default function Home() {
   const [error, setError] = useState(false);
 
   const load = useCallback(() => {
+    let ignore = false;
     setLoading(true);
     setError(false);
     Promise.all([
@@ -33,13 +34,21 @@ export default function Home() {
       getVotes({ status: "open", limit: 3 }).catch(() => []),
     ])
       .then(([page, tags, ev, vo]) => {
+        if (ignore) return;
         setListings(page.data);
         setTags(tags);
         setEvents(ev);
         setVotes(vo);
       })
-      .catch(() => setError(true))
-      .finally(() => setLoading(false));
+      .catch(() => {
+        if (!ignore) setError(true);
+      })
+      .finally(() => {
+        if (!ignore) setLoading(false);
+      });
+    return () => {
+      ignore = true;
+    };
   }, []);
 
   useEffect(load, [load]);

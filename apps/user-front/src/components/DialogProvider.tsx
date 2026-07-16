@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { useFocusTrap } from "../lib/useFocusTrap";
 import { DialogContext, type AlertOptions, type ConfirmOptions } from "./dialog-context";
@@ -56,8 +56,10 @@ export function DialogProvider({ children }: { children: ReactNode }) {
   // destructive one so a stray Enter doesn't trigger it.
   const focusDestructive = !(isConfirm && danger);
 
+  const value = useMemo(() => ({ confirm, alert }), [confirm, alert]);
+
   return (
-    <DialogContext.Provider value={{ confirm, alert }}>
+    <DialogContext.Provider value={value}>
       {children}
       {state && (
         <div

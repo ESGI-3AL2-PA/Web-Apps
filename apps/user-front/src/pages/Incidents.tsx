@@ -31,24 +31,38 @@ export default function Incidents() {
 
   const load = useCallback(() => {
     if (!user?.id) return;
+    let ignore = false;
     setLoading(true);
     setError(false);
     getIncidents({ reporterId: user.id, limit: 50 })
-      .then((page) => setIncidents(page.data))
-      .catch(() => setError(true))
-      .finally(() => setLoading(false));
+      .then((page) => {
+        if (!ignore) setIncidents(page.data);
+      })
+      .catch(() => {
+        if (!ignore) setError(true);
+      })
+      .finally(() => {
+        if (!ignore) setLoading(false);
+      });
+    return () => {
+      ignore = true;
+    };
   }, [user?.id]);
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  useEffect(load, [load]);
 
   // District is required to report; resolve it from the profile if the token lacks it.
   useEffect(() => {
     if (districtId || !user?.id) return;
+    let ignore = false;
     getUserById(user.id)
-      .then((u) => setDistrictId(u.districtId ?? null))
+      .then((u) => {
+        if (!ignore) setDistrictId(u.districtId ?? null);
+      })
       .catch(() => undefined);
+    return () => {
+      ignore = true;
+    };
   }, [districtId, user?.id]);
 
   const submit = async (e: FormEvent) => {

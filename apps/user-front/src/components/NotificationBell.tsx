@@ -39,14 +39,20 @@ export default function NotificationBell() {
   const buttonRef = useRef<HTMLButtonElement>(null);
 
   const load = useCallback(() => {
+    let ignore = false;
     getNotifications({ limit: 15 })
-      .then((page) => setItems(page.data))
-      .catch(() => setItems([]));
+      .then((page) => {
+        if (!ignore) setItems(page.data);
+      })
+      .catch(() => {
+        if (!ignore) setItems([]);
+      });
+    return () => {
+      ignore = true;
+    };
   }, []);
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  useEffect(load, [load]);
 
   // Live refresh: reload when the server pushes a new notification.
   useEffect(() => {
