@@ -45,10 +45,10 @@ Databases and the optional e-signature stack run via Docker Compose, which uses 
 
 ```bash
 # app + Mongo / Neo4j / fronts
-docker compose -f docker-compose.local.yml --profile core up
+docker compose --profile core up
 
 # also bring up the Documenso e-signature stack (Documenso / Postgres / MinIO / mailpit)
-docker compose -f docker-compose.local.yml --profile core --profile contracts up
+docker compose --profile core --profile contracts up
 ```
 
 A bare `docker compose up` (no profile) starts nothing.

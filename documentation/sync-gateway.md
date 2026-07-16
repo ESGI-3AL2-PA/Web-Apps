@@ -19,7 +19,7 @@ sync-gateway is the single known endpoint — Java app instances always initiate
 
 ## Architecture
 
-> **Port TBD** — must be assigned before the service is added to `docker-compose.yml` and `turbo.json`. Other services: api 3000, admin-front 4000, user-front 5000, auth-service 3001.
+> **Port TBD** — must be assigned before the service is added to `docker-compose.yml` / `docker-compose.prod.yml` and `turbo.json`. Other services: api 3000, admin-front 4000, user-front 5000, auth-service 3001.
 
 ```
 Java instance 1 ──┐  POST /ingest          ┌── GET /changes?since=<cursor>

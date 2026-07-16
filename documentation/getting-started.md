@@ -31,7 +31,7 @@ This installs dependencies for all apps and packages in the monorepo (Turborepo 
 
 ## 3. Start the stack
 
-Both Compose files use **profiles**, so a bare `docker compose up` (no profile) starts **zero** containers. Pick a profile:
+The dev compose (`docker-compose.yml`, the default) uses **profiles**, so a bare `docker compose up` (no profile) starts **zero** containers. Pick a profile:
 
 - `--profile core` — the app + databases + fronts (MongoDB, Neo4j, api, auth-service, admin/user fronts)
 - `--profile contracts` — adds the Documenso e-signature stack (Documenso, Postgres, MinIO, mailpit)
@@ -43,12 +43,12 @@ Combine them (`--profile core --profile contracts`) to bring up everything.
 `npm run dev` brings up the `core` compose stack and then runs Turborepo in watch mode. It is equivalent to:
 
 ```bash
-docker compose -f docker-compose.local.yml --profile core up -d
+docker compose --profile core up -d
 nvm install latest && nvm use latest
 npm run dev
 ```
 
-The `docker-compose.local.yml` services bind-mount the repo for hot reload. Add `--profile contracts` to the compose command if you need the e-signature stack.
+The dev compose (`docker-compose.yml`) services bind-mount the repo for hot reload. Add `--profile contracts` to the compose command if you need the e-signature stack.
 
 ### Option B — Full stack in Docker
 
@@ -93,8 +93,8 @@ docker compose --profile core up
 │   ├── eslint-config/
 │   └── typescript-config/
 ├── documentation/
-├── docker-compose.yml        # App + DBs, profile-gated (core / contracts)
-└── docker-compose.local.yml  # Local dev, profile-gated (core / contracts)
+├── docker-compose.yml        # Dev stack (hot reload), profile-gated (core / contracts)
+└── docker-compose.prod.yml   # Production stack (nginx, compiled), profile-gated
 ```
 
 ## Common commands

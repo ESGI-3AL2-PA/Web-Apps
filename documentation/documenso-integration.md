@@ -140,7 +140,7 @@ http://localhost:8025). `--profile core` runs the app without it. Steps:
 
 1. Generate a dev signing certificate: `./scripts/gen-documenso-cert.sh` (writes the
    git-ignored `docker/documenso/cert.p12`). Documenso refuses to sign without one.
-2. `docker compose -f docker-compose.local.yml --profile contracts up -d` (add
+2. `docker compose --profile contracts up -d` (add
    `--profile core` to bring the api/fronts up alongside it).
 3. In the Documenso UI (http://localhost:3030): sign up, confirm the email via mailpit,
    create an **API token**, and build a **template** with two signer placeholders and a

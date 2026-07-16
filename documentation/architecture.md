@@ -25,8 +25,8 @@ The project is a **Turborepo monorepo** built entirely in TypeScript, following 
 │   ├── eslint-config/ # Shared ESLint flat-config rules
 │   └── typescript-config/ # Shared tsconfig bases
 ├── playwright_testbook/   # End-to-end API and Front tests
-├── docker-compose.yml           # Full stack (apps + databases) — production
-└── docker-compose.local.yml     # Full stack for local/dev (pinned image versions)
+├── docker-compose.yml           # Dev stack (hot reload, pinned images)
+└── docker-compose.prod.yml      # Production stack (nginx, compiled dist)
 ```
 
 ---
@@ -145,12 +145,12 @@ ESLint 9 flat-config rules, composed per environment:
 
 ## Infrastructure & Databases
 
-The stack is orchestrated with Docker Compose. Both compose files use **profiles** so `docker compose up` with no profile starts nothing:
+The stack is orchestrated with Docker Compose. Both compose files (`docker-compose.yml` dev, `docker-compose.prod.yml` prod) use **profiles** so `docker compose up` with no profile starts nothing:
 
 - `--profile core` — app services (api, auth-service, admin-front, user-front) plus their datastores (Mongo, mongo-express, Neo4j).
 - `--profile contracts` — the Documenso e-signature stack (Documenso, Postgres, MinIO, mailpit).
 
-Both compose files define the same topology — the app services plus their datastores — and differ in intent. `docker-compose.yml` is the **production** compose: it builds the app images and tracks rolling `:latest` image tags. `docker-compose.local.yml` is for **local/dev**: it pins exact image versions for reproducibility and additionally exposes MinIO and mailpit under the `core` profile (in production those live under `contracts` only). Either way, `--profile core` brings up the full app stack; apps can also be run directly on the host with `npm run dev`.
+Both compose files define the same topology — the app services plus their datastores — and differ in intent. `docker-compose.yml` is the **dev** compose (the default a bare `docker compose` picks up): it builds the `dev` Dockerfile target with source bind-mounts for hot reload, uses zero-config local credentials, pins exact image versions, and exposes MinIO and mailpit under the `core` profile. `docker-compose.prod.yml` is the **production** compose: it builds the `prod` target (compiled `dist/` served by a hardened nginx), takes all secrets from `.env`, and adds the `landing` static site. Either way, `--profile core` brings up the full app stack; in dev the apps can also be run directly on the host with `npm run dev`.
 
 ### Datastores
 

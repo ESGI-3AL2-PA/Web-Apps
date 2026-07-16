@@ -1,6 +1,6 @@
 # Production stack — immutable, source-baked images.
 #
-# Unlike docker-compose.local.yml this compose:
+# Unlike docker-compose.yml (dev) this compose:
 #   • builds the `prod` Dockerfile target for every app (no `dev` / tsx --watch),
 #   • has NO source bind-mounts — the image is the artifact,
 #   • serves each front's built `dist/` from a hardened, non-root nginx
@@ -201,7 +201,7 @@ services:
   # images) and Documenso (contracts). Runs in both profiles.
   minio:
     profiles: [core, contracts]
-    image: minio/minio:latest
+    image: minio/minio:RELEASE.2024-01-16T16-07-38Z
     restart: always
     command: server /data --console-address ":9001"
     volumes:
@@ -218,7 +218,7 @@ services:
   # One-shot: create the buckets (documenso PDFs + voice messages + listings), then exit.
   minio-createbucket:
     profiles: [core, contracts]
-    image: minio/mc:latest
+    image: minio/mc:RELEASE.2024-01-18T07-03-39Z
     depends_on:
       minio:
         condition: service_started

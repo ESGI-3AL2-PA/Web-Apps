@@ -26,7 +26,7 @@ MINIO_ACCESS_KEY="${MESSAGES_MINIO_ACCESS_KEY:-minioadmin}"
 MINIO_SECRET_KEY="${MESSAGES_MINIO_SECRET_KEY:-minioadmin}"
 BACKUP_BUCKETS="${BACKUP_BUCKETS:-messages listings documenso}"
 USE_DOCKER="${USE_DOCKER:-0}"
-COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.local.yml}"
+COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.yml}"
 
 SRC_DIR="${1:-}"
 if [ -z "$SRC_DIR" ] || [ ! -d "$SRC_DIR" ]; then
