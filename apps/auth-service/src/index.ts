@@ -103,7 +103,7 @@ app.get("/readyz", async (_req, res) => {
     await pingDB();
   } catch (err) {
     mongoOk = false;
-    console.error("[readyz] mongo ping failed:", err);
+    logger.error({ err }, "[readyz] mongo ping failed");
   }
   res.status(mongoOk ? 200 : 503).json({
     status: mongoOk ? "ok" : "unavailable",
@@ -208,7 +208,7 @@ app.post(
         res.status(200).json({ sessions: sanitized });
       })
       .catch((err) => {
-        console.error("Failed to export sessions for user:", err);
+        logger.error({ err }, "Failed to export sessions for user");
         res.status(500).json({ message: "Failed to export sessions" });
       });
   },

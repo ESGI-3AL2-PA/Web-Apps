@@ -6,8 +6,8 @@ import { sendImageMessageUseCase } from "./send-image-message.use-case.js";
 
 // Stub the object-storage layer so no real MinIO is touched. saveMessageImage
 // succeeds; deleteMessageImage is a spy we assert the compensation calls.
-const saveMessageImage = vi.fn(async () => {});
-const deleteMessageImage = vi.fn(async () => {});
+const saveMessageImage = vi.fn(async (..._args: unknown[]) => {});
+const deleteMessageImage = vi.fn(async (..._args: unknown[]) => {});
 vi.mock("../../services/media-storage.service.js", () => ({
   saveMessageImage: (...args: unknown[]) => saveMessageImage(...args),
   deleteMessageImage: (...args: unknown[]) => deleteMessageImage(...args),
