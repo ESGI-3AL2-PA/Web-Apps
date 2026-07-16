@@ -1,11 +1,3 @@
-import pino from "pino";
-
-/**
- * App-wide structured logger. Emits JSON to stdout so logs can be shipped to an
- * aggregator; level comes from LOG_LEVEL (default "info"). pino-http (wired in
- * index.ts) attaches a per-request child logger as `req.log` carrying a correlation
- * id, so request-path code should prefer `req.log` when it has a request in hand.
- */
-export const logger = pino({
-  level: process.env.LOG_LEVEL ?? "info",
-});
+// The pino logger config is shared — see @repo/server-kit. Re-exported here so the
+// many `import { logger } from "../logger.js"` call sites stay stable.
+export { logger, createLogger } from "@repo/server-kit";

@@ -28,6 +28,7 @@
   },
   "dependencies": {
     "@repo/contracts": "*",
+    "@repo/server-kit": "*",
     "@ts-rest/express": "^3.52.1",
     "argon2": "^0.43.0",
     "cookie-parser": "^1.4.7",

@@ -1,0 +1,33 @@
+{
+  "name": "@repo/server-kit",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": "./dist/index.js",
+    "./load-env": "./dist/load-env.js"
+  },
+  "license": "MIT",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix"
+  },
+  "devDependencies": {
+    "@repo/eslint-config": "*",
+    "@repo/typescript-config": "*",
+    "@types/express": "4.17.25",
+    "eslint": "^9.39.4",
+    "typescript": "6.0.2"
+  },
+  "dependencies": {
+    "express": "^4.22.2",
+    "mongodb": "^7.1.1",
+    "pino": "^10.3.1",
+    "pino-http": "^11.0.0",
+    "zod": "3.25.76"
+  }
+}

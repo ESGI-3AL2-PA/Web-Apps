@@ -1,20 +1,9 @@
-import { MongoClient, type Db } from "mongodb";
+import { createMongoConnector } from "@repo/server-kit";
 
-const url = process.env.MONGODB_URL ?? "mongodb://root:root@localhost:27017";
-const dbName = process.env.MONGODB_DB ?? "db";
-const client = new MongoClient(url);
+// One shared client for the whole app. The connector logic lives in @repo/server-kit;
+// this binds it to the auth-service's env and re-exports the functions the app imports.
+const connector = createMongoConnector();
 
-export const connectDB = async (): Promise<Db> => {
-  await client.connect();
-  return client.db(dbName);
-};
-
-// Readiness check: cheap round-trip to the server. Rejects if the connection is
-// dead (server down, auth revoked, network partition) so /readyz can return 503.
-export const pingDB = async (): Promise<void> => {
-  await client.db(dbName).command({ ping: 1 });
-};
-
-export const closeDB = async (): Promise<void> => {
-  await client.close();
-};
+export const connectDB = connector.connectDB;
+export const pingDB = connector.pingDB;
+export const closeDB = connector.closeDB;

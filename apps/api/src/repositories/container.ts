@@ -1,6 +1,7 @@
 import type { Db } from "mongodb";
 import type { Driver } from "neo4j-driver";
 import type { SatanClient } from "@repo/satan";
+import { createContainer } from "@repo/server-kit";
 import { logger } from "../logger.js";
 
 import type { IUserRepository } from "./User/user.repository.js";
@@ -62,7 +63,9 @@ type Container = {
   graph: Neo4jGraphRepository;
 };
 
-let repositories: Container | null = null;
+const { set, resolve } = createContainer<Container>();
+export type ContainerKeys = keyof Container;
+export { resolve };
 
 /**
  * Builds the repository container. When a SATAN client is supplied (and
@@ -88,7 +91,7 @@ export const initContainer = (db: Db, neo4jDriver: Driver, satan?: SatanClient) 
 
   const useSatan = satan && process.env.SATAN_REPOS !== "false";
 
-  repositories = {
+  const repositories: Container = {
     user: useSatan ? new SatanUserRepository(mongo.user, satan) : mongo.user,
     listing: useSatan ? new SatanListingRepository(mongo.listing, satan) : mongo.listing,
     contract: useSatan ? new SatanContractRepository(mongo.contract, satan) : mongo.contract,
@@ -103,6 +106,7 @@ export const initContainer = (db: Db, neo4jDriver: Driver, satan?: SatanClient) 
     transaction: useSatan ? new SatanTransactionRepository(mongo.transaction, satan) : mongo.transaction,
     graph: new Neo4jGraphRepository(neo4jDriver),
   };
+  set(repositories);
 
   // Ensure required indexes exist (idempotent, non-blocking on startup).
   const withIndexes: Array<[string, { ensureIndexes(): Promise<void> }]> = [
@@ -122,11 +126,4 @@ export const initContainer = (db: Db, neo4jDriver: Driver, satan?: SatanClient) 
   for (const [name, repo] of withIndexes) {
     void repo.ensureIndexes().catch((err) => logger.error({ err, name }, "Failed to ensure indexes"));
   }
-};
-
-export type ContainerKeys = keyof Container;
-
-export const resolve = <K extends ContainerKeys>(key: K): Container[K] => {
-  if (!repositories) throw new Error("Container not initialized — call initContainer(db, neo4jDriver) first");
-  return repositories[key];
 };

@@ -1,4 +1,5 @@
 import type { Db } from "mongodb";
+import { createContainer } from "@repo/server-kit";
 import { MongoRefreshTokenRepository } from "./RefreshToken/refresh-token.repository.mongo.js";
 import { MongoUserReaderRepository } from "./User/user-reader.repository.mongo.js";
 import { MongoAuthTokenRepository } from "./AuthToken/auth-token.repository.mongo.js";
@@ -11,20 +12,15 @@ type Container = {
   districtAdmin: MongoDistrictAdminReaderRepository;
 };
 
-let repositories: Container | null = null;
+const { set, resolve } = createContainer<Container>();
+export type ContainerKeys = keyof Container;
+export { resolve };
 
 export const initContainer = (db: Db) => {
-  repositories = {
+  set({
     refreshToken: new MongoRefreshTokenRepository(db),
     userReader: new MongoUserReaderRepository(db),
     authToken: new MongoAuthTokenRepository(db),
     districtAdmin: new MongoDistrictAdminReaderRepository(db),
-  };
-};
-
-export type ContainerKeys = keyof Container;
-
-export const resolve = <K extends ContainerKeys>(key: K): Container[K] => {
-  if (!repositories) throw new Error("Container not initialized — call initContainer(db) first");
-  return repositories[key];
+  });
 };

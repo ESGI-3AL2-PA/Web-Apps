@@ -1,4 +1,4 @@
-import "./load-env.js"; // must be first: loads .env before any module reads process.env
+import "@repo/server-kit/load-env"; // must be first: loads .env before any module reads process.env
 import path from "path";
 import fs from "fs";
 import { timingSafeEqual } from "crypto";
@@ -21,7 +21,7 @@ import { initContainer, resolve } from "./repositories/container.js";
 import { MongoRefreshTokenRepository } from "./repositories/RefreshToken/refresh-token.repository.mongo.js";
 import type { IRefreshTokenRepository } from "./repositories/RefreshToken/refresh-token.repository.js";
 import { initKeys } from "./keys.js";
-import { setupGracefulShutdown } from "./shutdown.js";
+import { setupGracefulShutdown } from "@repo/server-kit";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
