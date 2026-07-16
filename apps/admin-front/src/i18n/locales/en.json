@@ -260,6 +260,17 @@
     "resultsCount": "({{count}} responses)",
     "loadResultsFailed": "Failed to load results",
     "start": "Start",
-    "end": "End"
+    "end": "End",
+    "create": "New poll",
+    "created": "Poll created",
+    "updated": "Poll updated",
+    "editTitle": "Edit poll",
+    "addOption": "Add option",
+    "optionPlaceholder": "Option {{n}}",
+    "needTwoOptions": "Add at least two options."
+  },
+  "voteType": {
+    "single_choice": "Single choice",
+    "multiple_choice": "Multiple choice"
   }
 }

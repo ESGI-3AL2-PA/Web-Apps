@@ -1,9 +1,15 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@repo/hooks";
-import type { VoteResponseDto, VoteResultsResponseDto, VoteStatus } from "@repo/contracts";
+import type {
+  CreateVoteDto,
+  UpdateVoteDto,
+  VoteResponseDto,
+  VoteResultsResponseDto,
+  VoteStatus,
+} from "@repo/contracts";
 import { useScopedList } from "../../hooks/useScopedList";
-import { deleteVote, getVoteResults, listVotes } from "../../api-service/votes";
+import { createVote, deleteVote, getVoteResults, listVotes, updateVote } from "../../api-service/votes";
 import { DataTable, type Column } from "../../components/DataTable";
 import { Pagination } from "../../components/Pagination";
 import { Toolbar } from "../../components/Toolbar";
@@ -11,21 +17,28 @@ import { StatusBadge } from "../../components/StatusBadge";
 import { UserName } from "../../components/UserName";
 import { FormModal } from "../../components/FormModal";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
+import { Field } from "../../components/Field";
 import { useToast } from "../../components/Toast";
 import { useAsyncAction } from "../../hooks/useAsyncAction";
+import { useDistrictScope } from "../../app/DistrictScopeProvider";
 import { formatDate } from "../../lib/format";
 
 const STATUSES: VoteStatus[] = ["draft", "open", "closed"];
+type VoteType = CreateVoteDto["voteType"];
+const VOTE_TYPES: VoteType[] = ["single_choice", "multiple_choice"];
 
 export default function VotesList() {
   const { t } = useTranslation();
   const { user } = useAuth();
   const isSuperAdmin = user?.role === "superAdmin";
   const list = useScopedList<VoteResponseDto>(listVotes);
+  const scope = useDistrictScope();
   const toast = useToast();
   const del = useAsyncAction();
   const [viewing, setViewing] = useState<VoteResponseDto | null>(null);
   const [deleting, setDeleting] = useState<VoteResponseDto | null>(null);
+  const [editing, setEditing] = useState<VoteResponseDto | null>(null);
+  const [creating, setCreating] = useState(false);
 
   const columns: Column<VoteResponseDto>[] = [
     { header: t("common.fields.question"), cell: (v) => <span className="line-clamp-1 max-w-xs">{v.question}</span> },
@@ -37,7 +50,17 @@ export default function VotesList() {
 
   return (
     <div className="space-y-2">
-      <h1 className="text-2xl font-semibold">{t("votes.title")}</h1>
+      <div className="flex items-center justify-between gap-2">
+        <h1 className="text-2xl font-semibold">{t("votes.title")}</h1>
+        <button
+          className="btn btn-sm btn-primary"
+          disabled={!scope.districtId}
+          title={scope.districtId ? undefined : t("nav.noDistrict")}
+          onClick={() => setCreating(true)}
+        >
+          {t("votes.create")}
+        </button>
+      </div>
       <Toolbar
         search={list.search}
         onSearchChange={list.setSearch}
@@ -63,6 +86,9 @@ export default function VotesList() {
             <button className="btn btn-xs btn-text" onClick={() => setViewing(v)}>
               {t("common.actions.view")}
             </button>
+            <button className="btn btn-xs btn-text" onClick={() => setEditing(v)}>
+              {t("common.actions.edit")}
+            </button>
             {isSuperAdmin && (
               <button className="btn btn-xs btn-text btn-error" onClick={() => setDeleting(v)}>
                 {t("common.actions.delete")}
@@ -74,6 +100,29 @@ export default function VotesList() {
       <Pagination page={list.page} limit={list.limit} total={list.total} onPageChange={list.setPage} />
 
       {viewing && <VoteView vote={viewing} onClose={() => setViewing(null)} />}
+      {creating && scope.districtId && (
+        <VoteForm
+          districtId={scope.districtId}
+          onClose={() => setCreating(false)}
+          onSaved={() => {
+            setCreating(false);
+            toast.show(t("votes.created"));
+            list.refetch();
+          }}
+        />
+      )}
+      {editing && (
+        <VoteForm
+          vote={editing}
+          districtId={editing.districtIds[0] ?? ""}
+          onClose={() => setEditing(null)}
+          onSaved={() => {
+            setEditing(null);
+            toast.show(t("votes.updated"));
+            list.refetch();
+          }}
+        />
+      )}
       <ConfirmDialog
         open={!!deleting}
         title={t("votes.deleteTitle")}
@@ -165,5 +214,182 @@ function Info({ label, value }: { label: string; value: ReactNode }) {
       <p className="text-xs text-base-content/50">{label}</p>
       <p className="break-words">{value}</p>
     </div>
+  );
+}
+
+// datetime-local <-> ISO: the input speaks local "YYYY-MM-DDTHH:mm", the API speaks ISO.
+const toLocalInput = (iso: string): string => {
+  const d = new Date(iso);
+  return new Date(d.getTime() - d.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
+};
+const nowLocal = (plusDays = 0): string => {
+  const d = new Date(Date.now() + plusDays * 86_400_000);
+  return new Date(d.getTime() - d.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
+};
+
+function VoteForm({
+  vote,
+  districtId,
+  onClose,
+  onSaved,
+}: {
+  vote?: VoteResponseDto;
+  districtId: string;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const { t } = useTranslation();
+  const [question, setQuestion] = useState(vote?.question ?? "");
+  const [options, setOptions] = useState<string[]>(vote?.options ?? ["", ""]);
+  const [voteType, setVoteType] = useState<VoteType>(vote?.voteType ?? "single_choice");
+  const [status, setStatus] = useState<VoteStatus>(vote?.status ?? "draft");
+  const [startDate, setStartDate] = useState(vote ? toLocalInput(vote.startDate) : nowLocal());
+  const [endDate, setEndDate] = useState(vote ? toLocalInput(vote.endDate) : nowLocal(7));
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const setOption = (i: number, value: string) => setOptions((prev) => prev.map((o, idx) => (idx === i ? value : o)));
+  const addOption = () => setOptions((prev) => [...prev, ""]);
+  const removeOption = (i: number) => setOptions((prev) => prev.filter((_, idx) => idx !== i));
+
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
+    setError(null);
+    const cleanOptions = options.map((o) => o.trim()).filter(Boolean);
+    if (cleanOptions.length < 2) {
+      setError(t("votes.needTwoOptions"));
+      setSubmitting(false);
+      return;
+    }
+    try {
+      const start = new Date(startDate).toISOString();
+      const end = new Date(endDate).toISOString();
+      if (vote) {
+        const body: UpdateVoteDto = {
+          question: question.trim(),
+          options: cleanOptions,
+          voteType,
+          status,
+          startDate: start,
+          endDate: end,
+        };
+        await updateVote(vote.id, body);
+      } else {
+        const body: CreateVoteDto = {
+          districtIds: [districtId],
+          question: question.trim(),
+          options: cleanOptions,
+          voteType,
+          startDate: start,
+          endDate: end,
+        };
+        await createVote(body);
+      }
+      onSaved();
+    } catch (err: unknown) {
+      const e2 = err as { response?: { data?: { message?: string } }; message?: string };
+      setError(e2?.response?.data?.message ?? e2?.message ?? t("common.states.failedToSave"));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <FormModal
+      open
+      title={vote ? t("votes.editTitle") : t("votes.create")}
+      onClose={onClose}
+      onSubmit={handleSubmit}
+      submitting={submitting}
+      error={error}
+      size="lg"
+    >
+      <Field label={t("common.fields.question")}>
+        <textarea
+          className="textarea"
+          rows={2}
+          value={question}
+          onChange={(e) => setQuestion(e.target.value)}
+          required
+          maxLength={500}
+        />
+      </Field>
+
+      <div>
+        <p className="mb-1 text-sm font-medium">{t("common.fields.options")}</p>
+        <div className="space-y-2">
+          {options.map((opt, i) => (
+            <div key={i} className="flex gap-2">
+              <input
+                className="input flex-1"
+                value={opt}
+                onChange={(e) => setOption(i, e.target.value)}
+                placeholder={t("votes.optionPlaceholder", { n: i + 1 })}
+                aria-label={t("votes.optionPlaceholder", { n: i + 1 })}
+              />
+              {options.length > 2 && (
+                <button
+                  type="button"
+                  className="btn btn-square btn-text btn-error"
+                  aria-label={t("common.actions.delete")}
+                  onClick={() => removeOption(i)}
+                >
+                  <span className="icon-[tabler--x] size-4" />
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+        <button type="button" className="btn btn-sm btn-text mt-2" onClick={addOption}>
+          <span className="icon-[tabler--plus] size-4" />
+          {t("votes.addOption")}
+        </button>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <Field label={t("common.fields.type")}>
+          <select className="select" value={voteType} onChange={(e) => setVoteType(e.target.value as VoteType)}>
+            {VOTE_TYPES.map((vt) => (
+              <option key={vt} value={vt}>
+                {t(`voteType.${vt}`)}
+              </option>
+            ))}
+          </select>
+        </Field>
+        {vote && (
+          <Field label={t("common.fields.status")}>
+            <select className="select" value={status} onChange={(e) => setStatus(e.target.value as VoteStatus)}>
+              {STATUSES.map((s) => (
+                <option key={s} value={s}>
+                  {t(`status.${s}`)}
+                </option>
+              ))}
+            </select>
+          </Field>
+        )}
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <Field label={t("votes.start")}>
+          <input
+            className="input"
+            type="datetime-local"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+            required
+          />
+        </Field>
+        <Field label={t("votes.end")}>
+          <input
+            className="input"
+            type="datetime-local"
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
+            required
+          />
+        </Field>
+      </div>
+    </FormModal>
   );
 }

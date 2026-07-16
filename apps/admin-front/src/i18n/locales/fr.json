@@ -260,6 +260,17 @@
     "resultsCount": "({{count}} réponses)",
     "loadResultsFailed": "Échec du chargement des résultats",
     "start": "Début",
-    "end": "Fin"
+    "end": "Fin",
+    "create": "Nouveau sondage",
+    "created": "Sondage créé",
+    "updated": "Sondage mis à jour",
+    "editTitle": "Modifier le sondage",
+    "addOption": "Ajouter une option",
+    "optionPlaceholder": "Option {{n}}",
+    "needTwoOptions": "Ajoutez au moins deux options."
+  },
+  "voteType": {
+    "single_choice": "Choix unique",
+    "multiple_choice": "Choix multiple"
   }
 }
