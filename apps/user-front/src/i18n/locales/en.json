@@ -329,9 +329,12 @@
     "recording": "Recording…",
     "redo": "Redo",
     "micError": "Cannot access the microphone. Check your browser permissions.",
+    "micUnsupported": "Voice recording needs a secure (https) connection.",
     "voiceError": "Failed to send the voice note.",
+    "audioUnavailable": "Voice note unavailable",
     "addImage": "Add a photo",
     "imageError": "Failed to send the photo.",
+    "imageUnavailable": "Image unavailable",
     "sent": "Sent",
     "read": "Read"
   },

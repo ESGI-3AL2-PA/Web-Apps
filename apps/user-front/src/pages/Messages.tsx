@@ -24,6 +24,7 @@ import AudioRecorder from "../components/AudioRecorder";
 function MessageAudio({ id }: { id: string }) {
   const { t } = useTranslation();
   const [url, setUrl] = useState<string | null>(null);
+  const [failed, setFailed] = useState(false);
   useEffect(() => {
     let objectUrl: string | null = null;
     fetchAudioBlob(id)
@@ -31,11 +32,12 @@ function MessageAudio({ id }: { id: string }) {
         objectUrl = URL.createObjectURL(b);
         setUrl(objectUrl);
       })
-      .catch(() => undefined);
+      .catch(() => setFailed(true));
     return () => {
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
   }, [id]);
+  if (failed) return <span className="text-xs opacity-70">🎧 {t("messages.audioUnavailable")}</span>;
   return url ? (
     <audio controls src={url} className="h-9 max-w-[220px]" />
   ) : (
@@ -48,6 +50,7 @@ function MessageAudio({ id }: { id: string }) {
 function MessageImage({ id }: { id: string }) {
   const { t } = useTranslation();
   const [url, setUrl] = useState<string | null>(null);
+  const [failed, setFailed] = useState(false);
   useEffect(() => {
     let objectUrl: string | null = null;
     fetchImageBlob(id)
@@ -55,11 +58,12 @@ function MessageImage({ id }: { id: string }) {
         objectUrl = URL.createObjectURL(b);
         setUrl(objectUrl);
       })
-      .catch(() => undefined);
+      .catch(() => setFailed(true));
     return () => {
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
   }, [id]);
+  if (failed) return <span className="text-xs opacity-70">🖼 {t("messages.imageUnavailable")}</span>;
   return url ? (
     <a href={url} target="_blank" rel="noopener noreferrer">
       <img src={url} alt="" className="max-h-60 max-w-full rounded-lg" />

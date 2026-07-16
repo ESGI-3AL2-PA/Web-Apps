@@ -17,7 +17,10 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
     const s = io(config.apiUrl, {
       auth: { token },
       withCredentials: true,
-      transports: ["websocket", "polling"],
+      // Connect over long-polling first, then transparently upgrade to WebSocket. Starting
+      // with "websocket" logs a noisy "closed before connection established" whenever the
+      // socket is torn down before the WS handshake finishes (page reload / StrictMode).
+      transports: ["polling", "websocket"],
     });
     setSocket(s);
 

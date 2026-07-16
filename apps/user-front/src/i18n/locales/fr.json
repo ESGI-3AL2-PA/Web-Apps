@@ -329,9 +329,12 @@
     "recording": "Enregistrement…",
     "redo": "Refaire",
     "micError": "Impossible d'accéder au micro. Vérifiez les permissions du navigateur.",
+    "micUnsupported": "L'enregistrement vocal nécessite une connexion sécurisée (https).",
     "voiceError": "Erreur lors de l'envoi du message vocal.",
+    "audioUnavailable": "Message vocal indisponible",
     "addImage": "Ajouter une photo",
     "imageError": "Échec de l'envoi de la photo.",
+    "imageUnavailable": "Image indisponible",
     "sent": "Envoyé",
     "read": "Lu"
   },
