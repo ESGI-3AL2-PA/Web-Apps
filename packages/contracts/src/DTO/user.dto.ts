@@ -45,14 +45,6 @@ export const CreateUserDtoSchema = z
       description: "Min 12 chars with upper, lower, digit, and symbol",
     }),
     address: z.string().openapi({ description: "User's address", example: "12 Rue de la Paix, Paris" }),
-    acceptedTermsAt: z.string().datetime().optional().openapi({
-      description: "ISO timestamp at which the user accepted the Terms/Privacy (GDPR Art. 7 consent record)",
-      example: "2026-07-01T12:00:00.000Z",
-    }),
-    termsVersion: z.string().optional().openapi({
-      description: "Version of the Terms/Privacy the user accepted",
-      example: "2026-07-01",
-    }),
     lang: LangSchema.optional().openapi({
       description: "Preferred language for transactional emails (defaults to fr)",
     }),
