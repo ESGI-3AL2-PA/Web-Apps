@@ -134,14 +134,14 @@ pass = `RESEND_API_KEY`) — no second email provider needed.
 
 ## Local development
 
-The Documenso stack lives under the **`contracts` compose profile** (`documenso` +
-`documenso-db` Postgres + `minio` + `mailpit` SMTP sink; read signing emails at
-http://localhost:8025). `--profile core` runs the app without it. Steps:
+The Documenso services (`documenso` + `documenso-db` Postgres + `minio` + `mailpit`
+SMTP sink; read signing emails at http://localhost:8025) come up with the rest of the
+stack — there are no profiles. Steps:
 
 1. Generate a dev signing certificate: `./scripts/gen-documenso-cert.sh` (writes the
-   git-ignored `docker/documenso/cert.p12`). Documenso refuses to sign without one.
-2. `docker compose --profile contracts up -d` (add
-   `--profile core` to bring the api/fronts up alongside it).
+   git-ignored `docker/documenso/cert.p12`). Documenso refuses to sign — and the
+   container refuses to boot — without one.
+2. `docker compose up -d` (brings up the whole stack, Documenso included).
 3. In the Documenso UI (http://localhost:3030): sign up, confirm the email via mailpit,
    create an **API token**, and build a **template** with two signer placeholders and a
    signature field for each. Put the token + numeric template id in `.env`.

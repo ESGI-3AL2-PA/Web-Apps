@@ -7,11 +7,10 @@
 #     (listening on 8080) instead of `vite preview`,
 #   • runs the backends from their compiled `dist/` with `node`.
 #
-# Profiles mirror the other composes: `core` = app + datastores + fronts,
-# `contracts` adds the Documenso e-signature stack.
+# `docker compose up` starts the whole stack — app + datastores + fronts + the
+# Documenso e-signature services (no profiles).
 #
-#   docker compose -f docker-compose.prod.yml --profile core up -d --build
-#   docker compose -f docker-compose.prod.yml --profile core --profile contracts up -d --build
+#   docker compose -f docker-compose.prod.yml up -d --build
 #
 # Frontend service URLs are baked into the SPA bundles at BUILD time (Vite inlines
 # VITE_* — see packages/config), so set the VITE_* values in .env before building.
@@ -20,7 +19,6 @@
 # into ./docker/auth/ — it is mounted read-only below.
 services:
   api:
-    profiles: [core]
     restart: always
     build:
       context: .
@@ -76,7 +74,6 @@ services:
       start_period: 30s
 
   auth-service:
-    profiles: [core]
     restart: always
     build:
       context: .
@@ -107,7 +104,6 @@ services:
       - mongodb
 
   admin-front:
-    profiles: [core]
     restart: always
     build:
       context: .
@@ -124,7 +120,6 @@ services:
       - auth-service
 
   user-front:
-    profiles: [core]
     restart: always
     build:
       context: .
@@ -142,7 +137,6 @@ services:
       - auth-service
 
   landing:
-    profiles: [core]
     restart: always
     build:
       context: .
@@ -158,7 +152,6 @@ services:
 
   # ── Datastores ───────────────────────────────────────────────────────────────
   mongodb:
-    profiles: [core]
     image: mongo:8
     restart: always
     ports:
@@ -170,7 +163,6 @@ services:
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:?set in .env}
 
   mongo-express:
-    profiles: [core]
     image: mongo-express:1.0.2
     restart: on-failure
     ports:
@@ -186,7 +178,6 @@ services:
       - mongodb
 
   neo4j:
-    profiles: [core]
     image: neo4j:5
     restart: always
     ports:
@@ -198,9 +189,8 @@ services:
       NEO4J_AUTH: neo4j/${NEO4J_PASSWORD:?set in .env}
 
   # S3-compatible object storage shared by the core app (voice messages, listing
-  # images) and Documenso (contracts). Runs in both profiles.
+  # images) and Documenso.
   minio:
-    profiles: [core, contracts]
     image: minio/minio:RELEASE.2024-01-16T16-07-38Z
     restart: always
     command: server /data --console-address ":9001"
@@ -217,7 +207,6 @@ services:
 
   # One-shot: create the buckets (documenso PDFs + voice messages + listings), then exit.
   minio-createbucket:
-    profiles: [core, contracts]
     image: minio/mc:RELEASE.2024-01-18T07-03-39Z
     depends_on:
       minio:
@@ -234,7 +223,6 @@ services:
 
   # ── Documenso e-signature (self-hosted) — prod values come from env ──────────
   documenso-db:
-    profiles: [contracts]
     image: postgres:15
     restart: always
     volumes:
@@ -250,7 +238,6 @@ services:
       retries: 5
 
   documenso:
-    profiles: [contracts]
     image: documenso/documenso:v2.15.0
     restart: always
     depends_on:

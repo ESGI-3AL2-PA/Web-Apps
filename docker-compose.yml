@@ -1,6 +1,5 @@
 services:
   mongodb:
-    profiles: [core]
     image: mongo:8
     restart: unless-stopped
     ports:
@@ -11,10 +10,9 @@ services:
       MONGO_INITDB_ROOT_USERNAME: root
       MONGO_INITDB_ROOT_PASSWORD: root
 
-  # Unauthenticated Mongo admin UI — gated behind the `tools` profile so a bare
-  # `--profile core` never publishes it. Start explicitly with `--profile tools`.
+  # Unauthenticated Mongo admin UI on :8081 (dev only — the prod compose puts it
+  # behind HTTP basic auth).
   mongo-express:
-    profiles: [tools]
     image: mongo-express:1.0.2
     restart: on-failure
     ports:
@@ -28,7 +26,6 @@ services:
       - mongodb
 
   neo4j:
-    profiles: [core]
     image: neo4j:5
     restart: unless-stopped
     ports:
@@ -43,7 +40,6 @@ services:
   # accepts everything and exposes a web UI on 8025 so we can read the signing
   # invitation emails (and grab the signing links) during local E2E testing.
   mailpit:
-    profiles: [core, contracts]
     image: axllent/mailpit:v1.20.0
     ports:
       - "${MAILPIT_SMTP_PORT:-1025}:1025"
@@ -51,7 +47,6 @@ services:
 
   # Dedicated Postgres for Documenso (it is Prisma/Postgres; cannot share Mongo).
   documenso-db:
-    profiles: [contracts]
     image: postgres:15
     ports:
       - "${DOCUMENSO_DB_PORT:-5432}:5432"
@@ -73,7 +68,6 @@ services:
   # Browser-facing on http://localhost:${DOCUMENSO_PORT:-3030}; the api reaches it
   # in-network at http://documenso:3030 and its webhooks reach the api at api:3000.
   documenso:
-    profiles: [contracts]
     image: documenso/documenso:v2.15.0
     depends_on:
       documenso-db:
@@ -123,10 +117,9 @@ services:
       NEXT_PRIVATE_SIGNING_LOCAL_FILE_PATH: /opt/documenso/cert.p12
       NEXT_PRIVATE_SIGNING_PASSPHRASE: ""
 
-  # S3-compatible object storage. Documenso stores its PDFs here (contracts profile);
-  # the core app also stores voice messages here, so it runs in both profiles.
+  # S3-compatible object storage. Documenso stores its signed PDFs here, and the
+  # core app stores voice messages + listing images here.
   minio:
-    profiles: [core, contracts]
     image: minio/minio:RELEASE.2024-01-16T16-07-38Z
     command: server /data --console-address ":9001"
     ports:
@@ -145,7 +138,6 @@ services:
 
   # One-shot: create the buckets (documenso PDFs + voice messages), then exit.
   minio-createbucket:
-    profiles: [core, contracts]
     image: minio/mc:RELEASE.2024-01-18T07-03-39Z
     depends_on:
       minio:
@@ -164,7 +156,6 @@ services:
   # Running the api in-network means it reaches documenso:3030 and minio:9000 by
   # name — no host/container split-horizon for the PDF proxy or webhooks.
   api:
-    profiles: [core]
     restart: unless-stopped
     build:
       context: .
@@ -204,8 +195,8 @@ services:
       LISTINGS_MINIO_BUCKET: listings
       LISTINGS_MINIO_ACCESS_KEY: minioadmin
       LISTINGS_MINIO_SECRET_KEY: minioadmin
-    # No hard dependency on `documenso` (contracts profile): the api calls it lazily
-    # per contract request and 502s if it's absent, so core can run without it.
+    # No hard dependency on `documenso`: the api calls it lazily per contract
+    # request and 502s if it's absent, so the app can run without it.
     depends_on:
       - mongodb
       - auth-service
@@ -222,7 +213,6 @@ services:
       start_period: 30s
 
   auth-service:
-    profiles: [core]
     restart: unless-stopped
     build:
       context: .
@@ -255,7 +245,6 @@ services:
       - mailpit
 
   admin-front:
-    profiles: [core]
     restart: unless-stopped
     build:
       context: .
@@ -275,7 +264,6 @@ services:
       - auth-service
 
   user-front:
-    profiles: [core]
     restart: unless-stopped
     build:
       context: .
@@ -298,7 +286,6 @@ services:
       - auth-service
 
   landing:
-    profiles: [core]
     restart: unless-stopped
     build:
       context: .
