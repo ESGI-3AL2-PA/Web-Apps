@@ -236,14 +236,54 @@ const users = [
 ];
 
 const tags = [
-  { _id: ids.tags.plumbing, name: "plumbing", description: "Plumbing repairs and installations" },
-  { _id: ids.tags.babysitting, name: "babysitting", description: "Childcare services" },
-  { _id: ids.tags.tutoring, name: "tutoring", description: "Private lessons and homework help" },
-  { _id: ids.tags.gardening, name: "gardening", description: "Garden maintenance and landscaping" },
-  { _id: ids.tags.moving, name: "moving", description: "Help with moves and heavy lifting" },
-  { _id: ids.tags.cooking, name: "cooking", description: "Meal preparation and cooking classes" },
-  { _id: ids.tags.petCare, name: "pet-care", description: "Dog walking, cat sitting, etc." },
-  { _id: ids.tags.diy, name: "diy", description: "Do-it-yourself help and tools lending" },
+  {
+    _id: ids.tags.plumbing,
+    name: "plumbing",
+    label: { fr: "Plomberie", en: "Plumbing" },
+    description: { fr: "Réparations et installations de plomberie", en: "Plumbing repairs and installations" },
+  },
+  {
+    _id: ids.tags.babysitting,
+    name: "babysitting",
+    label: { fr: "Garde d'enfants", en: "Babysitting" },
+    description: { fr: "Services de garde d'enfants", en: "Childcare services" },
+  },
+  {
+    _id: ids.tags.tutoring,
+    name: "tutoring",
+    label: { fr: "Soutien scolaire", en: "Tutoring" },
+    description: { fr: "Cours particuliers et aide aux devoirs", en: "Private lessons and homework help" },
+  },
+  {
+    _id: ids.tags.gardening,
+    name: "gardening",
+    label: { fr: "Jardinage", en: "Gardening" },
+    description: { fr: "Entretien de jardin et aménagement paysager", en: "Garden maintenance and landscaping" },
+  },
+  {
+    _id: ids.tags.moving,
+    name: "moving",
+    label: { fr: "Déménagement", en: "Moving" },
+    description: { fr: "Aide au déménagement et au port de charges", en: "Help with moves and heavy lifting" },
+  },
+  {
+    _id: ids.tags.cooking,
+    name: "cooking",
+    label: { fr: "Cuisine", en: "Cooking" },
+    description: { fr: "Préparation de repas et cours de cuisine", en: "Meal preparation and cooking classes" },
+  },
+  {
+    _id: ids.tags.petCare,
+    name: "pet-care",
+    label: { fr: "Soin des animaux", en: "Pet care" },
+    description: { fr: "Promenade de chiens, garde de chats, etc.", en: "Dog walking, cat sitting, etc." },
+  },
+  {
+    _id: ids.tags.diy,
+    name: "diy",
+    label: { fr: "Bricolage", en: "DIY" },
+    description: { fr: "Aide au bricolage et prêt d'outils", en: "Do-it-yourself help and tools lending" },
+  },
 ];
 
 const listings = [
@@ -773,7 +813,7 @@ const seedGraph = async (graph: Neo4jGraphRepository): Promise<void> => {
     });
   }
   for (const t of tags) {
-    await graph.upsertTag({ name: t.name, category: t.description });
+    await graph.upsertTag({ name: t.name, category: t.description.en });
   }
   for (const l of listings) {
     await graph.upsertListing({ id: l._id, type: l.type });
