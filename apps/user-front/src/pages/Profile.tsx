@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@repo/hooks";
 import type {
@@ -140,17 +140,8 @@ export default function Profile() {
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState({ firstName: "", lastName: "", phone: "", address: "" });
   const [saving, setSaving] = useState(false);
-  const [copied, setCopied] = useState(false);
-  const copyTimerRef = useRef<number | null>(null);
 
   const uid = user?.id;
-
-  useEffect(
-    () => () => {
-      if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
-    },
-    [],
-  );
 
   useEffect(() => {
     if (!uid) return;
@@ -203,18 +194,6 @@ export default function Profile() {
     };
   }, [uid]);
 
-  const copyId = useCallback(async () => {
-    if (!uid) return;
-    try {
-      await navigator.clipboard.writeText(uid);
-      setCopied(true);
-      if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
-      copyTimerRef.current = window.setTimeout(() => setCopied(false), 2000);
-    } catch {
-      // clipboard may be unavailable; ignore
-    }
-  }, [uid]);
-
   const save = async () => {
     if (!uid) return;
     setSaving(true);
@@ -253,17 +232,6 @@ export default function Profile() {
   return (
     <div className="mx-auto max-w-2xl space-y-6">
       <h1 className="text-2xl font-extrabold text-base-content">{t("profile.title")}</h1>
-
-      {/* Identity */}
-      <Card title={t("profile.identity.title")}>
-        <p className="mb-2 text-sm text-base-content/60">{t("profile.identity.desc")}</p>
-        <div className="flex items-center gap-2">
-          <code className="flex-1 break-all rounded-lg bg-base-200 px-3 py-2 text-sm">{user.id}</code>
-          <button onClick={copyId} className="btn btn-primary shrink-0">
-            {copied ? t("profile.identity.copied") : t("profile.identity.copy")}
-          </button>
-        </div>
-      </Card>
 
       {/* Info */}
       <section className="card border border-base-content/10 bg-base-100 p-5">
