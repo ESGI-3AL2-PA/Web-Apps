@@ -23,7 +23,7 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, State> {
           <span className="icon-[tabler--alert-triangle] size-10 text-error" />
           <div>
             <h1 className="text-xl font-semibold">Something went wrong</h1>
-            <p className="text-sm text-base-content/60 mt-1">{this.state.error.message}</p>
+            <p className="text-sm text-base-content/60 mt-1">An unexpected error occurred. Try reloading the page.</p>
           </div>
           <button className="btn btn-primary" onClick={() => window.location.reload()}>
             Reload

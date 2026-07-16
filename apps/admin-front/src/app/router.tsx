@@ -3,6 +3,8 @@ import { createBrowserRouter } from "react-router-dom";
 import { ProtectedRoute } from "@repo/hooks";
 import { DistrictScopeProvider } from "./DistrictScopeProvider";
 import AdminLayout from "../layouts/AdminLayout";
+import NotFound from "../pages/NotFound";
+import ServerError from "../pages/ServerError";
 
 // Route components are code-split: each becomes its own chunk fetched on
 // navigation, keeping the initial bundle small.
@@ -24,6 +26,8 @@ export const router = createBrowserRouter([
         </DistrictScopeProvider>
       </ProtectedRoute>
     ),
+    // Themed 500 for genuine loader/render throws (NotFound is the catch-all 404 below).
+    errorElement: <ServerError />,
     children: [
       { path: "/", element: <Dashboard />, handle: { title: "Dashboard" } },
       { path: "/users", element: <UsersList />, handle: { title: "Users" } },
@@ -33,6 +37,7 @@ export const router = createBrowserRouter([
       { path: "/listings", element: <ListingsList />, handle: { title: "Listings" } },
       { path: "/events", element: <EventsList />, handle: { title: "Events" } },
       { path: "/votes", element: <VotesList />, handle: { title: "Votes" } },
+      { path: "*", element: <NotFound /> },
     ],
   },
 ]);
