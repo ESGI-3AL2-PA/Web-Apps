@@ -105,6 +105,7 @@
     "districts": "Quartiers",
     "tags": "Tags",
     "incidents": "Incidents",
+    "districtAdmins": "Admins de quartier",
     "listings": "Annonces",
     "disputes": "Litiges",
     "events": "Événements",
@@ -148,6 +149,22 @@
     "unbanned": "Utilisateur débanni",
     "recentTransactions": "Transactions récentes",
     "noTransactions": "Aucune transaction"
+  },
+  "districtAdmins": {
+    "title": "Admins de quartier",
+    "subtitle": "Accordez ou révoquez les droits d'admin sur un quartier. Les admins de quartier modèrent le contenu et résolvent les litiges de leur quartier.",
+    "district": "Quartier",
+    "user": "Utilisateur",
+    "userHint": "Recherchez par nom et choisissez l'utilisateur à promouvoir.",
+    "chooseDistrict": "— Choisir un quartier —",
+    "grant": "Accorder",
+    "granting": "Attribution…",
+    "granted": "Admin de quartier accordé",
+    "revoke": "Révoquer",
+    "revoked": "Admin de quartier révoqué",
+    "revokeTitle": "Révoquer l'admin de quartier",
+    "revokeMessage": "Révoquer les droits d'admin de cet utilisateur sur {{district}} ?",
+    "empty": "Aucun admin de quartier attribué pour l'instant."
   },
   "districts": {
     "title": "Quartier",

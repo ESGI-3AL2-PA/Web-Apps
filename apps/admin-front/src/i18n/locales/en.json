@@ -105,6 +105,7 @@
     "districts": "Districts",
     "tags": "Tags",
     "incidents": "Incidents",
+    "districtAdmins": "District admins",
     "listings": "Listings",
     "disputes": "Disputes",
     "events": "Events",
@@ -148,6 +149,22 @@
     "unbanned": "User unbanned",
     "recentTransactions": "Recent transactions",
     "noTransactions": "No transactions"
+  },
+  "districtAdmins": {
+    "title": "District admins",
+    "subtitle": "Grant or revoke admin rights over a district. District admins moderate content and resolve disputes in their district.",
+    "district": "District",
+    "user": "User",
+    "userHint": "Search by name and pick the user to promote.",
+    "chooseDistrict": "— Choose a district —",
+    "grant": "Grant",
+    "granting": "Granting…",
+    "granted": "District admin granted",
+    "revoke": "Revoke",
+    "revoked": "District admin revoked",
+    "revokeTitle": "Revoke district admin",
+    "revokeMessage": "Revoke this user's admin rights over {{district}}?",
+    "empty": "No district admins assigned yet."
   },
   "districts": {
     "title": "District",

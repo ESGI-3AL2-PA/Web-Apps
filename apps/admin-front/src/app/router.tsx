@@ -11,6 +11,7 @@ import ServerError from "../pages/ServerError";
 const Dashboard = lazy(() => import("../pages/dashboard/Dashboard"));
 const UsersList = lazy(() => import("../pages/users/UsersList"));
 const DistrictPage = lazy(() => import("../pages/districts/DistrictPage"));
+const DistrictAdminsList = lazy(() => import("../pages/district-admins/DistrictAdminsList"));
 const TagsList = lazy(() => import("../pages/tags/TagsList"));
 const IncidentsList = lazy(() => import("../pages/incidents/IncidentsList"));
 const ListingsList = lazy(() => import("../pages/listings/ListingsList"));
@@ -33,6 +34,7 @@ export const router = createBrowserRouter([
       { path: "/", element: <Dashboard />, handle: { title: "nav.dashboard" } },
       { path: "/users", element: <UsersList />, handle: { title: "nav.users" } },
       { path: "/districts", element: <DistrictPage />, handle: { title: "nav.districts" } },
+      { path: "/district-admins", element: <DistrictAdminsList />, handle: { title: "nav.districtAdmins" } },
       { path: "/tags", element: <TagsList />, handle: { title: "nav.tags" } },
       { path: "/incidents", element: <IncidentsList />, handle: { title: "nav.incidents" } },
       { path: "/listings", element: <ListingsList />, handle: { title: "nav.listings" } },
