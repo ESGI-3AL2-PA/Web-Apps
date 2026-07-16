@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import type { ListingResponseDto, TagResponseDto, UpdateListingDto } from "@repo/contracts";
 import { updateListing } from "../api-service/listings.service";
 import { getTags } from "../api-service/tags.service";
+import { tagLabel } from "../lib/tag-label";
 import { useFocusTrap } from "../lib/useFocusTrap";
 
 // Self-contained edit form for a single listing. Kept inside MyListings' scope on
@@ -17,7 +18,7 @@ export default function EditListingModal({
   onClose: () => void;
   onUpdated: (listing: ListingResponseDto) => void;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const panelRef = useFocusTrap<HTMLDivElement>(true, onClose);
   const [tags, setTags] = useState<TagResponseDto[]>([]);
   const [title, setTitle] = useState(listing.title);
@@ -57,8 +58,8 @@ export default function EditListingModal({
   };
 
   const field =
-    "w-full rounded-lg border border-neutral-300 dark:border-neutral-700 px-3 py-2 text-sm outline-none focus:border-[color:var(--color-brand)] focus-visible:ring-2 ring-[color:var(--color-brand)]";
-  const labelCls = "mb-1 block text-sm font-semibold text-neutral-700 dark:text-neutral-200";
+    "w-full rounded-lg border border-base-content/20 bg-base-100 px-3 py-2 text-sm text-base-content outline-none focus:border-primary focus-visible:ring-2 ring-primary";
+  const labelCls = "mb-1 block text-sm font-semibold text-base-content/80";
 
   return (
     <div
@@ -71,16 +72,16 @@ export default function EditListingModal({
       <div
         ref={panelRef}
         tabIndex={-1}
-        className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-t-2xl bg-white dark:bg-neutral-900 p-5 shadow-2xl outline-none sm:rounded-2xl"
+        className="relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-t-2xl bg-base-100 p-5 shadow-2xl outline-none sm:rounded-2xl"
       >
         <div className="mb-4 flex items-center justify-between">
-          <h2 id="edit-listing-title" className="text-lg font-bold text-neutral-900 dark:text-neutral-50">
+          <h2 id="edit-listing-title" className="text-lg font-bold text-base-content">
             {t("myListings.editTitle")}
           </h2>
           <button
             onClick={onClose}
             aria-label={t("common.cancel")}
-            className="text-2xl leading-none text-neutral-500 hover:text-neutral-600 dark:hover:text-neutral-300"
+            className="text-2xl leading-none text-base-content/50 hover:text-base-content"
           >
             ×
           </button>
@@ -140,7 +141,7 @@ export default function EditListingModal({
               <option value="">{t("post.chooseCategory")}</option>
               {tags.map((tg) => (
                 <option key={tg.id} value={tg.name}>
-                  {tg.name}
+                  {tagLabel(tg, i18n.language)}
                 </option>
               ))}
             </select>
@@ -162,7 +163,7 @@ export default function EditListingModal({
           </div>
 
           {error && (
-            <p role="alert" aria-live="assertive" className="text-sm text-red-600">
+            <p role="alert" aria-live="assertive" className="text-sm text-error">
               {error}
             </p>
           )}
@@ -171,14 +172,14 @@ export default function EditListingModal({
             <button
               type="button"
               onClick={onClose}
-              className="rounded-lg border border-neutral-300 dark:border-neutral-700 px-4 py-2 text-sm font-semibold text-neutral-700 dark:text-neutral-200 hover:bg-neutral-50 dark:hover:bg-neutral-800"
+              className="rounded-lg border border-base-content/20 px-4 py-2 text-sm font-semibold text-base-content/80 hover:bg-base-200"
             >
               {t("common.cancel")}
             </button>
             <button
               type="submit"
               disabled={busy}
-              className="rounded-lg bg-[color:var(--color-brand)] px-4 py-2 text-sm font-semibold text-white hover:bg-[color:var(--color-brand-dark)] disabled:opacity-60"
+              className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-content hover:bg-primary/90 disabled:opacity-60"
             >
               {busy ? t("myListings.saving") : t("myListings.save")}
             </button>
