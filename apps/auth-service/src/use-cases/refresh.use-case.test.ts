@@ -69,6 +69,7 @@ const makeRefreshRepo = (): RefreshRepoMock => ({
   revokeBySessionId: vi.fn().mockResolvedValue(true),
   revokeAllForUser: vi.fn().mockResolvedValue(undefined),
   deleteAllForUser: vi.fn().mockResolvedValue(undefined),
+  listAllForUser: vi.fn().mockResolvedValue([]),
   backfillMissingExpiresAtDate: vi.fn().mockResolvedValue(0),
 });
 
