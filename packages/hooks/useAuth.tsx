@@ -9,6 +9,7 @@ export interface AuthUser {
   districtId?: string;
   adminDistrictId?: string | null;
   balance: number;
+  totpEnabled?: boolean;
 }
 
 interface AuthContextType {
