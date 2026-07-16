@@ -1,13 +1,14 @@
 import type { Collection, Db } from "mongodb";
+import { USERS_COLLECTION, type WithMongoId } from "@repo/server-kit";
 import type { IUserReaderRepository, UserRecord } from "./user-reader.repository.js";
 
-type UserDoc = Omit<UserRecord, "id"> & { _id: string };
+type UserDoc = WithMongoId<UserRecord>;
 
 export class MongoUserReaderRepository implements IUserReaderRepository {
   private collection: Collection<UserDoc>;
 
   constructor(db: Db) {
-    this.collection = db.collection("users");
+    this.collection = db.collection(USERS_COLLECTION);
   }
 
   async findByEmail(email: string): Promise<UserRecord | null> {

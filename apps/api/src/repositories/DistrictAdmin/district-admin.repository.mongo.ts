@@ -1,15 +1,16 @@
 import { randomUUID } from "crypto";
 import type { Collection, Db, Filter } from "mongodb";
+import { DISTRICT_ADMINS_COLLECTION, type WithMongoId } from "@repo/server-kit";
 import type { DistrictAdmin } from "../../entities/district-admin.entity.js";
 import type { IDistrictAdminRepository } from "./district-admin.repository.js";
 
-type DistrictAdminDoc = Omit<DistrictAdmin, "id"> & { _id: string };
+type DistrictAdminDoc = WithMongoId<DistrictAdmin>;
 
 export class MongoDistrictAdminRepository implements IDistrictAdminRepository {
   private collection: Collection<DistrictAdminDoc>;
 
   constructor(db: Db) {
-    this.collection = db.collection("district_admins");
+    this.collection = db.collection(DISTRICT_ADMINS_COLLECTION);
   }
 
   async listDistrictAdmins(params: { districtId?: string; userId?: string; page?: number; limit?: number }) {

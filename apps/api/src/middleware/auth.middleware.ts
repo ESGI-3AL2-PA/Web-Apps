@@ -1,14 +1,11 @@
 import { createRemoteJWKSet, jwtVerify } from "jose";
 import type { RequestHandler } from "express";
+import { TOKEN_ISSUER, TOKEN_ALG, TOKEN_AUDIENCE, TOKEN_AUDIENCE_INTERNAL } from "@repo/server-kit";
 import { resolve } from "../repositories/container.js";
 import type { IUserRepository } from "../repositories/User/user.repository.js";
 
 const jwksUrl = process.env.AUTH_JWKS_URL ?? "http://localhost:3001/.well-known/jwks.json";
 const JWKS = createRemoteJWKSet(new URL(jwksUrl));
-
-const ISSUER = "auth-service";
-const AUD_USER = "api";
-const AUD_INTERNAL = "api:internal";
 
 export interface AuthUser {
   sub: string;
@@ -42,9 +39,9 @@ export const requireAuth: RequestHandler = async (req, res, next) => {
 
   try {
     const { payload } = await jwtVerify(token, JWKS, {
-      algorithms: ["RS256"],
-      issuer: ISSUER,
-      audience: [AUD_USER, AUD_INTERNAL],
+      algorithms: [TOKEN_ALG],
+      issuer: TOKEN_ISSUER,
+      audience: [TOKEN_AUDIENCE, TOKEN_AUDIENCE_INTERNAL],
     });
 
     req.user = {

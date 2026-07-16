@@ -1,5 +1,6 @@
 import { randomUUID } from "crypto";
 import type { Collection, Db, Filter } from "mongodb";
+import { USERS_COLLECTION } from "@repo/server-kit";
 import type { User } from "../../entities/user.entity.js";
 import { escapeRegex } from "../escape-regex.js";
 import type { IUserRepository } from "./user.repository.js";
@@ -8,7 +9,7 @@ export class MongoUserRepository implements IUserRepository {
   private collection: Collection<Omit<User, "id"> & { _id: string }>;
 
   constructor(db: Db) {
-    this.collection = db.collection("users");
+    this.collection = db.collection(USERS_COLLECTION);
   }
 
   async ensureIndexes(): Promise<void> {

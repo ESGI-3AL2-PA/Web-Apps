@@ -1,4 +1,5 @@
 import { SignJWT } from "jose";
+import { TOKEN_ISSUER, TOKEN_ALG, TOKEN_AUDIENCE_INTERNAL } from "@repo/server-kit";
 import type { IUserReaderRepository } from "../repositories/User/user-reader.repository.js";
 import type { IAuthTokenRepository } from "../repositories/AuthToken/auth-token.repository.js";
 import { getKeyId, getPrivateKey } from "../keys.js";
@@ -44,10 +45,10 @@ export const registerUseCase = (userReader: IUserReaderRepository, authTokenRepo
     const serviceToken = await new SignJWT({
       role: "service",
     })
-      .setProtectedHeader({ alg: "RS256", kid: getKeyId() })
-      .setSubject("auth-service")
-      .setIssuer("auth-service")
-      .setAudience("api:internal")
+      .setProtectedHeader({ alg: TOKEN_ALG, kid: getKeyId() })
+      .setSubject(TOKEN_ISSUER)
+      .setIssuer(TOKEN_ISSUER)
+      .setAudience(TOKEN_AUDIENCE_INTERNAL)
       .setIssuedAt()
       .setExpirationTime("30s")
       .sign(getPrivateKey());
