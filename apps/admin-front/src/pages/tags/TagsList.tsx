@@ -20,8 +20,8 @@ export default function TagsList() {
 
   const columns: Column<TagResponseDto>[] = [
     { header: "Key", cell: (t) => <span className="font-mono text-xs">{t.name}</span> },
-    { header: "Label (FR)", cell: (t) => t.label.fr },
-    { header: "Label (EN)", cell: (t) => t.label.en },
+    { header: "Label (FR)", cell: (t) => t.label?.fr ?? "—" },
+    { header: "Label (EN)", cell: (t) => t.label?.en ?? "—" },
     { header: "Description (FR)", cell: (t) => t.description?.fr ?? "—" },
   ];
 
@@ -101,8 +101,8 @@ function TagEdit({
   onSaved: (created: boolean) => void;
 }) {
   const [name, setName] = useState(tag?.name ?? "");
-  const [labelFr, setLabelFr] = useState(tag?.label.fr ?? "");
-  const [labelEn, setLabelEn] = useState(tag?.label.en ?? "");
+  const [labelFr, setLabelFr] = useState(tag?.label?.fr ?? "");
+  const [labelEn, setLabelEn] = useState(tag?.label?.en ?? "");
   const [descFr, setDescFr] = useState(tag?.description?.fr ?? "");
   const [descEn, setDescEn] = useState(tag?.description?.en ?? "");
   const [submitting, setSubmitting] = useState(false);
