@@ -243,7 +243,11 @@
     "deleteMessage": "Supprimer l'événement « {{title}} » ?",
     "deleted": "Événement supprimé",
     "eventDate": "Date de l'événement",
-    "registrants": "Inscrits"
+    "registrants": "Inscrits",
+    "create": "Nouvel événement",
+    "created": "Événement créé",
+    "updated": "Événement mis à jour",
+    "editTitle": "Modifier l'événement"
   },
   "votes": {
     "title": "Votes",

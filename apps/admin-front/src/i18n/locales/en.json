@@ -243,7 +243,11 @@
     "deleteMessage": "Delete event \"{{title}}\"?",
     "deleted": "Event deleted",
     "eventDate": "Event date",
-    "registrants": "Registrants"
+    "registrants": "Registrants",
+    "create": "New event",
+    "created": "Event created",
+    "updated": "Event updated",
+    "editTitle": "Edit event"
   },
   "votes": {
     "title": "Votes",
