@@ -43,7 +43,23 @@ if (trustProxy) {
 
 // Per-request access logging + correlation id (req.id, exposed as req.log child
 // logger). Mounted first so every request is logged.
-app.use(pinoHttp({ logger }));
+app.use(
+  pinoHttp({
+    logger,
+    // Strip PII from request logs (GDPR Art. 32): the default serializer would otherwise
+    // record the client IP and the Cookie / Authorization (Bearer) headers on every request.
+    redact: {
+      paths: [
+        "req.headers.authorization",
+        "req.headers.cookie",
+        "req.remoteAddress",
+        "req.remotePort",
+        'res.headers["set-cookie"]',
+      ],
+      censor: "[redacted]",
+    },
+  }),
+);
 
 // Security headers. CSP allows the inline script/style on the login & register
 // pages while forbidding framing (clickjacking) and plugins.
