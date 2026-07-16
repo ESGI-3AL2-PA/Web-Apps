@@ -84,7 +84,6 @@ docker compose up
 │   ├── hooks/         # Shared React auth (AuthProvider, useAuth, ProtectedRoute)
 │   ├── config/        # Centralized frontend runtime config (service URLs)
 │   ├── satan/         # SATAN QL — bridge to a Python worker for SQL-like Mongo queries
-│   ├── ui/            # Shared React component library
 │   ├── eslint-config/
 │   └── typescript-config/
 ├── documentation/
