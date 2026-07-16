@@ -15,6 +15,10 @@ Users never manage documents inside Documenso directly; they only land on a Docu
 Documenso is Next.js + **PostgreSQL**; it does not share our Mongo. It is a standalone
 service reached only over HTTP, so its framework is irrelevant to our React/Vite fronts.
 
+> We pin **Documenso v2.x** (`documenso/documenso:v2.15.0`). We integrate against its
+> **v1 REST API**, which is deprecated-but-supported in v2 ("nothing breaks"); it still
+> backs every endpoint we call. New work should target the v2 API.
+
 > Chosen over OpenSign because OpenSign's REST API and webhooks are a **paid** self-host
 > feature, whereas Documenso's REST API + webhooks ship in the free Community Edition.
 

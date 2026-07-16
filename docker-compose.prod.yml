@@ -251,7 +251,7 @@ services:
 
   documenso:
     profiles: [contracts]
-    image: documenso/documenso:latest
+    image: documenso/documenso:v2.15.0
     restart: always
     depends_on:
       documenso-db:
