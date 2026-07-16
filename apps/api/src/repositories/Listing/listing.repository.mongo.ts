@@ -1,11 +1,12 @@
 import { randomUUID } from "crypto";
 import type { Collection, Db, Filter, Sort } from "mongodb";
+import type { WithMongoId } from "@repo/shared";
 import type { ListingSort } from "@repo/contracts";
 import type { Listing, ListingStatus } from "../../entities/listing.entity.js";
 import { escapeRegex } from "../escape-regex.js";
 import type { IListingRepository } from "./listing.repository.js";
 
-type ListingDoc = Omit<Listing, "id"> & { _id: string };
+type ListingDoc = WithMongoId<Listing>;
 
 // `_id` is always the final tiebreaker so skip/limit pagination is deterministic
 // even when the primary key ties (equal price, or same-millisecond createdAt).

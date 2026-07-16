@@ -1,10 +1,39 @@
 import type { CreateContractDto } from "@repo/contracts";
+import { logger } from "@repo/shared";
 import type { Contract } from "../../entities/contract.entity.js";
 import type { IContractRepository } from "../../repositories/Contract/contract.repository.js";
-import { logger } from "../../logger.js";
+import type { IListingRepository } from "../../repositories/Listing/listing.repository.js";
 import type { IUserRepository } from "../../repositories/User/user.repository.js";
 import type { ITransactionRepository } from "../../repositories/Transaction/transaction.repository.js";
 import type { IDocumensoService } from "../../services/documenso.service.js";
+
+export class ListingNotFoundError extends Error {
+  constructor() {
+    super("Listing not found");
+    this.name = "ListingNotFoundError";
+  }
+}
+
+export class ListingNotActiveError extends Error {
+  constructor() {
+    super("This listing is no longer active");
+    this.name = "ListingNotActiveError";
+  }
+}
+
+export class SamePartyError extends Error {
+  constructor() {
+    super("Provider and beneficiary must be different users");
+    this.name = "SamePartyError";
+  }
+}
+
+export class NotListingProviderError extends Error {
+  constructor() {
+    super("You are not a party to this listing's contract");
+    this.name = "NotListingProviderError";
+  }
+}
 
 export class ContractPartyNotFoundError extends Error {
   constructor(message: string) {
@@ -38,15 +67,27 @@ const isDuplicateKeyError = (err: unknown): boolean =>
 // after the hold; if either fails the hold is rolled back.
 export const createContractUseCase = (
   contractRepository: IContractRepository,
+  listingRepository: IListingRepository,
   userRepository: IUserRepository,
   documenso: IDocumensoService,
   transactionRepository: ITransactionRepository,
 ) => {
-  return async (
-    // `price` is derived server-side from the listing by the caller (router), never
-    // taken from the client, so the escrowed amount always matches the listing.
-    data: CreateContractDto & { beneficiaryId: string; districtId: string; price: number; redirectUrl?: string },
-  ): Promise<Contract> => {
+  return async (data: CreateContractDto & { beneficiaryId: string; redirectUrl?: string }): Promise<Contract> => {
+    // Load the referenced listing and enforce the booking invariants here (not in the
+    // router) so they're covered by these tests alongside the money rules. districtId
+    // and price are derived server-side from the listing, never from the client — the
+    // escrowed amount always matches the advertised price.
+    const listing = await listingRepository.getListingById(data.listingId);
+    if (!listing) throw new ListingNotFoundError();
+    if (listing.status !== "active") throw new ListingNotActiveError();
+    // A contract binds two distinct people.
+    if (data.beneficiaryId === data.providerId) throw new SamePartyError();
+    // Listings are offers: the author is the provider being booked, the caller is the
+    // beneficiary. Guard against a mismatched providerId in the body.
+    if (listing.authorId !== data.providerId) throw new NotListingProviderError();
+
+    const { districtId, price } = listing;
+
     const [provider, beneficiary] = await Promise.all([
       userRepository.getUserById(data.providerId),
       userRepository.getUserById(data.beneficiaryId),
@@ -64,8 +105,8 @@ export const createContractUseCase = (
     if (existing) throw new DuplicateContractError();
 
     // Escrow the price from the beneficiary before doing any external work.
-    if (data.price > 0) {
-      const held = await transactionRepository.tryDebit(data.beneficiaryId, data.price);
+    if (price > 0) {
+      const held = await transactionRepository.tryDebit(data.beneficiaryId, price);
       if (!held) throw new InsufficientFundsError();
     }
 
@@ -83,10 +124,10 @@ export const createContractUseCase = (
 
       contract = await contractRepository.createContract({
         listingId: data.listingId,
-        districtId: data.districtId,
+        districtId,
         providerId: data.providerId,
         beneficiaryId: data.beneficiaryId,
-        price: data.price,
+        price,
         documensoDocumentId: document.documentId,
         signatureStatus: "pending",
         providerSigningUrl: document.providerSigningUrl,
@@ -97,9 +138,9 @@ export const createContractUseCase = (
     } catch (err) {
       // Roll the escrow hold back — no contract was persisted. Best-effort so a failed
       // refund can't mask the original error (the more useful one to surface).
-      if (data.price > 0) {
+      if (price > 0) {
         await transactionRepository
-          .adjustBalance(data.beneficiaryId, data.price)
+          .adjustBalance(data.beneficiaryId, price)
           .catch((refundErr) =>
             logger.error(
               { err: refundErr, beneficiaryId: data.beneficiaryId },
@@ -116,16 +157,16 @@ export const createContractUseCase = (
     // Record the escrow-hold ledger entry now that the contract exists to reference
     // it. The money is already correctly held and the contract is live, so a ledger
     // write failure here must not roll anything back — log it for reconciliation.
-    if (data.price > 0) {
+    if (price > 0) {
       await transactionRepository
         .createTransactions([
           {
             userId: data.beneficiaryId,
-            districtId: data.districtId,
+            districtId,
             type: "transfer_out",
             // Signed = effect on this row's own balance: an escrow hold debits the
             // payer, so it's negative (matching create-transaction's transfer_out).
-            amount: -data.price,
+            amount: -price,
             refId: contract.id,
             refType: "contract",
           },

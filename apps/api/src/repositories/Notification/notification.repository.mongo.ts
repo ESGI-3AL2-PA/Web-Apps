@@ -1,9 +1,10 @@
 import { randomUUID } from "crypto";
 import type { Collection, Db, Filter } from "mongodb";
+import { toEntity, type WithMongoId } from "@repo/shared";
 import type { Notification, NotificationType } from "../../entities/notification.entity.js";
 import type { INotificationRepository } from "./notification.repository.js";
 
-type NotificationDoc = Omit<Notification, "id"> & { _id: string };
+type NotificationDoc = WithMongoId<Notification>;
 
 export class MongoNotificationRepository implements INotificationRepository {
   private collection: Collection<NotificationDoc>;
@@ -48,19 +49,19 @@ export class MongoNotificationRepository implements INotificationRepository {
         .toArray(),
     ]);
 
-    return { data: docs.map(this.toNotification), total, page, limit };
+    return { data: docs.map((d) => toEntity<Notification>(d)), total, page, limit };
   }
 
   async getNotificationById(id: string): Promise<Notification | null> {
     const doc = await this.collection.findOne({ _id: id });
-    return doc ? this.toNotification(doc) : null;
+    return doc ? toEntity<Notification>(doc) : null;
   }
 
   async createNotification(data: Omit<Notification, "id" | "createdAt" | "read">): Promise<Notification> {
     const now = new Date().toISOString();
     const doc: NotificationDoc = { ...data, _id: randomUUID(), createdAt: now, read: false };
     await this.collection.insertOne(doc);
-    return this.toNotification(doc);
+    return toEntity<Notification>(doc);
   }
 
   async markNotificationRead(id: string): Promise<Notification | null> {
@@ -69,7 +70,7 @@ export class MongoNotificationRepository implements INotificationRepository {
       { $set: { read: true } },
       { returnDocument: "after" },
     );
-    return result ? this.toNotification(result) : null;
+    return result ? toEntity<Notification>(result) : null;
   }
 
   async markAllRead(recipientId: string): Promise<number> {
@@ -84,10 +85,5 @@ export class MongoNotificationRepository implements INotificationRepository {
 
   async deleteByRecipient(userId: string): Promise<void> {
     await this.collection.deleteMany({ recipientId: userId });
-  }
-
-  private toNotification(doc: NotificationDoc): Notification {
-    const { _id, ...rest } = doc;
-    return { id: _id, ...rest };
   }
 }

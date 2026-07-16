@@ -1,4 +1,5 @@
 import { initServer } from "@ts-rest/express";
+import { logger } from "@repo/shared";
 import { usersContract } from "@repo/contracts";
 import type { UserResponseDto } from "@repo/contracts";
 import type { User } from "../../entities/user.entity.js";
@@ -31,13 +32,13 @@ const fetchUserSessions = async (userId: string): Promise<unknown[]> => {
       body: JSON.stringify({ userId }),
     });
     if (!res.ok) {
-      console.error(`auth-service session export failed for user ${userId}: HTTP ${res.status}`);
+      logger.error({ userId, status: res.status }, "auth-service session export failed");
       return [];
     }
     const body = (await res.json()) as { sessions?: unknown[] };
     return body.sessions ?? [];
   } catch (err) {
-    console.error(`auth-service session export errored for user ${userId}:`, err);
+    logger.error({ err, userId }, "auth-service session export errored");
     return [];
   }
 };

@@ -1,26 +1,10 @@
-import { z } from "zod";
-
-export const UserRoleSchema = z.enum(["user", "admin", "superAdmin"]);
-export type UserRole = z.infer<typeof UserRoleSchema>;
-
-export const UserSchema = z.object({
-  id: z.string(),
-  email: z.string().email(),
-  passwordHash: z.string(),
-  firstName: z.string().min(1).max(100),
-  lastName: z.string().min(1).max(100),
-  phone: z.string().optional(),
-  address: z.string(),
-  role: UserRoleSchema,
-  districtId: z.string(),
-  balance: z.number().int().default(0),
-  banned: z.boolean().default(false),
-  emailVerified: z.boolean().default(false),
-  totpSecret: z.string().nullable().default(null),
-  totpEnabled: z.boolean().default(false),
-  lang: z.enum(["fr", "en"]).optional(),
-  createdAt: z.string().datetime(),
-  updatedAt: z.string().datetime(),
-});
-
-export type User = z.infer<typeof UserSchema>;
+// The user document schema is the single source of truth in @repo/shared — the
+// shared `users` collection is read by both api and auth-service, so its shape lives
+// once (previously each app hand-declared it and they drifted). Re-exported under the
+// api's local names so existing imports (`User`, `UserSchema`, `UserRole`) stay stable.
+export {
+  userDocumentSchema as UserSchema,
+  UserRoleSchema,
+  type UserDocument as User,
+  type UserRole,
+} from "@repo/shared";

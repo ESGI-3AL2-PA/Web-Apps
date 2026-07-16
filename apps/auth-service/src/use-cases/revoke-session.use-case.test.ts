@@ -17,6 +17,8 @@ const makeRefreshRepo = (): RefreshRepoMock => ({
   revokeBySessionId: vi.fn().mockResolvedValue(true),
   revokeAllForUser: vi.fn(),
   deleteAllForUser: vi.fn(),
+  listAllForUser: vi.fn().mockResolvedValue([]),
+  backfillMissingExpiresAtDate: vi.fn().mockResolvedValue(0),
 });
 
 describe("revokeSessionUseCase", () => {

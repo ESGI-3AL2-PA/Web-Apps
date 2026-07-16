@@ -46,9 +46,17 @@ export default function Search() {
   );
 
   useEffect(() => {
+    let ignore = false;
     getTags()
-      .then(setTags)
-      .catch(() => setTags([]));
+      .then((tgs) => {
+        if (!ignore) setTags(tgs);
+      })
+      .catch(() => {
+        if (!ignore) setTags([]);
+      });
+    return () => {
+      ignore = true;
+    };
   }, []);
 
   // Initial load + refetch whenever a server-side filter (or retry) changes.

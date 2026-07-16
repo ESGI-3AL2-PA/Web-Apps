@@ -113,12 +113,22 @@ export default function Votes() {
   const [error, setError] = useState(false);
 
   const load = useCallback(() => {
+    let ignore = false;
     setLoading(true);
     setError(false);
     getVotes()
-      .then(setVotes)
-      .catch(() => setError(true))
-      .finally(() => setLoading(false));
+      .then((v) => {
+        if (!ignore) setVotes(v);
+      })
+      .catch(() => {
+        if (!ignore) setError(true);
+      })
+      .finally(() => {
+        if (!ignore) setLoading(false);
+      });
+    return () => {
+      ignore = true;
+    };
   }, []);
 
   useEffect(load, [load]);

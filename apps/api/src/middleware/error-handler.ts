@@ -1,36 +1,14 @@
-import { type Request, type Response, type NextFunction } from "express";
+// AppError / NotFoundError / errorHandler are shared — see @repo/shared. Re-exported
+// here (single class identity across both backends) so local import paths stay stable.
+import { AppError } from "@repo/shared";
 
-export class AppError extends Error {
-  constructor(
-    public statusCode: number,
-    message: string,
-  ) {
-    super(message);
-    this.name = "AppError";
-  }
-}
-
-export class NotFoundError extends AppError {
-  constructor() {
-    super(404, "Ressource not found");
-  }
-}
+export { AppError, NotFoundError, errorHandler } from "@repo/shared";
 
 // Raised when a message's media bytes were stored but the mediaUrl could not be
 // attached to the row. The use-case compensates (deletes bytes + row) before
-// throwing this so no orphan is left behind.
+// throwing this so no orphan is left behind. App-specific — extends the shared base.
 export class ImageAttachError extends AppError {
   constructor() {
     super(500, "Failed to attach image to message");
   }
 }
-
-export const errorHandler = (err: Error, req: Request, res: Response, _next: NextFunction) => {
-  if (err instanceof AppError) {
-    return res.status(err.statusCode).json({ message: err.message });
-  }
-
-  // req.log is the pino-http per-request child logger (carries the correlation id).
-  req.log.error({ err }, "Unhandled error");
-  return res.status(500).json({ message: "Internal server error" });
-};

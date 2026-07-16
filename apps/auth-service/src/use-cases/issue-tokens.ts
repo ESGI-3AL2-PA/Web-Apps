@@ -1,5 +1,6 @@
 import { randomBytes, createHash, randomUUID } from "crypto";
 import { SignJWT } from "jose";
+import { TOKEN_ISSUER, TOKEN_ALG, TOKEN_AUDIENCE, type AccessTokenClaims } from "@repo/shared";
 import type { UserRecord } from "../repositories/User/user-reader.repository.js";
 import type { IRefreshTokenRepository } from "../repositories/RefreshToken/refresh-token.repository.js";
 import type { IDistrictAdminReaderRepository } from "../repositories/DistrictAdmin/district-admin-reader.repository.js";
@@ -37,11 +38,11 @@ export const signAccessToken = (
     firstName: user.firstName,
     lastName: user.lastName,
     adminDistrictId,
-  })
-    .setProtectedHeader({ alg: "RS256", kid: getKeyId() })
+  } satisfies AccessTokenClaims)
+    .setProtectedHeader({ alg: TOKEN_ALG, kid: getKeyId() })
     .setSubject(user.id)
-    .setIssuer("auth-service")
-    .setAudience("api")
+    .setIssuer(TOKEN_ISSUER)
+    .setAudience(TOKEN_AUDIENCE)
     .setIssuedAt()
     .setExpirationTime("15m")
     .sign(getPrivateKey());

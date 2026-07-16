@@ -1,4 +1,5 @@
 import type { ClientSession } from "mongodb";
+import { logger } from "@repo/shared";
 import type { Contract } from "../../entities/contract.entity.js";
 import type { IContractRepository } from "../../repositories/Contract/contract.repository.js";
 import type { ITransactionRepository } from "../../repositories/Transaction/transaction.repository.js";
@@ -48,7 +49,7 @@ const settle = async (
     // Sequential fallback (standalone Mongo): the balance move already settled the escrow
     // and the atomic resolve gate fired, so keep the ledger write best-effort.
     await ledgerWrite.catch((err) =>
-      console.error(`[contracts] dispute-settle ledger write failed for ${contract.id}:`, err),
+      logger.error({ err, contractId: contract.id }, "[contracts] dispute-settle ledger write failed"),
     );
   }
 };

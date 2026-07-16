@@ -1,8 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { logger } from "../../logger.js";
+import { logger } from "@repo/shared";
 import type { User } from "../../entities/user.entity.js";
 import type { Contract } from "../../entities/contract.entity.js";
+import type { Listing } from "../../entities/listing.entity.js";
 import type { IUserRepository } from "../../repositories/User/user.repository.js";
+import type { IListingRepository } from "../../repositories/Listing/listing.repository.js";
 import type { IContractRepository } from "../../repositories/Contract/contract.repository.js";
 import type { ITransactionRepository } from "../../repositories/Transaction/transaction.repository.js";
 import type { GeneratedContractDocument, IDocumensoService } from "../../services/documenso.service.js";
@@ -10,6 +12,10 @@ import {
   ContractPartyNotFoundError,
   DuplicateContractError,
   InsufficientFundsError,
+  ListingNotActiveError,
+  ListingNotFoundError,
+  NotListingProviderError,
+  SamePartyError,
   createContractUseCase,
 } from "./create-contract.use-case.js";
 
@@ -20,6 +26,23 @@ const makeUserRepo = (users: Record<string, User | null>): IUserRepository =>
   ({
     getUserById: vi.fn(async (id: string) => users[id] ?? null),
   }) as unknown as IUserRepository;
+
+// The listing the contract is booked against — districtId + price are derived from it
+// (never from the client), and its status/authorId gate the booking invariants.
+const makeListing = (overrides: Partial<Listing> = {}): Listing =>
+  ({
+    id: "listing-1",
+    status: "active",
+    authorId: "provider-1",
+    districtId: "district-1",
+    price: 500,
+    ...overrides,
+  }) as unknown as Listing;
+
+const makeListingRepo = (listing: Listing | null = makeListing()): IListingRepository =>
+  ({
+    getListingById: vi.fn(async () => listing),
+  }) as unknown as IListingRepository;
 
 const makeContractRepo = (overrides: Partial<Record<keyof IContractRepository, unknown>> = {}): IContractRepository =>
   ({
@@ -52,12 +75,11 @@ const makeDocumenso = (overrides: Partial<IDocumensoService> = {}): IDocumensoSe
     ...overrides,
   }) as unknown as IDocumensoService;
 
+// Client-supplied fields only; districtId + price now come from the listing.
 const baseData = {
   listingId: "listing-1",
   providerId: "provider-1",
   beneficiaryId: "beneficiary-1",
-  districtId: "district-1",
-  price: 500,
 };
 
 const defaultUsers = () => ({
@@ -86,6 +108,7 @@ describe("createContractUseCase", () => {
 
     const contract = await createContractUseCase(
       contractRepo,
+      makeListingRepo(),
       makeUserRepo(defaultUsers()),
       documenso,
       txRepo,
@@ -106,6 +129,65 @@ describe("createContractUseCase", () => {
     ]);
   });
 
+  it("throws ListingNotFoundError when the listing is missing (no money touched)", async () => {
+    const txRepo = makeTxRepo();
+    await expect(
+      createContractUseCase(
+        makeContractRepo(),
+        makeListingRepo(null),
+        makeUserRepo(defaultUsers()),
+        makeDocumenso(),
+        txRepo,
+      )(baseData),
+    ).rejects.toBeInstanceOf(ListingNotFoundError);
+    expect(txRepo.tryDebit).not.toHaveBeenCalled();
+  });
+
+  it("throws ListingNotActiveError when the listing is closed", async () => {
+    const txRepo = makeTxRepo();
+    await expect(
+      createContractUseCase(
+        makeContractRepo(),
+        makeListingRepo(makeListing({ status: "closed" })),
+        makeUserRepo(defaultUsers()),
+        makeDocumenso(),
+        txRepo,
+      )(baseData),
+    ).rejects.toBeInstanceOf(ListingNotActiveError);
+    expect(txRepo.tryDebit).not.toHaveBeenCalled();
+  });
+
+  it("throws SamePartyError when beneficiary === provider", async () => {
+    const txRepo = makeTxRepo();
+    await expect(
+      createContractUseCase(
+        makeContractRepo(),
+        makeListingRepo(),
+        makeUserRepo(defaultUsers()),
+        makeDocumenso(),
+        txRepo,
+      )({
+        ...baseData,
+        providerId: "beneficiary-1",
+      }),
+    ).rejects.toBeInstanceOf(SamePartyError);
+    expect(txRepo.tryDebit).not.toHaveBeenCalled();
+  });
+
+  it("throws NotListingProviderError when providerId isn't the listing author", async () => {
+    const txRepo = makeTxRepo();
+    await expect(
+      createContractUseCase(
+        makeContractRepo(),
+        makeListingRepo(makeListing({ authorId: "someone-else" })),
+        makeUserRepo(defaultUsers()),
+        makeDocumenso(),
+        txRepo,
+      )(baseData),
+    ).rejects.toBeInstanceOf(NotListingProviderError);
+    expect(txRepo.tryDebit).not.toHaveBeenCalled();
+  });
+
   it("refunds the escrow hold when generateContractDocument throws", async () => {
     const txRepo = makeTxRepo();
     const documenso = makeDocumenso({
@@ -116,7 +198,7 @@ describe("createContractUseCase", () => {
     const contractRepo = makeContractRepo();
 
     await expect(
-      createContractUseCase(contractRepo, makeUserRepo(defaultUsers()), documenso, txRepo)(baseData),
+      createContractUseCase(contractRepo, makeListingRepo(), makeUserRepo(defaultUsers()), documenso, txRepo)(baseData),
     ).rejects.toThrow("documenso boom");
 
     expect(txRepo.tryDebit).toHaveBeenCalledWith("beneficiary-1", 500);
@@ -135,7 +217,13 @@ describe("createContractUseCase", () => {
     });
 
     await expect(
-      createContractUseCase(contractRepo, makeUserRepo(defaultUsers()), makeDocumenso(), txRepo)(baseData),
+      createContractUseCase(
+        contractRepo,
+        makeListingRepo(),
+        makeUserRepo(defaultUsers()),
+        makeDocumenso(),
+        txRepo,
+      )(baseData),
     ).rejects.toBeInstanceOf(DuplicateContractError);
 
     expect(txRepo.adjustBalance).toHaveBeenCalledWith("beneficiary-1", 500);
@@ -154,6 +242,7 @@ describe("createContractUseCase", () => {
     // Ledger failure is swallowed — the contract is still returned successfully.
     const contract = await createContractUseCase(
       contractRepo,
+      makeListingRepo(),
       makeUserRepo(defaultUsers()),
       makeDocumenso(),
       txRepo,
@@ -172,7 +261,7 @@ describe("createContractUseCase", () => {
     const contractRepo = makeContractRepo();
 
     await expect(
-      createContractUseCase(contractRepo, makeUserRepo(defaultUsers()), documenso, txRepo)(baseData),
+      createContractUseCase(contractRepo, makeListingRepo(), makeUserRepo(defaultUsers()), documenso, txRepo)(baseData),
     ).rejects.toBeInstanceOf(InsufficientFundsError);
 
     expect(documenso.generateContractDocument).not.toHaveBeenCalled();
@@ -188,7 +277,7 @@ describe("createContractUseCase", () => {
     });
 
     await expect(
-      createContractUseCase(contractRepo, makeUserRepo(defaultUsers()), documenso, txRepo)(baseData),
+      createContractUseCase(contractRepo, makeListingRepo(), makeUserRepo(defaultUsers()), documenso, txRepo)(baseData),
     ).rejects.toBeInstanceOf(DuplicateContractError);
 
     expect(txRepo.tryDebit).not.toHaveBeenCalled();
@@ -200,7 +289,13 @@ describe("createContractUseCase", () => {
     const users = { "provider-1": makeUser("provider-1"), "beneficiary-1": null };
 
     await expect(
-      createContractUseCase(makeContractRepo(), makeUserRepo(users), makeDocumenso(), txRepo)(baseData),
+      createContractUseCase(
+        makeContractRepo(),
+        makeListingRepo(),
+        makeUserRepo(users),
+        makeDocumenso(),
+        txRepo,
+      )(baseData),
     ).rejects.toBeInstanceOf(ContractPartyNotFoundError);
 
     expect(txRepo.tryDebit).not.toHaveBeenCalled();
@@ -210,10 +305,11 @@ describe("createContractUseCase", () => {
     const txRepo = makeTxRepo();
     const contract = await createContractUseCase(
       makeContractRepo(),
+      makeListingRepo(makeListing({ price: 0 })),
       makeUserRepo(defaultUsers()),
       makeDocumenso(),
       txRepo,
-    )({ ...baseData, price: 0 });
+    )(baseData);
 
     expect(contract.id).toBe("contract-1");
     expect(txRepo.tryDebit).not.toHaveBeenCalled();

@@ -1,10 +1,11 @@
 import { randomUUID } from "crypto";
 import type { Collection, Db, Filter, UpdateFilter } from "mongodb";
+import { toEntity, type WithMongoId } from "@repo/shared";
 import type { District, GeoJson } from "../../entities/district.entity.js";
 import { escapeRegex } from "../escape-regex.js";
 import type { IDistrictRepository, UpdateDistrictData } from "./district.repository.js";
 
-type DistrictDoc = Omit<District, "id"> & { _id: string };
+type DistrictDoc = WithMongoId<District>;
 
 export class MongoDistrictRepository implements IDistrictRepository {
   private collection: Collection<DistrictDoc>;
@@ -22,7 +23,7 @@ export class MongoDistrictRepository implements IDistrictRepository {
     const doc = await this.collection.findOne({
       geoJson: { $geoIntersects: { $geometry: point } },
     } as Filter<DistrictDoc>);
-    return doc ? this.toDistrict(doc) : null;
+    return doc ? toEntity<District>(doc) : null;
   }
 
   async getDistricts(params: { search?: string; page?: number; limit?: number }): Promise<{
@@ -45,18 +46,18 @@ export class MongoDistrictRepository implements IDistrictRepository {
         .toArray(),
     ]);
 
-    return { data: docs.map(this.toDistrict), total, page, limit };
+    return { data: docs.map((d) => toEntity<District>(d)), total, page, limit };
   }
 
   async getDistrictById(id: string): Promise<District | null> {
     const doc = await this.collection.findOne({ _id: id });
-    return doc ? this.toDistrict(doc) : null;
+    return doc ? toEntity<District>(doc) : null;
   }
 
   async createDistrict(data: Omit<District, "id">): Promise<District> {
     const doc: DistrictDoc = { ...data, _id: randomUUID() };
     await this.collection.insertOne(doc);
-    return this.toDistrict(doc);
+    return toEntity<District>(doc);
   }
 
   async updateDistrict(id: string, data: UpdateDistrictData): Promise<District | null> {
@@ -69,16 +70,11 @@ export class MongoDistrictRepository implements IDistrictRepository {
     }
 
     const result = await this.collection.findOneAndUpdate({ _id: id }, update, { returnDocument: "after" });
-    return result ? this.toDistrict(result) : null;
+    return result ? toEntity<District>(result) : null;
   }
 
   async deleteDistrict(id: string): Promise<boolean> {
     const result = await this.collection.deleteOne({ _id: id });
     return result.deletedCount === 1;
-  }
-
-  private toDistrict(doc: DistrictDoc): District {
-    const { _id, ...rest } = doc;
-    return { id: _id, ...rest };
   }
 }

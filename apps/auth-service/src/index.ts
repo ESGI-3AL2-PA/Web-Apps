@@ -1,4 +1,4 @@
-import "./load-env.js"; // must be first: loads .env before any module reads process.env
+import "@repo/shared/load-env"; // must be first: loads .env before any module reads process.env
 import path from "path";
 import fs from "fs";
 import { timingSafeEqual } from "crypto";
@@ -21,7 +21,7 @@ import { initContainer, resolve } from "./repositories/container.js";
 import { MongoRefreshTokenRepository } from "./repositories/RefreshToken/refresh-token.repository.mongo.js";
 import type { IRefreshTokenRepository } from "./repositories/RefreshToken/refresh-token.repository.js";
 import { initKeys } from "./keys.js";
-import { setupGracefulShutdown } from "./shutdown.js";
+import { setupGracefulShutdown } from "@repo/shared";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -103,7 +103,7 @@ app.get("/readyz", async (_req, res) => {
     await pingDB();
   } catch (err) {
     mongoOk = false;
-    console.error("[readyz] mongo ping failed:", err);
+    logger.error({ err }, "[readyz] mongo ping failed");
   }
   res.status(mongoOk ? 200 : 503).json({
     status: mongoOk ? "ok" : "unavailable",
@@ -208,7 +208,7 @@ app.post(
         res.status(200).json({ sessions: sanitized });
       })
       .catch((err) => {
-        console.error("Failed to export sessions for user:", err);
+        logger.error({ err }, "Failed to export sessions for user");
         res.status(500).json({ message: "Failed to export sessions" });
       });
   },

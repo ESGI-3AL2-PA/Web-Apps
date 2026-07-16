@@ -2,8 +2,6 @@ import { initServer } from "@ts-rest/express";
 import { contractsContract } from "@repo/contracts";
 import type { ContractResponseDto } from "@repo/contracts";
 import { resolve } from "../../repositories/container.js";
-import type { IListingRepository } from "../../repositories/Listing/listing.repository.js";
-import type { IUserRepository } from "../../repositories/User/user.repository.js";
 import type { Contract } from "../../entities/contract.entity.js";
 import { resolveListDistrictScope } from "../../middleware/district-scope.js";
 import { documensoService, DocumensoServiceError } from "../../services/documenso.service.js";
@@ -11,6 +9,10 @@ import { getContractsUseCase } from "../../use-cases/contracts/get-contracts.use
 import { getContractByIdUseCase } from "../../use-cases/contracts/get-contract-by-id.use-case.js";
 import {
   createContractUseCase,
+  ListingNotFoundError,
+  ListingNotActiveError,
+  SamePartyError,
+  NotListingProviderError,
   ContractPartyNotFoundError,
   InsufficientFundsError,
   DuplicateContractError,
@@ -87,48 +89,34 @@ export const contractsRouter = s.router(contractsContract, {
   },
 
   createContract: async ({ body, req }) => {
-    // Annotated so resolve(...) gets a contextual type — see listings.router for the same workaround.
-    const listingRepo: IListingRepository = resolve("listing");
-    const userRepo: IUserRepository = resolve("user");
-    const listing = await listingRepo.getListingById(body.listingId);
-    if (!listing) {
-      return { status: 404, body: { message: "Listing not found" } };
-    }
-    // Only an open listing can be contracted.
-    if (listing.status !== "active") {
-      return { status: 400, body: { message: "This listing is no longer active" } };
-    }
     // The caller is the beneficiary (payer, whose tokens are escrowed); the provider
-    // being booked comes from the body.
-    const beneficiaryId = req.user!.sub;
-    // A contract binds two distinct people.
-    if (beneficiaryId === body.providerId) {
-      return { status: 400, body: { message: "Provider and beneficiary must be different users" } };
-    }
-    // Listings are offers: the author is the provider being booked, the caller is the
-    // beneficiary. Guard against a mismatched providerId in the body.
-    if (listing.authorId !== body.providerId) {
-      return { status: 403, body: { message: "You are not a party to this listing's contract" } };
-    }
-    // districtId and price are derived server-side from the referenced listing, never
-    // from the client — the escrowed amount always matches the advertised price.
+    // being booked comes from the body. Listing lookup, the booking invariants, and
+    // the server-side districtId/price derivation all live in the use-case (tested there).
     try {
       const newContract = await createContractUseCase(
         resolve("contract"),
-        userRepo,
+        resolve("listing"),
+        resolve("user"),
         documensoService,
         resolve("transaction"),
       )({
         ...body,
-        beneficiaryId,
-        districtId: listing.districtId,
-        price: listing.price,
+        beneficiaryId: req.user!.sub,
         redirectUrl: process.env.CONTRACTS_SIGN_REDIRECT_URL,
       });
       return { status: 201, body: toResponse(newContract, req.user!.sub) };
     } catch (err) {
-      if (err instanceof ContractPartyNotFoundError) {
+      // Referenced listing missing / party not found.
+      if (err instanceof ListingNotFoundError || err instanceof ContractPartyNotFoundError) {
         return { status: 404, body: { message: err.message } };
+      }
+      // Listing closed, or the two parties are the same person.
+      if (err instanceof ListingNotActiveError || err instanceof SamePartyError) {
+        return { status: 400, body: { message: err.message } };
+      }
+      // The caller booked a listing they don't provide.
+      if (err instanceof NotListingProviderError) {
+        return { status: 403, body: { message: err.message } };
       }
       // An identical active contract already exists (double-submit).
       if (err instanceof DuplicateContractError) {

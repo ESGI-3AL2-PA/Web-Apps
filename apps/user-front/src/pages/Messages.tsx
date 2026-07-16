@@ -94,8 +94,10 @@ export default function Messages() {
   // Load the conversation list + resolve every participant's name (needed for groups too).
   useEffect(() => {
     if (!user) return;
+    let cancelled = false;
     getConversations({ participantId: user.id })
       .then(async (convs) => {
+        if (cancelled) return;
         setConversations(convs);
         const ids = [...new Set(convs.flatMap((c) => c.participants))].filter((id) => id && id !== user.id);
         const entries = await Promise.all(
@@ -104,9 +106,15 @@ export default function Messages() {
             return u ? ([id, `${u.firstName} ${u.lastName}`] as const) : null;
           }),
         );
+        if (cancelled) return;
         setUserNames(Object.fromEntries(entries.filter(Boolean) as (readonly [string, string])[]));
       })
-      .catch(() => setConversations([]));
+      .catch(() => {
+        if (!cancelled) setConversations([]);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [user]);
 
   // A conversation's display title: its name for groups, otherwise the other participant.

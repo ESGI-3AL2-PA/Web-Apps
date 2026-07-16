@@ -20,12 +20,22 @@ export default function MyListings() {
 
   const load = useCallback(() => {
     if (!user) return;
+    let ignore = false;
     setLoading(true);
     setError(false);
     getListings({ authorId: user.id, limit: 100 })
-      .then((page) => setListings(page.data))
-      .catch(() => setError(true))
-      .finally(() => setLoading(false));
+      .then((page) => {
+        if (!ignore) setListings(page.data);
+      })
+      .catch(() => {
+        if (!ignore) setError(true);
+      })
+      .finally(() => {
+        if (!ignore) setLoading(false);
+      });
+    return () => {
+      ignore = true;
+    };
   }, [user]);
 
   useEffect(load, [load]);
@@ -78,10 +88,7 @@ export default function MyListings() {
       ) : (
         <ul className="space-y-3">
           {listings.map((l) => (
-            <li
-              key={l.id}
-              className="flex items-center gap-4 rounded-xl border border-base-content/10 bg-base-100 p-3"
-            >
+            <li key={l.id} className="flex items-center gap-4 rounded-xl border border-base-content/10 bg-base-100 p-3">
               <div className="h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-base-200">
                 {l.images?.[0] && <AuthedImage src={l.images[0]} className="h-full w-full object-cover" />}
               </div>

@@ -1,18 +1,14 @@
 import type { Collection, Db } from "mongodb";
+import { DISTRICT_ADMINS_COLLECTION, type DistrictAdminDocument, type WithMongoId } from "@repo/shared";
 import type { IDistrictAdminReaderRepository } from "./district-admin-reader.repository.js";
 
-interface DistrictAdminDoc {
-  _id: string;
-  userId: string;
-  districtId: string;
-  createdAt: string;
-}
+type DistrictAdminDoc = WithMongoId<DistrictAdminDocument>;
 
 export class MongoDistrictAdminReaderRepository implements IDistrictAdminReaderRepository {
   private collection: Collection<DistrictAdminDoc>;
 
   constructor(db: Db) {
-    this.collection = db.collection("district_admins");
+    this.collection = db.collection(DISTRICT_ADMINS_COLLECTION);
   }
 
   async findDistrictIdByUserId(userId: string): Promise<string | null> {

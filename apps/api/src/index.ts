@@ -1,4 +1,4 @@
-import "./load-env.js"; // must be first: loads .env before any module reads process.env
+import "@repo/shared/load-env"; // must be first: loads .env before any module reads process.env
 import express, { type Application, type RequestHandler } from "express";
 import cors from "cors";
 import helmet from "helmet";
@@ -53,7 +53,7 @@ import { connectDB, closeDB, pingDB } from "./repositories/mongodb.connector.js"
 import { connectNeo4j, closeNeo4j, pingNeo4j } from "./repositories/neo4j.connector.js";
 import { connectSatan, closeSatan } from "./repositories/satan.connector.js";
 import type { SatanClient } from "@repo/satan";
-import { setupGracefulShutdown } from "./shutdown.js";
+import { setupGracefulShutdown } from "@repo/shared";
 import { initContainer } from "./repositories/container.js";
 import { generateOpenApi } from "@ts-rest/open-api";
 import { apiReference } from "@scalar/express-api-reference";

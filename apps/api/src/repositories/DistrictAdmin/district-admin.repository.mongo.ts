@@ -1,15 +1,16 @@
 import { randomUUID } from "crypto";
 import type { Collection, Db, Filter } from "mongodb";
+import { DISTRICT_ADMINS_COLLECTION, toEntity, type WithMongoId } from "@repo/shared";
 import type { DistrictAdmin } from "../../entities/district-admin.entity.js";
 import type { IDistrictAdminRepository } from "./district-admin.repository.js";
 
-type DistrictAdminDoc = Omit<DistrictAdmin, "id"> & { _id: string };
+type DistrictAdminDoc = WithMongoId<DistrictAdmin>;
 
 export class MongoDistrictAdminRepository implements IDistrictAdminRepository {
   private collection: Collection<DistrictAdminDoc>;
 
   constructor(db: Db) {
-    this.collection = db.collection("district_admins");
+    this.collection = db.collection(DISTRICT_ADMINS_COLLECTION);
   }
 
   async listDistrictAdmins(params: { districtId?: string; userId?: string; page?: number; limit?: number }) {
@@ -27,17 +28,17 @@ export class MongoDistrictAdminRepository implements IDistrictAdminRepository {
         .toArray(),
     ]);
 
-    return { data: docs.map(this.toEntity), total, page, limit };
+    return { data: docs.map((d) => toEntity<DistrictAdmin>(d)), total, page, limit };
   }
 
   async getDistrictAdminById(id: string): Promise<DistrictAdmin | null> {
     const doc = await this.collection.findOne({ _id: id });
-    return doc ? this.toEntity(doc) : null;
+    return doc ? toEntity<DistrictAdmin>(doc) : null;
   }
 
   async findExisting(districtId: string, userId: string): Promise<DistrictAdmin | null> {
     const doc = await this.collection.findOne({ districtId, userId });
-    return doc ? this.toEntity(doc) : null;
+    return doc ? toEntity<DistrictAdmin>(doc) : null;
   }
 
   async createDistrictAdmin(data: Omit<DistrictAdmin, "id" | "createdAt">): Promise<DistrictAdmin> {
@@ -47,7 +48,7 @@ export class MongoDistrictAdminRepository implements IDistrictAdminRepository {
       createdAt: new Date().toISOString(),
     };
     await this.collection.insertOne(doc);
-    return this.toEntity(doc);
+    return toEntity<DistrictAdmin>(doc);
   }
 
   async deleteDistrictAdmin(id: string): Promise<boolean> {
@@ -58,10 +59,5 @@ export class MongoDistrictAdminRepository implements IDistrictAdminRepository {
   async ensureIndexes(): Promise<void> {
     // Unique compound index — one user can only be admin once per district.
     await this.collection.createIndex({ districtId: 1, userId: 1 }, { unique: true });
-  }
-
-  private toEntity(doc: DistrictAdminDoc): DistrictAdmin {
-    const { _id, ...rest } = doc;
-    return { id: _id, ...rest };
   }
 }

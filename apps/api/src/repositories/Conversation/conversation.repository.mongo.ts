@@ -1,10 +1,11 @@
 import { randomUUID } from "crypto";
 import type { Collection, Db, Filter } from "mongodb";
+import { toEntity, type WithMongoId } from "@repo/shared";
 import type { Conversation, Message } from "../../entities/conversation.entity.js";
 import type { IConversationRepository } from "./conversation.repository.js";
 
-type ConversationDoc = Omit<Conversation, "id"> & { _id: string };
-type MessageDoc = Omit<Message, "id"> & { _id: string };
+type ConversationDoc = WithMongoId<Conversation>;
+type MessageDoc = WithMongoId<Message>;
 
 export class MongoConversationRepository implements IConversationRepository {
   private conversations: Collection<ConversationDoc>;
@@ -47,12 +48,12 @@ export class MongoConversationRepository implements IConversationRepository {
         .toArray(),
     ]);
 
-    return { data: docs.map(this.toConversation), total, page, limit };
+    return { data: docs.map((d) => toEntity<Conversation>(d)), total, page, limit };
   }
 
   async getConversationById(id: string): Promise<Conversation | null> {
     const doc = await this.conversations.findOne({ _id: id });
-    return doc ? this.toConversation(doc) : null;
+    return doc ? toEntity<Conversation>(doc) : null;
   }
 
   async findDirectConversation(participantIds: string[]): Promise<Conversation | null> {
@@ -61,14 +62,14 @@ export class MongoConversationRepository implements IConversationRepository {
       type: "direct",
       participants: { $all: participantIds, $size: participantIds.length },
     });
-    return doc ? this.toConversation(doc) : null;
+    return doc ? toEntity<Conversation>(doc) : null;
   }
 
   async createConversation(data: Omit<Conversation, "id" | "createdAt" | "lastMessageAt">): Promise<Conversation> {
     const now = new Date().toISOString();
     const doc: ConversationDoc = { ...data, _id: randomUUID(), createdAt: now };
     await this.conversations.insertOne(doc);
-    return this.toConversation(doc);
+    return toEntity<Conversation>(doc);
   }
 
   async getMessages(
@@ -89,7 +90,7 @@ export class MongoConversationRepository implements IConversationRepository {
         .toArray(),
     ]);
 
-    return { data: docs.map(this.toMessage), total, page, limit };
+    return { data: docs.map((d) => toEntity<Message>(d)), total, page, limit };
   }
 
   async createMessage(data: Omit<Message, "id" | "createdAt" | "read">): Promise<Message> {
@@ -101,12 +102,12 @@ export class MongoConversationRepository implements IConversationRepository {
       this.conversations.updateOne({ _id: data.conversationId }, { $set: { lastMessageAt: now } }),
     ]);
 
-    return this.toMessage(doc);
+    return toEntity<Message>(doc);
   }
 
   async getMessageById(id: string): Promise<Message | null> {
     const doc = await this.messages.findOne({ _id: id });
-    return doc ? this.toMessage(doc) : null;
+    return doc ? toEntity<Message>(doc) : null;
   }
 
   async markMessageRead(id: string): Promise<Message | null> {
@@ -115,7 +116,7 @@ export class MongoConversationRepository implements IConversationRepository {
       { $set: { read: true } },
       { returnDocument: "after" },
     );
-    return result ? this.toMessage(result) : null;
+    return result ? toEntity<Message>(result) : null;
   }
 
   async attachMedia(id: string, mediaUrl: string, type: Message["type"]): Promise<Message | null> {
@@ -124,7 +125,7 @@ export class MongoConversationRepository implements IConversationRepository {
       { $set: { mediaUrl, type } },
       { returnDocument: "after" },
     );
-    return result ? this.toMessage(result) : null;
+    return result ? toEntity<Message>(result) : null;
   }
 
   async deleteMessage(id: string): Promise<void> {
@@ -141,15 +142,5 @@ export class MongoConversationRepository implements IConversationRepository {
     const imageIds = mediaDocs.filter((d) => d.type === "image").map((d) => d._id);
     await this.messages.deleteMany({ senderId: userId });
     return { audioIds, imageIds };
-  }
-
-  private toConversation(doc: ConversationDoc): Conversation {
-    const { _id, ...rest } = doc;
-    return { id: _id, ...rest };
-  }
-
-  private toMessage(doc: MessageDoc): Message {
-    const { _id, ...rest } = doc;
-    return { id: _id, ...rest };
   }
 }

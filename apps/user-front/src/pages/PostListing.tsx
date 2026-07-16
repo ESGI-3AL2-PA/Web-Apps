@@ -21,9 +21,17 @@ export default function PostListing() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    let ignore = false;
     getTags()
-      .then(setTags)
-      .catch(() => setTags([]));
+      .then((tgs) => {
+        if (!ignore) setTags(tgs);
+      })
+      .catch(() => {
+        if (!ignore) setTags([]);
+      });
+    return () => {
+      ignore = true;
+    };
   }, []);
 
   // Revoke the current preview URLs when they're replaced (re-pick) or on unmount.

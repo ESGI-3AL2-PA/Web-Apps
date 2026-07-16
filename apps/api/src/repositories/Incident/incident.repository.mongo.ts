@@ -1,10 +1,11 @@
 import { randomUUID } from "crypto";
 import type { Collection, Db, Filter } from "mongodb";
+import { toEntity, type WithMongoId } from "@repo/shared";
 import type { Incident, IncidentStatus } from "../../entities/incident.entity.js";
 import { escapeRegex } from "../escape-regex.js";
 import type { IIncidentRepository } from "./incident.repository.js";
 
-type IncidentDoc = Omit<Incident, "id"> & { _id: string };
+type IncidentDoc = WithMongoId<Incident>;
 
 export class MongoIncidentRepository implements IIncidentRepository {
   private collection: Collection<IncidentDoc>;
@@ -56,12 +57,12 @@ export class MongoIncidentRepository implements IIncidentRepository {
         .toArray(),
     ]);
 
-    return { data: docs.map(this.toIncident), total, page, limit };
+    return { data: docs.map((d) => toEntity<Incident>(d)), total, page, limit };
   }
 
   async getIncidentById(id: string): Promise<Incident | null> {
     const doc = await this.collection.findOne({ _id: id });
-    return doc ? this.toIncident(doc) : null;
+    return doc ? toEntity<Incident>(doc) : null;
   }
 
   async createIncident(data: Omit<Incident, "id" | "createdAt" | "updatedAt">): Promise<Incident> {
@@ -73,7 +74,7 @@ export class MongoIncidentRepository implements IIncidentRepository {
       updatedAt: now,
     };
     await this.collection.insertOne(doc);
-    return this.toIncident(doc);
+    return toEntity<Incident>(doc);
   }
 
   async updateIncident(
@@ -86,7 +87,7 @@ export class MongoIncidentRepository implements IIncidentRepository {
       { $set: { ...data, updatedAt: now } },
       { returnDocument: "after" },
     );
-    return result ? this.toIncident(result) : null;
+    return result ? toEntity<Incident>(result) : null;
   }
 
   async deleteIncident(id: string): Promise<boolean> {
@@ -122,10 +123,5 @@ export class MongoIncidentRepository implements IIncidentRepository {
 
   async deleteByReporter(reporterId: string): Promise<void> {
     await this.collection.deleteMany({ reporterId });
-  }
-
-  private toIncident(doc: IncidentDoc): Incident {
-    const { _id, ...rest } = doc;
-    return { id: _id, ...rest };
   }
 }

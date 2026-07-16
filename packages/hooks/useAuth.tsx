@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useRef, useEffect, useCallback, type ReactNode } from "react";
+import { createContext, useContext, useState, useRef, useEffect, useCallback, useMemo, type ReactNode } from "react";
 
 export interface AuthUser {
   id: string;
@@ -179,19 +179,22 @@ export function AuthProvider({ children, authServiceUrl }: AuthProviderProps) {
     boot().finally(() => setIsLoading(false));
   }, [refresh, AUTH_SERVICE_URL]);
 
-  const value: AuthContextType = {
-    user,
-    // Derive from reactive state, not the token ref: a ref update never triggers a
-    // re-render, so `isAuthenticated` would only recompute incidentally. `setUser`
-    // co-fires with every token change (set on login/refresh, cleared on logout).
-    isAuthenticated: !!user,
-    isLoading,
-    authServiceUrl,
-    login,
-    logout,
-    refresh,
-    getAccessToken,
-  };
+  const value = useMemo<AuthContextType>(
+    () => ({
+      user,
+      // Derive from reactive state, not the token ref: a ref update never triggers a
+      // re-render, so `isAuthenticated` would only recompute incidentally. `setUser`
+      // co-fires with every token change (set on login/refresh, cleared on logout).
+      isAuthenticated: !!user,
+      isLoading,
+      authServiceUrl,
+      login,
+      logout,
+      refresh,
+      getAccessToken,
+    }),
+    [user, isLoading, authServiceUrl, login, logout, refresh, getAccessToken],
+  );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

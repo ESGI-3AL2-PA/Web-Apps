@@ -1,0 +1,25 @@
+import type { UserRole } from "./user-document.js";
+
+/**
+ * The access-token contract shared by the signer (auth-service `issue-tokens.ts`)
+ * and the verifier (api `auth.middleware.ts`). They live in different apps and had
+ * independently hardcoded these values plus the claim key set; a renamed/added claim
+ * wasn't caught until runtime. The signer/verifier *code* stays separate (correct);
+ * only the contract is shared.
+ */
+export const TOKEN_ISSUER = "auth-service";
+export const TOKEN_ALG = "RS256";
+/** Audience minted for a normal user access token. */
+export const TOKEN_AUDIENCE = "api";
+/** Audience minted for the short-lived internal service token (register flow). */
+export const TOKEN_AUDIENCE_INTERNAL = "api:internal";
+
+/** Custom claims carried in an access token, beyond the registered `sub`/`iss`/`aud`/`iat`/`exp`. */
+export interface AccessTokenClaims {
+  email: string;
+  role: UserRole;
+  firstName: string;
+  lastName: string;
+  /** District this user administers (admin role only); null otherwise. */
+  adminDistrictId: string | null;
+}
