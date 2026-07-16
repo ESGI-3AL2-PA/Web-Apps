@@ -177,6 +177,21 @@
       "confirm": "Envoyer un lien de réinitialisation à votre adresse e-mail ?",
       "sent": "Lien envoyé — vérifiez votre boîte de réception."
     },
+    "twoFactor": {
+      "title": "Authentification à deux facteurs",
+      "desc": "Ajoutez un code à usage unique d'une application d'authentification en plus de votre mot de passe.",
+      "on": "Activée",
+      "enable": "Activer la 2FA",
+      "disable": "Désactiver",
+      "confirmDisable": "Désactiver la 2FA",
+      "passwordLabel": "Confirmez votre mot de passe pour désactiver",
+      "scanHint": "Ajoutez ce compte à votre application d'authentification (Google Authenticator, Authy…) avec la clé ou le lien otpauth ci-dessous, puis saisissez le code à 6 chiffres affiché.",
+      "secret": "Clé de configuration",
+      "otpauth": "lien otpauth",
+      "codeLabel": "Code à 6 chiffres",
+      "verify": "Vérifier et activer",
+      "error": "Impossible de mettre à jour l'authentification à deux facteurs."
+    },
     "sessions": {
       "title": "Sessions actives",
       "desc": "Appareils actuellement connectés à votre compte.",

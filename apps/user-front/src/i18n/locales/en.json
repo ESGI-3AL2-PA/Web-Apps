@@ -177,6 +177,21 @@
       "confirm": "Send a password reset link to your email address?",
       "sent": "Reset link sent — check your inbox."
     },
+    "twoFactor": {
+      "title": "Two-factor authentication",
+      "desc": "Add a time-based one-time code from an authenticator app on top of your password.",
+      "on": "Enabled",
+      "enable": "Enable 2FA",
+      "disable": "Disable",
+      "confirmDisable": "Disable 2FA",
+      "passwordLabel": "Confirm your password to disable",
+      "scanHint": "Add this account to your authenticator app (Google Authenticator, Authy…) using the key or the otpauth link below, then enter the 6-digit code it shows.",
+      "secret": "Setup key",
+      "otpauth": "otpauth link",
+      "codeLabel": "6-digit code",
+      "verify": "Verify & enable",
+      "error": "Couldn't update two-factor authentication."
+    },
     "sessions": {
       "title": "Active sessions",
       "desc": "Devices currently signed in to your account.",
