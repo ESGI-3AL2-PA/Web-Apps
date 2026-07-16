@@ -9,6 +9,12 @@ services:
     environment:
       MONGO_INITDB_ROOT_USERNAME: root
       MONGO_INITDB_ROOT_PASSWORD: root
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
 
   # Unauthenticated Mongo admin UI on :8081 (dev only — the prod compose puts it
   # behind HTTP basic auth).
@@ -35,6 +41,12 @@ services:
       - neo4j_data:/data
     environment:
       NEO4J_AUTH: neo4j/password
+    healthcheck:
+      test: ["CMD-SHELL", "cypher-shell -u neo4j -p password 'RETURN 1'"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   # Local SMTP sink. Documenso requires an SMTP transport to boot; mailpit
   # accepts everything and exposes a web UI on 8025 so we can read the signing
@@ -306,6 +318,46 @@ services:
       VITE_ADMIN_URL: http://localhost:${ADMIN_PORT:-4000}
     depends_on:
       - auth-service
+
+  # One-shot: seed MongoDB + Neo4j with sample data, then exit. Idempotent (keyed on
+  # deterministic seed IDs), so it re-runs safely on every `up`. Reuses the api image.
+  api-seed:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      target: dev
+    restart: "no"
+    command: ["npx", "tsx", "apps/api/src/scripts/seed.ts"]
+    environment:
+      NODE_ENV: development
+      MONGODB_URL: mongodb://root:root@mongodb:27017
+      MONGODB_DB: db
+      NEO4J_URL: bolt://neo4j:7687
+      NEO4J_USER: neo4j
+      NEO4J_PASSWORD: password
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      neo4j:
+        condition: service_healthy
+
+  # One-shot: seed/promote the superAdmin account (idempotent, keyed on email).
+  auth-seed:
+    build:
+      context: .
+      dockerfile: apps/auth-service/Dockerfile
+      target: dev
+    restart: "no"
+    command: ["npx", "tsx", "apps/auth-service/src/seed-superadmin.ts"]
+    environment:
+      NODE_ENV: development
+      MONGODB_URL: mongodb://root:root@mongodb:27017
+      MONGODB_DB: db
+      SEED_SUPERADMIN_EMAIL: ${SEED_SUPERADMIN_EMAIL:-superadmin@local.dev}
+      SEED_SUPERADMIN_PASSWORD: ${SEED_SUPERADMIN_PASSWORD:-ChangeMe!2345}
+    depends_on:
+      mongodb:
+        condition: service_healthy
 
 volumes:
   mongodb_data:

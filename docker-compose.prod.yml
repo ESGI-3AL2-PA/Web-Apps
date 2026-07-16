@@ -161,6 +161,12 @@ services:
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME:?set in .env}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:?set in .env}
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
 
   mongo-express:
     image: mongo-express:1.0.2
@@ -187,6 +193,12 @@ services:
       - neo4j_data:/data
     environment:
       NEO4J_AUTH: neo4j/${NEO4J_PASSWORD:?set in .env}
+    healthcheck:
+      test: ["CMD-SHELL", 'cypher-shell -u neo4j -p "${NEO4J_PASSWORD}" ''RETURN 1''']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   # S3-compatible object storage shared by the core app (voice messages, listing
   # images) and Documenso.
@@ -276,6 +288,46 @@ services:
       NEXT_PRIVATE_SMTP_FROM_ADDRESS: ${FROM_EMAIL:?set in .env}
       NEXT_PRIVATE_SIGNING_LOCAL_FILE_PATH: /opt/documenso/cert.p12
       NEXT_PRIVATE_SIGNING_PASSPHRASE: ${DOCUMENSO_SIGNING_PASSPHRASE:-}
+
+  # One-shot: seed MongoDB + Neo4j with sample data, then exit. Idempotent; re-runs
+  # safely on every `up`. Reuses the api image.
+  api-seed:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      target: prod
+    restart: "no"
+    command: ["npx", "tsx", "apps/api/src/scripts/seed.ts"]
+    environment:
+      NODE_ENV: production
+      MONGODB_URL: mongodb://${MONGO_ROOT_USERNAME:?set in .env}:${MONGO_ROOT_PASSWORD:?set in .env}@mongodb:27017
+      MONGODB_DB: ${MONGODB_DB:-db}
+      NEO4J_URL: bolt://neo4j:7687
+      NEO4J_USER: neo4j
+      NEO4J_PASSWORD: ${NEO4J_PASSWORD:?set in .env}
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      neo4j:
+        condition: service_healthy
+
+  # One-shot: seed/promote the superAdmin account (idempotent, keyed on email).
+  auth-seed:
+    build:
+      context: .
+      dockerfile: apps/auth-service/Dockerfile
+      target: prod
+    restart: "no"
+    command: ["npx", "tsx", "apps/auth-service/src/seed-superadmin.ts"]
+    environment:
+      NODE_ENV: production
+      MONGODB_URL: mongodb://${MONGO_ROOT_USERNAME:?set in .env}:${MONGO_ROOT_PASSWORD:?set in .env}@mongodb:27017
+      MONGODB_DB: ${MONGODB_DB:-db}
+      SEED_SUPERADMIN_EMAIL: ${SEED_SUPERADMIN_EMAIL:-superadmin@local.dev}
+      SEED_SUPERADMIN_PASSWORD: ${SEED_SUPERADMIN_PASSWORD:?set in .env}
+    depends_on:
+      mongodb:
+        condition: service_healthy
 
 volumes:
   mongodb_data:
