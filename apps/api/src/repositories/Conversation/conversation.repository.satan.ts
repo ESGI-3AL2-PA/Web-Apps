@@ -61,7 +61,7 @@ export class SatanConversationRepository implements IConversationRepository {
   attachMedia(id: string, mediaUrl: string, type: Message["type"]): Promise<Message | null> {
     return this.mongo.attachMedia(id, mediaUrl, type);
   }
-  deleteUserMessages(userId: string): Promise<string[]> {
+  deleteUserMessages(userId: string): Promise<{ audioIds: string[]; imageIds: string[] }> {
     return this.mongo.deleteUserMessages(userId);
   }
 }

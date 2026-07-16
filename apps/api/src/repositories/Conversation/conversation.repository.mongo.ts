@@ -131,13 +131,16 @@ export class MongoConversationRepository implements IConversationRepository {
     await this.messages.deleteOne({ _id: id });
   }
 
-  async deleteUserMessages(userId: string): Promise<string[]> {
-    const audioDocs = await this.messages
-      .find({ senderId: userId, type: "audio" }, { projection: { _id: 1 } })
+  async deleteUserMessages(userId: string): Promise<{ audioIds: string[]; imageIds: string[] }> {
+    // Collect the media message ids (audio + image) before the rows are gone, so their
+    // stored objects can be removed too. Both are private, keyed by message id.
+    const mediaDocs = await this.messages
+      .find({ senderId: userId, type: { $in: ["audio", "image"] } }, { projection: { _id: 1, type: 1 } })
       .toArray();
-    const audioIds = audioDocs.map((d) => d._id);
+    const audioIds = mediaDocs.filter((d) => d.type === "audio").map((d) => d._id);
+    const imageIds = mediaDocs.filter((d) => d.type === "image").map((d) => d._id);
     await this.messages.deleteMany({ senderId: userId });
-    return audioIds;
+    return { audioIds, imageIds };
   }
 
   private toConversation(doc: ConversationDoc): Conversation {

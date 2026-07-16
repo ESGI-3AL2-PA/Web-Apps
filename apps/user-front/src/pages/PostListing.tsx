@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import type { CreateListingDto, ListingType, TagResponseDto } from "@repo/contracts";
+import type { CreateListingDto, TagResponseDto } from "@repo/contracts";
 import { createListing } from "../api-service/listings.service";
 import { getTags } from "../api-service/tags.service";
 import { tagLabel } from "../lib/tag-label";
@@ -11,7 +11,6 @@ export default function PostListing() {
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
   const [tags, setTags] = useState<TagResponseDto[]>([]);
-  const [type, setType] = useState<ListingType>("offer");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState("");
@@ -46,7 +45,6 @@ export default function PostListing() {
       const body: CreateListingDto = {
         title: title.trim(),
         description: description.trim(),
-        type,
         price: Number(price) || 0,
         ...(tag ? { tags: [tag] } : {}),
         ...(images.length ? { images } : {}),
@@ -66,47 +64,9 @@ export default function PostListing() {
   return (
     <div className="mx-auto max-w-2xl">
       <h1 className="mb-6 text-2xl font-extrabold text-base-content">{t("post.title")}</h1>
-      <form
-        onSubmit={onSubmit}
-        className="space-y-5 rounded-xl border border-base-content/10 bg-base-100 p-6"
-      >
-        <fieldset>
-          <legend className="mb-1 block text-sm font-semibold text-base-content/80">
-            {t("post.typeLabel")}
-          </legend>
-          <div
-            role="radiogroup"
-            aria-label={t("post.typeLabel")}
-            className="grid grid-cols-2 gap-1 rounded-lg border border-base-content/20 p-1"
-          >
-            {(["offer", "request"] as const).map((value) => {
-              const active = type === value;
-              return (
-                <button
-                  key={value}
-                  type="button"
-                  role="radio"
-                  aria-checked={active}
-                  onClick={() => setType(value)}
-                  className={`rounded-md px-3 py-2 text-sm font-semibold transition-colors ${
-                    active
-                      ? "bg-primary text-primary-content"
-                      : "text-base-content/80 hover:bg-base-200"
-                  }`}
-                >
-                  {t(`post.type_${value}`)}
-                </button>
-              );
-            })}
-          </div>
-          <p className="mt-1 text-xs text-base-content/60">{t(`post.typeHint_${type}`)}</p>
-        </fieldset>
-
+      <form onSubmit={onSubmit} className="space-y-5 rounded-xl border border-base-content/10 bg-base-100 p-6">
         <div>
-          <label
-            htmlFor="post-title"
-            className="mb-1 block text-sm font-semibold text-base-content/80"
-          >
+          <label htmlFor="post-title" className="mb-1 block text-sm font-semibold text-base-content/80">
             {t("post.fieldTitle")}
           </label>
           <input
@@ -116,17 +76,14 @@ export default function PostListing() {
             required
             maxLength={300}
             className={field}
-            placeholder={t(`post.titlePlaceholder_${type}`)}
+            placeholder={t("post.titlePlaceholder")}
             aria-invalid={error ? true : undefined}
             aria-describedby={error ? "post-error" : undefined}
           />
         </div>
 
         <div>
-          <label
-            htmlFor="post-price"
-            className="mb-1 block text-sm font-semibold text-base-content/80"
-          >
+          <label htmlFor="post-price" className="mb-1 block text-sm font-semibold text-base-content/80">
             {t("post.pricePoints")}
           </label>
           <input
@@ -142,10 +99,7 @@ export default function PostListing() {
         </div>
 
         <div>
-          <label
-            htmlFor="post-category"
-            className="mb-1 block text-sm font-semibold text-base-content/80"
-          >
+          <label htmlFor="post-category" className="mb-1 block text-sm font-semibold text-base-content/80">
             {t("post.category")}
           </label>
           <select id="post-category" value={tag} onChange={(e) => setTag(e.target.value)} className={field}>
@@ -159,10 +113,7 @@ export default function PostListing() {
         </div>
 
         <div>
-          <label
-            htmlFor="post-description"
-            className="mb-1 block text-sm font-semibold text-base-content/80"
-          >
+          <label htmlFor="post-description" className="mb-1 block text-sm font-semibold text-base-content/80">
             {t("post.description")}
           </label>
           <textarea
@@ -172,15 +123,12 @@ export default function PostListing() {
             required
             rows={5}
             className={field}
-            placeholder={t(`post.descriptionPlaceholder_${type}`)}
+            placeholder={t("post.descriptionPlaceholder")}
           />
         </div>
 
         <div>
-          <label
-            htmlFor="post-photos"
-            className="mb-1 block text-sm font-semibold text-base-content/80"
-          >
+          <label htmlFor="post-photos" className="mb-1 block text-sm font-semibold text-base-content/80">
             {t("post.photos")}
           </label>
           <input

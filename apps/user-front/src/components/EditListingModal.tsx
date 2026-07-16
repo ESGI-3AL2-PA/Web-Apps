@@ -25,7 +25,6 @@ export default function EditListingModal({
   const [description, setDescription] = useState(listing.description);
   const [price, setPrice] = useState(String(listing.price));
   const [tag, setTag] = useState(listing.tags?.[0] ?? "");
-  const [type, setType] = useState(listing.type);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -43,7 +42,6 @@ export default function EditListingModal({
       const body: UpdateListingDto = {
         title: title.trim(),
         description: description.trim(),
-        type,
         price: Number(price) || 0,
         tags: tag ? [tag] : [],
       };
@@ -100,21 +98,6 @@ export default function EditListingModal({
               className={field}
               placeholder={t("post.titlePlaceholder")}
             />
-          </div>
-
-          <div>
-            <label htmlFor="edit-type" className={labelCls}>
-              {t("myListings.fieldType")}
-            </label>
-            <select
-              id="edit-type"
-              value={type}
-              onChange={(e) => setType(e.target.value as ListingResponseDto["type"])}
-              className={field}
-            >
-              <option value="offer">{t("myListings.typeOffer")}</option>
-              <option value="request">{t("myListings.typeRequest")}</option>
-            </select>
           </div>
 
           <div>

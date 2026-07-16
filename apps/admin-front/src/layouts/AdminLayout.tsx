@@ -11,6 +11,8 @@ interface NavItem {
   // i18n key under `nav.*`
   label: string;
   icon: string;
+  // Only shown to superAdmin (privilege-escalation surfaces).
+  superAdmin?: boolean;
 }
 
 // `section` and `label` hold i18n keys, resolved at render (this array is module-scoped and can't
@@ -25,6 +27,7 @@ const NAV: { section: string; items: NavItem[] }[] = [
     items: [
       { to: "/users", label: "nav.users", icon: "icon-[tabler--users]" },
       { to: "/districts", label: "nav.districts", icon: "icon-[tabler--map-2]" },
+      { to: "/district-admins", label: "nav.districtAdmins", icon: "icon-[tabler--shield-lock]", superAdmin: true },
       { to: "/tags", label: "nav.tags", icon: "icon-[tabler--tags]" },
       { to: "/incidents", label: "nav.incidents", icon: "icon-[tabler--alert-triangle]" },
     ],
@@ -33,6 +36,7 @@ const NAV: { section: string; items: NavItem[] }[] = [
     section: "nav.moderation",
     items: [
       { to: "/listings", label: "nav.listings", icon: "icon-[tabler--clipboard-list]" },
+      { to: "/disputes", label: "nav.disputes", icon: "icon-[tabler--gavel]" },
       { to: "/events", label: "nav.events", icon: "icon-[tabler--calendar-event]" },
       { to: "/votes", label: "nav.votes", icon: "icon-[tabler--checkbox]" },
     ],
@@ -80,22 +84,24 @@ export default function AdminLayout() {
               {t(group.section)}
             </p>
             <ul className="menu p-0 gap-0.5">
-              {group.items.map((item) => (
-                <li key={item.to}>
-                  <NavLink
-                    to={item.to}
-                    end={item.to === "/"}
-                    className={({ isActive }) =>
-                      `flex items-center gap-2 rounded-btn px-3 py-2 text-sm ${
-                        isActive ? "bg-primary/10 text-primary font-medium" : "hover:bg-base-200"
-                      }`
-                    }
-                  >
-                    <span className={`${item.icon} size-5`} />
-                    {t(item.label)}
-                  </NavLink>
-                </li>
-              ))}
+              {group.items
+                .filter((item) => !item.superAdmin || isSuperAdmin)
+                .map((item) => (
+                  <li key={item.to}>
+                    <NavLink
+                      to={item.to}
+                      end={item.to === "/"}
+                      className={({ isActive }) =>
+                        `flex items-center gap-2 rounded-btn px-3 py-2 text-sm ${
+                          isActive ? "bg-primary/10 text-primary font-medium" : "hover:bg-base-200"
+                        }`
+                      }
+                    >
+                      <span className={`${item.icon} size-5`} />
+                      {t(item.label)}
+                    </NavLink>
+                  </li>
+                ))}
             </ul>
           </div>
         ))}

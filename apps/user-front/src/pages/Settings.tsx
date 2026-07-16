@@ -4,6 +4,7 @@ import { useAuth } from "@repo/hooks";
 import type { SessionResponseDto } from "@repo/contracts";
 import { getSessions, revokeOtherSessions, revokeSession } from "../api-service/sessions.service";
 import { deleteAccount, exportMyData, requestPasswordReset } from "../api-service/account.service";
+import { confirmTotp, disableTotp, enrollTotp } from "../api-service/totp.service";
 import { formatRelative } from "../lib/format";
 import { getTheme, setTheme, type Theme } from "../lib/theme";
 import { useDialog } from "../components/dialog-context";
@@ -41,6 +42,132 @@ function Card({ title, description, children }: { title: string; description?: s
       {description && <p className="mt-1 text-sm text-base-content/60">{description}</p>}
       <div className="mt-4">{children}</div>
     </section>
+  );
+}
+
+// 2FA (TOTP) enrollment: enable = enroll → show the secret/otpauth URI to add to an
+// authenticator → confirm a 6-digit code; disable = re-enter the password. The auth
+// endpoints live on the auth-service (totp.service).
+function TwoFactorCard({ token, initialEnabled }: { token: () => Promise<string | null>; initialEnabled: boolean }) {
+  const { t } = useTranslation();
+  const [enabled, setEnabled] = useState(initialEnabled);
+  const [enroll, setEnroll] = useState<{ secret: string; url: string } | null>(null);
+  const [code, setCode] = useState("");
+  const [disarming, setDisarming] = useState(false);
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const withTok = async (fn: (tok: string) => Promise<void>) => {
+    setBusy(true);
+    setError(null);
+    try {
+      const tok = await token();
+      if (!tok) throw new Error(t("settings.twoFactor.error"));
+      await fn(tok);
+    } catch (e) {
+      setError((e as Error).message || t("settings.twoFactor.error"));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const beginEnroll = () =>
+    withTok(async (tok) => {
+      const r = await enrollTotp(tok);
+      setEnroll({ secret: r.secret, url: r.otpauth_url });
+    });
+  const confirm = () =>
+    withTok(async (tok) => {
+      await confirmTotp(tok, code);
+      setEnabled(true);
+      setEnroll(null);
+      setCode("");
+    });
+  const disable = () =>
+    withTok(async (tok) => {
+      await disableTotp(tok, password);
+      setEnabled(false);
+      setDisarming(false);
+      setPassword("");
+    });
+
+  return (
+    <Card title={t("settings.twoFactor.title")} description={t("settings.twoFactor.desc")}>
+      {error && (
+        <p role="alert" className="mb-3 text-sm text-error">
+          {error}
+        </p>
+      )}
+
+      {enabled ? (
+        disarming ? (
+          <div className="space-y-3">
+            <label className="block text-sm font-medium">
+              {t("settings.twoFactor.passwordLabel")}
+              <input
+                type="password"
+                className="input mt-1 w-full"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoComplete="current-password"
+              />
+            </label>
+            <div className="flex gap-2">
+              <button className="btn btn-error" disabled={busy || !password} onClick={disable}>
+                {t("settings.twoFactor.confirmDisable")}
+              </button>
+              <button className="btn btn-soft" disabled={busy} onClick={() => setDisarming(false)}>
+                {t("common.cancel")}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-center justify-between gap-3">
+            <span className="badge badge-soft badge-success gap-1">
+              <span className="icon-[tabler--shield-check] size-4" />
+              {t("settings.twoFactor.on")}
+            </span>
+            <button className="btn btn-soft btn-sm" onClick={() => setDisarming(true)}>
+              {t("settings.twoFactor.disable")}
+            </button>
+          </div>
+        )
+      ) : enroll ? (
+        <div className="space-y-3">
+          <p className="text-sm text-base-content/70">{t("settings.twoFactor.scanHint")}</p>
+          <div className="rounded-box bg-base-200/60 p-3">
+            <p className="text-xs text-base-content/50">{t("settings.twoFactor.secret")}</p>
+            <code className="break-all text-sm font-semibold">{enroll.secret}</code>
+            <p className="mt-2 text-xs text-base-content/50">{t("settings.twoFactor.otpauth")}</p>
+            <code className="break-all text-xs text-base-content/70">{enroll.url}</code>
+          </div>
+          <label className="block text-sm font-medium">
+            {t("settings.twoFactor.codeLabel")}
+            <input
+              inputMode="numeric"
+              maxLength={6}
+              className="input mt-1 w-40 tracking-[0.3em]"
+              value={code}
+              onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
+              placeholder="000000"
+            />
+          </label>
+          <div className="flex gap-2">
+            <button className="btn btn-primary" disabled={busy || code.length !== 6} onClick={confirm}>
+              {t("settings.twoFactor.verify")}
+            </button>
+            <button className="btn btn-soft" disabled={busy} onClick={() => setEnroll(null)}>
+              {t("common.cancel")}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button className="btn btn-primary" disabled={busy} onClick={beginEnroll}>
+          {t("settings.twoFactor.enable")}
+        </button>
+      )}
+    </Card>
   );
 }
 
@@ -207,6 +334,9 @@ export default function Settings() {
           </button>
         )}
       </Card>
+
+      {/* Two-factor authentication */}
+      <TwoFactorCard token={token} initialEnabled={!!user?.totpEnabled} />
 
       {/* Active sessions */}
       <Card title={t("settings.sessions.title")} description={t("settings.sessions.desc")}>

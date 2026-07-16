@@ -1,9 +1,9 @@
-import { useState, type ReactNode } from "react";
+import { useState, type FormEvent, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@repo/hooks";
-import type { EventResponseDto, EventStatus } from "@repo/contracts";
+import type { CreateEventDto, EventResponseDto, EventStatus, UpdateEventDto } from "@repo/contracts";
 import { useScopedList } from "../../hooks/useScopedList";
-import { deleteEvent, listEvents } from "../../api-service/events";
+import { createEvent, deleteEvent, listEvents, updateEvent } from "../../api-service/events";
 import { DataTable, type Column } from "../../components/DataTable";
 import { Pagination } from "../../components/Pagination";
 import { Toolbar } from "../../components/Toolbar";
@@ -11,6 +11,7 @@ import { StatusBadge } from "../../components/StatusBadge";
 import { UserName } from "../../components/UserName";
 import { FormModal } from "../../components/FormModal";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
+import { Field } from "../../components/Field";
 import { useToast } from "../../components/Toast";
 import { useAsyncAction } from "../../hooks/useAsyncAction";
 import { useDistrictScope } from "../../app/DistrictScopeProvider";
@@ -28,6 +29,8 @@ export default function EventsList() {
   const del = useAsyncAction();
   const [viewing, setViewing] = useState<EventResponseDto | null>(null);
   const [deleting, setDeleting] = useState<EventResponseDto | null>(null);
+  const [editing, setEditing] = useState<EventResponseDto | null>(null);
+  const [creating, setCreating] = useState(false);
 
   const columns: Column<EventResponseDto>[] = [
     { header: t("common.fields.title"), cell: (e) => e.title },
@@ -39,7 +42,17 @@ export default function EventsList() {
 
   return (
     <div className="space-y-2">
-      <h1 className="text-2xl font-semibold">{t("events.title")}</h1>
+      <div className="flex items-center justify-between gap-2">
+        <h1 className="text-2xl font-semibold">{t("events.title")}</h1>
+        <button
+          className="btn btn-sm btn-primary"
+          disabled={!scope.districtId}
+          title={scope.districtId ? undefined : t("nav.noDistrict")}
+          onClick={() => setCreating(true)}
+        >
+          {t("events.create")}
+        </button>
+      </div>
       <Toolbar
         search={list.search}
         onSearchChange={list.setSearch}
@@ -64,6 +77,9 @@ export default function EventsList() {
           <div className="flex justify-end gap-1">
             <button className="btn btn-xs btn-text" onClick={() => setViewing(e)}>
               {t("common.actions.view")}
+            </button>
+            <button className="btn btn-xs btn-text" onClick={() => setEditing(e)}>
+              {t("common.actions.edit")}
             </button>
             {isSuperAdmin && (
               <button className="btn btn-xs btn-text btn-error" onClick={() => setDeleting(e)}>
@@ -92,6 +108,29 @@ export default function EventsList() {
             <p className="text-sm whitespace-pre-wrap">{viewing.description}</p>
           </div>
         </FormModal>
+      )}
+      {creating && scope.districtId && (
+        <EventForm
+          districtId={scope.districtId}
+          onClose={() => setCreating(false)}
+          onSaved={() => {
+            setCreating(false);
+            toast.show(t("events.created"));
+            list.refetch();
+          }}
+        />
+      )}
+      {editing && (
+        <EventForm
+          event={editing}
+          districtId={editing.districtId}
+          onClose={() => setEditing(null)}
+          onSaved={() => {
+            setEditing(null);
+            toast.show(t("events.updated"));
+            list.refetch();
+          }}
+        />
       )}
       <ConfirmDialog
         open={!!deleting}
@@ -122,5 +161,123 @@ function Info({ label, value }: { label: string; value: ReactNode }) {
       <p className="text-xs text-base-content/50">{label}</p>
       <p className="break-words">{value}</p>
     </div>
+  );
+}
+
+// datetime-local <-> ISO helpers. The input speaks local "YYYY-MM-DDTHH:mm"; the API speaks ISO.
+const toLocalInput = (iso: string): string => {
+  const d = new Date(iso);
+  const off = d.getTimezoneOffset();
+  return new Date(d.getTime() - off * 60_000).toISOString().slice(0, 16);
+};
+
+function EventForm({
+  event,
+  districtId,
+  onClose,
+  onSaved,
+}: {
+  event?: EventResponseDto;
+  districtId: string;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const { t } = useTranslation();
+  const [title, setTitle] = useState(event?.title ?? "");
+  const [description, setDescription] = useState(event?.description ?? "");
+  const [location, setLocation] = useState(event?.location ?? "");
+  const [totalSeats, setTotalSeats] = useState(String(event?.totalSeats ?? 20));
+  const [eventDate, setEventDate] = useState(event ? toLocalInput(event.eventDate) : "");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
+    setError(null);
+    try {
+      const iso = new Date(eventDate).toISOString();
+      if (event) {
+        const body: UpdateEventDto = {
+          title: title.trim(),
+          description: description.trim(),
+          location: location.trim(),
+          totalSeats: Number(totalSeats) || 1,
+          eventDate: iso,
+        };
+        await updateEvent(event.id, body);
+      } else {
+        const body: CreateEventDto = {
+          districtId,
+          title: title.trim(),
+          description: description.trim(),
+          location: location.trim(),
+          totalSeats: Number(totalSeats) || 1,
+          eventDate: iso,
+        };
+        await createEvent(body);
+      }
+      onSaved();
+    } catch (err: unknown) {
+      const e2 = err as { response?: { data?: { message?: string } }; message?: string };
+      setError(e2?.response?.data?.message ?? e2?.message ?? t("common.states.failedToSave"));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <FormModal
+      open
+      title={event ? t("events.editTitle") : t("events.create")}
+      onClose={onClose}
+      onSubmit={handleSubmit}
+      submitting={submitting}
+      error={error}
+      size="lg"
+    >
+      <Field label={t("common.fields.title")}>
+        <input className="input" value={title} onChange={(e) => setTitle(e.target.value)} required maxLength={300} />
+      </Field>
+      <Field label={t("common.fields.location")}>
+        <input
+          className="input"
+          value={location}
+          onChange={(e) => setLocation(e.target.value)}
+          required
+          maxLength={500}
+        />
+      </Field>
+      <div className="grid grid-cols-2 gap-3">
+        <Field label={t("events.eventDate")}>
+          <input
+            className="input"
+            type="datetime-local"
+            value={eventDate}
+            onChange={(e) => setEventDate(e.target.value)}
+            required
+          />
+        </Field>
+        <Field label={t("common.fields.seats")}>
+          <input
+            className="input"
+            type="number"
+            min={1}
+            value={totalSeats}
+            onChange={(e) => setTotalSeats(e.target.value)}
+            required
+          />
+        </Field>
+      </div>
+      <Field label={t("common.fields.description")}>
+        <textarea
+          className="textarea"
+          rows={4}
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          required
+        />
+      </Field>
+    </FormModal>
   );
 }

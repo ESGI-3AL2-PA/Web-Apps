@@ -6,11 +6,6 @@ import { sendVerificationEmailUseCase } from "./send-verification-email.use-case
 
 const API_URL = process.env.API_URL || "http://localhost:3000";
 
-// Current version of the Terms of Service / Privacy Policy. Bump this whenever the
-// policies change so the consent record captures exactly which text the user accepted
-// (GDPR Art. 7 — consent must be demonstrable and tied to a specific version).
-export const TERMS_VERSION = "2026-07-01";
-
 type Lang = "fr" | "en";
 
 interface RegisterInput {
@@ -20,7 +15,6 @@ interface RegisterInput {
   phone?: string;
   password: string;
   address: string;
-  acceptedTerms: boolean;
   lang?: Lang;
 }
 
@@ -36,14 +30,10 @@ const langFromAcceptLanguage = (header?: string): Lang => {
   return "fr";
 };
 
-export type RegisterResult = "ok" | "email-taken" | "terms-not-accepted";
+export type RegisterResult = "ok" | "email-taken";
 
 export const registerUseCase = (userReader: IUserReaderRepository, authTokenRepo: IAuthTokenRepository) => {
   return async (data: RegisterInput, acceptLanguage?: string): Promise<RegisterResult> => {
-    // Consent gate: registration requires explicit, affirmative acceptance (GDPR Art. 6/7).
-    // The contract already enforces `acceptedTerms === true`; this is defence in depth.
-    if (data.acceptedTerms !== true) return "terms-not-accepted";
-
     const existing = await userReader.findByEmail(data.email);
     if (existing) return "email-taken";
 
@@ -62,19 +52,10 @@ export const registerUseCase = (userReader: IUserReaderRepository, authTokenRepo
       .setExpirationTime("30s")
       .sign(getPrivateKey());
 
-    // Record the consent alongside the account: drop the transport-only `acceptedTerms`
-    // flag and persist a timestamped, versioned consent record on the user.
-    const { acceptedTerms: _acceptedTerms, ...userData } = data;
-    const createUserBody = {
-      ...userData,
-      acceptedTermsAt: new Date().toISOString(),
-      termsVersion: TERMS_VERSION,
-    };
-
     const apiRes = await fetch(`${API_URL}/users`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${serviceToken}` },
-      body: JSON.stringify({ ...createUserBody, lang }),
+      body: JSON.stringify({ ...data, lang }),
     });
 
     if (!apiRes.ok) {

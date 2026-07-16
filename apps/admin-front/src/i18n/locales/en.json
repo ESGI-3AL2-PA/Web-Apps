@@ -96,10 +96,6 @@
     "admin": "Admin",
     "superAdmin": "Super admin"
   },
-  "type": {
-    "offer": "Offer",
-    "request": "Request"
-  },
   "nav": {
     "overview": "Overview",
     "community": "Community",
@@ -109,7 +105,9 @@
     "districts": "Districts",
     "tags": "Tags",
     "incidents": "Incidents",
+    "districtAdmins": "District admins",
     "listings": "Listings",
+    "disputes": "Disputes",
     "events": "Events",
     "votes": "Votes",
     "adminConsole": "Admin Console",
@@ -151,6 +149,22 @@
     "unbanned": "User unbanned",
     "recentTransactions": "Recent transactions",
     "noTransactions": "No transactions"
+  },
+  "districtAdmins": {
+    "title": "District admins",
+    "subtitle": "Grant or revoke admin rights over a district. District admins moderate content and resolve disputes in their district.",
+    "district": "District",
+    "user": "User",
+    "userHint": "Search by name and pick the user to promote.",
+    "chooseDistrict": "— Choose a district —",
+    "grant": "Grant",
+    "granting": "Granting…",
+    "granted": "District admin granted",
+    "revoke": "Revoke",
+    "revoked": "District admin revoked",
+    "revokeTitle": "Revoke district admin",
+    "revokeMessage": "Revoke this user's admin rights over {{district}}?",
+    "empty": "No district admins assigned yet."
   },
   "districts": {
     "title": "District",
@@ -206,6 +220,22 @@
     "deleteMessage": "Delete listing \"{{title}}\"?",
     "deleted": "Listing deleted"
   },
+  "disputes": {
+    "title": "Disputes",
+    "subtitle": "Contracts a party has disputed. Resolving settles the held escrow.",
+    "empty": "No disputed contracts in this district.",
+    "provider": "Provider",
+    "beneficiary": "Beneficiary",
+    "reason": "Reason",
+    "resolve": "Resolve",
+    "resolved": "Dispute resolved",
+    "resolveTitle": "Resolve dispute",
+    "resolution": "Settlement",
+    "release": "Release to provider",
+    "refund": "Refund to beneficiary",
+    "releaseHint": "The held points go to the provider — the service is considered delivered.",
+    "refundHint": "The held points are returned to the beneficiary — the service is considered not delivered."
+  },
   "events": {
     "title": "Events",
     "searchPlaceholder": "Search events…",
@@ -213,7 +243,11 @@
     "deleteMessage": "Delete event \"{{title}}\"?",
     "deleted": "Event deleted",
     "eventDate": "Event date",
-    "registrants": "Registrants"
+    "registrants": "Registrants",
+    "create": "New event",
+    "created": "Event created",
+    "updated": "Event updated",
+    "editTitle": "Edit event"
   },
   "votes": {
     "title": "Votes",
@@ -226,6 +260,17 @@
     "resultsCount": "({{count}} responses)",
     "loadResultsFailed": "Failed to load results",
     "start": "Start",
-    "end": "End"
+    "end": "End",
+    "create": "New poll",
+    "created": "Poll created",
+    "updated": "Poll updated",
+    "editTitle": "Edit poll",
+    "addOption": "Add option",
+    "optionPlaceholder": "Option {{n}}",
+    "needTwoOptions": "Add at least two options."
+  },
+  "voteType": {
+    "single_choice": "Single choice",
+    "multiple_choice": "Multiple choice"
   }
 }

@@ -116,7 +116,7 @@ export class Neo4jGraphRepository implements IGraphRepository {
   async upsertListing(node: ListingNode): Promise<void> {
     await this.run(
       `MERGE (l:Listing {listingId: $id})
-       SET l.type = $type, l.category = $category`,
+       SET l.category = $category`,
       { ...node, category: node.category ?? null },
     );
   }

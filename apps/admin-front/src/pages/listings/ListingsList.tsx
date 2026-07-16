@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@repo/hooks";
-import type { ListingResponseDto, ListingStatus, ListingType } from "@repo/contracts";
+import type { ListingResponseDto, ListingStatus } from "@repo/contracts";
 import { useScopedList } from "../../hooks/useScopedList";
 import { deleteListing, listListings } from "../../api-service/listings";
 import { DataTable, type Column } from "../../components/DataTable";
@@ -16,7 +16,6 @@ import { useAsyncAction } from "../../hooks/useAsyncAction";
 import { useDistrictScope } from "../../app/DistrictScopeProvider";
 import { formatDate, formatTokens } from "../../lib/format";
 
-const TYPES: ListingType[] = ["offer", "request"];
 const STATUSES: ListingStatus[] = ["active", "closed", "expired"];
 
 export default function ListingsList() {
@@ -32,7 +31,6 @@ export default function ListingsList() {
 
   const columns: Column<ListingResponseDto>[] = [
     { header: t("common.fields.title"), cell: (l) => l.title },
-    { header: t("common.fields.type"), cell: (l) => <StatusBadge value={l.type} /> },
     { header: t("common.fields.status"), cell: (l) => <StatusBadge value={l.status} /> },
     { header: t("common.fields.price"), cell: (l) => formatTokens(l.price) },
     { header: t("common.fields.author"), cell: (l) => <UserName id={l.authorId} /> },
@@ -47,13 +45,6 @@ export default function ListingsList() {
         onSearchChange={list.setSearch}
         searchPlaceholder={t("listings.searchPlaceholder")}
         filters={[
-          {
-            key: "type",
-            label: t("common.fields.type"),
-            value: list.filters.type ?? "",
-            options: TYPES.map((ty) => ({ value: ty, label: t(`type.${ty}`) })),
-            onChange: (v) => list.setFilter("type", v),
-          },
           {
             key: "status",
             label: t("common.fields.status"),
@@ -87,7 +78,6 @@ export default function ListingsList() {
       {viewing && (
         <FormModal open title={viewing.title} onClose={() => setViewing(null)} readOnly size="lg">
           <div className="grid grid-cols-2 gap-3 text-sm">
-            <Info label={t("common.fields.type")} value={t(`type.${viewing.type}`, viewing.type)} />
             <Info label={t("common.fields.status")} value={t(`status.${viewing.status}`, viewing.status)} />
             <Info label={t("common.fields.price")} value={formatTokens(viewing.price)} />
             <Info label={t("common.fields.author")} value={<UserName id={viewing.authorId} />} />

@@ -27,10 +27,9 @@ export class SatanListingRepository implements IListingRepository {
   }
 
   getListings(params: Parameters<IListingRepository["getListings"]>[0]) {
-    const { search, type, status, districtId, authorId, tag, page = 1, limit = 20 } = params;
+    const { search, status, districtId, authorId, tag, page = 1, limit = 20 } = params;
     const clause = where([
       search && containsAny(["title", "description"], search),
-      type && eq("type", type),
       status && eq("status", status),
       districtId && eq("districtId", districtId),
       authorId && eq("authorId", authorId),

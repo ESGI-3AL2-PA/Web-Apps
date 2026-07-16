@@ -126,9 +126,19 @@ export default function Messages() {
       setMessages([]);
       return;
     }
+    // Guard against a slow response for a previous conversation resolving after the user
+    // has switched — without this, thread A's messages can render under thread B.
+    let ignore = false;
     getMessages(conversationId, { limit: 100 })
-      .then(setMessages)
-      .catch(() => setMessages([]));
+      .then((m) => {
+        if (!ignore) setMessages(m);
+      })
+      .catch(() => {
+        if (!ignore) setMessages([]);
+      });
+    return () => {
+      ignore = true;
+    };
   }, [conversationId]);
 
   // Read receipts: mark messages from others as read once, when they're in view.

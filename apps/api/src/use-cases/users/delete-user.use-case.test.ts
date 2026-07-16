@@ -23,7 +23,7 @@ const makeDeps = (overrides: {
       deleteUser: vi.fn(overrides.deleteUser),
     },
     graphRepository: { deleteUser: vi.fn(overrides.graphDeleteUser) },
-    conversationRepository: { deleteUserMessages: vi.fn(async () => []) },
+    conversationRepository: { deleteUserMessages: vi.fn(async () => ({ audioIds: [], imageIds: [] })) },
     voteRepository: { deleteUserResponses: vi.fn(async () => {}) },
     notificationRepository: { deleteByRecipient: vi.fn(async () => {}) },
     listingRepository: {
@@ -35,7 +35,10 @@ const makeDeps = (overrides: {
       removeUserFromAllEvents: vi.fn(async () => {}),
       deleteUserInteractions: vi.fn(async () => {}),
     },
-    incidentRepository: { deleteByReporter: vi.fn(async () => {}) },
+    incidentRepository: {
+      getIncidents: vi.fn(async () => ({ data: [] })),
+      deleteByReporter: vi.fn(async () => {}),
+    },
     transactionRepository: { pseudonymiseUser: vi.fn(async () => {}) },
     contractRepository: { getContracts: vi.fn(async () => ({ data: [] })) },
     documenso: { deleteDocument: vi.fn(async () => {}) },

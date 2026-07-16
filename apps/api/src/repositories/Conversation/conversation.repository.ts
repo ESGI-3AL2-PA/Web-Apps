@@ -40,5 +40,8 @@ export interface IConversationRepository {
 
   /** Delete every message sent by a user (account deletion). Returns the ids of the
    *  deleted audio messages so the caller can remove their media files. */
-  deleteUserMessages(userId: string): Promise<string[]>;
+  // Deletes all of the user's messages and returns the ids of those whose media object
+  // must also be removed from storage, split by kind (audio vs image live in different
+  // buckets and use different delete calls).
+  deleteUserMessages(userId: string): Promise<{ audioIds: string[]; imageIds: string[] }>;
 }

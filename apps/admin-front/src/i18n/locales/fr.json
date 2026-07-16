@@ -96,10 +96,6 @@
     "admin": "Admin",
     "superAdmin": "Super admin"
   },
-  "type": {
-    "offer": "Offre",
-    "request": "Demande"
-  },
   "nav": {
     "overview": "Vue d'ensemble",
     "community": "Communauté",
@@ -109,7 +105,9 @@
     "districts": "Quartiers",
     "tags": "Tags",
     "incidents": "Incidents",
+    "districtAdmins": "Admins de quartier",
     "listings": "Annonces",
+    "disputes": "Litiges",
     "events": "Événements",
     "votes": "Votes",
     "adminConsole": "Console d'administration",
@@ -151,6 +149,22 @@
     "unbanned": "Utilisateur débanni",
     "recentTransactions": "Transactions récentes",
     "noTransactions": "Aucune transaction"
+  },
+  "districtAdmins": {
+    "title": "Admins de quartier",
+    "subtitle": "Accordez ou révoquez les droits d'admin sur un quartier. Les admins de quartier modèrent le contenu et résolvent les litiges de leur quartier.",
+    "district": "Quartier",
+    "user": "Utilisateur",
+    "userHint": "Recherchez par nom et choisissez l'utilisateur à promouvoir.",
+    "chooseDistrict": "— Choisir un quartier —",
+    "grant": "Accorder",
+    "granting": "Attribution…",
+    "granted": "Admin de quartier accordé",
+    "revoke": "Révoquer",
+    "revoked": "Admin de quartier révoqué",
+    "revokeTitle": "Révoquer l'admin de quartier",
+    "revokeMessage": "Révoquer les droits d'admin de cet utilisateur sur {{district}} ?",
+    "empty": "Aucun admin de quartier attribué pour l'instant."
   },
   "districts": {
     "title": "Quartier",
@@ -206,6 +220,22 @@
     "deleteMessage": "Supprimer l'annonce « {{title}} » ?",
     "deleted": "Annonce supprimée"
   },
+  "disputes": {
+    "title": "Litiges",
+    "subtitle": "Contrats contestés par une partie. Résoudre solde l'escrow retenu.",
+    "empty": "Aucun contrat en litige dans ce quartier.",
+    "provider": "Prestataire",
+    "beneficiary": "Bénéficiaire",
+    "reason": "Motif",
+    "resolve": "Résoudre",
+    "resolved": "Litige résolu",
+    "resolveTitle": "Résoudre le litige",
+    "resolution": "Règlement",
+    "release": "Verser au prestataire",
+    "refund": "Rembourser le bénéficiaire",
+    "releaseHint": "Les points retenus vont au prestataire — le service est considéré comme rendu.",
+    "refundHint": "Les points retenus sont rendus au bénéficiaire — le service est considéré comme non rendu."
+  },
   "events": {
     "title": "Événements",
     "searchPlaceholder": "Rechercher des événements…",
@@ -213,7 +243,11 @@
     "deleteMessage": "Supprimer l'événement « {{title}} » ?",
     "deleted": "Événement supprimé",
     "eventDate": "Date de l'événement",
-    "registrants": "Inscrits"
+    "registrants": "Inscrits",
+    "create": "Nouvel événement",
+    "created": "Événement créé",
+    "updated": "Événement mis à jour",
+    "editTitle": "Modifier l'événement"
   },
   "votes": {
     "title": "Votes",
@@ -226,6 +260,17 @@
     "resultsCount": "({{count}} réponses)",
     "loadResultsFailed": "Échec du chargement des résultats",
     "start": "Début",
-    "end": "Fin"
+    "end": "Fin",
+    "create": "Nouveau sondage",
+    "created": "Sondage créé",
+    "updated": "Sondage mis à jour",
+    "editTitle": "Modifier le sondage",
+    "addOption": "Ajouter une option",
+    "optionPlaceholder": "Option {{n}}",
+    "needTwoOptions": "Ajoutez au moins deux options."
+  },
+  "voteType": {
+    "single_choice": "Choix unique",
+    "multiple_choice": "Choix multiple"
   }
 }

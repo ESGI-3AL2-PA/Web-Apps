@@ -58,7 +58,7 @@ export const contractsRouter = s.router(contractsContract, {
     if ("empty" in scope) {
       return { status: 200, body: { data: [], total: 0, page, limit } };
     }
-    const isAdmin = req.user!.role === "admin";
+    const isAdmin = req.user!.role === "admin" || req.user!.role === "superAdmin";
     const result = await getContractsUseCase(resolve("contract"))({
       listingId,
       districtId: scope.districtId,

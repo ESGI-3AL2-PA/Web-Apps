@@ -100,7 +100,7 @@ See `documentation/auth-service.md` for the full flow.
 
 ## Frontend Apps
 
-There are three React 19 + Vite 8 frontends, all styled with **Tailwind CSS 4** (via `@tailwindcss/vite`). `admin-front` and `user-front` share the same base structure — contract-typed clients, `@repo/hooks` auth, `@repo/ui` components — while `landing` is a standalone marketing site (FlyonUI components, no authenticated surface).
+There are three React 19 + Vite 8 frontends, all styled with **Tailwind CSS 4** (via `@tailwindcss/vite`). `admin-front` and `user-front` share the same base structure — contract-typed clients and `@repo/hooks` auth — while `landing` is a standalone marketing site (FlyonUI components, no authenticated surface).
 
 | App           | Port | Stack                                             |
 | ------------- | ---- | ------------------------------------------------- |
@@ -108,13 +108,7 @@ There are three React 19 + Vite 8 frontends, all styled with **Tailwind CSS 4** 
 | `user-front`  | 5000 | React 19, Vite 8, TypeScript, Tailwind 4          |
 | `landing`     | 6060 | React 19, Vite 8, TypeScript, Tailwind 4, FlyonUI |
 
-Each app resolves its host port from an env var (`ADMIN_PORT` / `USER_PORT` / `LANDING_PORT`), falling back to the defaults above. `admin-front` and `user-front` render shared components from `@repo/ui` and consume auth via `@repo/hooks`; service URLs come from `@repo/config`. TypeScript is configured via `@repo/typescript-config/vite.json` (targets ESNext + DOM, source maps enabled).
-
----
-
-## UI Package (`@repo/ui`)
-
-Shared React component library consumed by the `admin-front` and `user-front` apps.
+Each app resolves its host port from an env var (`ADMIN_PORT` / `USER_PORT` / `LANDING_PORT`), falling back to the defaults above. `admin-front` and `user-front` consume auth via `@repo/hooks`; service URLs come from `@repo/config`. TypeScript is configured via `@repo/typescript-config/vite.json` (targets ESNext + DOM, source maps enabled). There is no shared UI-component package today — each front keeps its own components (a future `packages/ui` extraction is noted in ROADMAP.md).
 
 ---
 
