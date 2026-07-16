@@ -57,11 +57,17 @@ services:
       DOCUMENSO_SIGNING_LANGUAGE: ${DOCUMENSO_SIGNING_LANGUAGE:-fr}
       DOCUMENSO_DOWNLOAD_HOSTS: ${DOCUMENSO_DOWNLOAD_HOSTS:-minio:9000}
       CONTRACTS_SIGN_REDIRECT_URL: ${CONTRACTS_SIGN_REDIRECT_URL:-http://localhost:${USER_PORT:-5000}/mes-contrats}
+    # Wait for the datastores to be READY, not just started — the api connects to
+    # Mongo + Neo4j at boot and fails fast otherwise.
     depends_on:
-      - mongodb
-      - neo4j
-      - auth-service
-      - minio-createbucket
+      mongodb:
+        condition: service_healthy
+      neo4j:
+        condition: service_healthy
+      auth-service:
+        condition: service_started
+      minio-createbucket:
+        condition: service_completed_successfully
     healthcheck:
       test:
         - CMD
@@ -101,7 +107,8 @@ services:
       FROM_EMAIL: ${FROM_EMAIL:?set in .env}
       APP_NAME: ${APP_NAME:-Connected-Neighboors}
     depends_on:
-      - mongodb
+      mongodb:
+        condition: service_healthy
 
   admin-front:
     restart: always

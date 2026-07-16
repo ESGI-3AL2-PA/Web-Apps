@@ -209,10 +209,17 @@ services:
       LISTINGS_MINIO_SECRET_KEY: minioadmin
     # No hard dependency on `documenso`: the api calls it lazily per contract
     # request and 502s if it's absent, so the app can run without it.
+    # Wait for the datastores to be READY, not just started — the api connects to
+    # Mongo + Neo4j at boot and fails fast (tsx --watch won't auto-retry) otherwise.
     depends_on:
-      - mongodb
-      - auth-service
-      - minio-createbucket
+      mongodb:
+        condition: service_healthy
+      neo4j:
+        condition: service_healthy
+      auth-service:
+        condition: service_started
+      minio-createbucket:
+        condition: service_completed_successfully
     healthcheck:
       test:
         - CMD
@@ -253,8 +260,10 @@ services:
       SMTP_PORT: "1025"
       SMTP_SECURE: "false"
     depends_on:
-      - mongodb
-      - mailpit
+      mongodb:
+        condition: service_healthy
+      mailpit:
+        condition: service_started
 
   admin-front:
     restart: unless-stopped
