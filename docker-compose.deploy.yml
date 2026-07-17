@@ -79,6 +79,9 @@ services:
     environment:
       NODE_ENV: production
       AUTH_PORT: 3001
+      # Behind Caddy: TRUST_PROXY is the number of trusted hops, so express-rate-limit
+      # keys on the real client IP instead of the proxy's.
+      TRUST_PROXY: ${TRUST_PROXY:-1}
       MONGODB_URL: mongodb://${MONGO_ROOT_USERNAME:?set in the SOPS env}:${MONGO_ROOT_PASSWORD:?set in the SOPS env}@mongodb:27017
       MONGODB_DB: ${MONGODB_DB:-db}
       API_URL: http://api:3000
