@@ -1,5 +1,6 @@
 import { z } from "../zod";
 import { StrongPasswordSchema } from "./password.schema";
+import { DistrictResponseDtoSchema } from "./district.dto";
 
 export const UserRoleSchema = z.enum(["user", "admin", "superAdmin"]);
 export type UserRole = z.infer<typeof UserRoleSchema>;
@@ -85,6 +86,31 @@ export const BanUserDtoSchema = z
   })
   .openapi({ title: "BanUser" });
 export type BanUserDto = z.infer<typeof BanUserDtoSchema>;
+
+// Optional chosen district — sent when the caller's address falls inside several
+// overlapping districts and they pick which one to join.
+export const ResolveDistrictRequestDtoSchema = z
+  .object({
+    districtId: z.string().optional().openapi({ description: "District to join when several contain the address" }),
+  })
+  .openapi({ title: "ResolveDistrictRequest" });
+export type ResolveDistrictRequestDto = z.infer<typeof ResolveDistrictRequestDtoSchema>;
+
+// Re-geocoding the caller's stored address and joining the containing district.
+// - resolved:true  => joined (user populated)
+// - resolved:false with candidates.length > 1 => address is in several districts; the
+//   caller must re-call with a chosen districtId
+// - resolved:false with candidates empty => no district covers the address yet
+export const ResolveDistrictResponseDtoSchema = z
+  .object({
+    resolved: z.boolean().openapi({ description: "Whether a district was found and joined" }),
+    user: UserResponseDtoSchema.optional().openapi({ description: "The updated user when resolved" }),
+    candidates: z
+      .array(DistrictResponseDtoSchema)
+      .openapi({ description: "Districts containing the address when a choice is required" }),
+  })
+  .openapi({ title: "ResolveDistrictResponse" });
+export type ResolveDistrictResponseDto = z.infer<typeof ResolveDistrictResponseDtoSchema>;
 
 export const UserParamsDtoSchema = z
   .object({

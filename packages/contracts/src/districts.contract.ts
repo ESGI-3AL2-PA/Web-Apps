@@ -7,6 +7,7 @@ import {
   DistrictQueryDtoSchema,
   DistrictResponseDtoSchema,
   UpdateDistrictDtoSchema,
+  ConflictErrorSchema,
   NotFoundErrorSchema,
   PaginatedResponseDtoSchema,
 } from "./DTO";
@@ -44,6 +45,8 @@ export const districtsContract = c.router({
     body: CreateDistrictDtoSchema,
     responses: {
       201: DistrictResponseDtoSchema,
+      // Polygon guard: the boundary would leave one or more current members outside it.
+      409: ConflictErrorSchema,
     },
     summary: "Create a new district (superAdmin only)",
     metadata: auth({ audience: "api", roles: ["superAdmin"] }),
@@ -56,6 +59,8 @@ export const districtsContract = c.router({
     body: UpdateDistrictDtoSchema,
     responses: {
       200: DistrictResponseDtoSchema,
+      // Polygon guard: the new boundary would leave one or more current members outside it.
+      409: ConflictErrorSchema,
       404: NotFoundErrorSchema,
     },
     summary: "Partially update a district. District admins may only edit their own; superAdmin any.",

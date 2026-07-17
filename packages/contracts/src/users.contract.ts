@@ -8,6 +8,8 @@ import {
   CreateUserDtoSchema,
   ForbiddenErrorSchema,
   NotFoundErrorSchema,
+  ResolveDistrictRequestDtoSchema,
+  ResolveDistrictResponseDtoSchema,
   UnauthorizedErrorSchema,
   UpdateUserDtoSchema,
   UserParamsDtoSchema,
@@ -111,6 +113,42 @@ export const usersContract = c.router({
       roles: ["admin", "superAdmin"],
       scope: { resource: "user", districtField: "districtId", bypassRoles: ["superAdmin"] },
     }),
+  },
+
+  kickFromDistrict: {
+    method: "POST",
+    path: "/users/:id/kick",
+    pathParams: UserParamsDtoSchema,
+    body: c.noBody(),
+    responses: {
+      200: UserResponseDtoSchema,
+      403: ForbiddenErrorSchema,
+      404: NotFoundErrorSchema,
+    },
+    // Distinct from ban: removes a regular user from their district and redistributes
+    // their balance to the remaining members. Does NOT set `banned`. Admins scoped to
+    // their district; superAdmin any (same policy as banUser).
+    summary: "Kick a regular user from their district, redistributing their points to the remaining members.",
+    metadata: auth({
+      audience: "api",
+      roles: ["admin", "superAdmin"],
+      scope: { resource: "user", districtField: "districtId", bypassRoles: ["superAdmin"] },
+    }),
+  },
+
+  resolveMyDistrict: {
+    method: "POST",
+    path: "/users/me/resolve-district",
+    body: ResolveDistrictRequestDtoSchema,
+    responses: {
+      200: ResolveDistrictResponseDtoSchema,
+    },
+    // Re-geocode the caller's stored address and, if exactly one district contains them
+    // (or the caller picks one among several via body.districtId) and they are
+    // district-less, join it (granting its starting points). Used by the onboarding
+    // "check again" / district-picker affordance. Any authenticated user, self-scoped to sub.
+    summary: "Resolve and join the district containing your address (self).",
+    metadata: auth({ audience: "api" }),
   },
 
   deleteUser: {
