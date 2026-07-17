@@ -14,6 +14,7 @@ ENV SATAN_PYTHON=/opt/satan-venv/bin/python
 FROM base AS deps
 COPY package*.json turbo.json ./
 COPY packages/contracts/package*.json ./packages/contracts/
+COPY packages/shared/package*.json ./packages/shared/
 COPY packages/satan/package*.json ./packages/satan/
 COPY packages/typescript-config/package*.json ./packages/typescript-config/
 COPY packages/eslint-config/package*.json ./packages/eslint-config/
@@ -43,11 +44,13 @@ ENV NODE_ENV=production
 # build-only deps (typescript-eslint/eslint/tsc) aren't pulled in by npm ci --omit=dev.
 COPY package*.json ./
 COPY packages/contracts/package*.json ./packages/contracts/
+COPY packages/shared/package*.json ./packages/shared/
 COPY packages/satan/package*.json ./packages/satan/
 COPY apps/api/package*.json ./apps/api/
 RUN npm ci --omit=dev
 # Compiled workspace + app output (@repo/satan also ships its python worker).
 COPY --from=build /app/packages/contracts/dist ./packages/contracts/dist
+COPY --from=build /app/packages/shared/dist ./packages/shared/dist
 COPY --from=build /app/packages/satan/dist ./packages/satan/dist
 COPY --from=build /app/packages/satan/python ./packages/satan/python
 COPY --from=build /app/apps/api/dist ./apps/api/dist
