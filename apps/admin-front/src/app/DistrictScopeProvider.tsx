@@ -16,6 +16,7 @@ interface DistrictScope {
   districts: DistrictResponseDto[]; // superAdmin: all districts; admin: empty
   canSwitch: boolean; // superAdmin with ≥1 district
   setDistrictId: (id: string) => void; // superAdmin only
+  reload: (selectId?: string) => Promise<void>; // superAdmin: re-fetch list (after create), optionally select one
   loading: boolean;
 }
 
@@ -42,15 +43,19 @@ export function DistrictScopeProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  // superAdmin: load all districts, then select the persisted one (if still present) or the first.
-  useEffect(() => {
-    if (!isSuperAdmin) return;
-    let cancelled = false;
-    setLoading(true);
-    listDistricts({ page: 1, limit: 100 })
-      .then((res) => {
-        if (cancelled) return;
+  // superAdmin: load all districts, then select `selectId` (e.g. a freshly-created one), or
+  // the persisted one (if still present) / the first on initial load.
+  const reload = useCallback(
+    async (selectId?: string) => {
+      if (!isSuperAdmin) return;
+      setLoading(true);
+      try {
+        const res = await listDistricts({ page: 1, limit: 100 });
         setDistricts(res.data);
+        if (selectId) {
+          setDistrictId(selectId);
+          return;
+        }
         if (pickedRef.current) return;
         const stored = (() => {
           try {
@@ -61,17 +66,18 @@ export function DistrictScopeProvider({ children }: { children: ReactNode }) {
         })();
         const initial = res.data.find((d) => d.id === stored)?.id ?? res.data[0]?.id ?? null;
         setDistrictIdState(initial);
-      })
-      .catch(() => {
-        if (!cancelled) setDistricts([]);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [isSuperAdmin]);
+      } catch {
+        setDistricts([]);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [isSuperAdmin, setDistrictId],
+  );
+
+  useEffect(() => {
+    void reload();
+  }, [reload]);
 
   // admin: locked to their own district; fetch its name for the label.
   useEffect(() => {
@@ -106,9 +112,10 @@ export function DistrictScopeProvider({ children }: { children: ReactNode }) {
       districts: isSuperAdmin ? districts : [],
       canSwitch: isSuperAdmin && districts.length > 0,
       setDistrictId,
+      reload,
       loading,
     };
-  }, [isSuperAdmin, districts, districtId, adminDistrictName, setDistrictId, loading]);
+  }, [isSuperAdmin, districts, districtId, adminDistrictName, setDistrictId, reload, loading]);
 
   return <DistrictScopeContext.Provider value={value}>{children}</DistrictScopeContext.Provider>;
 }
