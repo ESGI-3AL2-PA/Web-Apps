@@ -6,6 +6,7 @@ import {
   BanUserDtoSchema,
   ConflictErrorSchema,
   CreateUserDtoSchema,
+  DistrictResponseDtoSchema,
   ForbiddenErrorSchema,
   NotFoundErrorSchema,
   ResolveDistrictRequestDtoSchema,
@@ -148,6 +149,23 @@ export const usersContract = c.router({
     // district-less, join it (granting its starting points). Used by the onboarding
     // "check again" / district-picker affordance. Any authenticated user, self-scoped to sub.
     summary: "Resolve and join the district containing your address (self).",
+    metadata: auth({ audience: "api" }),
+  },
+
+  createOwnDistrict: {
+    method: "POST",
+    path: "/users/me/district",
+    body: c.noBody(),
+    responses: {
+      201: DistrictResponseDtoSchema,
+      // Already have a district / not a plain user, or the address couldn't be geocoded.
+      409: ConflictErrorSchema,
+    },
+    // Self-service onboarding: a district-less user creates an active district over their
+    // geocoded address (placeholder box + temp name) and is promoted to its admin. The
+    // client then redirects them into the admin app to refine it. The use-case enforces
+    // role==="user" && no districtId.
+    summary: "Create your own district from your address and become its admin (self).",
     metadata: auth({ audience: "api" }),
   },
 
