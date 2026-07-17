@@ -13,6 +13,8 @@ import { updateUserUseCase } from "../../use-cases/users/update-user.use-case.js
 import { banUserUseCase } from "../../use-cases/users/ban-user.use-case.js";
 import { kickFromDistrictUseCase } from "../../use-cases/users/kick-from-district.use-case.js";
 import { resolveMyDistrictUseCase } from "../../use-cases/users/resolve-my-district.use-case.js";
+import { createOwnDistrictUseCase } from "../../use-cases/districts/create-own-district.use-case.js";
+import { seedDefaultTagsUseCase } from "../../use-cases/tags/seed-default-tags.use-case.js";
 import type { MembershipDeps } from "../../use-cases/users/district-membership.use-case.js";
 import { deleteUserUseCase, CannotDeleteSuperAdminError } from "../../use-cases/users/delete-user.use-case.js";
 import { exportUserDataUseCase } from "../../use-cases/users/export-user-data.use-case.js";
@@ -154,6 +156,24 @@ export const usersRouter = s.router(usersContract, {
         candidates: result.candidates.map((d) => ({ id: d.id, name: d.name })),
       },
     };
+  },
+
+  createOwnDistrict: async ({ req }) => {
+    const result = await createOwnDistrictUseCase({
+      userRepository: resolve("user"),
+      districtRepository: resolve("district"),
+      graphRepository: resolve("graph"),
+      districtAdminRepository: resolve("districtAdmin"),
+    })(req.user!.sub);
+    if (result.kind === "forbidden") {
+      return { status: 409, body: { message: "You already have a district or aren't eligible to create one." } };
+    }
+    if (result.kind === "geocode-failed") {
+      return { status: 409, body: { message: "We couldn't locate your address — update it and try again." } };
+    }
+    // Seed the default tag set on the new district, mirroring createDistrict.
+    await seedDefaultTagsUseCase(resolve("tag"))(result.district.id);
+    return { status: 201, body: result.district };
   },
 
   deleteUser: async ({ params: { id } }) => {
