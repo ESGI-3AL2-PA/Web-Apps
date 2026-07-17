@@ -6,6 +6,7 @@ WORKDIR /app
 FROM base AS deps
 COPY package*.json turbo.json ./
 COPY packages/contracts/package*.json ./packages/contracts/
+COPY packages/shared/package*.json ./packages/shared/
 COPY packages/typescript-config/package*.json ./packages/typescript-config/
 COPY packages/eslint-config/package*.json ./packages/eslint-config/
 COPY apps/auth-service/package*.json ./apps/auth-service/
@@ -34,9 +35,11 @@ ENV NODE_ENV=production
 # their build-only deps (typescript-eslint/eslint/tsc) aren't pulled in by npm ci --omit=dev.
 COPY package*.json ./
 COPY packages/contracts/package*.json ./packages/contracts/
+COPY packages/shared/package*.json ./packages/shared/
 COPY apps/auth-service/package*.json ./apps/auth-service/
 RUN npm ci --omit=dev
 COPY --from=build /app/packages/contracts/dist ./packages/contracts/dist
+COPY --from=build /app/packages/shared/dist ./packages/shared/dist
 COPY --from=build /app/apps/auth-service/dist ./apps/auth-service/dist
 # Drop root: the node:*-alpine image ships an unprivileged `node` user (uid 1000).
 USER node
