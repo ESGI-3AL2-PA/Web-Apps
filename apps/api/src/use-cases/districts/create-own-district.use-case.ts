@@ -3,6 +3,7 @@ import type { District } from "../../entities/district.entity.js";
 import type { IDistrictRepository } from "../../repositories/District/district.repository.js";
 import type { IGraphRepository } from "../../repositories/Graph/graph.repository.js";
 import type { IUserRepository } from "../../repositories/User/user.repository.js";
+import type { ITransactionRepository } from "../../repositories/Transaction/transaction.repository.js";
 import type { IDistrictAdminRepository } from "../../repositories/DistrictAdmin/district-admin.repository.js";
 import { getCoordinatesFromAddress } from "../../services/address.service.js";
 import { logger } from "../../logger.js";
@@ -13,8 +14,13 @@ export interface CreateOwnDistrictDeps {
   userRepository: IUserRepository;
   districtRepository: IDistrictRepository;
   graphRepository: IGraphRepository;
+  transactionRepository: ITransactionRepository;
   districtAdminRepository: IDistrictAdminRepository;
 }
+
+// Starting points a self-created district seeds for its founder (and every future
+// member who joins it). See createDistrictAdminUseCase, which grants them on join.
+const FOUNDER_STARTING_POINTS = 100;
 
 export type CreateOwnDistrictResult =
   | { kind: "ok"; district: District }
@@ -42,11 +48,10 @@ const boxAroundPoint = (point: GeoJson, half = 0.001): GeoJsonInput => {
 /**
  * Self-service onboarding for a district-less user: geocode their address, spin up an active
  * district seeded with a placeholder box around that point + a temp name, and promote them to
- * admin of it (reusing createDistrictAdminUseCase, which links district_admins AND sets
- * role user→admin). The client then redirects them into the admin app to refine the district.
- *
- * The founder is left admin-only (districtId stays ""): they administer via adminDistrictId
- * rather than being a resident member.
+ * admin of it (reusing createDistrictAdminUseCase, which links district_admins, sets role
+ * user→admin, AND — since the founder is district-less — joins them to the district, setting
+ * their districtId and granting its starting points). The client then redirects them into the
+ * admin app to refine the district.
  */
 export const createOwnDistrictUseCase = (deps: CreateOwnDistrictDeps) => {
   return async (userId: string): Promise<CreateOwnDistrictResult> => {
@@ -70,16 +75,19 @@ export const createOwnDistrictUseCase = (deps: CreateOwnDistrictDeps) => {
     )({
       name: `${user.firstName}'s district`,
       geoJson: boxAroundPoint(point),
-      startingPoints: 0,
+      startingPoints: FOUNDER_STARTING_POINTS,
     });
     // Unreachable: a brand-new district has no members, so the polygon guard can't trip.
     if (created.kind !== "ok") return { kind: "geocode-failed" };
 
-    // Promote to admin + create the district_admins link in one step.
-    await createDistrictAdminUseCase(
-      deps.districtAdminRepository,
-      deps.userRepository,
-    )({
+    // Link district_admins, promote user→admin, and (founder is district-less) join
+    // them to the district — setting districtId and granting its starting points.
+    await createDistrictAdminUseCase(deps.districtAdminRepository, {
+      userRepository: deps.userRepository,
+      transactionRepository: deps.transactionRepository,
+      districtRepository: deps.districtRepository,
+      graphRepository: deps.graphRepository,
+    })({
       districtId: created.district.id,
       userId,
     });

@@ -163,6 +163,7 @@ export const usersRouter = s.router(usersContract, {
       userRepository: resolve("user"),
       districtRepository: resolve("district"),
       graphRepository: resolve("graph"),
+      transactionRepository: resolve("transaction"),
       districtAdminRepository: resolve("districtAdmin"),
     })(req.user!.sub);
     if (result.kind === "forbidden") {

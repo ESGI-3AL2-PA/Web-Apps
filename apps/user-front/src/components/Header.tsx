@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@repo/hooks";
+import { config } from "@repo/config";
 import { useTags } from "../app/tags-context";
 import { getUserBalance } from "../api-service/transactions.service";
 import { formatPrice } from "../lib/format";
@@ -140,6 +141,15 @@ export default function Header() {
                     </Link>
                   </li>
                 ))}
+                {user && ["admin", "superAdmin"].includes(user.role) && (
+                  <li>
+                    {/* Separate origin (admin app) — a plain anchor, not a router Link. */}
+                    <a href={config.adminUrl} onClick={() => setMenuOpen(false)}>
+                      <span className="icon-[tabler--shield] size-4" />
+                      {t("header.adminApp")}
+                    </a>
+                  </li>
+                )}
                 <li>
                   <button
                     onClick={() => {

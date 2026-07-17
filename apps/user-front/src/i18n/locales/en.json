@@ -55,7 +55,8 @@
     "settings": "Settings",
     "logout": "Log out",
     "allListings": "All ads",
-    "balance": "Points balance"
+    "balance": "Points balance",
+    "adminApp": "Admin app"
   },
   "notifications": {
     "title": "Notifications",

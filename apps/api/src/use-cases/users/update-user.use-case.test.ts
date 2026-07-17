@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import type { IUserRepository } from "../../repositories/User/user.repository.js";
 import type { IGraphRepository } from "../../repositories/Graph/graph.repository.js";
+import type { IDistrictRepository } from "../../repositories/District/district.repository.js";
+import type { ITransactionRepository } from "../../repositories/Transaction/transaction.repository.js";
 import type { User } from "../../entities/user.entity.js";
 import { updateUserUseCase } from "./update-user.use-case.js";
 
@@ -36,8 +38,18 @@ const makeUserRepo = (existing: User) => ({
 
 const makeGraphRepo = () => ({ upsertUser: vi.fn().mockResolvedValue(undefined) });
 
+// District + transaction stubs for the address-change move branch. The cases here never
+// change address, so these are inert — present only to satisfy the 4-arg signature.
+const districtStub = { findDistrictsContaining: vi.fn() } as unknown as IDistrictRepository;
+const transactionStub = {} as unknown as ITransactionRepository;
+
 const run = (repo: ReturnType<typeof makeUserRepo>, graph: ReturnType<typeof makeGraphRepo>) =>
-  updateUserUseCase(repo as unknown as IUserRepository, graph as unknown as IGraphRepository);
+  updateUserUseCase(
+    repo as unknown as IUserRepository,
+    graph as unknown as IGraphRepository,
+    districtStub,
+    transactionStub,
+  );
 
 describe("updateUserUseCase", () => {
   it("resets emailVerified to false when the email changes", async () => {

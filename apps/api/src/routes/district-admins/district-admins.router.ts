@@ -8,8 +8,18 @@ import {
   DistrictAdminAlreadyExistsError,
 } from "../../use-cases/district-admins/create-district-admin.use-case.js";
 import { deleteDistrictAdminUseCase } from "../../use-cases/district-admins/delete-district-admin.use-case.js";
+import type { MembershipDeps } from "../../use-cases/users/district-membership.use-case.js";
 
 const s = initServer();
+
+// Deps for the join+grant the promotion performs when a district-less user becomes
+// a district admin (see createDistrictAdminUseCase).
+const membershipDeps = (): MembershipDeps => ({
+  userRepository: resolve("user"),
+  transactionRepository: resolve("transaction"),
+  districtRepository: resolve("district"),
+  graphRepository: resolve("graph"),
+});
 
 export const districtAdminsRouter = s.router(districtAdminsContract, {
   getDistrictAdmins: async ({ query: { page, limit, districtId, userId } }) => {
@@ -32,7 +42,7 @@ export const districtAdminsRouter = s.router(districtAdminsContract, {
 
   createDistrictAdmin: async ({ body }) => {
     try {
-      const created = await createDistrictAdminUseCase(resolve("districtAdmin"), resolve("user"))(body);
+      const created = await createDistrictAdminUseCase(resolve("districtAdmin"), membershipDeps())(body);
       return { status: 201, body: created };
     } catch (err) {
       if (err instanceof DistrictAdminAlreadyExistsError) {
