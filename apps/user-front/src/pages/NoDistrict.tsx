@@ -2,17 +2,20 @@ import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@repo/hooks";
 import { config } from "@repo/config";
-import type { DistrictResponseDto } from "@repo/contracts";
-import { resolveMyDistrict } from "../api-service/users.service";
+import { createMyDistrict, resolveMyDistrict } from "../api-service/users.service";
+
+type Candidate = { id: string; name: string };
 
 // Access-denied wall shown to a district-less regular user (see DistrictGuard). Offers to
 // re-resolve their district ("check again"), pick one when several overlap their address,
-// or head back to the marketing site. District *creation* lives in the admin console, not here.
+// or create their own district (which promotes them to its admin and sends them to the
+// admin app). District *editing* happens there, not here.
 export default function NoDistrict() {
   const { t } = useTranslation();
   const { refresh } = useAuth();
   const [busy, setBusy] = useState(true);
-  const [candidates, setCandidates] = useState<DistrictResponseDto[]>([]);
+  const [creating, setCreating] = useState(false);
+  const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   const resolve = useCallback(
@@ -41,6 +44,21 @@ export default function NoDistrict() {
     void resolve();
   }, [resolve]);
 
+  // Create a district over the caller's address and become its admin, then hand off to the
+  // admin app (which refreshes the token → role:admin + adminDistrictId) to refine it.
+  const createOwn = async () => {
+    setCreating(true);
+    setError(null);
+    try {
+      await createMyDistrict();
+      window.location.href = `${config.adminUrl}/districts`;
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } }; message?: string };
+      setError(e?.response?.data?.message ?? e?.message ?? t("noDistrict.error"));
+      setCreating(false);
+    }
+  };
+
   const hasChoice = candidates.length > 1;
 
   return (
@@ -52,7 +70,7 @@ export default function NoDistrict() {
       {hasChoice && (
         <div className="flex w-full max-w-xs flex-col gap-2">
           {candidates.map((d) => (
-            <button key={d.id} className="btn btn-primary" disabled={busy} onClick={() => resolve(d.id)}>
+            <button key={d.id} className="btn btn-primary" disabled={busy || creating} onClick={() => resolve(d.id)}>
               {d.name}
             </button>
           ))}
@@ -63,10 +81,16 @@ export default function NoDistrict() {
 
       <div className="mt-2 flex flex-wrap items-center justify-center gap-2">
         {!hasChoice && (
-          <button className="btn btn-primary" disabled={busy} onClick={() => resolve()}>
-            {busy && <span className="loading loading-spinner loading-sm" />}
-            {t("noDistrict.checkAgain")}
-          </button>
+          <>
+            <button className="btn btn-primary" disabled={busy || creating} onClick={createOwn}>
+              {creating && <span className="loading loading-spinner loading-sm" />}
+              {t("noDistrict.createOwn")}
+            </button>
+            <button className="btn btn-soft" disabled={busy || creating} onClick={() => resolve()}>
+              {busy && !creating && <span className="loading loading-spinner loading-sm" />}
+              {t("noDistrict.checkAgain")}
+            </button>
+          </>
         )}
         <a className="btn btn-soft" href={config.landingUrl}>
           <span className="icon-[tabler--arrow-left] size-4" />

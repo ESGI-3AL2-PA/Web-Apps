@@ -1,4 +1,4 @@
-import type { ResolveDistrictResponseDto, UpdateUserDto, UserResponseDto } from "@repo/contracts";
+import type { DistrictResponseDto, ResolveDistrictResponseDto, UpdateUserDto, UserResponseDto } from "@repo/contracts";
 import api from "./api";
 
 export type UserPublic = { id: string; firstName: string; lastName: string };
@@ -19,6 +19,12 @@ export async function updateUser(id: string, data: UpdateUserDto): Promise<UserR
 // district. Pass a districtId to pick one when several overlap the address.
 export async function resolveMyDistrict(districtId?: string): Promise<ResolveDistrictResponseDto> {
   const res = await api.post<ResolveDistrictResponseDto>("/users/me/resolve-district", { districtId });
+  return res.data;
+}
+
+// POST /users/me/district — create an active district over your address and become its admin.
+export async function createMyDistrict(): Promise<DistrictResponseDto> {
+  const res = await api.post<DistrictResponseDto>("/users/me/district", {});
   return res.data;
 }
 
