@@ -202,7 +202,9 @@ export default function Profile() {
       const updated = await updateUser(uid, {
         firstName: form.firstName,
         lastName: form.lastName,
-        phone: form.phone || undefined,
+        // Send the trimmed value (even ""), so clearing an existing phone actually persists —
+        // `|| undefined` would drop the empty string and the old number would stick.
+        phone: form.phone.trim(),
         address: form.address || undefined,
       });
       setFullUser(updated);
@@ -249,7 +251,7 @@ export default function Profile() {
             <Info label={t("profile.info.firstName")} value={fullUser?.firstName ?? user.firstName} />
             <Info label={t("profile.info.lastName")} value={fullUser?.lastName ?? user.lastName} />
             <Info label={t("profile.info.email")} value={fullUser?.email ?? user.email} />
-            <Info label={t("profile.info.phone")} value={fullUser?.phone ?? none} />
+            <Info label={t("profile.info.phone")} value={fullUser?.phone || none} />
             <Info label={t("profile.info.address")} value={fullUser?.address ?? none} />
             <Info
               label={t("profile.info.district")}
@@ -292,7 +294,7 @@ export default function Profile() {
               <span className="text-xs font-semibold uppercase tracking-wide text-base-content/60">
                 {t("profile.info.address")}
               </span>
-              <AddressAutocomplete value={form.address} onChange={(v) => setForm({ ...form, address: v })} />
+              <AddressAutocomplete dropUp value={form.address} onChange={(v) => setForm({ ...form, address: v })} />
             </label>
             <div className="flex justify-end gap-2">
               <button onClick={cancelEdit} disabled={saving} className="btn btn-soft">
