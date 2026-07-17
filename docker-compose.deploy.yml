@@ -133,21 +133,6 @@ services:
       retries: 5
       start_period: 20s
 
-  mongo-express:
-    image: mongo-express:1.0.2
-    restart: on-failure
-    # No host port: the DB admin UI must never be internet-reachable. Reach it in prod
-    # via an SSH tunnel or behind the authenticated reverse proxy, not a raw host port.
-    environment:
-      ME_CONFIG_MONGODB_ADMINUSERNAME: ${MONGO_ROOT_USERNAME:?set in the SOPS env}
-      ME_CONFIG_MONGODB_ADMINPASSWORD: ${MONGO_ROOT_PASSWORD:?set in the SOPS env}
-      ME_CONFIG_MONGODB_URL: mongodb://${MONGO_ROOT_USERNAME}:${MONGO_ROOT_PASSWORD}@mongodb:27017/
-      # Protect the admin UI with HTTP basic auth (required in prod).
-      ME_CONFIG_BASICAUTH_USERNAME: ${MONGO_EXPRESS_USERNAME:?set in the SOPS env}
-      ME_CONFIG_BASICAUTH_PASSWORD: ${MONGO_EXPRESS_PASSWORD:?set in the SOPS env}
-    depends_on:
-      - mongodb
-
   neo4j:
     image: neo4j:5
     restart: always
