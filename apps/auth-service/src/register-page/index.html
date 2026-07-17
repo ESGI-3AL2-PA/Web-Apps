@@ -79,6 +79,22 @@
         opacity: 0.6;
         cursor: not-allowed;
       }
+      .btn-secondary {
+        background: #fff;
+        color: #2563eb;
+        border: 1px solid #2563eb;
+        margin-top: 0.5rem;
+      }
+      .btn-secondary:hover {
+        background: #eff6ff;
+      }
+      .status {
+        color: #059669;
+        font-size: 0.875rem;
+        text-align: center;
+        margin-top: 0.75rem;
+        min-height: 1.25rem;
+      }
       .error {
         color: #dc2626;
         font-size: 0.875rem;
@@ -216,6 +232,10 @@
           backToSignIn: "Retour à la connexion",
           searchingAddress: "Recherche…",
           noAddress: "Aucune adresse trouvée",
+          resendPrompt: "Vous n'avez rien reçu ?",
+          resend: "Renvoyer l'e-mail",
+          resendSent: "E-mail renvoyé — vérifiez votre boîte mail.",
+          resendFailed: "Échec de l'envoi, réessayez.",
         },
         en: {
           title: "Create Account",
@@ -235,6 +255,10 @@
           backToSignIn: "Back to sign in",
           searchingAddress: "Searching…",
           noAddress: "No address found",
+          resendPrompt: "Didn't receive it?",
+          resend: "Resend email",
+          resendSent: "Email resent — check your inbox.",
+          resendFailed: "Couldn't resend, try again.",
         },
       };
 
@@ -343,6 +367,33 @@
         });
       })();
 
+      // Wire a "resend verification email" button to the enumeration-safe endpoint.
+      // Always 200 on success; 429 when rate-limited (3/60s) — both surface a message,
+      // never throw. The button self-disables briefly to blunt accidental double-clicks.
+      function attachResend(btn, statusEl, email) {
+        btn.addEventListener("click", async () => {
+          btn.disabled = true;
+          statusEl.style.color = "";
+          statusEl.textContent = "";
+          try {
+            const res = await fetch("/auth/resend-verification", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ email }),
+            });
+            if (!res.ok) throw new Error();
+            statusEl.textContent = t.resendSent;
+          } catch (_) {
+            statusEl.style.color = "#dc2626";
+            statusEl.textContent = t.resendFailed;
+          } finally {
+            setTimeout(() => {
+              btn.disabled = false;
+            }, 3000);
+          }
+        });
+      }
+
       document.getElementById("registerForm").addEventListener("submit", async (e) => {
         e.preventDefault();
         const errorEl = document.getElementById("error");
@@ -374,20 +425,26 @@
             throw new Error(data.message || t.registrationFailed);
           }
 
-          // 202 — server emailed a verification link. Show that and stop.
+          // 202 — server emailed a verification link. Show that plus a resend fallback.
           const data = await res.json().catch(() => ({}));
           document.querySelector(".card").innerHTML =
             "<h1>" +
             t.checkInbox +
             '</h1><p style="text-align:center">' +
             (data.message || t.verifyEmail) +
-            '</p><p class="link"><a href="/login?redirect_uri=' +
+            '</p><p class="link" style="margin-top:1.5rem">' +
+            t.resendPrompt +
+            '</p><button type="button" id="resendBtn" class="btn-secondary">' +
+            t.resend +
+            '</button><div id="resendStatus" class="status"></div>' +
+            '<p class="link"><a href="/login?redirect_uri=' +
             encodeURIComponent(redirectUri) +
             "&lang=" +
             lang +
             '">' +
             t.backToSignIn +
             "</a></p>";
+          attachResend(document.getElementById("resendBtn"), document.getElementById("resendStatus"), body.email);
           return;
         } catch (err) {
           errorEl.textContent = err.message;

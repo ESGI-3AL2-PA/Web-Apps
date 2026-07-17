@@ -72,6 +72,29 @@
         opacity: 0.6;
         cursor: not-allowed;
       }
+      .btn-secondary {
+        background: #fff;
+        color: #2563eb;
+        border: 1px solid #2563eb;
+      }
+      .btn-secondary:hover {
+        background: #eff6ff;
+      }
+      .resend-box {
+        margin-bottom: 1rem;
+      }
+      .resend-prompt {
+        font-size: 0.875rem;
+        margin-bottom: 0.5rem;
+        text-align: center;
+      }
+      .status {
+        color: #059669;
+        font-size: 0.875rem;
+        text-align: center;
+        margin-top: 0.75rem;
+        min-height: 1.25rem;
+      }
       .error {
         color: #dc2626;
         font-size: 0.875rem;
@@ -121,6 +144,7 @@
         <input type="password" id="password" name="password" required autocomplete="current-password" />
         <button type="submit" id="submitBtn" data-i18n="submit">Se connecter</button>
       </form>
+      <div id="resendBox" class="resend-box" hidden></div>
       <div class="link">
         <span data-i18n="noAccount">Vous n'avez pas de compte ?</span>
         <a id="registerLink" href="/register" data-i18n="register">S'inscrire</a>
@@ -147,6 +171,11 @@
           mfaLabel: "Code à 6 chiffres de votre application d'authentification",
           mfaVerify: "Vérifier",
           invalidCode: "Code invalide",
+          notVerified: "E-mail non vérifié — vérifiez votre boîte mail.",
+          resendPrompt: "Vous n'avez rien reçu ?",
+          resend: "Renvoyer l'e-mail",
+          resendSent: "E-mail renvoyé — vérifiez votre boîte mail.",
+          resendFailed: "Échec de l'envoi, réessayez.",
         },
         en: {
           title: "Sign In",
@@ -160,6 +189,11 @@
           mfaLabel: "6-digit code from your authenticator",
           mfaVerify: "Verify",
           invalidCode: "Invalid code",
+          notVerified: "Email not verified — check your inbox.",
+          resendPrompt: "Didn't receive it?",
+          resend: "Resend email",
+          resendSent: "Email resent — check your inbox.",
+          resendFailed: "Couldn't resend, try again.",
         },
       };
 
@@ -249,11 +283,54 @@
         })();
       }
 
+      // Wire a "resend verification email" button to the enumeration-safe endpoint.
+      // Always 200 on success; 429 when rate-limited (3/60s) — both surface a message,
+      // never throw. The button self-disables briefly to blunt accidental double-clicks.
+      function attachResend(btn, statusEl, email) {
+        btn.addEventListener("click", async () => {
+          btn.disabled = true;
+          statusEl.style.color = "";
+          statusEl.textContent = "";
+          try {
+            const res = await fetch("/auth/resend-verification", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ email }),
+            });
+            if (!res.ok) throw new Error();
+            statusEl.textContent = t.resendSent;
+          } catch (_) {
+            statusEl.style.color = "#dc2626";
+            statusEl.textContent = t.resendFailed;
+          } finally {
+            setTimeout(() => {
+              btn.disabled = false;
+            }, 3000);
+          }
+        });
+      }
+
+      // Shown when login fails because the account's email is still unverified.
+      function showResend(email) {
+        const boxEl = document.getElementById("resendBox");
+        boxEl.innerHTML =
+          '<p class="resend-prompt">' +
+          t.notVerified +
+          " " +
+          t.resendPrompt +
+          '</p><button type="button" id="resendBtn" class="btn-secondary">' +
+          t.resend +
+          '</button><div id="resendStatus" class="status"></div>';
+        boxEl.hidden = false;
+        attachResend(document.getElementById("resendBtn"), document.getElementById("resendStatus"), email);
+      }
+
       document.getElementById("loginForm").addEventListener("submit", async (e) => {
         e.preventDefault();
         const errorEl = document.getElementById("error");
         const btn = document.getElementById("submitBtn");
         errorEl.style.display = "none";
+        document.getElementById("resendBox").hidden = true;
         btn.disabled = true;
 
         try {
@@ -271,6 +348,14 @@
 
           if (res.status === 202 && data.mfa_required) {
             showMfaForm(data.mfa_token);
+            return;
+          }
+
+          // Unverified email is a 403 (as is "banned") — gate on the machine-readable
+          // code so only the not-verified case offers a resend fallback.
+          if (res.status === 403 && data.code === "email_not_verified") {
+            showResend(document.getElementById("email").value);
+            btn.disabled = false;
             return;
           }
 

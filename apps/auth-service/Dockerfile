@@ -15,8 +15,8 @@ RUN npm ci
 # DEV
 FROM deps AS dev
 ENV NODE_ENV=development
-COPY packages/ ./packages/
 COPY apps/auth-service/src/ ./apps/auth-service/src/
+RUN npm ci
 EXPOSE 3001
 CMD ["npx", "tsx", "--watch", "apps/auth-service/src/index.ts"]
 

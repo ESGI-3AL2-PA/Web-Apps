@@ -16,8 +16,8 @@ RUN npm ci
 # DEV
 FROM deps AS dev
 ENV NODE_ENV=development
-COPY packages/ ./packages/
 COPY apps/admin-front/ ./apps/admin-front/
+RUN npm ci
 EXPOSE 4000
 CMD ["npx", "vite", "--host", "--port", "4000", "--clearScreen", "false", "--config", "apps/admin-front/vite.config.ts", "apps/admin-front"]
 

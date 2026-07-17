@@ -144,6 +144,10 @@ export type UnauthorizedError = z.infer<typeof UnauthorizedErrorSchema>;
 export const ForbiddenErrorSchema = z
   .object({
     message: z.string().openapi({ description: "Error message" }),
+    code: z
+      .literal("email_not_verified")
+      .optional()
+      .openapi({ description: "Machine-readable discriminator; present when the account's email is unverified" }),
   })
   .openapi({ title: "ForbiddenError", description: "Insufficient permissions" });
 export type ForbiddenError = z.infer<typeof ForbiddenErrorSchema>;
