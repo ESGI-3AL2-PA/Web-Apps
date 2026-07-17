@@ -6,6 +6,10 @@ export const DistrictResponseDtoSchema = z
     id: z.string().openapi({ description: "Unique district identifier" }),
     name: z.string().openapi({ description: "District name", example: "Montmartre" }),
     geoJson: GeoJsonSchema.optional(),
+    startingPoints: z
+      .number()
+      .int()
+      .openapi({ description: "Tokens granted to a new member when they join this district" }),
   })
   .openapi({ title: "DistrictResponse" });
 export type DistrictResponseDto = z.infer<typeof DistrictResponseDtoSchema>;
@@ -14,6 +18,11 @@ export const CreateDistrictDtoSchema = z
   .object({
     name: z.string().min(1).max(200).openapi({ description: "District name", example: "Montmartre" }),
     geoJson: GeoJsonInputSchema.optional(),
+    startingPoints: z
+      .number()
+      .int()
+      .min(0)
+      .openapi({ description: "Tokens granted to a new member when they join", example: 100 }),
   })
   .openapi({ title: "CreateDistrict" });
 export type CreateDistrictDto = z.infer<typeof CreateDistrictDtoSchema>;
@@ -23,6 +32,12 @@ export const UpdateDistrictDtoSchema = z
     name: z.string().min(1).max(200).optional().openapi({ description: "District name", example: "Montmartre" }),
     // null clears an existing boundary; omitted/undefined leaves it untouched.
     geoJson: GeoJsonInputSchema.nullable().optional(),
+    startingPoints: z
+      .number()
+      .int()
+      .min(0)
+      .optional()
+      .openapi({ description: "Tokens granted to a new member when they join", example: 100 }),
   })
   .openapi({ title: "UpdateDistrict" });
 export type UpdateDistrictDto = z.infer<typeof UpdateDistrictDtoSchema>;

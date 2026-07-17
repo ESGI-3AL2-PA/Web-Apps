@@ -11,6 +11,11 @@ import { getUserByIdUseCase } from "../../use-cases/users/get-user-by-id.use-cas
 import { createUserUseCase } from "../../use-cases/users/create-user.use-case.js";
 import { updateUserUseCase } from "../../use-cases/users/update-user.use-case.js";
 import { banUserUseCase } from "../../use-cases/users/ban-user.use-case.js";
+import { kickFromDistrictUseCase } from "../../use-cases/users/kick-from-district.use-case.js";
+import { resolveMyDistrictUseCase } from "../../use-cases/users/resolve-my-district.use-case.js";
+import { createOwnDistrictUseCase } from "../../use-cases/districts/create-own-district.use-case.js";
+import { seedDefaultTagsUseCase } from "../../use-cases/tags/seed-default-tags.use-case.js";
+import type { MembershipDeps } from "../../use-cases/users/district-membership.use-case.js";
 import { deleteUserUseCase, CannotDeleteSuperAdminError } from "../../use-cases/users/delete-user.use-case.js";
 import { exportUserDataUseCase } from "../../use-cases/users/export-user-data.use-case.js";
 
@@ -44,6 +49,13 @@ const fetchUserSessions = async (userId: string): Promise<unknown[]> => {
 };
 
 const s = initServer();
+
+const membershipDeps = (): MembershipDeps => ({
+  userRepository: resolve("user"),
+  transactionRepository: resolve("transaction"),
+  districtRepository: resolve("district"),
+  graphRepository: resolve("graph"),
+});
 
 export const usersRouter = s.router(usersContract, {
   getUsers: async ({ query: { page, limit, search, districtId, role }, req }) => {
@@ -85,12 +97,22 @@ export const usersRouter = s.router(usersContract, {
   },
 
   createUser: async ({ body }) => {
-    const newUser = await createUserUseCase(resolve("user"), resolve("district"), resolve("graph"))({ ...body });
+    const newUser = await createUserUseCase(
+      resolve("user"),
+      resolve("district"),
+      resolve("graph"),
+      resolve("transaction"),
+    )({ ...body });
     return { status: 201, body: toDto(newUser) };
   },
 
   updateUser: async ({ params: { id }, body }) => {
-    const result = await updateUserUseCase(resolve("user"), resolve("graph"))(id, body);
+    const result = await updateUserUseCase(
+      resolve("user"),
+      resolve("graph"),
+      resolve("district"),
+      resolve("transaction"),
+    )(id, body);
     if (result.kind === "not-found") {
       return { status: 404, body: { message: "User not found" } };
     }
@@ -112,6 +134,46 @@ export const usersRouter = s.router(usersContract, {
       return { status: 403, body: { message: "Only regular users can be banned" } };
     }
     return { status: 200, body: toDto(result.user) };
+  },
+
+  kickFromDistrict: async ({ params: { id } }) => {
+    const result = await kickFromDistrictUseCase(membershipDeps())(id);
+    if (result.kind === "not-found") {
+      return { status: 404, body: { message: "User not found" } };
+    }
+    if (result.kind === "forbidden") {
+      return { status: 403, body: { message: "Only regular users can be kicked from a district" } };
+    }
+    return { status: 200, body: toDto(result.user) };
+  },
+
+  resolveMyDistrict: async ({ body, req }) => {
+    const result = await resolveMyDistrictUseCase(membershipDeps())(req.user!.sub, body.districtId);
+    return {
+      status: 200,
+      body: {
+        resolved: result.resolved,
+        candidates: result.candidates.map((d) => ({ id: d.id, name: d.name })),
+      },
+    };
+  },
+
+  createOwnDistrict: async ({ req }) => {
+    const result = await createOwnDistrictUseCase({
+      userRepository: resolve("user"),
+      districtRepository: resolve("district"),
+      graphRepository: resolve("graph"),
+      districtAdminRepository: resolve("districtAdmin"),
+    })(req.user!.sub);
+    if (result.kind === "forbidden") {
+      return { status: 409, body: { message: "You already have a district or aren't eligible to create one." } };
+    }
+    if (result.kind === "geocode-failed") {
+      return { status: 409, body: { message: "We couldn't locate your address — update it and try again." } };
+    }
+    // Seed the default tag set on the new district, mirroring createDistrict.
+    await seedDefaultTagsUseCase(resolve("tag"))(result.district.id);
+    return { status: 201, body: result.district };
   },
 
   deleteUser: async ({ params: { id } }) => {

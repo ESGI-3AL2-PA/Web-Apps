@@ -25,6 +25,10 @@ export class SatanUserRepository implements IUserRepository {
     return rows[0] ?? null;
   }
 
+  async findUsersByDistrict(districtId: string): Promise<User[]> {
+    return (await this.satan.query(`FIND users WHERE districtId = ${quote(districtId)}`)) as User[];
+  }
+
   async setBanned(id: string, banned: boolean): Promise<User | null> {
     const now = new Date().toISOString();
     await this.satan.query(

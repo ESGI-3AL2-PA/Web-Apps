@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { TransactionResponseDto, UserBalanceResponseDto, UserResponseDto } from "@repo/contracts";
 import { useScopedList } from "../../hooks/useScopedList";
-import { banUser, listUsers, requestPasswordReset } from "../../api-service/users";
+import { banUser, kickFromDistrict, listUsers, requestPasswordReset } from "../../api-service/users";
 import { getUserBalance, getUserTransactions } from "../../api-service/transactions";
 import { DataTable, type Column } from "../../components/DataTable";
 import { Pagination } from "../../components/Pagination";
@@ -21,9 +21,11 @@ export default function UsersList() {
   const toast = useToast();
   const ban = useAsyncAction();
   const reset = useAsyncAction();
+  const kick = useAsyncAction();
   const [viewing, setViewing] = useState<UserResponseDto | null>(null);
   const [banning, setBanning] = useState<UserResponseDto | null>(null);
   const [resetting, setResetting] = useState<UserResponseDto | null>(null);
+  const [kicking, setKicking] = useState<UserResponseDto | null>(null);
 
   const columns: Column<UserResponseDto>[] = [
     { header: t("common.fields.name"), cell: (u) => `${u.firstName} ${u.lastName}` },
@@ -57,6 +59,11 @@ export default function UsersList() {
                 <button className="btn btn-xs btn-text" onClick={() => setResetting(u)}>
                   {t("users.resetPassword")}
                 </button>
+                {u.districtId && (
+                  <button className="btn btn-xs btn-text btn-warning" onClick={() => setKicking(u)}>
+                    {t("users.kick")}
+                  </button>
+                )}
                 <button className={`btn btn-xs btn-text ${u.banned ? "" : "btn-error"}`} onClick={() => setBanning(u)}>
                   {u.banned ? t("users.unban") : t("users.ban")}
                 </button>
@@ -85,6 +92,27 @@ export default function UsersList() {
             await requestPasswordReset(resetting!.email);
             toast.show(t("users.resetSent"));
             setResetting(null);
+          })
+        }
+      />
+
+      <ConfirmDialog
+        open={!!kicking}
+        title={t("users.kickTitle")}
+        message={t("users.kickMessage", { email: kicking?.email })}
+        confirmLabel={t("users.kick")}
+        busy={kick.busy}
+        error={kick.error}
+        onCancel={() => {
+          setKicking(null);
+          kick.reset();
+        }}
+        onConfirm={() =>
+          kick.run(async () => {
+            await kickFromDistrict(kicking!.id);
+            toast.show(t("users.kicked"));
+            setKicking(null);
+            list.refetch();
           })
         }
       />

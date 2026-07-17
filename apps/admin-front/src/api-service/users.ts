@@ -43,6 +43,13 @@ export async function banUser(id: string, banned: boolean): Promise<UserResponse
   return res.data;
 }
 
+// Removes a regular user from their district, redistributing their points to the
+// remaining members. Distinct from ban — the account stays active.
+export async function kickFromDistrict(id: string): Promise<UserResponseDto> {
+  const res = await api.post<UserResponseDto>(`/users/${id}/kick`, {});
+  return res.data;
+}
+
 // Triggers the auth-service's password-reset email flow for a stuck user. Public endpoint (always
 // 200, no enumeration); the admin already has the email from the users table.
 export async function requestPasswordReset(email: string): Promise<void> {

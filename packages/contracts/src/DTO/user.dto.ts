@@ -86,6 +86,32 @@ export const BanUserDtoSchema = z
   .openapi({ title: "BanUser" });
 export type BanUserDto = z.infer<typeof BanUserDtoSchema>;
 
+// Optional chosen district — sent when the caller's address falls inside several
+// overlapping districts and they pick which one to join.
+export const ResolveDistrictRequestDtoSchema = z
+  .object({
+    districtId: z.string().optional().openapi({ description: "District to join when several contain the address" }),
+  })
+  .openapi({ title: "ResolveDistrictRequest" });
+export type ResolveDistrictRequestDto = z.infer<typeof ResolveDistrictRequestDtoSchema>;
+
+// Re-geocoding the caller's stored address and joining the containing district.
+// - resolved:true  => joined (the client re-hydrates its user via /auth/userinfo)
+// - resolved:false with candidates.length > 1 => address is in several districts; the
+//   caller must re-call with a chosen districtId
+// - resolved:false with candidates empty => no district covers the address yet
+// candidates is a minimal {id,name} shape on purpose — nesting the titled DistrictResponse
+// here trips @ts-rest/open-api's duplicate-title check.
+export const ResolveDistrictResponseDtoSchema = z
+  .object({
+    resolved: z.boolean().openapi({ description: "Whether a district was found and joined" }),
+    candidates: z
+      .array(z.object({ id: z.string(), name: z.string() }))
+      .openapi({ description: "Districts containing the address when a choice is required" }),
+  })
+  .openapi({ title: "ResolveDistrictResponse" });
+export type ResolveDistrictResponseDto = z.infer<typeof ResolveDistrictResponseDtoSchema>;
+
 export const UserParamsDtoSchema = z
   .object({
     id: z.string(),

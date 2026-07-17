@@ -39,6 +39,10 @@ export class InMemoryUserRepository implements IUserRepository {
     return this.users.find((u) => u.email === email) ?? null;
   }
 
+  async findUsersByDistrict(districtId: string): Promise<User[]> {
+    return this.users.filter((u) => u.districtId === districtId);
+  }
+
   async createUser(data: Omit<User, "id" | "createdAt" | "updatedAt">): Promise<User> {
     const now = new Date().toISOString();
     const user: User = { ...data, id: randomUUID(), createdAt: now, updatedAt: now };

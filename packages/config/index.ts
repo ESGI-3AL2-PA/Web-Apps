@@ -13,6 +13,8 @@ export interface AppConfig {
   appUrl: string;
   /** Public base URL of the admin console (redirect target for superAdmins). */
   adminUrl: string;
+  /** Public base URL of the marketing landing site ("back to landing" target). */
+  landingUrl: string;
 }
 
 export const config: AppConfig = {
@@ -20,4 +22,5 @@ export const config: AppConfig = {
   apiUrl: import.meta.env.VITE_API_URL ?? "http://localhost:3000",
   appUrl: import.meta.env.VITE_APP_URL ?? "http://localhost:5000",
   adminUrl: import.meta.env.VITE_ADMIN_URL ?? "http://localhost:4000",
+  landingUrl: import.meta.env.VITE_LANDING_URL ?? "http://localhost:6060",
 };
