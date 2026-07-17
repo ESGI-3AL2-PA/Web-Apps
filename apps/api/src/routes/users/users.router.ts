@@ -151,8 +151,7 @@ export const usersRouter = s.router(usersContract, {
       status: 200,
       body: {
         resolved: result.resolved,
-        user: result.user ? toDto(result.user) : undefined,
-        candidates: result.candidates,
+        candidates: result.candidates.map((d) => ({ id: d.id, name: d.name })),
       },
     };
   },
