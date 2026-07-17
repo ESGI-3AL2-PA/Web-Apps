@@ -24,8 +24,8 @@ RUN npm ci
 # DEV
 FROM deps AS dev
 ENV NODE_ENV=development
-COPY packages/ ./packages/
 COPY apps/api/src/ ./apps/api/src/
+RUN npm ci
 EXPOSE 3000
 CMD ["npx", "tsx", "--watch", "apps/api/src/index.ts"]
 

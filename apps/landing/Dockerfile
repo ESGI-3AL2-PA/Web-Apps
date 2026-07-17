@@ -14,8 +14,8 @@ RUN npm ci
 # DEV
 FROM deps AS dev
 ENV NODE_ENV=development
-COPY packages/ ./packages/
 COPY apps/landing/ ./apps/landing/
+RUN npm ci
 EXPOSE 6060
 CMD ["npx", "vite", "--host", "--port", "6060", "--clearScreen", "false", "--config", "apps/landing/vite.config.ts", "apps/landing"]
 
