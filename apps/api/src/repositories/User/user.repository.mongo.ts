@@ -69,6 +69,11 @@ export class MongoUserRepository implements IUserRepository {
     return doc ? toEntity<User>(doc) : null;
   }
 
+  async findUsersByDistrict(districtId: string): Promise<User[]> {
+    const docs = await this.collection.find({ districtId }).toArray();
+    return docs.map((d) => toEntity<User>(d));
+  }
+
   async createUser(data: Omit<User, "id" | "createdAt" | "updatedAt">): Promise<User> {
     const now = new Date().toISOString();
     const doc = { ...data, _id: randomUUID(), createdAt: now, updatedAt: now };

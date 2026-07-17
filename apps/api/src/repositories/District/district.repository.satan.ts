@@ -31,8 +31,8 @@ export class SatanDistrictRepository implements IDistrictRepository {
   ensureIndexes(): Promise<void> {
     return this.mongo.ensureIndexes();
   }
-  findDistrictContaining(point: GeoJson): Promise<District | null> {
-    return this.mongo.findDistrictContaining(point);
+  findDistrictsContaining(point: GeoJson): Promise<District[]> {
+    return this.mongo.findDistrictsContaining(point);
   }
   createDistrict(data: Omit<District, "id">): Promise<District> {
     return this.mongo.createDistrict(data);

@@ -10,6 +10,10 @@ import { deleteDistrictUseCase } from "../../use-cases/districts/delete-district
 
 const s = initServer();
 
+// Human-readable 409 message when a boundary would leave current members outside it.
+const membersOutsideMessage = (outside: { id: string }[]): string =>
+  `${outside.length} member(s) fall outside this boundary — kick or reassign them first.`;
+
 export const districtsRouter = s.router(districtsContract, {
   getDistricts: async ({ query: { page, limit, search } }) => {
     const result = await getDistrictsUseCase(resolve("district"))({ search, page, limit });
@@ -25,17 +29,23 @@ export const districtsRouter = s.router(districtsContract, {
   },
 
   createDistrict: async ({ body }) => {
-    const newDistrict = await createDistrictUseCase(resolve("district"), resolve("graph"))(body);
-    await seedDefaultTagsUseCase(resolve("tag"))(newDistrict.id);
-    return { status: 201, body: newDistrict };
+    const result = await createDistrictUseCase(resolve("district"), resolve("graph"), resolve("user"))(body);
+    if (result.kind === "members-outside") {
+      return { status: 409, body: { message: membersOutsideMessage(result.outside) } };
+    }
+    await seedDefaultTagsUseCase(resolve("tag"))(result.district.id);
+    return { status: 201, body: result.district };
   },
 
   updateDistrict: async ({ params: { id }, body }) => {
-    const district = await updateDistrictUseCase(resolve("district"), resolve("graph"))(id, body);
-    if (!district) {
+    const result = await updateDistrictUseCase(resolve("district"), resolve("graph"), resolve("user"))(id, body);
+    if (result.kind === "not-found") {
       return { status: 404, body: { message: "District not found" } };
     }
-    return { status: 200, body: district };
+    if (result.kind === "members-outside") {
+      return { status: 409, body: { message: membersOutsideMessage(result.outside) } };
+    }
+    return { status: 200, body: result.district };
   },
 
   deleteDistrict: async ({ params: { id } }) => {

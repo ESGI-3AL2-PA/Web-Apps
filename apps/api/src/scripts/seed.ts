@@ -121,6 +121,7 @@ const districts = [
   {
     _id: ids.districts.montmartre,
     name: "Montmartre",
+    startingPoints: 100,
     geoJson: {
       type: "Polygon",
       coordinates: [
@@ -137,6 +138,7 @@ const districts = [
   {
     _id: ids.districts.marais,
     name: "Le Marais",
+    startingPoints: 100,
     geoJson: {
       type: "Polygon",
       coordinates: [

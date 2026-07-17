@@ -1,11 +1,15 @@
 import { randomUUID } from "crypto";
 import type { Collection, Db, Filter, UpdateFilter } from "mongodb";
 import { toEntity, type WithMongoId } from "@repo/shared";
-import type { District, GeoJson } from "../../entities/district.entity.js";
+import { DistrictSchema, type District, type GeoJson } from "../../entities/district.entity.js";
 import { escapeRegex } from "../escape-regex.js";
 import type { IDistrictRepository, UpdateDistrictData } from "./district.repository.js";
 
 type DistrictDoc = WithMongoId<District>;
+
+// Parse through the schema so legacy docs predating startingPoints/status read back
+// with their defaults (startingPoints: 0, status: "active") applied.
+const toDistrict = (doc: DistrictDoc): District => DistrictSchema.parse(toEntity<District>(doc));
 
 export class MongoDistrictRepository implements IDistrictRepository {
   private collection: Collection<DistrictDoc>;
@@ -19,11 +23,11 @@ export class MongoDistrictRepository implements IDistrictRepository {
     await this.collection.createIndex({ geoJson: "2dsphere" });
   }
 
-  async findDistrictContaining(point: GeoJson): Promise<District | null> {
-    const doc = await this.collection.findOne({
-      geoJson: { $geoIntersects: { $geometry: point } },
-    } as Filter<DistrictDoc>);
-    return doc ? toEntity<District>(doc) : null;
+  async findDistrictsContaining(point: GeoJson): Promise<District[]> {
+    const docs = await this.collection
+      .find({ geoJson: { $geoIntersects: { $geometry: point } } } as Filter<DistrictDoc>)
+      .toArray();
+    return docs.map(toDistrict);
   }
 
   async getDistricts(params: { search?: string; page?: number; limit?: number }): Promise<{
@@ -46,18 +50,18 @@ export class MongoDistrictRepository implements IDistrictRepository {
         .toArray(),
     ]);
 
-    return { data: docs.map((d) => toEntity<District>(d)), total, page, limit };
+    return { data: docs.map(toDistrict), total, page, limit };
   }
 
   async getDistrictById(id: string): Promise<District | null> {
     const doc = await this.collection.findOne({ _id: id });
-    return doc ? toEntity<District>(doc) : null;
+    return doc ? toDistrict(doc) : null;
   }
 
   async createDistrict(data: Omit<District, "id">): Promise<District> {
     const doc: DistrictDoc = { ...data, _id: randomUUID() };
     await this.collection.insertOne(doc);
-    return toEntity<District>(doc);
+    return toDistrict(doc);
   }
 
   async updateDistrict(id: string, data: UpdateDistrictData): Promise<District | null> {
@@ -70,7 +74,7 @@ export class MongoDistrictRepository implements IDistrictRepository {
     }
 
     const result = await this.collection.findOneAndUpdate({ _id: id }, update, { returnDocument: "after" });
-    return result ? toEntity<District>(result) : null;
+    return result ? toDistrict(result) : null;
   }
 
   async deleteDistrict(id: string): Promise<boolean> {

@@ -14,6 +14,9 @@ export interface IUserRepository {
 
   getUserByEmail(email: string): Promise<User | null>;
 
+  // All members of a district (unpaginated) — used to redistribute a leaver's points.
+  findUsersByDistrict(districtId: string): Promise<User[]>;
+
   createUser(data: Omit<User, "id" | "createdAt" | "updatedAt">): Promise<User>;
 
   updateUser(id: string, data: Partial<Omit<User, "id" | "createdAt" | "updatedAt">>): Promise<User | null>;
