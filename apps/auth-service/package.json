@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "tsc -p tsconfig.build.json && cp -r src/login-page src/register-page dist/",
+    "build": "tsc -p tsconfig.build.json && cp -r src/login-page src/register-page src/verify-page src/reset-password-page dist/",
     "dev": "tsx --watch src/index.ts",
     "start": "node ./dist/index.js",
     "test": "vitest run",
