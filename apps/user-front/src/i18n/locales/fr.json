@@ -317,6 +317,7 @@
     "searchNeighbour": "Rechercher un voisin par nom…",
     "searching": "Recherche…",
     "noNeighbour": "Aucun voisin trouvé",
+    "noAddress": "Aucune adresse trouvée",
     "pickNeighbour": "Choisissez un voisin",
     "notYourself": "Vous ne pouvez pas démarrer une conversation avec vous-même",
     "removeParticipant": "Retirer le participant",

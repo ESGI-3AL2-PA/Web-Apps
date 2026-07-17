@@ -17,6 +17,7 @@ import { getEvents } from "../api-service/events.service";
 import { getVotes } from "../api-service/votes.service";
 import { formatDateTime, formatPrice } from "../lib/format";
 import { useDialog } from "../components/dialog-context";
+import AddressAutocomplete from "../components/AddressAutocomplete";
 
 const HISTORY_PAGE_SIZE = 10;
 
@@ -291,11 +292,7 @@ export default function Profile() {
               <span className="text-xs font-semibold uppercase tracking-wide text-base-content/60">
                 {t("profile.info.address")}
               </span>
-              <input
-                className={inputClass}
-                value={form.address}
-                onChange={(e) => setForm({ ...form, address: e.target.value })}
-              />
+              <AddressAutocomplete value={form.address} onChange={(v) => setForm({ ...form, address: v })} />
             </label>
             <div className="flex justify-end gap-2">
               <button onClick={cancelEdit} disabled={saving} className="btn btn-soft">

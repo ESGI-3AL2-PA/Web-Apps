@@ -62,7 +62,8 @@ app.use(
 );
 
 // Security headers. CSP allows the inline script/style on the login & register
-// pages while forbidding framing (clickjacking) and plugins.
+// pages plus the register page's address-autocomplete fetch to the French BAN
+// (api-adresse.data.gouv.fr), while forbidding framing (clickjacking) and plugins.
 app.use(
   helmet({
     contentSecurityPolicy: {
@@ -70,6 +71,7 @@ app.use(
       directives: {
         scriptSrc: ["'self'", "'unsafe-inline'"],
         styleSrc: ["'self'", "'unsafe-inline'"],
+        connectSrc: ["'self'", "https://api-adresse.data.gouv.fr"],
         frameAncestors: ["'none'"],
         objectSrc: ["'none'"],
       },

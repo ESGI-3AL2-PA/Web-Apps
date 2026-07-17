@@ -115,6 +115,41 @@
         color: #2563eb;
         font-weight: 600;
       }
+      .autocomplete {
+        position: relative;
+      }
+      .autocomplete-results {
+        position: absolute;
+        inset: auto 0 auto 0;
+        top: calc(100% - 0.75rem);
+        z-index: 10;
+        list-style: none;
+        margin: 0;
+        padding: 0.25rem;
+        background: #fff;
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+        max-height: 14rem;
+        overflow-y: auto;
+      }
+      .autocomplete-results li {
+        padding: 0.5rem 0.625rem;
+        font-size: 0.9375rem;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      .autocomplete-results li:hover,
+      .autocomplete-results li.active {
+        background: #eff6ff;
+      }
+      .autocomplete-results li.muted {
+        color: #9ca3af;
+        cursor: default;
+      }
+      .autocomplete-results li.muted:hover {
+        background: none;
+      }
     </style>
   </head>
   <body>
@@ -142,7 +177,10 @@
         <label for="password" data-i18n="password">Mot de passe</label>
         <input type="password" id="password" name="password" required minlength="12" autocomplete="new-password" />
         <label for="address" data-i18n="address">Adresse</label>
-        <input type="text" id="address" name="address" required autocomplete="street-address" />
+        <div class="autocomplete">
+          <input type="text" id="address" name="address" required autocomplete="off" />
+          <ul id="addressResults" class="autocomplete-results" hidden></ul>
+        </div>
         <button type="submit" id="submitBtn" data-i18n="submit">S'inscrire</button>
       </form>
       <div class="link">
@@ -176,6 +214,8 @@
           verifyEmail:
             "Nous vous avons envoyé un e-mail de vérification — cliquez sur le lien pour activer votre compte.",
           backToSignIn: "Retour à la connexion",
+          searchingAddress: "Recherche…",
+          noAddress: "Aucune adresse trouvée",
         },
         en: {
           title: "Create Account",
@@ -193,6 +233,8 @@
           checkInbox: "Check your inbox",
           verifyEmail: "We sent you a verification email — click the link to activate your account.",
           backToSignIn: "Back to sign in",
+          searchingAddress: "Searching…",
+          noAddress: "No address found",
         },
       };
 
@@ -230,6 +272,76 @@
       // Preserve redirect_uri and lang on the login link
       document.getElementById("loginLink").href =
         "/login?redirect_uri=" + encodeURIComponent(redirectUri) + "&lang=" + lang;
+
+      // Address autocomplete backed by the French Base Adresse Nationale (BAN).
+      (function initAddressAutocomplete() {
+        const input = document.getElementById("address");
+        const list = document.getElementById("addressResults");
+        let debounce;
+        let seq = 0; // request sequence — drop out-of-order responses
+
+        function close() {
+          list.hidden = true;
+          list.innerHTML = "";
+        }
+
+        function renderMuted(text) {
+          list.innerHTML = "";
+          const li = document.createElement("li");
+          li.className = "muted";
+          li.textContent = text;
+          list.appendChild(li);
+          list.hidden = false;
+        }
+
+        async function search(query) {
+          const current = ++seq;
+          renderMuted(t.searchingAddress);
+          try {
+            const url =
+              "https://api-adresse.data.gouv.fr/search/?limit=5&autocomplete=1&q=" + encodeURIComponent(query);
+            const res = await fetch(url);
+            if (current !== seq) return; // a newer keystroke superseded this one
+            const data = await res.json();
+            const labels = (data.features || []).map((f) => f.properties && f.properties.label).filter(Boolean);
+            if (labels.length === 0) {
+              renderMuted(t.noAddress);
+              return;
+            }
+            list.innerHTML = "";
+            labels.forEach((label) => {
+              const li = document.createElement("li");
+              li.textContent = label;
+              li.addEventListener("mousedown", (e) => {
+                e.preventDefault(); // keep focus; fire before the input blurs
+                input.value = label;
+                close();
+              });
+              list.appendChild(li);
+            });
+            list.hidden = false;
+          } catch (_) {
+            if (current === seq) close();
+          }
+        }
+
+        input.addEventListener("input", () => {
+          const query = input.value.trim();
+          clearTimeout(debounce);
+          if (query.length < 3) {
+            close();
+            return;
+          }
+          debounce = setTimeout(() => search(query), 300);
+        });
+
+        input.addEventListener("keydown", (e) => {
+          if (e.key === "Escape") close();
+        });
+        document.addEventListener("mousedown", (e) => {
+          if (!e.target.closest(".autocomplete")) close();
+        });
+      })();
 
       document.getElementById("registerForm").addEventListener("submit", async (e) => {
         e.preventDefault();
