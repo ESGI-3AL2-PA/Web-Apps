@@ -30,6 +30,9 @@ const allowedOrigins = (process.env.CORS_ORIGINS ?? "http://localhost:3000,http:
   .map((s) => s.trim())
   .filter(Boolean);
 
+// User-front base URL — where verified users are sent (via /login?redirect_uri=…).
+const appUrl = process.env.APP_URL ?? "http://localhost:5000";
+
 const app: Application = express();
 const port = Number(process.env.AUTH_PORT ?? process.env.PORT) || 3001;
 
@@ -117,11 +120,13 @@ app.get("/readyz", async (_req, res) => {
 // Login & register pages — inject the trusted-redirect-origin allowlist into the page
 const renderPage = (pagePath: string) => {
   const html = fs.readFileSync(pagePath, "utf-8");
-  return html.replace("__ALLOWED_REDIRECT_ORIGINS__", JSON.stringify(allowedOrigins));
+  return html
+    .replace("__ALLOWED_REDIRECT_ORIGINS__", JSON.stringify(allowedOrigins))
+    .replace("__APP_URL__", JSON.stringify(appUrl));
 };
 const loginHtml = renderPage(path.join(__dirname, "login-page", "index.html"));
 const registerHtml = renderPage(path.join(__dirname, "register-page", "index.html"));
-const verifyHtml = fs.readFileSync(path.join(__dirname, "verify-page", "index.html"), "utf-8");
+const verifyHtml = renderPage(path.join(__dirname, "verify-page", "index.html"));
 const resetPasswordHtml = fs.readFileSync(path.join(__dirname, "reset-password-page", "index.html"), "utf-8");
 
 app.get("/login", (_req, res) => {
