@@ -351,9 +351,9 @@
             return;
           }
 
-          // Unverified email is a 403 (as is "banned") — gate on the exact server
-          // message so only the not-verified case offers a resend fallback.
-          if (res.status === 403 && data.message === "Email not verified — check your inbox") {
+          // Unverified email is a 403 (as is "banned") — gate on the machine-readable
+          // code so only the not-verified case offers a resend fallback.
+          if (res.status === 403 && data.code === "email_not_verified") {
             showResend(document.getElementById("email").value);
             btn.disabled = false;
             return;

@@ -101,7 +101,10 @@ export const authRouter = s.router(authContract, {
       return { status: 403 as const, body: { message: "This account has been suspended." } };
     }
     if (result.kind === "email-not-verified") {
-      return { status: 403 as const, body: { message: "Email not verified — check your inbox" } };
+      return {
+        status: 403 as const,
+        body: { message: "Email not verified — check your inbox", code: "email_not_verified" as const },
+      };
     }
     if (result.kind === "mfa-required") {
       return { status: 202 as const, body: { mfa_required: true, mfa_token: result.mfaToken } };
