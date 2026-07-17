@@ -10,6 +10,14 @@
     "retry": "Réessayer",
     "retrying": "Vérification…"
   },
+  "noDistrict": {
+    "title": "Vous n'êtes rattaché à aucun quartier",
+    "desc": "Votre adresse n'est dans aucun quartier, vous ne pouvez donc pas encore utiliser l'application. Dès qu'un quartier couvre votre adresse, vérifiez à nouveau pour le rejoindre.",
+    "chooseDesc": "Votre adresse se trouve dans plusieurs quartiers. Choisissez celui que vous souhaitez rejoindre.",
+    "checkAgain": "Vérifier à nouveau",
+    "backToLanding": "Retour à l'accueil",
+    "error": "Une erreur est survenue. Veuillez réessayer."
+  },
   "common": {
     "appTitle": "Connected NeighBours — petites annonces",
     "loading": "Chargement…",

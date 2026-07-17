@@ -10,6 +10,14 @@
     "retry": "Retry",
     "retrying": "Checking…"
   },
+  "noDistrict": {
+    "title": "You're not in a district yet",
+    "desc": "Your address isn't inside any district, so you can't use the app yet. Once a district covers your address, check again to join it.",
+    "chooseDesc": "Your address falls inside several districts. Pick the one you'd like to join.",
+    "checkAgain": "Check again",
+    "backToLanding": "Back to landing",
+    "error": "Something went wrong. Please try again."
+  },
   "common": {
     "appTitle": "Connected NeighBours — classifieds",
     "loading": "Loading…",

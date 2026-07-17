@@ -3,6 +3,7 @@ import { createBrowserRouter } from "react-router-dom";
 import { ProtectedRoute } from "@repo/hooks";
 import { config } from "@repo/config";
 import MainLayout from "../layouts/MainLayout";
+import { DistrictGuard } from "./DistrictGuard";
 import NotFound from "../pages/NotFound";
 import ServerError from "../pages/ServerError";
 
@@ -26,7 +27,9 @@ export const router = createBrowserRouter([
   {
     element: (
       <ProtectedRoute roles={["user", "admin"]} forbiddenRedirect={config.adminUrl}>
-        <MainLayout />
+        <DistrictGuard>
+          <MainLayout />
+        </DistrictGuard>
       </ProtectedRoute>
     ),
     // Renders a themed 500 page for genuine loader/render errors (NotFound is the catch-all 404 below).
