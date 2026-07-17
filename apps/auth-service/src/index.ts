@@ -127,7 +127,7 @@ const renderPage = (pagePath: string) => {
 const loginHtml = renderPage(path.join(__dirname, "login-page", "index.html"));
 const registerHtml = renderPage(path.join(__dirname, "register-page", "index.html"));
 const verifyHtml = renderPage(path.join(__dirname, "verify-page", "index.html"));
-const resetPasswordHtml = fs.readFileSync(path.join(__dirname, "reset-password-page", "index.html"), "utf-8");
+const resetPasswordHtml = renderPage(path.join(__dirname, "reset-password-page", "index.html"));
 
 app.get("/login", (_req, res) => {
   res.type("html").send(loginHtml);

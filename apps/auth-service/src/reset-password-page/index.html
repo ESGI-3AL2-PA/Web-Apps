@@ -191,6 +191,10 @@
       const lang = params.get("lang") === "en" ? "en" : "fr";
       const t = I18N[lang];
       const token = params.get("token");
+      // Injected server-side (index.ts renderPage). Route users through
+      // /login?redirect_uri=<APP_URL> so they land in the user app after signing in.
+      const APP_URL = __APP_URL__;
+      const loginHref = "/login?redirect_uri=" + encodeURIComponent(APP_URL) + "&lang=" + lang;
 
       document.documentElement.lang = lang;
       document.title = t.title;
@@ -204,7 +208,7 @@
         a.href = "?" + p.toString();
         if (a.getAttribute("data-lang") === lang) a.classList.add("active");
       });
-      document.getElementById("loginLink").href = "/login?lang=" + lang;
+      document.getElementById("loginLink").href = loginHref;
 
       const card = document.getElementById("card");
 
@@ -218,8 +222,8 @@
           title +
           '</h1><p style="text-align:center">' +
           body +
-          '</p><p class="link" style="margin-top:1.5rem"><a href="/login?lang=' +
-          lang +
+          '</p><p class="link" style="margin-top:1.5rem"><a href="' +
+          loginHref +
           '"><button type="button">' +
           t.goToLogin +
           "</button></a></p>";
