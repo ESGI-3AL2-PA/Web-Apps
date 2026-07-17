@@ -28,14 +28,30 @@ COPY apps/api/src/ ./apps/api/src/
 EXPOSE 3000
 CMD ["npx", "tsx", "--watch", "apps/api/src/index.ts"]
 
-# PROD
-FROM deps AS prod
+# BUILD — compile TS → dist with the full toolchain (needs devDeps).
+FROM deps AS build
 ENV NODE_ENV=production
 COPY packages/ ./packages/
 COPY apps/api/ ./apps/api/
 RUN npx turbo run build --filter=api
+
+# PROD — prod-only deps + compiled output. No toolchain (tsx/tsc/turbo/eslint) ships at
+# runtime; the seed/migrate one-shots run the compiled dist/scripts, not tsx on source.
+FROM base AS prod
+ENV NODE_ENV=production
+# Only the workspaces on api's PROD dependency path — omit the *-config workspaces so their
+# build-only deps (typescript-eslint/eslint/tsc) aren't pulled in by npm ci --omit=dev.
+COPY package*.json ./
+COPY packages/contracts/package*.json ./packages/contracts/
+COPY packages/satan/package*.json ./packages/satan/
+COPY apps/api/package*.json ./apps/api/
+RUN npm ci --omit=dev
+# Compiled workspace + app output (@repo/satan also ships its python worker).
+COPY --from=build /app/packages/contracts/dist ./packages/contracts/dist
+COPY --from=build /app/packages/satan/dist ./packages/satan/dist
+COPY --from=build /app/packages/satan/python ./packages/satan/python
+COPY --from=build /app/apps/api/dist ./apps/api/dist
 # Drop root: the node:*-alpine image ships an unprivileged `node` user (uid 1000).
-# Build runs as root (writes to /app); the runtime only reads the compiled dist.
 USER node
 EXPOSE 3000
 CMD ["node", "apps/api/dist/index.js"]

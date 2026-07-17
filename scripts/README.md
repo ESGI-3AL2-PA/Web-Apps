@@ -54,7 +54,7 @@ USE_DOCKER=1 ./scripts/restore.sh ./backups/20260714T031500Z
 ```
 
 `COMPOSE_FILE` defaults to `docker-compose.yml` (dev); set it to
-`docker-compose.prod.yml` for the prod stack.
+`docker-compose.deploy.yml` for the prod stack.
 
 > **Neo4j is an offline dump/load.** Community edition cannot dump a running
 > store, so both scripts **stop the `neo4j` service, dump/load, then start it**

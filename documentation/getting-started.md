@@ -87,8 +87,8 @@ docker compose up
 │   ├── eslint-config/
 │   └── typescript-config/
 ├── documentation/
-├── docker-compose.yml        # Dev stack (hot reload) — one command brings up everything
-└── docker-compose.prod.yml   # Production stack (nginx, compiled)
+├── docker-compose.yml         # Dev stack (hot reload) — one command brings up everything
+└── docker-compose.deploy.yml  # Prod stack (GHCR images, Caddy TLS)
 ```
 
 ## Common commands

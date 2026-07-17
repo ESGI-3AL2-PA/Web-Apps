@@ -16,3 +16,13 @@ graphify-out
 backups/
 
 docker/documenso/cert.p12
+
+# RS256 auth signing keys — generated on the host (scripts/gen-auth-keys.sh), never committed.
+docker/auth/
+# Plaintext prod secrets — only the SOPS-encrypted prod.enc.env is committed.
+/prod.env
+# age private key that decrypts the prod secrets — never commit.
+/age-key.txt
+# CD deploy SSH keypair (private half is the DEPLOY_SSH_KEY GH secret).
+/deploy_ed25519
+/deploy_ed25519.pub
