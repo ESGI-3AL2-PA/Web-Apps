@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { User } from "../../entities/user.entity.js";
 import type { District } from "../../entities/district.entity.js";
+import type { ITransactionRepository } from "../../repositories/Transaction/transaction.repository.js";
+import type { IUserRepository } from "../../repositories/User/user.repository.js";
 import { InMemoryUserRepository } from "../../repositories/User/user.repository.in-memory.js";
 import { createOwnDistrictUseCase, type CreateOwnDistrictDeps } from "./create-own-district.use-case.js";
 
@@ -9,6 +11,25 @@ vi.mock("../../services/address.service.js", () => ({
   getCoordinatesFromAddress: vi.fn(async () => ({ type: "Point", coordinates: [2.34, 48.86] })),
 }));
 import { getCoordinatesFromAddress } from "../../services/address.service.js";
+
+// Run the ledger callback without a real Mongo session (founder join grants points).
+vi.mock("../../repositories/tx.js", () => ({
+  runInTransaction: (fn: (session?: unknown) => unknown) => fn(undefined),
+}));
+
+// A transaction repo backed by the in-memory user records so the granted balance is real.
+const makeTxRepo = (userRepo: IUserRepository): ITransactionRepository =>
+  ({
+    adjustBalance: vi.fn(async (id: string, delta: number) => {
+      const u = await userRepo.getUserById(id);
+      if (!u) return null;
+      u.balance += delta;
+      return u.balance;
+    }),
+    createTransactions: vi.fn(async (entries: unknown[]) =>
+      entries.map((e, i) => ({ ...(e as object), id: `t${i}`, createdAt: "2026-07-14T00:00:00.000Z" })),
+    ),
+  }) as unknown as ITransactionRepository;
 
 const seedUser = async (repo: InMemoryUserRepository, over: Partial<User> = {}): Promise<User> =>
   repo.createUser({
@@ -41,8 +62,14 @@ const makeDeps = (repo: InMemoryUserRepository) => {
     districtRepository: {
       createDistrict,
       deleteDistrict: vi.fn(async () => true),
+      // The founder join re-reads the district for its startingPoints.
+      getDistrictById: vi.fn(async (id: string) => ({ id, name: "D", startingPoints: 100 })),
     } as unknown as CreateOwnDistrictDeps["districtRepository"],
-    graphRepository: { upsertDistrict: vi.fn(async () => {}) } as unknown as CreateOwnDistrictDeps["graphRepository"],
+    graphRepository: {
+      upsertDistrict: vi.fn(async () => {}),
+      linkUserLivesIn: vi.fn(async () => {}),
+    } as unknown as CreateOwnDistrictDeps["graphRepository"],
+    transactionRepository: makeTxRepo(repo),
     districtAdminRepository: {
       findExisting: vi.fn(async () => null),
       createDistrictAdmin,
@@ -54,7 +81,7 @@ const makeDeps = (repo: InMemoryUserRepository) => {
 describe("createOwnDistrictUseCase", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it("creates a district from the address point and promotes the caller to admin", async () => {
+  it("creates a district from the address point, promotes the caller, and joins them with points", async () => {
     const repo = new InMemoryUserRepository();
     const alice = await seedUser(repo);
     const { deps, createDistrict, createDistrictAdmin } = makeDeps(repo);
@@ -62,15 +89,20 @@ describe("createOwnDistrictUseCase", () => {
     const result = await createOwnDistrictUseCase(deps)(alice.id);
 
     expect(result.kind).toBe("ok");
-    // District seeded with a closed-ring box around [2.34, 48.86] and a temp name.
+    // District seeded with a closed-ring box around [2.34, 48.86], a temp name, and
+    // non-zero starting points the founder receives on join.
     const created = createDistrict.mock.calls[0]![0];
     expect(created.name).toBe("Alice's district");
-    expect(created.startingPoints).toBe(0);
+    expect(created.startingPoints).toBe(100);
     expect(created.geoJson!.type).toBe("Polygon");
     expect((created.geoJson!.coordinates as number[][][])[0]).toHaveLength(5);
-    // Linked as district admin + promoted to admin role.
+    // Linked as district admin + promoted to admin role + made a resident of the
+    // district (districtId set) with its starting points credited.
     expect(createDistrictAdmin).toHaveBeenCalledWith({ districtId: "d-new", userId: alice.id });
-    expect((await repo.getUserById(alice.id))!.role).toBe("admin");
+    const founder = (await repo.getUserById(alice.id))!;
+    expect(founder.role).toBe("admin");
+    expect(founder.districtId).toBe("d-new");
+    expect(founder.balance).toBe(100);
   });
 
   it("refuses a user who already has a district", async () => {
