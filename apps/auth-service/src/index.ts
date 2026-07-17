@@ -31,7 +31,7 @@ const allowedOrigins = (process.env.CORS_ORIGINS ?? "http://localhost:3000,http:
   .filter(Boolean);
 
 // User-front base URL — where verified users are sent (via /login?redirect_uri=…).
-const appUrl = process.env.APP_URL ?? "http://localhost:5000";
+const appUrl = process.env.VITE_APP_URL ?? "http://localhost:5000";
 
 const app: Application = express();
 const port = Number(process.env.AUTH_PORT ?? process.env.PORT) || 3001;
