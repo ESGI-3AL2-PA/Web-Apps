@@ -55,7 +55,8 @@
     "settings": "Paramètres",
     "logout": "Déconnexion",
     "allListings": "Toutes les annonces",
-    "balance": "Solde de points"
+    "balance": "Solde de points",
+    "adminApp": "Espace admin"
   },
   "notifications": {
     "title": "Notifications",
