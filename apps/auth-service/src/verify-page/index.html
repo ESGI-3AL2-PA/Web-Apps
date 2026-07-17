@@ -1,0 +1,337 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Vérification de l'e-mail</title>
+    <style>
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        font-family:
+          system-ui,
+          -apple-system,
+          sans-serif;
+        background: #f5f5f5;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+      }
+      .card {
+        background: #fff;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        padding: 2rem;
+        width: 100%;
+        max-width: 480px;
+        text-align: center;
+      }
+      h1 {
+        font-size: 1.5rem;
+        margin-bottom: 1rem;
+      }
+      p {
+        font-size: 0.9375rem;
+        color: #374151;
+        line-height: 1.5;
+      }
+      .icon {
+        font-size: 2.5rem;
+        line-height: 1;
+        margin-bottom: 1rem;
+      }
+      .icon.ok {
+        color: #059669;
+      }
+      .icon.bad {
+        color: #dc2626;
+      }
+      label {
+        display: block;
+        font-size: 0.875rem;
+        font-weight: 500;
+        margin-bottom: 0.25rem;
+        text-align: left;
+      }
+      input {
+        width: 100%;
+        padding: 0.5rem 0.75rem;
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        font-size: 1rem;
+        margin-bottom: 1rem;
+      }
+      input:focus {
+        outline: none;
+        border-color: #2563eb;
+        box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+      }
+      button {
+        width: 100%;
+        padding: 0.625rem;
+        background: #2563eb;
+        color: #fff;
+        border: none;
+        border-radius: 6px;
+        font-size: 1rem;
+        cursor: pointer;
+      }
+      button:hover {
+        background: #1d4ed8;
+      }
+      button:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+      .btn-secondary {
+        background: #fff;
+        color: #2563eb;
+        border: 1px solid #2563eb;
+        margin-top: 0.5rem;
+      }
+      .btn-secondary:hover {
+        background: #eff6ff;
+      }
+      .status {
+        color: #059669;
+        font-size: 0.875rem;
+        margin-top: 0.75rem;
+        min-height: 1.25rem;
+      }
+      .resend-box {
+        margin-top: 1.5rem;
+        text-align: left;
+      }
+      .link {
+        margin-top: 1.25rem;
+        font-size: 0.875rem;
+      }
+      .link a {
+        color: #2563eb;
+        text-decoration: none;
+      }
+      .link a:hover {
+        text-decoration: underline;
+      }
+      .spinner {
+        width: 2rem;
+        height: 2rem;
+        margin: 0 auto 1rem;
+        border: 3px solid #e5e7eb;
+        border-top-color: #2563eb;
+        border-radius: 50%;
+        animation: spin 0.7s linear infinite;
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      .lang-toggle {
+        margin-top: 1.25rem;
+        font-size: 0.8125rem;
+        color: #9ca3af;
+      }
+      .lang-toggle a {
+        color: #6b7280;
+        text-decoration: none;
+        margin: 0 0.25rem;
+      }
+      .lang-toggle a:hover {
+        text-decoration: underline;
+      }
+      .lang-toggle a.active {
+        color: #2563eb;
+        font-weight: 600;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card" id="card">
+      <div class="spinner"></div>
+      <p id="verifying">Vérification de votre e-mail…</p>
+    </div>
+
+    <script>
+      const I18N = {
+        fr: {
+          pageTitle: "Vérification de l'e-mail",
+          verifying: "Vérification de votre e-mail…",
+          successTitle: "E-mail vérifié",
+          successBody: "Votre adresse e-mail a bien été vérifiée. Vous pouvez maintenant vous connecter.",
+          goToLogin: "Se connecter",
+          expiredTitle: "Lien expiré",
+          invalidTitle: "Lien invalide",
+          missingTitle: "Lien manquant",
+          missingBody: "Ce lien de vérification est incomplet. Utilisez le lien reçu par e-mail.",
+          resendPrompt: "Saisissez votre e-mail pour recevoir un nouveau lien.",
+          emailLabel: "E-mail",
+          resend: "Renvoyer l'e-mail",
+          resendSent: "Si cette adresse est enregistrée et non vérifiée, un nouveau lien a été envoyé.",
+          resendFailed: "Échec de l'envoi, réessayez.",
+          resendInvalidEmail: "Saisissez une adresse e-mail valide.",
+          backToSignIn: "Retour à la connexion",
+        },
+        en: {
+          pageTitle: "Email verification",
+          verifying: "Verifying your email…",
+          successTitle: "Email verified",
+          successBody: "Your email address has been verified. You can now sign in.",
+          goToLogin: "Sign in",
+          expiredTitle: "Link expired",
+          invalidTitle: "Invalid link",
+          missingTitle: "Missing link",
+          missingBody: "This verification link is incomplete. Use the link from your email.",
+          resendPrompt: "Enter your email to receive a fresh link.",
+          emailLabel: "Email",
+          resend: "Resend email",
+          resendSent: "If that email is registered and unverified, a new link has been sent.",
+          resendFailed: "Couldn't resend, try again.",
+          resendInvalidEmail: "Enter a valid email address.",
+          backToSignIn: "Back to sign in",
+        },
+      };
+
+      const params = new URLSearchParams(window.location.search);
+      const lang = params.get("lang") === "en" ? "en" : "fr";
+      const t = I18N[lang];
+      const token = params.get("token");
+
+      document.documentElement.lang = lang;
+      document.title = t.pageTitle;
+      document.getElementById("verifying").textContent = t.verifying;
+
+      const card = document.getElementById("card");
+
+      function esc(s) {
+        return String(s).replace(
+          /[&<>"']/g,
+          (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c],
+        );
+      }
+
+      function langToggle() {
+        const fr = new URLSearchParams(window.location.search);
+        fr.set("lang", "fr");
+        const en = new URLSearchParams(window.location.search);
+        en.set("lang", "en");
+        return (
+          '<div class="lang-toggle"><a href="?' +
+          esc(fr.toString()) +
+          '"' +
+          (lang === "fr" ? ' class="active"' : "") +
+          '>Français</a> · <a href="?' +
+          esc(en.toString()) +
+          '"' +
+          (lang === "en" ? ' class="active"' : "") +
+          ">English</a></div>"
+        );
+      }
+
+      function loginLink() {
+        return '<p class="link"><a href="/login?lang=' + lang + '">' + t.backToSignIn + "</a></p>";
+      }
+
+      // Enumeration-safe resend: always 200 on success, 429 when rate-limited (3/60s).
+      // Both surface a message and never throw.
+      function attachResend(btn, input, statusEl) {
+        btn.addEventListener("click", async () => {
+          const email = input.value.trim();
+          if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            statusEl.style.color = "#dc2626";
+            statusEl.textContent = t.resendInvalidEmail;
+            return;
+          }
+          btn.disabled = true;
+          statusEl.style.color = "";
+          statusEl.textContent = "";
+          try {
+            const res = await fetch("/auth/resend-verification", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ email }),
+            });
+            if (!res.ok) throw new Error();
+            statusEl.textContent = t.resendSent;
+          } catch (_) {
+            statusEl.style.color = "#dc2626";
+            statusEl.textContent = t.resendFailed;
+          } finally {
+            setTimeout(() => {
+              btn.disabled = false;
+            }, 3000);
+          }
+        });
+      }
+
+      function renderSuccess() {
+        card.innerHTML =
+          '<div class="icon ok">✓</div><h1>' +
+          t.successTitle +
+          "</h1><p>" +
+          t.successBody +
+          '</p><p class="link" style="margin-top:1.5rem"><a href="/login?lang=' +
+          lang +
+          '"><button type="button">' +
+          t.goToLogin +
+          "</button></a></p>" +
+          langToggle();
+      }
+
+      // Failure states (expired / invalid / missing token) share a body + email-driven
+      // resend, since the verify link itself carries no email.
+      function renderFailure(title, body) {
+        card.innerHTML =
+          '<div class="icon bad">✕</div><h1>' +
+          esc(title) +
+          "</h1><p>" +
+          esc(body) +
+          '</p><div class="resend-box"><p style="margin-bottom:0.75rem">' +
+          t.resendPrompt +
+          '</p><label for="resendEmail">' +
+          t.emailLabel +
+          '</label><input type="email" id="resendEmail" autocomplete="email" /><button type="button" id="resendBtn" class="btn-secondary">' +
+          t.resend +
+          '</button><div id="resendStatus" class="status"></div></div>' +
+          loginLink() +
+          langToggle();
+        attachResend(
+          document.getElementById("resendBtn"),
+          document.getElementById("resendEmail"),
+          document.getElementById("resendStatus"),
+        );
+      }
+
+      async function verify() {
+        if (!token) {
+          renderFailure(t.missingTitle, t.missingBody);
+          return;
+        }
+        let res;
+        try {
+          res = await fetch("/auth/verify?token=" + encodeURIComponent(token), {
+            headers: { Accept: "application/json" },
+          });
+        } catch (_) {
+          renderFailure(t.invalidTitle, t.resendFailed);
+          return;
+        }
+        const data = await res.json().catch(() => ({}));
+        if (res.ok) {
+          renderSuccess();
+          return;
+        }
+        const expired = res.status === 400 && /expired/i.test(data.message || "");
+        renderFailure(expired ? t.expiredTitle : t.invalidTitle, data.message || "");
+      }
+
+      verify();
+    </script>
+  </body>
+</html>
