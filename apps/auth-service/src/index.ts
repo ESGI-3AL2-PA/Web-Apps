@@ -19,6 +19,7 @@ import { errorHandler, NotFoundError } from "./middleware/error-handler.js";
 import { connectDB, closeDB, pingDB } from "./repositories/mongodb.connector.js";
 import { initContainer, resolve } from "./repositories/container.js";
 import { MongoRefreshTokenRepository } from "./repositories/RefreshToken/refresh-token.repository.mongo.js";
+import { MongoAuthorizationCodeRepository } from "./repositories/AuthorizationCode/authorization-code.repository.mongo.js";
 import type { IRefreshTokenRepository } from "./repositories/RefreshToken/refresh-token.repository.js";
 import { initKeys } from "./keys.js";
 import { setupGracefulShutdown } from "@repo/shared";
@@ -309,6 +310,12 @@ connectDB()
         if (backfilled > 0) logger.info({ backfilled }, "Backfilled expiresAtDate on legacy refresh-token rows");
       })
       .catch((err) => logger.error({ err }, "Failed to ensure/backfill refresh-token indexes"));
+
+    // Same best-effort treatment for the desktop-SSO authorization codes: the TTL index
+    // reaps 60-second codes, the unique index guards the single-use claim.
+    await new MongoAuthorizationCodeRepository(db)
+      .ensureIndexes()
+      .catch((err) => logger.error({ err }, "Failed to ensure authorization-code indexes"));
 
     const server = app.listen(port, () => {
       const localUrl = `http://localhost:${port}`;
