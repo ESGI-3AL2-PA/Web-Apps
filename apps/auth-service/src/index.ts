@@ -15,10 +15,12 @@ import { logger } from "./logger.js";
 
 import { authRouter } from "./routes/auth/auth.router.js";
 import { jwksHandler } from "./routes/jwks.router.js";
+import { desktopSsoRouter } from "./routes/desktop-sso.router.js";
 import { errorHandler, NotFoundError } from "./middleware/error-handler.js";
 import { connectDB, closeDB, pingDB } from "./repositories/mongodb.connector.js";
 import { initContainer, resolve } from "./repositories/container.js";
 import { MongoRefreshTokenRepository } from "./repositories/RefreshToken/refresh-token.repository.mongo.js";
+import { MongoAuthorizationCodeRepository } from "./repositories/AuthorizationCode/authorization-code.repository.mongo.js";
 import type { IRefreshTokenRepository } from "./repositories/RefreshToken/refresh-token.repository.js";
 import { initKeys } from "./keys.js";
 import { setupGracefulShutdown } from "@repo/shared";
@@ -282,6 +284,17 @@ app.use(
   rateLimit({ windowMs: 60_000, limit: 30, standardHeaders: "draft-7", legacyHeaders: false, message: limiterMessage }),
 );
 
+app.use(
+  "/auth/desktop",
+  rateLimit({ windowMs: 60_000, limit: 30, standardHeaders: "draft-7", legacyHeaders: false, message: limiterMessage }),
+);
+
+// Desktop app SSO (authorization code + PKCE). urlencoded parsing is scoped to the
+// token endpoint — OAuth requires form encoding there, while the rest of this
+// service is JSON. Mounted before the ts-rest handlers so the rate limit above applies.
+app.use("/auth/desktop/token", express.urlencoded({ extended: false }));
+app.use(desktopSsoRouter);
+
 // Auth endpoints (ts-rest)
 createExpressEndpoints({ ...authContract }, { ...authRouter }, app);
 
@@ -309,6 +322,12 @@ connectDB()
         if (backfilled > 0) logger.info({ backfilled }, "Backfilled expiresAtDate on legacy refresh-token rows");
       })
       .catch((err) => logger.error({ err }, "Failed to ensure/backfill refresh-token indexes"));
+
+    // Same best-effort treatment for the desktop-SSO authorization codes: the TTL index
+    // reaps 60-second codes, the unique index guards the single-use claim.
+    await new MongoAuthorizationCodeRepository(db)
+      .ensureIndexes()
+      .catch((err) => logger.error({ err }, "Failed to ensure authorization-code indexes"));
 
     const server = app.listen(port, () => {
       const localUrl = `http://localhost:${port}`;

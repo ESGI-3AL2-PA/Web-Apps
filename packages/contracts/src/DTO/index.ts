@@ -17,3 +17,4 @@ export * from "./notification.dto";
 export * from "./transaction.dto";
 export * from "./recommendation.dto";
 export * from "./paginatedResponse.dto";
+export * from "./desktop-sso.dto";

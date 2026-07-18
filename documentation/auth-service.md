@@ -38,6 +38,26 @@ validates JWT via JWKS endpoint
 - Refresh tokens are **HttpOnly cookies**
 - On access token expiry, the frontend silently calls `POST /auth/refresh` (cookie sent automatically)
 
+### Signing key id (`kid`)
+
+The `kid` stamped on tokens and published in the JWKS is the key's **RFC 7638 JWK
+thumbprint** — derived from the key material, not configured.
+
+This is load-bearing, not cosmetic. Consumers cache the JWKS _by kid_, and jose's
+`createRemoteJWKSet` only refetches when a kid is **absent** (`JWKSNoMatchingKey`);
+a signature failure on a kid it already holds triggers nothing. So publishing new
+key material under a reused kid silently 401s every request until the 10-minute
+`cacheMaxAge` lapses — and the desktop client's key cache has no TTL at all, so it
+would stay broken until users relaunch the app. A thumbprint kid makes that state
+unreachable: new material always means a new kid, which is the path consumers
+recover from (≤30s, bounded by `cooldownDuration`).
+
+`AUTH_KEY_ID` still overrides it, but a pin that doesn't match its key's thumbprint
+warns on every boot — it reintroduces exactly that footgun. Its one legitimate use
+is the one-time migration off the historical static `auth-1`; `.env.dist` documents
+the alias procedure. Rotation itself needs no pin: swap the keypair, publish the old
+public key via `AUTH_PUBLIC_KEY_PREVIOUS` until in-flight tokens drain, then drop it.
+
 ### Access-token claims (v2)
 
 | Claim             | Values                          | Meaning                                                                                             |
@@ -53,14 +73,16 @@ Because authority is baked into the token, **promotion/demotion only takes effec
 
 ## Auth Service Endpoints
 
-| Method | Path                     | Description                                               |
-| ------ | ------------------------ | --------------------------------------------------------- |
-| `GET`  | `/login`                 | Serves the login HTML page                                |
-| `POST` | `/auth/login`            | Validates credentials, issues tokens, sets refresh cookie |
-| `POST` | `/auth/refresh`          | Rotates refresh token, issues new access token            |
-| `POST` | `/auth/logout`           | Revokes refresh token, clears cookie                      |
-| `GET`  | `/auth/userinfo`         | Returns user claims from Bearer access token              |
-| `GET`  | `/.well-known/jwks.json` | RSA public key in JWK format (used by all consumers)      |
+| Method | Path                      | Description                                               |
+| ------ | ------------------------- | --------------------------------------------------------- |
+| `GET`  | `/login`                  | Serves the login HTML page                                |
+| `POST` | `/auth/login`             | Validates credentials, issues tokens, sets refresh cookie |
+| `POST` | `/auth/refresh`           | Rotates refresh token, issues new access token            |
+| `POST` | `/auth/logout`            | Revokes refresh token, clears cookie                      |
+| `GET`  | `/auth/userinfo`          | Returns user claims from Bearer access token              |
+| `GET`  | `/.well-known/jwks.json`  | RSA public key in JWK format (used by all consumers)      |
+| `GET`  | `/auth/desktop/authorize` | Desktop SSO: session → one-shot code (admins only)        |
+| `POST` | `/auth/desktop/token`     | Desktop SSO: code + PKCE verifier → access token          |
 
 ---
 
@@ -114,19 +136,56 @@ Both frontends import from `@repo/contracts` for type-safe API calls — same pa
 
 ---
 
-### 5. Java App Integration
+### 5. Java App Integration (`admin-desktop`)
 
-No custom auth code needed. Configure the OIDC resource server to validate JWTs:
+The JavaFX desktop client is a **public** OAuth client — it ships as a jar, so any
+secret baked into it is readable by anyone holding the artifact. It therefore uses
+the RFC 8252 native-app flow: authorization code + PKCE, no client secret.
 
-`com.auth0:java-jwt`:
-
-```java
-JwkProvider provider = new UrlJwkProvider("http://auth-service:3001/.well-known/jwks.json");
-DecodedJWT jwt = JWT.decode(token);
-Jwk jwk = provider.get(jwt.getKeyId());
-Algorithm algorithm = Algorithm.RSA256((RSAPublicKey) jwk.getPublicKey(), null);
-JWT.require(algorithm).build().verify(token);
 ```
+admin-desktop                    auth-service                     browser
+     |                                |                              |
+     |-- bind 127.0.0.1:0 ------------|                              |
+     |-- open browser --------------------------------------------->|
+     |                                |<-- GET /auth/desktop/authorize
+     |                                |    response_type=code
+     |                                |    client_id=admin-desktop
+     |                                |    redirect_uri=http://127.0.0.1:<port>/callback
+     |                                |    state=<csrf> code_challenge=<S256>
+     |                                |
+     |                                |  no session? -> /login, then back here
+     |                                |  not an admin? -> ?error=access_denied
+     |                                |
+     |<-- GET /callback?code=&state= -------------------------------|
+     |                                |
+     |-- POST /auth/desktop/token --->|   (back channel, no browser)
+     |   code, code_verifier,         |
+     |   client_id, redirect_uri      |
+     |<-- { access_token, expires_in }|
+```
+
+Rules the client must hold up:
+
+- **Verify `state`** on the callback before using the code — it is the CSRF guard.
+- **Verify the token** against the JWKS (`iss: "auth-service"`, `aud: "api"`, RS256)
+  rather than trusting what arrived on the wire.
+- **Check the `role` claim** is `admin`/`superAdmin`. The server already refuses
+  everyone else, so this is defense in depth, not the gate.
+- **Cache JWKS keys with a TTL.** Caching by `kid` forever means a rotated key is
+  never picked up until the process restarts.
+
+The token is the ordinary first-party token: same issuer, same `aud: "api"`, so the
+same jar keeps calling `apps/api` and `/auth/userinfo` with no audience changes.
+
+Deliberately absent: no refresh token. The client holds the access token in memory
+and reopens the browser when it expires — the httpOnly `/auth` refresh cookie makes
+that silent. A public client sitting on a long-lived refresh token is a liability
+with no offsetting benefit here.
+
+> The old flow — `/login?redirect_uri=<loopback>` answering with `?access_token=` in
+> the query string — is **gone**. It put the raw JWT in browser history and proxy
+> logs, and accepted any loopback port as a redirect target. Old jars will receive a
+> callback with no token and must be updated.
 
 ---
 
@@ -154,5 +213,26 @@ REFRESH_TOKENS {
   expiresAt   timestamp
   revokedAt   timestamp     (null if active)
   createdAt   timestamp
+}
+```
+
+### `authorization_codes` collection
+
+One-shot codes for the desktop SSO flow. 60-second TTL, reaped by a TTL index on
+`expiresAtDate`; claimed via an atomic compare-and-swap on `usedAt` so two
+concurrent exchanges cannot both redeem one code.
+
+```
+AUTHORIZATION_CODES {
+  _id            ObjectId PK
+  codeHash       string      (sha256 — a DB read can't be replayed at /token)
+  clientId       string
+  userId         ObjectId FK → users
+  redirectUri    string      (byte-compared at exchange, never re-parsed)
+  codeChallenge  string      (PKCE S256, required)
+  expiresAt      timestamp
+  expiresAtDate  Date        (TTL index)
+  usedAt         timestamp   (null until claimed)
+  createdAt      timestamp
 }
 ```

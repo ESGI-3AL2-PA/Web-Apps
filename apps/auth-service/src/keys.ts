@@ -1,5 +1,14 @@
 import { readFileSync } from "fs";
-import { generateKeyPair, exportJWK, importPKCS8, importSPKI, type CryptoKey, type JWK, type KeyObject } from "jose";
+import {
+  calculateJwkThumbprint,
+  generateKeyPair,
+  exportJWK,
+  importPKCS8,
+  importSPKI,
+  type CryptoKey,
+  type JWK,
+  type KeyObject,
+} from "jose";
 import { logger } from "./logger.js";
 
 type KeyLike = CryptoKey | KeyObject;
@@ -9,11 +18,14 @@ let publicKey: KeyLike;
 let keyId: string;
 let jwks: { keys: JWK[] };
 
-// The active signing key id. Configurable so a rotation can publish a new key
-// under a fresh kid without a code change; defaults to the historical value so
-// nothing changes for existing deployments.
-const DEFAULT_KEY_ID = "auth-1";
-const DEFAULT_PREVIOUS_KEY_ID = "auth-0";
+// The kid defaults to the key's RFC 7638 JWK thumbprint, so it is a pure function
+// of the key material. That makes the dangerous rotation impossible by construction:
+// swapping the PEM while leaving a *static* kid republishes different material under
+// the same kid, and consumers that cached the JWKS by kid keep the stale key. jose's
+// createRemoteJWKSet only refetches when a kid is *absent* (JWKSNoMatchingKey), so a
+// reused kid silently 401s everything until its 10-minute cache lapses; the auth0
+// jwks-rsa client the desktop app uses caches by kid with no TTL at all.
+const thumbprintKid = (jwk: JWK): Promise<string> => calculateJwkThumbprint(jwk, "sha256");
 
 // The PEM can be provided inline (AUTH_*_KEY) or via a mounted file (AUTH_*_KEY_FILE).
 // The file form lets dev keep stable keys on disk without committing them, so
@@ -31,8 +43,6 @@ export const buildJwks = (entries: Array<{ jwk: JWK; kid: string }>): { keys: JW
 });
 
 export const initKeys = async () => {
-  keyId = process.env.AUTH_KEY_ID || DEFAULT_KEY_ID;
-
   const privPem = readPem(process.env.AUTH_PRIVATE_KEY, process.env.AUTH_PRIVATE_KEY_FILE);
   const pubPem = readPem(process.env.AUTH_PUBLIC_KEY, process.env.AUTH_PUBLIC_KEY_FILE);
 
@@ -52,22 +62,43 @@ export const initKeys = async () => {
     publicKey = pair.publicKey;
   }
 
-  const entries = [{ jwk: await exportJWK(publicKey), kid: keyId }];
+  const publicJwk = await exportJWK(publicKey);
+  const thumbprint = await thumbprintKid(publicJwk);
+  const pinned = process.env.AUTH_KEY_ID;
+  keyId = pinned || thumbprint;
+
+  if (pinned && pinned !== thumbprint) {
+    logger.warn(
+      { pinned, thumbprint },
+      "AUTH_KEY_ID is pinned to a value that is not this key's JWK thumbprint — rotating the key material without " +
+        "also changing AUTH_KEY_ID will republish different material under the same kid and break every consumer " +
+        "that cached the JWKS by kid",
+    );
+  }
+
+  const entries = [{ jwk: publicJwk, kid: keyId }];
 
   // Optional verify-only previous public key. During a rotation, set the old
   // public key here so its kid stays in the JWKS while tokens it signed drain;
   // the signer always uses the primary (AUTH_PRIVATE_KEY / AUTH_KEY_ID).
   const prevPubPem = readPem(process.env.AUTH_PUBLIC_KEY_PREVIOUS, process.env.AUTH_PUBLIC_KEY_PREVIOUS_FILE);
   if (prevPubPem) {
-    const previousKeyId = process.env.AUTH_KEY_ID_PREVIOUS || DEFAULT_PREVIOUS_KEY_ID;
+    const previousPublicKey = await importSPKI(prevPubPem, "RS256");
+    const previousJwk = await exportJWK(previousPublicKey);
+    const previousKeyId = process.env.AUTH_KEY_ID_PREVIOUS || (await thumbprintKid(previousJwk));
     if (previousKeyId === keyId) {
       throw new Error("AUTH_KEY_ID_PREVIOUS must differ from AUTH_KEY_ID (a rotation needs two distinct kids)");
     }
-    const previousPublicKey = await importSPKI(prevPubPem, "RS256");
-    entries.push({ jwk: await exportJWK(previousPublicKey), kid: previousKeyId });
+    entries.push({ jwk: previousJwk, kid: previousKeyId });
   }
 
   jwks = buildJwks(entries);
+
+  // One line that makes a botched rotation visible in the boot log.
+  logger.info(
+    { kid: keyId, thumbprint, pinned: Boolean(pinned), jwksKids: jwks.keys.map((k) => k.kid) },
+    "Signing keys loaded",
+  );
 };
 
 export const getPrivateKey = (): KeyLike => privateKey;
