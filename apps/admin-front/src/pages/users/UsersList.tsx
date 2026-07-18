@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useAuth } from "@repo/hooks";
 import type { TransactionResponseDto, UserBalanceResponseDto, UserResponseDto } from "@repo/contracts";
 import { useScopedList } from "../../hooks/useScopedList";
 import { banUser, kickFromDistrict, listUsers, requestPasswordReset } from "../../api-service/users";
+import { createDistrictAdmin } from "../../api-service/district-admins";
 import { getUserBalance, getUserTransactions } from "../../api-service/transactions";
 import { DataTable, type Column } from "../../components/DataTable";
 import { Pagination } from "../../components/Pagination";
@@ -19,13 +21,21 @@ export default function UsersList() {
   const { t } = useTranslation();
   const list = useScopedList<UserResponseDto>(listUsers);
   const toast = useToast();
+  const { user: me } = useAuth();
+  const scope = useDistrictScope();
   const ban = useAsyncAction();
   const reset = useAsyncAction();
   const kick = useAsyncAction();
+  const promote = useAsyncAction();
   const [viewing, setViewing] = useState<UserResponseDto | null>(null);
   const [banning, setBanning] = useState<UserResponseDto | null>(null);
   const [resetting, setResetting] = useState<UserResponseDto | null>(null);
   const [kicking, setKicking] = useState<UserResponseDto | null>(null);
+  const [promoting, setPromoting] = useState<UserResponseDto | null>(null);
+
+  // Promotion grants district-admin rights, so it's superAdmin-only (same rule as the
+  // /district-admins page) and needs an active district to attach the assignment to.
+  const canPromote = me?.role === "superAdmin" && !!scope.districtId;
 
   const columns: Column<UserResponseDto>[] = [
     { header: t("common.fields.name"), cell: (u) => `${u.firstName} ${u.lastName}` },
@@ -67,6 +77,11 @@ export default function UsersList() {
                 <button className={`btn btn-xs btn-text ${u.banned ? "" : "btn-error"}`} onClick={() => setBanning(u)}>
                   {u.banned ? t("users.unban") : t("users.ban")}
                 </button>
+                {canPromote && !u.banned && (
+                  <button className="btn btn-xs btn-text btn-primary" onClick={() => setPromoting(u)}>
+                    {t("users.promote")}
+                  </button>
+                )}
               </>
             )}
           </div>
@@ -112,6 +127,27 @@ export default function UsersList() {
             await kickFromDistrict(kicking!.id);
             toast.show(t("users.kicked"));
             setKicking(null);
+            list.refetch();
+          })
+        }
+      />
+
+      <ConfirmDialog
+        open={!!promoting}
+        title={t("users.promoteTitle")}
+        message={t("users.promoteMessage", { email: promoting?.email, district: scope.districtName ?? "—" })}
+        confirmLabel={t("users.promote")}
+        busy={promote.busy}
+        error={promote.error}
+        onCancel={() => {
+          setPromoting(null);
+          promote.reset();
+        }}
+        onConfirm={() =>
+          promote.run(async () => {
+            await createDistrictAdmin({ districtId: scope.districtId!, userId: promoting!.id });
+            toast.show(t("users.promoted"));
+            setPromoting(null);
             list.refetch();
           })
         }

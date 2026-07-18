@@ -152,6 +152,10 @@
     "kickTitle": "Exclure du quartier",
     "kickMessage": "Retirer {{email}} de son quartier ? Ses points sont redistribués aux autres membres et il devra rejoindre un quartier. Cela ne le bannit pas.",
     "kicked": "Utilisateur exclu du quartier",
+    "promote": "Promouvoir admin",
+    "promoteTitle": "Promouvoir en administrateur de quartier",
+    "promoteMessage": "Promouvoir {{email}} en administrateur du quartier « {{district}} » ? L'utilisateur obtiendra l'accès à la console d'administration pour ce quartier.",
+    "promoted": "Utilisateur promu administrateur",
     "recentTransactions": "Transactions récentes",
     "noTransactions": "Aucune transaction"
   },

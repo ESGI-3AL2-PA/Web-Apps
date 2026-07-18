@@ -152,6 +152,10 @@
     "kickTitle": "Kick from district",
     "kickMessage": "Remove {{email}} from their district? Their points are redistributed to the remaining members and they'll need to re-join a district. This does not ban them.",
     "kicked": "User kicked from district",
+    "promote": "Promote to admin",
+    "promoteTitle": "Promote to district admin",
+    "promoteMessage": "Promote {{email}} to admin of “{{district}}”? They'll get access to the admin console for that district.",
+    "promoted": "User promoted to admin",
     "recentTransactions": "Recent transactions",
     "noTransactions": "No transactions"
   },
