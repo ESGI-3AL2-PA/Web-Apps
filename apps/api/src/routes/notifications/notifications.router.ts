@@ -44,7 +44,7 @@ export const notificationsRouter = s.router(notificationsContract, {
   },
 
   markNotificationRead: async ({ params: { id } }) => {
-    // Recipient/admin authorization (404-on-deny) is enforced by the contract-metadata middleware.
+    // Recipient-only authorization (404-on-deny) is enforced by the contract-metadata middleware.
     const notification = await markNotificationReadUseCase(resolve("notification"))(id);
     if (!notification) {
       return { status: 404, body: { message: "Notification not found" } };
@@ -58,7 +58,7 @@ export const notificationsRouter = s.router(notificationsContract, {
   },
 
   deleteNotification: async ({ params: { id } }) => {
-    // Recipient/admin authorization (404-on-deny) is enforced by the contract-metadata middleware.
+    // Recipient-only authorization (404-on-deny) is enforced by the contract-metadata middleware.
     const deleted = await deleteNotificationUseCase(resolve("notification"))({ id });
     if (!deleted) {
       return { status: 404, body: { message: "Notification not found" } };

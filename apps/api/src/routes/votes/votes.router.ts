@@ -2,7 +2,7 @@ import { initServer } from "@ts-rest/express";
 import { votesContract } from "@repo/contracts";
 import { resolve } from "../../repositories/container.js";
 import type { IUserRepository } from "../../repositories/User/user.repository.js";
-import { resolveListDistrictScope } from "../../middleware/district-scope.js";
+import { callerCanReadDistrict, resolveCallerListDistrict } from "../../middleware/district-scope.js";
 import { getVotesUseCase } from "../../use-cases/votes/get-votes.use-case.js";
 import { getVoteByIdUseCase } from "../../use-cases/votes/get-vote-by-id.use-case.js";
 import { createVoteUseCase } from "../../use-cases/votes/create-vote.use-case.js";
@@ -18,8 +18,7 @@ import { getVoteResultsUseCase } from "../../use-cases/votes/get-vote-results.us
 const s = initServer();
 
 // Le quartier de résidence d'un user n'est pas dans le JWT (seul adminDistrictId
-// y figure) — on le charge. Retourne null si le compte n'existe plus. Factorisé
-// car trois handlers en avaient besoin (list / get / create) avec la même logique.
+// y figure) — on le charge. Retourne null si le compte n'existe plus.
 const callerDistrictId = async (userId: string): Promise<string | null> => {
   const userRepo: IUserRepository = resolve("user");
   const caller = await userRepo.getUserById(userId);
@@ -30,23 +29,13 @@ export const votesRouter = s.router(votesContract, {
   getVotes: async ({ query, req }) => {
     const user = req.user!;
     const empty = { status: 200 as const, body: { data: [], total: 0, page: query.page, limit: query.limit } };
-    let districtId: string | undefined;
-    if (user.role === "user") {
-      // Un résident ne liste que les votes de SON quartier — on ignore le districtId
-      // fourni par le client (sinon énumération inter-quartiers).
-      const resident = await callerDistrictId(user.sub);
-      if (!resident) return empty;
-      districtId = resident;
-    } else {
-      const scope = resolveListDistrictScope(user, query.districtId);
-      if ("empty" in scope) return empty;
-      districtId = scope.districtId;
-    }
+    const scope = await resolveCallerListDistrict(user, query.districtId, resolve("user"));
+    if ("empty" in scope) return empty;
     // On passe l'ID du user authentifié pour que la repo peuple
     // `userHasVoted` / `myChosenOptions` sur chaque vote renvoyé.
     const result = await getVotesUseCase(resolve("vote"))({
       ...query,
-      districtId,
+      districtId: scope.districtId,
       currentUserId: user.sub,
     });
     return { status: 200, body: result };
@@ -58,18 +47,9 @@ export const votesRouter = s.router(votesContract, {
     if (!vote) {
       return { status: 404, body: { message: "Vote not found" } };
     }
-    // Visibilité par quartier : un résident ne voit que les votes concernant son
-    // quartier, un admin ceux de son adminDistrictId ; superAdmin voit tout. On
-    // renvoie 404 (et non 403) pour ne pas divulguer l'existence d'un vote voisin.
-    if (user.role === "user") {
-      const resident = await callerDistrictId(user.sub);
-      if (!resident || !vote.districtIds.includes(resident)) {
-        return { status: 404, body: { message: "Vote not found" } };
-      }
-    } else if (user.role === "admin") {
-      if (!user.adminDistrictId || !vote.districtIds.includes(user.adminDistrictId)) {
-        return { status: 404, body: { message: "Vote not found" } };
-      }
+    // 404 (et non 403) pour ne pas divulguer l'existence d'un vote voisin.
+    if (!(await callerCanReadDistrict(user, vote.districtIds, resolve("user")))) {
+      return { status: 404, body: { message: "Vote not found" } };
     }
     return { status: 200, body: vote };
   },

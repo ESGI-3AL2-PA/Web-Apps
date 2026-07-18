@@ -52,7 +52,7 @@ export class SatanIncidentRepository implements IIncidentRepository {
   ): Promise<Incident | null> {
     return this.mongo.updateIncident(id, data);
   }
-  getStats(districtId?: string) {
-    return this.mongo.getStats(districtId);
+  getStats(params?: { districtId?: string; reporterId?: string }) {
+    return this.mongo.getStats(params);
   }
 }

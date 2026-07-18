@@ -462,4 +462,122 @@ describe("authorize middleware", () => {
       expect(req.log.info).not.toHaveBeenCalled();
     });
   });
+
+  // GET /incidents/:id — a resident may read only what they reported, while a district admin
+  // keeps the moderation view. The district grant keys off adminDistrictId, which is null for
+  // a resident, so the same policy yields both behaviours.
+  describe("incident visibility", () => {
+    const policy: AuthPolicy = {
+      scope: {
+        resource: "incident",
+        ownerField: "reporterId",
+        districtField: "districtId",
+        bypassRoles: ["superAdmin"],
+        notFoundOnDeny: true,
+      },
+    };
+    const incident = { reporterId: "user-2", districtId: "district-1" };
+
+    it("allows the reporter", async () => {
+      stubRecord({ ...incident, reporterId: "user-1" });
+      const { res } = makeRes();
+      const next = vi.fn();
+      await authorize(makeReq({ policy, user: makeUser(), params: { id: "inc-1" } }), res, next);
+      expect(next).toHaveBeenCalledOnce();
+    });
+
+    it("hides a neighbour's incident from a resident of the same district", async () => {
+      stubRecord(incident);
+      const { res, captured } = makeRes();
+      const next = vi.fn();
+      await authorize(makeReq({ policy, user: makeUser({ sub: "user-1" }), params: { id: "inc-1" } }), res, next);
+      expect(next).not.toHaveBeenCalled();
+      expect(captured.statusCode).toBe(404); // not 403 — do not disclose that it exists
+    });
+
+    it("allows the district admin as moderator", async () => {
+      stubRecord(incident);
+      const { res } = makeRes();
+      const next = vi.fn();
+      await authorize(
+        makeReq({
+          policy,
+          user: makeUser({ sub: "admin-1", role: "admin", adminDistrictId: "district-1" }),
+          params: { id: "inc-1" },
+        }),
+        res,
+        next,
+      );
+      expect(next).toHaveBeenCalledOnce();
+    });
+
+    it("denies an admin bound to another district", async () => {
+      stubRecord(incident);
+      const { res, captured } = makeRes();
+      const next = vi.fn();
+      await authorize(
+        makeReq({
+          policy,
+          user: makeUser({ sub: "admin-1", role: "admin", adminDistrictId: "district-9" }),
+          params: { id: "inc-1" },
+        }),
+        res,
+        next,
+      );
+      expect(next).not.toHaveBeenCalled();
+      expect(captured.statusCode).toBe(404);
+    });
+
+    it("lets superAdmin bypass", async () => {
+      stubRecord(incident);
+      const { res } = makeRes();
+      const next = vi.fn();
+      await authorize(
+        makeReq({ policy, user: makeUser({ sub: "s1", role: "superAdmin" }), params: { id: "inc-1" } }),
+        res,
+        next,
+      );
+      expect(next).toHaveBeenCalledOnce();
+    });
+  });
+
+  // PATCH /notifications/:id/read and DELETE /notifications/:id — an inbox belongs to one
+  // person, so no role may act on it but its recipient.
+  describe("notification writes are recipient-only", () => {
+    const policy: AuthPolicy = {
+      scope: { resource: "notification", ownerField: "recipientId", notFoundOnDeny: true },
+    };
+    const notification = { recipientId: "user-2", districtId: "district-1" };
+
+    const run = async (user: AuthUser) => {
+      stubRecord(notification);
+      const { res, captured } = makeRes();
+      const next = vi.fn();
+      await authorize(makeReq({ policy, user, params: { id: "notif-1" }, method: "PATCH" }), res, next);
+      return { next, captured };
+    };
+
+    it("allows the recipient", async () => {
+      const { next } = await run(makeUser({ sub: "user-2" }));
+      expect(next).toHaveBeenCalledOnce();
+    });
+
+    it("denies another resident", async () => {
+      const { next, captured } = await run(makeUser({ sub: "user-1" }));
+      expect(next).not.toHaveBeenCalled();
+      expect(captured.statusCode).toBe(404);
+    });
+
+    it("denies the district admin — reading someone's inbox is not moderation", async () => {
+      const { next, captured } = await run(makeUser({ sub: "admin-1", role: "admin", adminDistrictId: "district-1" }));
+      expect(next).not.toHaveBeenCalled();
+      expect(captured.statusCode).toBe(404);
+    });
+
+    it("denies superAdmin — no bypass on another user's inbox", async () => {
+      const { next, captured } = await run(makeUser({ sub: "s1", role: "superAdmin" }));
+      expect(next).not.toHaveBeenCalled();
+      expect(captured.statusCode).toBe(404);
+    });
+  });
 });

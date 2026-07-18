@@ -3,7 +3,7 @@ import { listingsContract } from "@repo/contracts";
 import { resolve } from "../../repositories/container.js";
 import type { IUserRepository } from "../../repositories/User/user.repository.js";
 import type { IListingRepository } from "../../repositories/Listing/listing.repository.js";
-import { resolveListDistrictScope } from "../../middleware/district-scope.js";
+import { callerCanReadDistrict, resolveCallerListDistrict } from "../../middleware/district-scope.js";
 import { getListingsUseCase } from "../../use-cases/listings/get-listings.use-case.js";
 import { getListingByIdUseCase } from "../../use-cases/listings/get-listing-by-id.use-case.js";
 import { createListingUseCase } from "../../use-cases/listings/create-listing.use-case.js";
@@ -14,7 +14,7 @@ const s = initServer();
 
 export const listingsRouter = s.router(listingsContract, {
   getListings: async ({ query: { page, limit, search, status, districtId, authorId, tag, sort }, req }) => {
-    const scope = resolveListDistrictScope(req.user!, districtId);
+    const scope = await resolveCallerListDistrict(req.user!, districtId, resolve("user"));
     if ("empty" in scope) {
       return { status: 200, body: { data: [], total: 0, page, limit } };
     }
@@ -31,9 +31,14 @@ export const listingsRouter = s.router(listingsContract, {
     return { status: 200, body: result };
   },
 
-  getListingById: async ({ params: { id } }) => {
+  getListingById: async ({ params: { id }, req }) => {
     const listing = await getListingByIdUseCase(resolve("listing"))({ id });
     if (!listing) {
+      return { status: 404, body: { message: "Listing not found" } };
+    }
+    // Les annonces sont publiques DANS un quartier, pas entre quartiers. 404 (et non 403)
+    // pour ne pas divulguer l'existence d'une annonce voisine.
+    if (!(await callerCanReadDistrict(req.user!, [listing.districtId], resolve("user")))) {
       return { status: 404, body: { message: "Listing not found" } };
     }
     return { status: 200, body: listing };
@@ -77,7 +82,7 @@ export const listingsRouter = s.router(listingsContract, {
   },
 
   getActiveListingsCount: async ({ query: { districtId }, req }) => {
-    const scope = resolveListDistrictScope(req.user!, districtId);
+    const scope = await resolveCallerListDistrict(req.user!, districtId, resolve("user"));
     if ("empty" in scope) {
       return { status: 200, body: { count: 0 } };
     }

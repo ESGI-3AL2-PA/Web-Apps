@@ -27,7 +27,7 @@ export interface IIncidentRepository {
 
   deleteIncident(id: string): Promise<boolean>;
 
-  getStats(districtId?: string): Promise<{
+  getStats(params?: { districtId?: string; reporterId?: string }): Promise<{
     total: number;
     byStatus: Record<string, number>;
     byCategory: Record<string, number>;
