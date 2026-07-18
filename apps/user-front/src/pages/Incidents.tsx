@@ -34,7 +34,8 @@ export default function Incidents() {
     let ignore = false;
     setLoading(true);
     setError(false);
-    getIncidents({ reporterId: user.id, limit: 50 })
+    // Pas de reporterId : le backend borne déjà la liste aux signalements du demandeur.
+    getIncidents({ limit: 50 })
       .then((page) => {
         if (!ignore) setIncidents(page.data);
       })
