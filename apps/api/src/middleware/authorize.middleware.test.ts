@@ -540,4 +540,44 @@ describe("authorize middleware", () => {
       expect(next).toHaveBeenCalledOnce();
     });
   });
+
+  // PATCH /notifications/:id/read and DELETE /notifications/:id — an inbox belongs to one
+  // person, so no role may act on it but its recipient.
+  describe("notification writes are recipient-only", () => {
+    const policy: AuthPolicy = {
+      scope: { resource: "notification", ownerField: "recipientId", notFoundOnDeny: true },
+    };
+    const notification = { recipientId: "user-2", districtId: "district-1" };
+
+    const run = async (user: AuthUser) => {
+      stubRecord(notification);
+      const { res, captured } = makeRes();
+      const next = vi.fn();
+      await authorize(makeReq({ policy, user, params: { id: "notif-1" }, method: "PATCH" }), res, next);
+      return { next, captured };
+    };
+
+    it("allows the recipient", async () => {
+      const { next } = await run(makeUser({ sub: "user-2" }));
+      expect(next).toHaveBeenCalledOnce();
+    });
+
+    it("denies another resident", async () => {
+      const { next, captured } = await run(makeUser({ sub: "user-1" }));
+      expect(next).not.toHaveBeenCalled();
+      expect(captured.statusCode).toBe(404);
+    });
+
+    it("denies the district admin — reading someone's inbox is not moderation", async () => {
+      const { next, captured } = await run(makeUser({ sub: "admin-1", role: "admin", adminDistrictId: "district-1" }));
+      expect(next).not.toHaveBeenCalled();
+      expect(captured.statusCode).toBe(404);
+    });
+
+    it("denies superAdmin — no bypass on another user's inbox", async () => {
+      const { next, captured } = await run(makeUser({ sub: "s1", role: "superAdmin" }));
+      expect(next).not.toHaveBeenCalled();
+      expect(captured.statusCode).toBe(404);
+    });
+  });
 });

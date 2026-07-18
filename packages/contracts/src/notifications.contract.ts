@@ -49,14 +49,15 @@ export const notificationsContract = c.router({
       200: NotificationResponseDtoSchema,
       404: NotFoundErrorSchema,
     },
-    summary: "Mark a single notification as read (recipient or admin)",
+    summary: "Mark a single notification as read (recipient only)",
+    // A notification belongs to exactly one person. No districtField and no bypassRoles:
+    // reading someone's inbox state is not moderation, so neither a district admin nor a
+    // superAdmin may mark it read on their behalf. Same reasoning as conversation writes.
     metadata: auth({
       audience: "api",
       scope: {
         resource: "notification",
         ownerField: "recipientId",
-        districtField: "districtId",
-        bypassRoles: ["superAdmin"],
         notFoundOnDeny: true,
       },
     }),
@@ -82,14 +83,12 @@ export const notificationsContract = c.router({
       204: z.undefined(),
       404: NotFoundErrorSchema,
     },
-    summary: "Delete a notification (recipient or admin)",
+    summary: "Delete a notification (recipient only)",
     metadata: auth({
       audience: "api",
       scope: {
         resource: "notification",
         ownerField: "recipientId",
-        districtField: "districtId",
-        bypassRoles: ["superAdmin"],
         notFoundOnDeny: true,
       },
     }),
