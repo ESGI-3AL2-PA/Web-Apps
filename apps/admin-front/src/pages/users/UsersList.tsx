@@ -1,10 +1,10 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@repo/hooks";
 import type { TransactionResponseDto, UserBalanceResponseDto, UserResponseDto } from "@repo/contracts";
 import { useScopedList } from "../../hooks/useScopedList";
 import { banUser, kickFromDistrict, listUsers, requestPasswordReset } from "../../api-service/users";
-import { createDistrictAdmin } from "../../api-service/district-admins";
+import { createDistrictAdmin, deleteDistrictAdmin, listDistrictAdmins } from "../../api-service/district-admins";
 import { getUserBalance, getUserTransactions } from "../../api-service/transactions";
 import { DataTable, type Column } from "../../components/DataTable";
 import { Pagination } from "../../components/Pagination";
@@ -27,15 +27,31 @@ export default function UsersList() {
   const reset = useAsyncAction();
   const kick = useAsyncAction();
   const promote = useAsyncAction();
+  const demote = useAsyncAction();
   const [viewing, setViewing] = useState<UserResponseDto | null>(null);
   const [banning, setBanning] = useState<UserResponseDto | null>(null);
   const [resetting, setResetting] = useState<UserResponseDto | null>(null);
   const [kicking, setKicking] = useState<UserResponseDto | null>(null);
   const [promoting, setPromoting] = useState<UserResponseDto | null>(null);
+  const [demoting, setDemoting] = useState<UserResponseDto | null>(null);
+  // userId -> assignment id, for the active district only (see loadAssignments).
+  const [assignments, setAssignments] = useState<Record<string, string>>({});
 
   // Promotion grants district-admin rights, so it's superAdmin-only (same rule as the
   // /district-admins page) and needs an active district to attach the assignment to.
   const canPromote = me?.role === "superAdmin" && !!scope.districtId;
+
+  // Which admins in this district were promoted through an assignment row — the only ones
+  // this page can revoke. Fetched per district rather than per row to keep it to one request.
+  const loadAssignments = useCallback(async () => {
+    if (!canPromote) return setAssignments({});
+    const res = await listDistrictAdmins({ page: 1, limit: 100, districtId: scope.districtId! });
+    setAssignments(Object.fromEntries(res.data.map((a) => [a.userId, a.id])));
+  }, [canPromote, scope.districtId]);
+
+  useEffect(() => {
+    void loadAssignments().catch(() => setAssignments({}));
+  }, [loadAssignments]);
 
   const columns: Column<UserResponseDto>[] = [
     { header: t("common.fields.name"), cell: (u) => `${u.firstName} ${u.lastName}` },
@@ -83,6 +99,11 @@ export default function UsersList() {
                   </button>
                 )}
               </>
+            )}
+            {u.role === "admin" && u.id !== me?.id && assignments[u.id] && (
+              <button className="btn btn-xs btn-text btn-warning" onClick={() => setDemoting(u)}>
+                {t("users.demote")}
+              </button>
             )}
           </div>
         )}
@@ -148,6 +169,29 @@ export default function UsersList() {
             await createDistrictAdmin({ districtId: scope.districtId!, userId: promoting!.id });
             toast.show(t("users.promoted"));
             setPromoting(null);
+            await loadAssignments();
+            list.refetch();
+          })
+        }
+      />
+
+      <ConfirmDialog
+        open={!!demoting}
+        title={t("users.demoteTitle")}
+        message={t("users.demoteMessage", { email: demoting?.email, district: scope.districtName ?? "—" })}
+        confirmLabel={t("users.demote")}
+        busy={demote.busy}
+        error={demote.error}
+        onCancel={() => {
+          setDemoting(null);
+          demote.reset();
+        }}
+        onConfirm={() =>
+          demote.run(async () => {
+            await deleteDistrictAdmin(assignments[demoting!.id]);
+            toast.show(t("users.demoted"));
+            setDemoting(null);
+            await loadAssignments();
             list.refetch();
           })
         }

@@ -156,6 +156,10 @@
     "promoteTitle": "Promote to district admin",
     "promoteMessage": "Promote {{email}} to admin of “{{district}}”? They'll get access to the admin console for that district.",
     "promoted": "User promoted to admin",
+    "demote": "Demote",
+    "demoteTitle": "Revoke admin rights",
+    "demoteMessage": "Revoke {{email}}'s admin rights on “{{district}}”? If they administer no other district, they revert to a regular user.",
+    "demoted": "Admin rights revoked",
     "recentTransactions": "Recent transactions",
     "noTransactions": "No transactions"
   },

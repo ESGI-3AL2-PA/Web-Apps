@@ -156,6 +156,10 @@
     "promoteTitle": "Promouvoir en administrateur de quartier",
     "promoteMessage": "Promouvoir {{email}} en administrateur du quartier « {{district}} » ? L'utilisateur obtiendra l'accès à la console d'administration pour ce quartier.",
     "promoted": "Utilisateur promu administrateur",
+    "demote": "Rétrograder",
+    "demoteTitle": "Révoquer les droits d'administration",
+    "demoteMessage": "Retirer à {{email}} l'administration du quartier « {{district}} » ? S'il n'administre aucun autre quartier, il redevient un utilisateur normal.",
+    "demoted": "Droits d'administration révoqués",
     "recentTransactions": "Transactions récentes",
     "noTransactions": "Aucune transaction"
   },
