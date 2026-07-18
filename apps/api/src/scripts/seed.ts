@@ -39,6 +39,9 @@ const ids = {
     charlie: "seed-user-charlie",
     diana: "seed-user-diana",
   },
+  districtAdmins: {
+    adminMontmartre: "seed-district-admin-montmartre",
+  },
   tags: {
     plumbing: "seed-tag-plumbing",
     babysitting: "seed-tag-babysitting",
@@ -234,6 +237,18 @@ const users = [
     balance: 30,
     createdAt: now,
     updatedAt: now,
+  },
+];
+
+// Binds the admin account to the district it moderates. Without this row the
+// auth-service mints `adminDistrictId: null` (see lookupAdminDistrictId), and every
+// district-scoped route then fails closed — the admin sees an empty console.
+const districtAdmins = [
+  {
+    _id: ids.districtAdmins.adminMontmartre,
+    districtId: ids.districts.montmartre,
+    userId: ids.users.admin,
+    createdAt: now,
   },
 ];
 
@@ -944,6 +959,7 @@ const main = async () => {
     console.log("\n📄  Mongo");
     await seedCollection(db, "districts", districts);
     await seedCollection(db, "users", users);
+    await seedCollection(db, "district_admins", districtAdmins);
     console.warn(`  🔑 seeded users share password "${seedPassword}" (e.g. alice@example.com)`);
     await seedCollection(db, "tags", tags);
     await seedCollection(db, "listings", listings);
@@ -959,6 +975,7 @@ const main = async () => {
     const totalDocs =
       districts.length +
       users.length +
+      districtAdmins.length +
       tags.length +
       listings.length +
       events.length +
@@ -970,7 +987,7 @@ const main = async () => {
       notifications.length +
       transactions.length;
 
-    console.log(`  ✅ ${totalDocs} documents across 13 collections.`);
+    console.log(`  ✅ ${totalDocs} documents across 14 collections.`);
 
     // ── Neo4j ────────────────────────────────────────────────────────────
     console.log("\n🕸️  Neo4j");
