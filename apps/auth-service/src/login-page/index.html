@@ -216,42 +216,20 @@
         if (a.getAttribute("data-lang") === lang) a.classList.add("active");
       });
 
-      // Loopback (desktop): pass access token in URL.
-      // Web SPA keeps cookie flow.
-      function isLoopback(origin) {
-        try {
-          const u = new URL(origin);
-          return (
-            (u.protocol === "http:" || u.protocol === "https:") &&
-            (u.hostname === "localhost" || u.hostname === "127.0.0.1" || u.hostname === "::1")
-          );
-        } catch (_) {
-          return false;
-        }
-      }
-
+      // Same-origin or an explicitly allowed front. Loopback origins are deliberately
+      // NOT accepted: this page used to hand the desktop app its token by appending
+      // ?access_token= to a loopback callback, which put the raw JWT in browser history
+      // and any intercepting proxy log, and let any local port act as a redirect target.
+      // The desktop app now uses /auth/desktop/authorize, which returns a single-use
+      // code instead and sends the token only over a direct back-channel POST.
       function safeRedirect(raw) {
         if (!raw) return "/";
         try {
           const u = new URL(raw, window.location.origin);
           if (u.origin === window.location.origin) return u.href;
           if (ALLOWED_REDIRECT_ORIGINS.includes(u.origin)) return u.href;
-          // Allow loopback origin for desktop local callback.
-          if (isLoopback(u.origin)) return u.href;
         } catch (_) {}
         return "/";
-      }
-
-      // Redirect to redirect_uri.
-      // For loopback targets, append access token in query.
-      function redirectWithToken(token) {
-        if (!token || !isLoopback(redirectUri)) {
-          window.location.href = redirectUri;
-          return;
-        }
-        const u = new URL(redirectUri);
-        u.searchParams.set("access_token", token);
-        window.location.href = u.href;
       }
 
       const redirectUri = safeRedirect(params.get("redirect_uri"));
@@ -259,29 +237,6 @@
       // Keep redirect_uri and lang on register link.
       document.getElementById("registerLink").href =
         "/register?redirect_uri=" + encodeURIComponent(redirectUri) + "&lang=" + lang;
-
-      // Desktop loopback: try silent refresh on load.
-      // If refresh cookie is valid, return token without login form.
-      if (isLoopback(redirectUri)) {
-        (async () => {
-          try {
-            const csrfRes = await fetch("/auth/csrf", { credentials: "include" });
-            const csrfData = await csrfRes.json().catch(() => ({}));
-            const csrf = csrfData.csrf_token;
-            if (!csrf) return;
-            const r = await fetch("/auth/refresh", {
-              method: "POST",
-              credentials: "include",
-              headers: { "X-CSRF-Token": csrf },
-            });
-            if (!r.ok) return;
-            const d = await r.json().catch(() => ({}));
-            if (d.access_token) redirectWithToken(d.access_token);
-          } catch (_) {
-            // Ignore error and show login form.
-          }
-        })();
-      }
 
       // Wire a "resend verification email" button to the enumeration-safe endpoint.
       // Always 200 on success; 429 when rate-limited (3/60s) — both surface a message,
@@ -363,7 +318,9 @@
             throw new Error(data.message || t.loginFailed);
           }
 
-          redirectWithToken(data.access_token);
+          // The session lives in the httpOnly refresh cookie the response just set;
+          // the token itself never travels through the URL.
+          window.location.href = redirectUri;
         } catch (err) {
           errorEl.textContent = err.message;
           errorEl.style.display = "block";
@@ -403,7 +360,7 @@
             if (!r.ok) {
               throw new Error(d.message || t.invalidCode);
             }
-            redirectWithToken(d.access_token);
+            window.location.href = redirectUri;
           } catch (e) {
             errEl.textContent = e.message;
             errEl.style.display = "block";
