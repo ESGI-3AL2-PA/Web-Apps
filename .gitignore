@@ -26,3 +26,6 @@ docker/auth/
 # CD deploy SSH keypair (private half is the DEPLOY_SSH_KEY GH secret).
 /deploy_ed25519
 /deploy_ed25519.pub
+
+# Sibling repo (ESGI-3AL2-PA/Client-Java) cloned into this working tree — not a submodule.
+/Client-Java/
