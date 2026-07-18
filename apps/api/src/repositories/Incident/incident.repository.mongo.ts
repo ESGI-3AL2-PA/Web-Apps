@@ -95,12 +95,14 @@ export class MongoIncidentRepository implements IIncidentRepository {
     return result.deletedCount === 1;
   }
 
-  async getStats(districtId?: string): Promise<{
+  async getStats(params?: { districtId?: string; reporterId?: string }): Promise<{
     total: number;
     byStatus: Record<string, number>;
     byCategory: Record<string, number>;
   }> {
-    const match = districtId ? { districtId } : {};
+    const match: Record<string, unknown> = {};
+    if (params?.districtId) match.districtId = params.districtId;
+    if (params?.reporterId) match.reporterId = params.reporterId;
     const [total, byStatus, byCategory] = await Promise.all([
       this.collection.countDocuments(match),
       this.aggregateCount("$status", match),

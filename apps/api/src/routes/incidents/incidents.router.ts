@@ -13,6 +13,19 @@ const s = initServer();
 
 export const incidentsRouter = s.router(incidentsContract, {
   getIncidents: async ({ query, req }) => {
+    // Un résident ne voit que les signalements QU'IL a ouverts — pas ceux de son quartier.
+    // On force reporterId (au lieu de le fusionner) pour que la valeur envoyée par le
+    // client ne puisse jamais l'emporter, et on neutralise les autres filtres de portée.
+    const isAdmin = req.user!.role === "admin" || req.user!.role === "superAdmin";
+    if (!isAdmin) {
+      const result = await getIncidentsUseCase(resolve("incident"))({
+        ...query,
+        reporterId: req.user!.sub,
+        assignedTo: undefined,
+        districtId: undefined,
+      });
+      return { status: 200, body: result };
+    }
     const scope = resolveListDistrictScope(req.user!, query.districtId);
     if ("empty" in scope) {
       return { status: 200, body: { data: [], total: 0, page: query.page, limit: query.limit } };
@@ -22,15 +35,21 @@ export const incidentsRouter = s.router(incidentsContract, {
   },
 
   getIncidentStats: async ({ query, req }) => {
+    const isAdmin = req.user!.role === "admin" || req.user!.role === "superAdmin";
+    if (!isAdmin) {
+      const stats = await getIncidentStatsUseCase(resolve("incident"))({ reporterId: req.user!.sub });
+      return { status: 200, body: stats };
+    }
     const scope = resolveListDistrictScope(req.user!, query.districtId);
     if ("empty" in scope) {
       return { status: 200, body: { total: 0, byStatus: {}, byCategory: {} } };
     }
-    const stats = await getIncidentStatsUseCase(resolve("incident"))(scope.districtId);
+    const stats = await getIncidentStatsUseCase(resolve("incident"))({ districtId: scope.districtId });
     return { status: 200, body: stats };
   },
 
   getIncidentById: async ({ params: { id } }) => {
+    // Reporter/admin visibility is enforced by the contract-metadata middleware.
     const incident = await getIncidentByIdUseCase(resolve("incident"))({ id });
     if (!incident) {
       return { status: 404, body: { message: "Incident not found" } };
