@@ -49,8 +49,20 @@ export const incidentsContract = c.router({
       200: IncidentResponseDtoSchema,
       404: NotFoundErrorSchema,
     },
-    summary: "Get a single incident by ID",
-    metadata: auth({ audience: "api" }),
+    summary: "Get a single incident by ID (reporter or district admin only)",
+    // A resident sees only what they reported: `inDistrict` keys off adminDistrictId, which is
+    // null for a plain user, so the district grant applies to admins alone. 404-on-deny so a
+    // neighbour's report does not leak its existence.
+    metadata: auth({
+      audience: "api",
+      scope: {
+        resource: "incident",
+        ownerField: "reporterId",
+        districtField: "districtId",
+        bypassRoles: ["superAdmin"],
+        notFoundOnDeny: true,
+      },
+    }),
   },
 
   createIncident: {

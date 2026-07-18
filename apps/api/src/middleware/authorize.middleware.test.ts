@@ -462,4 +462,82 @@ describe("authorize middleware", () => {
       expect(req.log.info).not.toHaveBeenCalled();
     });
   });
+
+  // GET /incidents/:id — a resident may read only what they reported, while a district admin
+  // keeps the moderation view. The district grant keys off adminDistrictId, which is null for
+  // a resident, so the same policy yields both behaviours.
+  describe("incident visibility", () => {
+    const policy: AuthPolicy = {
+      scope: {
+        resource: "incident",
+        ownerField: "reporterId",
+        districtField: "districtId",
+        bypassRoles: ["superAdmin"],
+        notFoundOnDeny: true,
+      },
+    };
+    const incident = { reporterId: "user-2", districtId: "district-1" };
+
+    it("allows the reporter", async () => {
+      stubRecord({ ...incident, reporterId: "user-1" });
+      const { res } = makeRes();
+      const next = vi.fn();
+      await authorize(makeReq({ policy, user: makeUser(), params: { id: "inc-1" } }), res, next);
+      expect(next).toHaveBeenCalledOnce();
+    });
+
+    it("hides a neighbour's incident from a resident of the same district", async () => {
+      stubRecord(incident);
+      const { res, captured } = makeRes();
+      const next = vi.fn();
+      await authorize(makeReq({ policy, user: makeUser({ sub: "user-1" }), params: { id: "inc-1" } }), res, next);
+      expect(next).not.toHaveBeenCalled();
+      expect(captured.statusCode).toBe(404); // not 403 — do not disclose that it exists
+    });
+
+    it("allows the district admin as moderator", async () => {
+      stubRecord(incident);
+      const { res } = makeRes();
+      const next = vi.fn();
+      await authorize(
+        makeReq({
+          policy,
+          user: makeUser({ sub: "admin-1", role: "admin", adminDistrictId: "district-1" }),
+          params: { id: "inc-1" },
+        }),
+        res,
+        next,
+      );
+      expect(next).toHaveBeenCalledOnce();
+    });
+
+    it("denies an admin bound to another district", async () => {
+      stubRecord(incident);
+      const { res, captured } = makeRes();
+      const next = vi.fn();
+      await authorize(
+        makeReq({
+          policy,
+          user: makeUser({ sub: "admin-1", role: "admin", adminDistrictId: "district-9" }),
+          params: { id: "inc-1" },
+        }),
+        res,
+        next,
+      );
+      expect(next).not.toHaveBeenCalled();
+      expect(captured.statusCode).toBe(404);
+    });
+
+    it("lets superAdmin bypass", async () => {
+      stubRecord(incident);
+      const { res } = makeRes();
+      const next = vi.fn();
+      await authorize(
+        makeReq({ policy, user: makeUser({ sub: "s1", role: "superAdmin" }), params: { id: "inc-1" } }),
+        res,
+        next,
+      );
+      expect(next).toHaveBeenCalledOnce();
+    });
+  });
 });
