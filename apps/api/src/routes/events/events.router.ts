@@ -1,7 +1,8 @@
 import { initServer } from "@ts-rest/express";
 import { eventsContract } from "@repo/contracts";
 import { resolve } from "../../repositories/container.js";
-import { resolveListDistrictScope } from "../../middleware/district-scope.js";
+import type { Request } from "express";
+import { callerCanReadDistrict, resolveCallerListDistrict } from "../../middleware/district-scope.js";
 import { getEventsUseCase } from "../../use-cases/events/get-events.use-case.js";
 import { getEventByIdUseCase } from "../../use-cases/events/get-event-by-id.use-case.js";
 import { createEventUseCase } from "../../use-cases/events/create-event.use-case.js";
@@ -14,9 +15,20 @@ import { markInterestUseCase } from "../../use-cases/events/mark-interest.use-ca
 
 const s = initServer();
 
+// Les événements sont publics DANS un quartier, pas entre quartiers — et l'inscription
+// consomme une place, donc la lecture ET les écritures doivent être bornées. On renvoie
+// 404 (et non 403) pour ne pas divulguer l'existence d'un événement voisin.
+const notFound = { status: 404 as const, body: { message: "Event not found" } };
+
+const readableEvent = async (id: string, user: NonNullable<Request["user"]>) => {
+  const event = await getEventByIdUseCase(resolve("event"))({ id });
+  if (!event) return null;
+  return (await callerCanReadDistrict(user, [event.districtId], resolve("user"))) ? event : null;
+};
+
 export const eventsRouter = s.router(eventsContract, {
   getEvents: async ({ query: { page, limit, search, status, districtId, creatorId, registrantId }, req }) => {
-    const scope = resolveListDistrictScope(req.user!, districtId);
+    const scope = await resolveCallerListDistrict(req.user!, districtId, resolve("user"));
     if ("empty" in scope) {
       return { status: 200, body: { data: [], total: 0, page, limit } };
     }
@@ -36,11 +48,9 @@ export const eventsRouter = s.router(eventsContract, {
     return { status: 200, body: result };
   },
 
-  getEventById: async ({ params: { id } }) => {
-    const event = await getEventByIdUseCase(resolve("event"))({ id });
-    if (!event) {
-      return { status: 404, body: { message: "Event not found" } };
-    }
+  getEventById: async ({ params: { id }, req }) => {
+    const event = await readableEvent(id, req.user!);
+    if (!event) return notFound;
     return { status: 200, body: event };
   },
 
@@ -73,6 +83,7 @@ export const eventsRouter = s.router(eventsContract, {
   },
 
   registerToEvent: async ({ params: { id }, req }) => {
+    if (!(await readableEvent(id, req.user!))) return notFound;
     const event = await registerToEventUseCase(resolve("event"), resolve("graph"))(id, req.user!.sub);
     if (!event) {
       return { status: 404, body: { message: "Event not found or no seats available" } };
@@ -89,6 +100,7 @@ export const eventsRouter = s.router(eventsContract, {
   },
 
   attendEvent: async ({ params: { id }, body: { rating }, req }) => {
+    if (!(await readableEvent(id, req.user!))) return notFound;
     const event = await attendEventUseCase(resolve("event"), resolve("graph"))(id, req.user!.sub, rating);
     if (!event) {
       return { status: 404, body: { message: "Event not found" } };
@@ -97,6 +109,7 @@ export const eventsRouter = s.router(eventsContract, {
   },
 
   markInterest: async ({ params: { id }, body: { rating }, req }) => {
+    if (!(await readableEvent(id, req.user!))) return notFound;
     const found = await markInterestUseCase(resolve("event"), resolve("graph"))(req.user!.sub, id, rating);
     if (!found) {
       return { status: 404, body: { message: "Event not found" } };
