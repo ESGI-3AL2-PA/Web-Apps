@@ -385,6 +385,9 @@ services:
     command: ["npx", "tsx", "apps/api/src/scripts/seed.ts"]
     environment:
       NODE_ENV: development
+      # Picks apps/api/seed-data/<name>.txt. Set SEED_SCENARIO in .env to swap datasets
+      # without having to restate the whole `command` array in an override file.
+      SEED_SCENARIO: ${SEED_SCENARIO:-demo}
       MONGODB_URL: mongodb://root:root@mongodb:27017/?replicaSet=rs0
       MONGODB_DB: db
       NEO4J_URL: bolt://neo4j:7687
@@ -417,6 +420,11 @@ services:
       mongodb:
         condition: service_healthy
       mongo-init:
+        condition: service_completed_successfully
+      # Must run AFTER api-seed: that one drops `users` wholesale, which would take
+      # the superAdmin with it. Without this the two one-shots race and the
+      # superAdmin survives or not depending on which finishes last.
+      api-seed:
         condition: service_completed_successfully
 
 volumes:

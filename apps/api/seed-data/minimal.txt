@@ -1,0 +1,13 @@
+# ══════════════════════════════════════════════════════════════════════════════
+#  minimal — an empty dataset.
+#
+#  The seed still runs its reset (drops the seeded collections + the offline-sync
+#  trio, wipes the Neo4j graph), then inserts nothing. Use it to blank the stack:
+#
+#      SEED_SCENARIO=minimal docker compose up api-seed
+#      npm run seed -- minimal        # from apps/api
+#
+#  Nothing to log in with afterwards — run auth-service's seed:superadmin if you
+#  need the superAdmin back (compose does this for you). Same NDJSON format as
+#  demo.txt: add `@collection <name>` blocks below if you want a small fixture.
+# ══════════════════════════════════════════════════════════════════════════════
