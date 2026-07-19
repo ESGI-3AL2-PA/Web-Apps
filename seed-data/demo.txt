@@ -1,15 +1,8 @@
 # ══════════════════════════════════════════════════════════════════════════════
-#  demo — the reference dataset (mirrors what apps/api/src/scripts/seed.ts used
-#  to hardcode). 56 Mongo documents across 13 collections, plus the Neo4j-only
-#  signals the recommendation engine needs.
 #
-#  Format: one JSON document per line. `@collection <name>` / `@graph <name>`
-#  switch the active target; blank lines and `#` lines are ignored. Whole-string
-#  tokens `{{now}}`, `{{now±Nd}}` and `{{passwordHash}}` are resolved at run time.
+#      SEED_SCENARIO=demo docker compose up api-seed
+#      npm run seed -- demo      # from apps/api
 #
-#  Contracts are deliberately not seeded: a contract is only meaningful with a
-#  real Documenso document behind it (fake ids can't be signed and crash the PDF
-#  proxy). They are created at runtime via "Prendre ce service".
 # ══════════════════════════════════════════════════════════════════════════════
 
 @collection districts

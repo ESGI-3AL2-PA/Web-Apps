@@ -1,6 +1,6 @@
 /**
  * Seed script — populates MongoDB and Neo4j from an NDJSON scenario file under
- * `apps/api/seed-data/`. See that directory for the format.
+ * the repo-root `seed-data/` directory. See that directory for the format.
  *
  * Usage:
  *   npm run seed                    # from apps/api — uses seed-data/demo.txt
@@ -33,10 +33,11 @@ import type { SeedDataset, SeedDocument } from "./loader.js";
 
 const seedPassword = process.env.SEED_PASSWORD ?? "Password123!";
 
-// `src/scripts/` and `dist/scripts/` sit at the same depth under `apps/api/`, so this
-// resolves identically under tsx and under node — and, unlike process.cwd(), it does
-// not care that compose runs from /app while `npm run seed` runs from apps/api.
-const SEED_DATA_DIR = new URL("../../seed-data/", import.meta.url);
+// Scenario files live at the repo root (`/seed-data/`). `src/scripts/` and
+// `dist/scripts/` sit at the same depth under `apps/api/`, so four hops up resolves
+// identically under tsx and under node — and, unlike process.cwd(), it does not care
+// that compose runs from /app while `npm run seed` runs from apps/api.
+const SEED_DATA_DIR = new URL("../../../../seed-data/", import.meta.url);
 
 const resolveScenarioPath = (arg: string): URL => {
   if (arg.includes("/") || arg.includes("\\") || arg.endsWith(".txt")) {
