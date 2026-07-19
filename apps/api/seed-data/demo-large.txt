@@ -1,13 +1,8 @@
 # ══════════════════════════════════════════════════════════════════════════════
-#  demo-large — a richer demo dataset. Superset of demo.txt: same accounts and
-#  recommendation signals, plus 3 extra districts (Belleville / Bastille /
-#  Quartier Latin), their admins, and more residents, listings, events, votes,
-#  conversations and notifications. 142 Mongo documents across 13 collections.
 #
 #      SEED_SCENARIO=demo-large docker compose up api-seed
 #      npm run seed -- demo-large      # from apps/api
 #
-#  Same NDJSON format and tokens as demo.txt.
 # ══════════════════════════════════════════════════════════════════════════════
 
 
