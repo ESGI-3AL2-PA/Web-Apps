@@ -29,6 +29,7 @@ const setup = (opts: { session?: unknown; user?: UserRecord | null } = {}) => {
     findActiveByTokenHash: vi
       .fn()
       .mockResolvedValue("session" in opts ? opts.session : { userId: "user-1", expiresAt: futureIso() }),
+    revokeByTokenHash: vi.fn().mockResolvedValue(true),
   };
   const userReader = { findById: vi.fn().mockResolvedValue("user" in opts ? opts.user : makeUser()) };
 
@@ -105,6 +106,35 @@ describe("desktopAuthorizeUseCase", () => {
       createHash("sha256").update(RAW_REFRESH).digest("hex"),
     );
     expect(refreshRepo).not.toHaveProperty("claimByTokenHash.mock.calls.0");
+  });
+
+  // Without this the desktop client can never switch accounts: logout only clears
+  // JVM-side state, so the browser cookie re-authorizes the same user instantly.
+  describe("prompt=login", () => {
+    it("refuses a valid session and issues no code", async () => {
+      const { run, codeRepo } = setup();
+
+      await expect(run({ ...input, forceReauth: true })).resolves.toEqual({ status: "unauthenticated" });
+      expect(codeRepo.create).not.toHaveBeenCalled();
+    });
+
+    it("revokes the session server-side, not just the browser copy", async () => {
+      const { run, refreshRepo } = setup();
+
+      await run({ ...input, forceReauth: true });
+
+      expect(refreshRepo.revokeByTokenHash).toHaveBeenCalledWith(
+        createHash("sha256").update(RAW_REFRESH).digest("hex"),
+      );
+    });
+
+    it("does not revoke on a normal authorize", async () => {
+      const { run, refreshRepo } = setup();
+
+      await run(input);
+
+      expect(refreshRepo.revokeByTokenHash).not.toHaveBeenCalled();
+    });
   });
 
   it("mints a distinct code per call", async () => {

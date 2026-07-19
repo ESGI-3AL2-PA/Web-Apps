@@ -16,6 +16,11 @@ export interface AuthorizeInput {
   rawRefreshToken: string | null;
   redirectUri: string;
   codeChallenge: string;
+  /**
+   * `prompt=login`: refuse the existing session and revoke it, so the caller is sent
+   * back through the login page. This is what makes desktop account switching work.
+   */
+  forceReauth?: boolean;
 }
 
 /**
@@ -35,6 +40,14 @@ export const desktopAuthorizeUseCase = (
     if (!input.rawRefreshToken) return { status: "unauthenticated" };
 
     const tokenHash = createHash("sha256").update(input.rawRefreshToken).digest("hex");
+
+    // Revoke before refusing, so the old session cannot be reused from another tab.
+    // Unlike the normal read path below, discarding this session is the whole point.
+    if (input.forceReauth) {
+      await refreshTokenRepo.revokeByTokenHash(tokenHash);
+      return { status: "unauthenticated" };
+    }
+
     // findActive, not claim: this is a *read* of the session. Rotating the refresh
     // token here would invalidate the cookie still held by the browser tab the user
     // came from, logging them out of the web app as a side effect of a desktop login.

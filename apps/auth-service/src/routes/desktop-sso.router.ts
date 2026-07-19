@@ -7,6 +7,7 @@ import { desktopAuthorizeUseCase } from "../use-cases/desktop-authorize.use-case
 import { desktopTokenUseCase } from "../use-cases/desktop-token.use-case.js";
 
 const REFRESH_COOKIE = "refresh_token";
+const CSRF_COOKIE = "csrf_token";
 const AUTH_PUBLIC_URL = process.env.AUTH_PUBLIC_URL ?? "http://localhost:3001";
 
 /**
@@ -62,13 +63,23 @@ desktopSsoRouter.get("/auth/desktop/authorize", async (req: Request, res: Respon
     rawRefreshToken: typeof req.cookies?.[REFRESH_COOKIE] === "string" ? req.cookies[REFRESH_COOKIE] : null,
     redirectUri: query.redirect_uri,
     codeChallenge: query.code_challenge,
+    forceReauth: query.prompt === "login",
   });
 
   if (outcome.status === "unauthenticated") {
+    if (query.prompt === "login") {
+      // The use-case revoked the session server-side; drop the browser's copy too,
+      // otherwise the login page is reached with a cookie that no longer resolves.
+      res.clearCookie(REFRESH_COOKIE, { path: "/auth" });
+      res.clearCookie(CSRF_COOKIE, { path: "/auth" });
+    }
     // Send them through the hosted login page, which returns here once the cookie
     // is set. Absolute + same-origin, which the page's safeRedirect already allows.
-    const returnTo = new URL(req.originalUrl, AUTH_PUBLIC_URL).href;
-    res.redirect(`/login?redirect_uri=${encodeURIComponent(returnTo)}`);
+    const returnTo = new URL(req.originalUrl, AUTH_PUBLIC_URL);
+    // Strip `prompt` from the return trip: leaving it in would force re-auth again
+    // on the way back, looping the user between /login and /authorize forever.
+    returnTo.searchParams.delete("prompt");
+    res.redirect(`/login?redirect_uri=${encodeURIComponent(returnTo.href)}`);
     return;
   }
 

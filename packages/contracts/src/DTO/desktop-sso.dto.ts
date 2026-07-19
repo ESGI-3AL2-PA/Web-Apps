@@ -22,6 +22,10 @@ export const DesktopAuthorizeQuerySchema = z.object({
   // S256 only. RFC 7636 also defines "plain", which offers no protection at all
   // against a local process that can read the authorization request.
   code_challenge_method: z.literal("S256"),
+  // OIDC-style re-authentication hint. "login" forces credential re-entry even when
+  // the browser still holds a valid /auth session cookie — without it the desktop
+  // client can never switch accounts, since logout only clears JVM-side state.
+  prompt: z.enum(["login"]).optional(),
 });
 
 export const DesktopTokenRequestSchema = z.object({
