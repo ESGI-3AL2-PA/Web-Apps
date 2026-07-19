@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { syncProvenanceSchema } from "./sync-provenance.js";
 
 export const UserRoleSchema = z.enum(["user", "admin", "superAdmin"]);
 export type UserRole = z.infer<typeof UserRoleSchema>;
@@ -29,6 +30,8 @@ export const userDocumentSchema = z.object({
   lang: z.enum(["fr", "en"]).optional(),
   // Highest TOTP time-step already consumed; used to reject replay of a code within its window.
   lastTotpStep: z.number().optional(),
+  // Internal offline-sync provenance; stripped by `toEntity` before the doc leaves the repo.
+  _sync: syncProvenanceSchema.optional(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
 });

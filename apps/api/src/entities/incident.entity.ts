@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { syncProvenanceSchema } from "@repo/shared";
 
 export const IncidentStatusSchema = z.enum(["open", "in_progress", "resolved", "closed"]);
 export type IncidentStatus = z.infer<typeof IncidentStatusSchema>;
@@ -21,6 +22,8 @@ export const IncidentSchema = z.object({
   status: IncidentStatusSchema,
   history: z.array(IncidentHistoryEntrySchema),
   assignedTo: z.string().optional(),
+  // Internal offline-sync provenance; stripped by `toEntity` before the doc leaves the repo.
+  _sync: syncProvenanceSchema.optional(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
 });
