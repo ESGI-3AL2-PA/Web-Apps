@@ -25,7 +25,7 @@ RUN npm ci
 FROM deps AS dev
 ENV NODE_ENV=development
 COPY apps/api/src/ ./apps/api/src/
-COPY apps/api/seed-data/ ./apps/api/seed-data/
+COPY seed-data/ ./seed-data/
 RUN npm ci
 EXPOSE 3000
 CMD ["npx", "tsx", "--watch", "apps/api/src/index.ts"]
@@ -35,6 +35,9 @@ FROM deps AS build
 ENV NODE_ENV=production
 COPY packages/ ./packages/
 COPY apps/api/ ./apps/api/
+# Seed scenarios now live at the repo root, so they aren't under apps/api/ — copy
+# them explicitly so the prod stage can pull them from the build layer.
+COPY seed-data/ ./seed-data/
 RUN npx turbo run build --filter=api
 
 # PROD — prod-only deps + compiled output. No toolchain (tsx/tsc/turbo/eslint) ships at
@@ -55,9 +58,10 @@ COPY --from=build /app/packages/shared/dist ./packages/shared/dist
 COPY --from=build /app/packages/satan/dist ./packages/satan/dist
 COPY --from=build /app/packages/satan/python ./packages/satan/python
 COPY --from=build /app/apps/api/dist ./apps/api/dist
-# Seed scenarios are data, not source: they live outside src/ so tsc never sees them,
-# which means they need copying explicitly or the seed one-shot has nothing to read.
-COPY --from=build /app/apps/api/seed-data ./apps/api/seed-data
+# Seed scenarios are data, not source: they live at the repo root so tsc never sees
+# them, which means they need copying explicitly or the seed one-shot has nothing to
+# read. The seed script resolves them at ../../../../seed-data relative to dist/scripts.
+COPY --from=build /app/seed-data ./seed-data
 # Drop root: the node:*-alpine image ships an unprivileged `node` user (uid 1000).
 USER node
 EXPOSE 3000

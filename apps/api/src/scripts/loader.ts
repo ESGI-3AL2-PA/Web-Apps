@@ -1,5 +1,5 @@
 /**
- * Parser for the NDJSON seed scenario files under `apps/api/seed-data/*.txt`.
+ * Parser for the NDJSON seed scenario files under the repo-root `seed-data/*.txt`.
  *
  * Line grammar, evaluated top to bottom:
  *   - blank / whitespace-only  → ignored
