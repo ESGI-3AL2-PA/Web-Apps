@@ -377,7 +377,10 @@ services:
     build:
       context: .
       dockerfile: apps/api/Dockerfile
-      target: dev
+      # build, not dev: the dev stage only copies apps/api/src, so @repo/shared
+      # resolves to a package with no dist/. The api service gets away with it
+      # because it bind-mounts the repo; a one-shot seed has no mount.
+      target: build
     restart: "no"
     command: ["npx", "tsx", "apps/api/src/scripts/seed.ts"]
     environment:
@@ -400,7 +403,8 @@ services:
     build:
       context: .
       dockerfile: apps/auth-service/Dockerfile
-      target: dev
+      # build, not dev — see api-seed.
+      target: build
     restart: "no"
     command: ["npx", "tsx", "apps/auth-service/src/seed-superadmin.ts"]
     environment:
