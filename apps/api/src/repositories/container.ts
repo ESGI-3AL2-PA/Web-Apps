@@ -16,6 +16,11 @@ import type { IVoteRepository } from "./Vote/vote.repository.js";
 import type { IConversationRepository } from "./Conversation/conversation.repository.js";
 import type { INotificationRepository } from "./Notification/notification.repository.js";
 import type { ITransactionRepository } from "./Transaction/transaction.repository.js";
+import type { ICounterRepository } from "./Sync/counter.repository.js";
+import type { ISyncStateRepository } from "./Sync/sync-state.repository.js";
+import type { ISyncChangesRepository } from "./Sync/sync-changes.repository.js";
+import type { ISyncConflictsRepository } from "./Sync/sync-conflicts.repository.js";
+import type { ISyncWriterRepository } from "./Sync/sync-writer.repository.js";
 
 import { MongoUserRepository } from "./User/user.repository.mongo.js";
 import { MongoListingRepository } from "./Listing/listing.repository.mongo.js";
@@ -30,6 +35,11 @@ import { MongoConversationRepository } from "./Conversation/conversation.reposit
 import { MongoNotificationRepository } from "./Notification/notification.repository.mongo.js";
 import { MongoTransactionRepository } from "./Transaction/transaction.repository.mongo.js";
 import { Neo4jGraphRepository } from "./Graph/graph.repository.neo4j.js";
+import { MongoCounterRepository } from "./Sync/counter.repository.mongo.js";
+import { MongoSyncStateRepository } from "./Sync/sync-state.repository.mongo.js";
+import { MongoSyncChangesRepository } from "./Sync/sync-changes.repository.mongo.js";
+import { MongoSyncConflictsRepository } from "./Sync/sync-conflicts.repository.mongo.js";
+import { MongoSyncWriterRepository } from "./Sync/sync-writer.repository.mongo.js";
 
 import { SatanUserRepository } from "./User/user.repository.satan.js";
 import { SatanListingRepository } from "./Listing/listing.repository.satan.js";
@@ -61,6 +71,12 @@ type Container = {
   notification: INotificationRepository;
   transaction: ITransactionRepository;
   graph: Neo4jGraphRepository;
+  // Offline sync (H2 ↔ Mongo). No SATAN variants — these are infrastructure, not domain queries.
+  syncCounter: ICounterRepository;
+  syncState: ISyncStateRepository;
+  syncChanges: ISyncChangesRepository;
+  syncConflicts: ISyncConflictsRepository;
+  syncWriter: ISyncWriterRepository;
 };
 
 const { set, resolve } = createContainer<Container>();
@@ -89,6 +105,8 @@ export const initContainer = (db: Db, neo4jDriver: Driver, satan?: SatanClient) 
     transaction: new MongoTransactionRepository(db),
   };
 
+  const syncCounter = new MongoCounterRepository(db);
+
   const useSatan = satan && process.env.SATAN_REPOS !== "false";
 
   const repositories: Container = {
@@ -105,6 +123,11 @@ export const initContainer = (db: Db, neo4jDriver: Driver, satan?: SatanClient) 
     notification: useSatan ? new SatanNotificationRepository(mongo.notification, satan) : mongo.notification,
     transaction: useSatan ? new SatanTransactionRepository(mongo.transaction, satan) : mongo.transaction,
     graph: new Neo4jGraphRepository(neo4jDriver),
+    syncCounter,
+    syncState: new MongoSyncStateRepository(db),
+    syncChanges: new MongoSyncChangesRepository(db, syncCounter),
+    syncConflicts: new MongoSyncConflictsRepository(db),
+    syncWriter: new MongoSyncWriterRepository(db),
   };
   set(repositories);
 
@@ -122,6 +145,8 @@ export const initContainer = (db: Db, neo4jDriver: Driver, satan?: SatanClient) 
     ["notification", repositories.notification],
     ["transaction", repositories.transaction],
     ["conversation", repositories.conversation],
+    ["syncChanges", repositories.syncChanges],
+    ["syncConflicts", repositories.syncConflicts],
   ];
   for (const [name, repo] of withIndexes) {
     void repo.ensureIndexes().catch((err) => logger.error({ err, name }, "Failed to ensure indexes"));
