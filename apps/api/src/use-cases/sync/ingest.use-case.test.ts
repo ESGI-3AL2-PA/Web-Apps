@@ -1,113 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { IngestEventDto, SyncEntity } from "@repo/contracts";
+import type { IngestEventDto } from "@repo/contracts";
 import type { IGraphRepository } from "../../repositories/Graph/graph.repository.js";
-import type {
-  ISyncConflictsRepository,
-  NewSyncConflict,
-  SyncConflict,
-} from "../../repositories/Sync/sync-conflicts.repository.js";
-import type { ISyncWriterRepository, SyncDoc, SyncStamp } from "../../repositories/Sync/sync-writer.repository.js";
-import { pickWritable } from "../../sync/sync-entity-config.js";
+import { InMemorySyncConflictsRepository } from "../../repositories/Sync/sync-conflicts.repository.in-memory.js";
+import { InMemorySyncWriterRepository } from "../../repositories/Sync/sync-writer.repository.in-memory.js";
 import type { SyncScope } from "../../sync/sync-scope.js";
 import { ingestUseCase } from "./ingest.use-case.js";
-
-// A writer over plain maps, applying the same allowlist the Mongo one does, so the
-// tests exercise the real write-model instead of a hand-written stand-in of it.
-class FakeWriter implements ISyncWriterRepository {
-  docs = new Map<string, SyncDoc>();
-  private seq = 0;
-
-  private key = (entity: SyncEntity, id: string) => `${entity}:${id}`;
-
-  async findById(entity: SyncEntity, id: string): Promise<SyncDoc | null> {
-    return this.docs.get(this.key(entity, id)) ?? null;
-  }
-
-  async findByBusinessKey(entity: SyncEntity, value: unknown): Promise<SyncDoc | null> {
-    for (const [k, doc] of this.docs) {
-      if (k.startsWith(`${entity}:`) && doc.email === value) return doc;
-    }
-    return null;
-  }
-
-  async insert(entity: SyncEntity, data: SyncDoc, sync: SyncStamp, id?: string) {
-    const mongoId = id ?? `new-${++this.seq}`;
-    const updatedAt = `2026-07-19T00:00:0${++this.seq}.000Z`;
-    const existing = this.docs.get(this.key(entity, mongoId)) ?? {};
-    this.docs.set(this.key(entity, mongoId), {
-      ...existing,
-      ...pickWritable(entity, data),
-      _id: mongoId,
-      updatedAt,
-      ...(sync ? { _sync: sync } : {}),
-    });
-    return { mongoId, updatedAt };
-  }
-
-  async update(entity: SyncEntity, id: string, data: SyncDoc, sync: SyncStamp) {
-    const doc = this.docs.get(this.key(entity, id));
-    if (!doc) return null;
-    const updatedAt = `2026-07-19T00:00:0${++this.seq}.000Z`;
-    this.docs.set(this.key(entity, id), {
-      ...doc,
-      ...pickWritable(entity, data),
-      updatedAt,
-      ...(sync ? { _sync: sync } : {}),
-    });
-    return { updatedAt };
-  }
-
-  async remove(entity: SyncEntity, id: string) {
-    return this.docs.delete(this.key(entity, id));
-  }
-
-  async touch(entity: SyncEntity, id: string) {
-    const doc = this.docs.get(this.key(entity, id));
-    if (!doc) return null;
-    const updatedAt = `2026-07-19T00:00:0${++this.seq}.000Z`;
-    this.docs.set(this.key(entity, id), { ...doc, updatedAt });
-    return { updatedAt };
-  }
-}
-
-class FakeConflicts implements ISyncConflictsRepository {
-  rows: SyncConflict[] = [];
-  private seq = 0;
-
-  async ensureIndexes() {}
-
-  async create(conflict: NewSyncConflict): Promise<SyncConflict> {
-    const row: SyncConflict = {
-      ...conflict,
-      id: `c-${++this.seq}`,
-      status: "pending",
-      detectedAt: "2026-07-19T00:00:00.000Z",
-    };
-    this.rows.push(row);
-    return row;
-  }
-
-  async findPending(entity: SyncEntity, mongoId: string) {
-    return this.rows.find((r) => r.entity === entity && r.mongoId === mongoId && r.status === "pending") ?? null;
-  }
-
-  async refreshLocalData(id: string, localData: Record<string, unknown>) {
-    const row = this.rows.find((r) => r.id === id);
-    if (row) row.localData = localData;
-  }
-
-  async list() {
-    return this.rows;
-  }
-
-  async getById(id: string) {
-    return this.rows.find((r) => r.id === id) ?? null;
-  }
-
-  async markResolved() {
-    return null;
-  }
-}
 
 const graph = {
   upsertUser: vi.fn(async () => {}),
@@ -119,8 +16,8 @@ const graph = {
   linkDistrictContainsIncident: vi.fn(async () => {}),
 } as unknown as IGraphRepository;
 
-let writer: FakeWriter;
-let conflicts: FakeConflicts;
+let writer: InMemorySyncWriterRepository;
+let conflicts: InMemorySyncConflictsRepository;
 
 const run = (events: IngestEventDto[], scope: SyncScope = { districtId: "d1" }, instanceId = "it-1") =>
   ingestUseCase({ writer, conflicts, graph })({ events, instanceId, scope });
@@ -136,8 +33,12 @@ const event = (over: Partial<IngestEventDto>): IngestEventDto => ({
 });
 
 beforeEach(() => {
-  writer = new FakeWriter();
-  conflicts = new FakeConflicts();
+  let seq = 0;
+  writer = new InMemorySyncWriterRepository();
+  writer.now = () => `2026-07-19T00:00:${String(++seq).padStart(2, "0")}.000Z`;
+  conflicts = new InMemorySyncConflictsRepository();
+  let cSeq = 0;
+  conflicts.nextId = () => `c-${++cSeq}`;
   vi.clearAllMocks();
 });
 
@@ -330,5 +231,66 @@ describe("ingestUseCase — conflicts", () => {
     expect(result.conflicts).toHaveLength(0);
     expect(result.applied[0]!.mongoId).toBe("i-4");
     expect(writer.docs.get("incident:i-4")!.description).toBe("retry");
+  });
+});
+
+describe("ingestUseCase — total accounting", () => {
+  it("rejects an UPDATE carrying no mongoId as unprocessable", async () => {
+    const result = await run([event({ id: 20, operation: "UPDATE", mongoId: null })]);
+
+    expect(result.rejected).toEqual([{ id: 20, reason: "unprocessable" }]);
+    expect(result.applied).toHaveLength(0);
+    expect(writer.docs.size).toBe(0);
+  });
+
+  it("rejects a DELETE carrying no mongoId as unprocessable", async () => {
+    const result = await run([event({ id: 21, operation: "DELETE", mongoId: null, data: null })]);
+
+    expect(result.rejected).toEqual([{ id: 21, reason: "unprocessable" }]);
+    expect(result.applied).toHaveLength(0);
+  });
+
+  it("reports every submitted id exactly once across a mixed batch", async () => {
+    writer.docs.set("incident:i-stale", {
+      _id: "i-stale",
+      districtId: "d1",
+      updatedAt: "2026-07-18T12:00:00.000Z",
+    });
+
+    const batch: IngestEventDto[] = [
+      event({ id: 101 }), // applied
+      event({
+        id: 102, // conflicted (stale base)
+        operation: "UPDATE",
+        mongoId: "i-stale",
+        data: { description: "local" },
+        baseUpdatedAt: "2026-07-17T00:00:00.000Z",
+      }),
+      event({ id: 103, data: { districtId: "d2", category: "x", description: "y" } }), // out-of-district
+      event({ id: 104, entity: "district", data: { name: "nope" } }), // read-only-entity
+      event({ id: 105, operation: "UPDATE", mongoId: null }), // unprocessable
+    ];
+
+    const result = await run(batch);
+
+    const reported = [
+      ...result.applied.map((e) => e.id),
+      ...result.conflicts.map((e) => e.id),
+      ...result.rejected.map((e) => e.id),
+    ];
+
+    // Never zero (a missing id strands the client's pending row forever) and never
+    // twice (the client's row lifecycle would see contradictory instructions).
+    expect(reported).toHaveLength(batch.length);
+    expect(new Set(reported).size).toBe(batch.length);
+    expect([...reported].sort((a, b) => a - b)).toEqual([101, 102, 103, 104, 105]);
+
+    expect(result.applied.map((e) => e.id)).toEqual([101]);
+    expect(result.conflicts.map((e) => e.id)).toEqual([102]);
+    expect(result.rejected).toEqual([
+      { id: 103, reason: "out-of-district" },
+      { id: 104, reason: "read-only-entity" },
+      { id: 105, reason: "unprocessable" },
+    ]);
   });
 });
