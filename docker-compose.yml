@@ -385,6 +385,9 @@ services:
     command: ["npx", "tsx", "apps/api/src/scripts/seed.ts"]
     environment:
       NODE_ENV: development
+      # Picks apps/api/seed-data/<name>.txt. Set SEED_SCENARIO in .env to swap datasets
+      # without having to restate the whole `command` array in an override file.
+      SEED_SCENARIO: ${SEED_SCENARIO:-demo}
       MONGODB_URL: mongodb://root:root@mongodb:27017/?replicaSet=rs0
       MONGODB_DB: db
       NEO4J_URL: bolt://neo4j:7687

@@ -291,6 +291,8 @@ services:
     command: ["node", "apps/api/dist/scripts/seed.js"]
     environment:
       NODE_ENV: production
+      # Picks apps/api/seed-data/<name>.txt shipped in the image.
+      SEED_SCENARIO: ${SEED_SCENARIO:-demo}
       MONGODB_URL: mongodb://${MONGO_ROOT_USERNAME:?set in the SOPS env}:${MONGO_ROOT_PASSWORD:?set in the SOPS env}@mongodb:27017/?replicaSet=rs0
       MONGODB_DB: ${MONGODB_DB:-db}
       NEO4J_URL: bolt://neo4j:7687
