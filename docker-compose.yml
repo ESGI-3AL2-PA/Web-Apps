@@ -1,7 +1,12 @@
 services:
+  # Runs as a single-member replica set: the api's offline-sync watcher uses Change
+  # Streams, which throw on a standalone mongod. A one-member RS with root auth needs
+  # no keyfile (a future multi-member set would). This also unlocks multi-document
+  # transactions.
   mongodb:
     image: mongo:8
     restart: unless-stopped
+    command: ["--replSet", "rs0", "--bind_ip_all"]
     ports:
       - "${MONGO_PORT:-27017}:27017"
     volumes:
@@ -15,6 +20,30 @@ services:
       timeout: 5s
       retries: 5
       start_period: 20s
+
+  # One-shot, idempotent: initiates the replica set on a fresh volume and exits.
+  # Everything that talks to Mongo waits on it completing, so no app ever connects
+  # before rs0 has a primary.
+  mongo-init:
+    image: mongo:8
+    restart: "no"
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    entrypoint:
+      - mongosh
+      - --host
+      - mongodb:27017
+      - -u
+      - root
+      - -p
+      - root
+      - --quiet
+      - --eval
+      - >
+        try { if (rs.status().ok) { print("rs0 already initiated"); quit(0); } } catch (e) {}
+        rs.initiate({ _id: "rs0", members: [{ _id: 0, host: "mongodb:27017" }] });
+        print("rs0 initiated");
 
   # Unauthenticated Mongo admin UI on :8081 (dev only — the prod compose puts it
   # behind HTTP basic auth).
@@ -182,7 +211,7 @@ services:
     environment:
       NODE_ENV: development
       API_PORT: 3000
-      MONGODB_URL: mongodb://root:root@mongodb:27017
+      MONGODB_URL: mongodb://root:root@mongodb:27017/?replicaSet=rs0
       MONGODB_DB: db
       NEO4J_URL: bolt://neo4j:7687
       NEO4J_USER: neo4j
@@ -214,6 +243,8 @@ services:
     depends_on:
       mongodb:
         condition: service_healthy
+      mongo-init:
+        condition: service_completed_successfully
       neo4j:
         condition: service_healthy
       auth-service:
@@ -246,7 +277,7 @@ services:
     environment:
       NODE_ENV: development
       AUTH_PORT: 3001
-      MONGODB_URL: mongodb://root:root@mongodb:27017
+      MONGODB_URL: mongodb://root:root@mongodb:27017/?replicaSet=rs0
       MONGODB_DB: db
       API_URL: http://api:3000
       # Shared secret for the api→auth-service internal session-purge call (must match api).
@@ -262,6 +293,8 @@ services:
     depends_on:
       mongodb:
         condition: service_healthy
+      mongo-init:
+        condition: service_completed_successfully
       mailpit:
         condition: service_started
 
@@ -339,7 +372,7 @@ services:
     command: ["npx", "tsx", "apps/api/src/scripts/seed.ts"]
     environment:
       NODE_ENV: development
-      MONGODB_URL: mongodb://root:root@mongodb:27017
+      MONGODB_URL: mongodb://root:root@mongodb:27017/?replicaSet=rs0
       MONGODB_DB: db
       NEO4J_URL: bolt://neo4j:7687
       NEO4J_USER: neo4j
@@ -347,6 +380,8 @@ services:
     depends_on:
       mongodb:
         condition: service_healthy
+      mongo-init:
+        condition: service_completed_successfully
       neo4j:
         condition: service_healthy
 
@@ -360,13 +395,15 @@ services:
     command: ["npx", "tsx", "apps/auth-service/src/seed-superadmin.ts"]
     environment:
       NODE_ENV: development
-      MONGODB_URL: mongodb://root:root@mongodb:27017
+      MONGODB_URL: mongodb://root:root@mongodb:27017/?replicaSet=rs0
       MONGODB_DB: db
       SEED_SUPERADMIN_EMAIL: ${SEED_SUPERADMIN_EMAIL:-superadmin@local.dev}
       SEED_SUPERADMIN_PASSWORD: ${SEED_SUPERADMIN_PASSWORD:-ChangeMe!2345}
     depends_on:
       mongodb:
         condition: service_healthy
+      mongo-init:
+        condition: service_completed_successfully
 
 volumes:
   mongodb_data:
