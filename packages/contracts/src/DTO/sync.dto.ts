@@ -58,8 +58,13 @@ export const ConflictedEventDtoSchema = z
   .openapi({ title: "ConflictedEvent" });
 export type ConflictedEventDto = z.infer<typeof ConflictedEventDtoSchema>;
 
-/** Authorization refusals — never retryable, so the client drops the pending row. */
-export const IngestRejectionReasonSchema = z.enum(["out-of-district", "read-only-entity"]);
+/**
+ * Refusals that can never succeed on retry, so the client drops the pending row
+ * rather than looping. `out-of-district` and `read-only-entity` are authorization
+ * failures; `unprocessable` is a structurally impossible event (an UPDATE/DELETE
+ * with no `mongoId`, or anything the server could not route to a write path).
+ */
+export const IngestRejectionReasonSchema = z.enum(["out-of-district", "read-only-entity", "unprocessable"]);
 export type IngestRejectionReason = z.infer<typeof IngestRejectionReasonSchema>;
 
 export const RejectedEventDtoSchema = z
@@ -70,6 +75,12 @@ export const RejectedEventDtoSchema = z
   .openapi({ title: "RejectedEvent" });
 export type RejectedEventDto = z.infer<typeof RejectedEventDtoSchema>;
 
+/**
+ * Total accounting: every submitted event id appears in exactly one of the three
+ * arrays — never zero, never twice. The client keys its pending-row lifecycle off
+ * this (applied → clear + advance the token; conflicts → keep; rejected → drop), so
+ * an unreported event would strand its row and be retried every cycle forever.
+ */
 export const IngestResultDtoSchema = z
   .object({
     applied: z.array(AppliedEventDtoSchema),
