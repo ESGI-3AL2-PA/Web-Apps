@@ -152,9 +152,16 @@ Applies a batch of local events (max **100**). The client sends `X-Sync-Instance
 }
 ```
 
-`rejected[]` carries events refused for **authorization** reasons — currently `out-of-district` (§5.5) and
-`read-only-entity` (a `district` push, §5.3). These are not conflicts: the client must drop the pending
-row and surface the failure rather than retry, since retrying can never succeed.
+`rejected[]` carries events the server refused outright. Reasons: `out-of-district` (§5.5),
+`read-only-entity` (a `district` push, §5.3), and `unprocessable` (structurally impossible — e.g. an
+UPDATE/DELETE with `mongoId: null`, which has no server target). These are not conflicts: the client must
+**drop the pending row** and surface the failure rather than retry, since retrying can never succeed.
+
+> **Total-accounting invariant.** Every event id in the request appears in **exactly one** of `applied`,
+> `conflicts`, or `rejected` — never zero, never two. The client keys its pending-row lifecycle off this
+> (applied → clear + advance token; conflict → keep; rejected → drop). An event silently missing from all
+> three would strand its pending row forever, retried every cycle. Server-side, any event that falls
+> through the normal paths must still be emitted as `rejected` with `unprocessable`.
 
 > **Key change from the old spec:** the ack **returns the post-write `updatedAt` per applied event**
 > (`updatedAt` is `null` for an applied DELETE). This lets the client advance its optimistic-concurrency
@@ -339,8 +346,15 @@ The operator resolves via `POST /conflicts/:id/resolve` (from the desktop UI, §
 
 Resolution records `resolvedBy` (`req.user.sub`), `resolvedAt`, `resolution`, and marks the conflict
 resolved. The resulting write flows back out through the watcher → `sync_changes` → all instances.
-Double-resolution is guarded (resolving an already-resolved conflict is a no-op / `400`), so it is safe
-even though only the raising operator normally sees it.
+
+> **Resolution writes clear `_sync` (they are not stamped with an instance id).** All three paths
+> (`local`, `server`/`touch`, `merged`) persist the doc with `_sync` cleared, so the change is published
+> as `origin:"api"` with no `originInstanceId`. This is required: if a resolution carried the raising
+> instance's id, `excludeInstance` (§7) would hide the resolved state from **exactly the instance that
+> needs it** to reconcile and clear its pending row (§6.5). Clearing it makes the resolution visible to
+> every instance including the originator.
+> Double-resolution is guarded (resolving an already-resolved conflict is a no-op / `400`), so it is safe
+> even though only the raising operator normally sees it.
 
 ### 6.4 Reference table
 
