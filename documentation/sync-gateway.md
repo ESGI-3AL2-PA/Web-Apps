@@ -1,6 +1,11 @@
 # Offline Sync (H2 ↔ MongoDB) — merged into `apps/api`
 
-> ## Status: approved design, not yet implemented
+> ## Status: implemented on `feat/offline-sync`, verified end-to-end
+>
+> Server (`apps/api`) and client (`Client-Java`) are both implemented on branch `feat/offline-sync` in
+> their respective repos, and the §12 flow has been exercised against a live single-member replica set:
+> seeding, district-scoped snapshot + redaction, ack token consistency, echo-skip, conflict quarantine,
+> the three rejection reasons, and resolve→re-emit all pass.
 >
 > This is the **source-of-truth design** for the offline-sync feature that bridges the companion JavaFX
 > app's embedded **H2** database and the platform's **MongoDB**. It supersedes the earlier
@@ -46,20 +51,20 @@ server side is **merged into `apps/api`** because:
 ```
                           apps/api  (Express + ts-rest, :3000)
  JavaFX instance A ─┐        │
- JavaFX instance B ─┼─POST /ingest──▶ ingest use-case ──▶ users / incidents (Mongo, _id = UUID)
+ JavaFX instance B ─┼─POST /sync/ingest─▶ ingest use-case ──▶ users / incidents (Mongo, _id = UUID)
  JavaFX instance N ─┘        │                                      │  (writes stamped _sync)
         ▲                    │                                      ▼
         │                    │                             Change-Streams watcher
-        └── GET /changes ◀───┴── sync_changes (append-only, monotonic `index`) ◀── appends every change
+        └── GET /sync/changes ◀┴── sync_changes (append-only, monotonic `index`) ◀── appends every change
             ?since=<cursor>                                                          (api-origin + sync-origin)
 
- JavaFX instance X ── GET /conflicts?mine · POST /conflicts/:id/resolve ──▶ conflicts use-cases ──▶ sync_conflicts
+ JavaFX instance X ── GET /sync/conflicts?mine · POST /sync/conflicts/:id/resolve ──▶ conflicts use-cases ──▶ sync_conflicts
 ```
 
 Each JavaFX instance always initiates:
 
-1. Drains its local **keyed pending-changes** table and **pushes** (`POST /ingest`).
-2. **Polls** `GET /changes?since=<cursor>` and applies Mongo-originated changes to H2.
+1. Drains its local **keyed pending-changes** table and **pushes** (`POST /sync/ingest`).
+2. **Polls** `GET /sync/changes?since=<cursor>` and applies Mongo-originated changes to H2.
 3. Resolves the conflicts **its own** pushes raised, in the desktop UI (§6.5).
 
 A background **Change-Streams watcher** inside the api observes the synced collections and appends every
@@ -71,15 +76,15 @@ admin-front (§6).
 
 ## 3. Auth model
 
-`/ingest`, `/changes`, and `/conflicts*` are **authenticated api routes** — gated by the api's existing
+`/sync/ingest`, `/sync/changes`, and `/sync/conflicts*` are **authenticated api routes** — gated by the api's existing
 `requireAuth` (RS256 JWT verified against the auth-service JWKS) + the declarative `authorize`
 middleware driven by each route's `metadata.auth({...})`. There is **no shared secret** (the old gateway
 used one); the desktop app sends its **operator's real user JWT**.
 
-| Routes                | Policy                                                                                                                 |
-| --------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| `/ingest`, `/changes` | `auth({ audience: "api", roles: ["admin","superAdmin"] })` + **district scoping** (§5.5) — see Decision D1             |
-| `/conflicts*`         | `auth({ audience: "api", roles: ["admin","superAdmin"] })` — consumed only by the desktop app (no admin-front surface) |
+| Routes                          | Policy                                                                                                                 |
+| ------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `/sync/ingest`, `/sync/changes` | `auth({ audience: "api", roles: ["admin","superAdmin"] })` + **district scoping** (§5.5) — see Decision D1             |
+| `/sync/conflicts*`              | `auth({ audience: "api", roles: ["admin","superAdmin"] })` — consumed only by the desktop app (no admin-front surface) |
 
 ### Client token lifecycle (browser-SSO reality)
 
@@ -107,7 +112,14 @@ in-process silent refresh. Consequences the client design must handle (see §9):
 Contracts live in `packages/contracts` (`sync.contract.ts`, `conflicts.contract.ts`; DTOs in
 `src/DTO/sync.dto.ts`, `src/DTO/conflict.dto.ts`). All shapes are zod, `import { z } from "../zod"`.
 
-### 4.1 `POST /ingest`
+> **All sync routes are namespaced under `/sync`** — `POST /sync/ingest`, `GET /sync/changes`,
+> `GET /sync/conflicts`, `POST /sync/conflicts/:id/resolve`. The api hosts many resources, so root-level
+> `/changes` and `/conflicts` are too generic to claim. Section headings below omit the prefix for
+> brevity; the client must use the full path. (An earlier draft specified the unprefixed paths, and the
+> two sides were built against different ones — every desktop sync call 404'd until it was caught in the
+> live end-to-end run.)
+
+### 4.1 `POST /sync/ingest`
 
 Applies a batch of local events (max **100**). The client sends `X-Sync-Instance: <install-uuid>`.
 
@@ -171,7 +183,7 @@ UPDATE/DELETE with `mongoId: null`, which has no server target). These are not c
 
 Per-event processing is defined in §6 (conflict model).
 
-### 4.2 `GET /changes?since=<cursor>&limit=<n>&excludeInstance=<id>`
+### 4.2 `GET /sync/changes?since=<cursor>&limit=<n>&excludeInstance=<id>`
 
 Returns Mongo-originated changes for the client to apply to H2.
 
@@ -190,17 +202,17 @@ Returns Mongo-originated changes for the client to apply to H2.
 
 `data` is `null` for DELETE and **redacted** of server-only fields (§5.3).
 
-### 4.3 `/conflicts*` — consumed only by the desktop app
+### 4.3 `/sync/conflicts*` — consumed only by the desktop app
 
 The conflict UI lives in the JavaFX app (§6.5); there is no admin-front surface. The operator sends the
 same JWT + `X-Sync-Instance` they use for sync.
 
-- **`GET /conflicts`** — query `{ status=pending, entity?, mine=true, limit=100 (max 200) }` → `ConflictDto[]`.
+- **`GET /sync/conflicts`** — query `{ status=pending, entity?, mine=true, limit=100 (max 200) }` → `ConflictDto[]`.
   With `mine=true` (default) the server returns only conflicts whose `originInstanceId` matches the
   caller's `X-Sync-Instance` — i.e. the conflicts **this operator's own pushes raised**. `mine=false` is
   allowed only for `superAdmin` (full view; see §6.5 orphan note).
-- **`GET /conflicts/:id`** → `ConflictDto` or `404`.
-- **`POST /conflicts/:id/resolve`** — body `{ resolution, data? }` where `resolution` is `local`,
+- **`GET /sync/conflicts/:id`** → `ConflictDto` or `404`.
+- **`POST /sync/conflicts/:id/resolve`** — body `{ resolution, data? }` where `resolution` is `local`,
   `server`, or `merged` (`data` required when `merged`) → `{ id, status:"resolved", resolution }`, or
   `400` / `404`.
 
@@ -230,7 +242,7 @@ without a transaction). Readers use `index > since` ascending, so a crash-gap be
 
 On first boot, `seedExistingDocs(db)` (idempotent, guarded by the `sync_state.seeded` flag) streams every
 existing doc of **each synced collection** (`users`, `incidents`, `districts`) and appends a synthetic
-`INSERT` (`origin:"api"`, redacted `data`) to `sync_changes`. This makes **`GET /changes?since=0` a
+`INSERT` (`origin:"api"`, redacted `data`) to `sync_changes`. This makes **`GET /sync/changes?since=0` a
 complete snapshot**, so the client has **one pull path** and no longer needs a separate REST bootstrap.
 The same `counter` backs both the seed and live stream, so indices stay monotonic.
 
@@ -292,12 +304,12 @@ itself:
 
 Index `sync_changes` on `{ index, districtId }` to back the scoped scan.
 
-**`GET /changes`** adds `districtId ∈ {caller's district}` (plus `null`-district entries only for
+**`GET /sync/changes`** adds `districtId ∈ {caller's district}` (plus `null`-district entries only for
 `superAdmin`) to the `index > since` filter. Districts themselves are **reference data**: all `district`
 entries are sent to every caller regardless of scope, because the client needs names for rendering and
 they carry no PII (`name`, `geoJson`, `startingPoints`) — flagged deliberately, tighten later if desired.
 
-**`POST /ingest`** authz-checks every event before applying: the payload's `districtId` (or, for an
+**`POST /sync/ingest`** authz-checks every event before applying: the payload's `districtId` (or, for an
 UPDATE/DELETE, the **server** doc's current `districtId`) must match the caller's district. A mismatch is
 **rejected**, not quarantined — it is an authorization failure, not a data conflict, so it must never
 appear in the conflict queue. Report it in a `rejected[]` array on `IngestResultDto` (alongside
@@ -338,7 +350,7 @@ snapshot, no new conflict row).
 
 ### 6.3 Resolution
 
-The operator resolves via `POST /conflicts/:id/resolve` (from the desktop UI, §6.5):
+The operator resolves via `POST /sync/conflicts/:id/resolve` (from the desktop UI, §6.5):
 
 - `local` → apply the client's captured snapshot (allowlisted upsert).
 - `server` → keep the server doc; `touch` it to re-propagate to all instances.
@@ -381,18 +393,18 @@ reference branch's `ConflictController` + `conflicts.fxml` + `ConflictService` (
 `origin/main` and point them at the api.
 
 - **Discovery.** When `push()` gets a `conflicts[]` entry back, the client marks that record and raises a
-  badge/panel. The panel loads `GET /conflicts?mine=true` — the operator sees **the conflicts their own
+  badge/panel. The panel loads `GET /sync/conflicts?mine=true` — the operator sees **the conflicts their own
   instance raised**, with `localData` (what they edited offline) beside the redacted `serverData`.
 - **Resolve.** The operator picks `local` / `server` / `merged` (the merge editor produces `data`) →
-  `POST /conflicts/:id/resolve`.
+  `POST /sync/conflicts/:id/resolve`.
 - **Pending-row lifecycle.** The client keeps the `pending_changes` row while the conflict is unresolved
   (so the local edit is never lost and the badge persists). After resolution, the resolved server state
-  arrives on the next `GET /changes` pull; the client applies it (upsert by `mongo_id`, refresh
+  arrives on the next `GET /sync/changes` pull; the client applies it (upsert by `mongo_id`, refresh
   `base_updated_at`) and **clears the pending row** for that record. No re-push of the stale local edit.
 - **Orphaned conflicts.** Because resolution is desktop-only and scoped to the raising instance, a
   conflict raised by an instance that never comes back online is **never resolved** — the server value
   simply stands, and it blocks only that one record's offline edit (never other records or other
-  instances). `superAdmin` can use `GET /conflicts?mine=false` from a desktop app as the escape hatch.
+  instances). `superAdmin` can use `GET /sync/conflicts?mine=false` from a desktop app as the escape hatch.
   Note: this is the trade-off of dropping the admin-front surface.
 
 ---
@@ -478,10 +490,10 @@ Local UI writes in `UserRepository` / `IncidentRepository` call `pending.upsert(
   `stop()` → `shutdownNow()`) + `AtomicBoolean running` guarded by `compareAndSet(false, true)` — closes
   the old `Timer`/`volatile boolean` check-then-set window where `syncNow()` and a tick could both run.
   `syncNow()` → `executor.execute(cycle)` (no raw `Thread`).
-- **push():** `findBatch(100)` → `POST /ingest` (no compaction). Per applied event: `setRecordMongoId`
+- **push():** `findBatch(100)` → `POST /sync/ingest` (no compaction). Per applied event: `setRecordMongoId`
   (if new) + `advanceBaseAndClear(...)` — advances `base_updated_at` **from the ack**. Per conflict:
   leave the pending row and surface to the conflict UI.
-- **pull():** `GET /changes?since=cursor&limit=200` with `X-Sync-Instance`; dispatch by `entity` —
+- **pull():** `GET /sync/changes?since=cursor&limit=200` with `X-Sync-Instance`; dispatch by `entity` —
   `user`/`incident` upsert into their tables, `district` upserts into the H2 `districts` table
   (server→client only; the client never pushes districts). Set `base_updated_at` from `data.updatedAt`;
   advance the cursor. No bootstrap (`since=0` is the snapshot).
@@ -503,7 +515,7 @@ Local UI writes in `UserRepository` / `IncidentRepository` call `pending.upsert(
 Port the reference branch's `service/ConflictService`, `controller/ConflictController`, and
 `fxml/conflicts.fxml` (field-level merge) onto `origin/main`, wired to `SyncApiClient`:
 
-- `ConflictService` → `GET /conflicts?mine=true`, `POST /conflicts/:id/resolve`.
+- `ConflictService` → `GET /sync/conflicts?mine=true`, `POST /sync/conflicts/:id/resolve`.
 - `SyncService` surfaces a badge/count when `push()` returns `conflicts[]`; opening the panel loads the
   operator's own pending conflicts (§6.5).
 - On resolve, do **not** clear the pending row directly — let the next `pull()` bring the resolved server
@@ -532,8 +544,28 @@ Change Streams **require** a replica set; dev Mongo is currently a standalone `m
   its SOPS-provided creds).
 - Make dependents wait on `mongo-init` (`service_completed_successfully`).
 
-A single-member RS with root auth needs **no keyfile**. This also unlocks the api's multi-document
-transactions. (A future multi-member set would require a keyfile / x.509.)
+**A keyFile is mandatory** whenever authorization and replication are both enabled — including a
+single-member set. Without it mongod refuses to start:
+`BadValue: security.keyFile is required when authorization is enabled with replica sets`. (An earlier
+draft of this document claimed a single-member RS with root auth needed no keyfile; that is wrong, and it
+crash-looped the dev Mongo the first time the stack was actually brought up.)
+
+The keyfile is bind-mounted and copied to `0400`/`mongodb` at container start, because a git-tracked
+bind-mounted file cannot carry the required mode/ownership:
+
+```yaml
+command:
+  - bash
+  - -c
+  - |
+    install -m 400 -o mongodb -g mongodb /etc/mongo/keyfile /tmp/mongo-keyfile
+    exec docker-entrypoint.sh mongod --replSet rs0 --bind_ip_all --keyFile /tmp/mongo-keyfile
+```
+
+Dev uses the committed `./docker/mongo-keyfile` (local-only material, same trust level as the `root:root`
+credentials already in the compose file). **Prod must supply its own** via `MONGO_KEYFILE_PATH` from the
+SOPS env — never the committed dev keyfile. The replica set also unlocks the api's multi-document
+transactions.
 
 ---
 
@@ -572,12 +604,12 @@ transactions. (A future multi-member set would require a keyfile / x.509.)
 1. `docker compose up -d mongodb mongo-init`; `mongosh --eval "rs.status().ok"` → `1`.
 2. Bring up api + auth-service; logs: `initContainer → seedExistingDocs(N) → startWatcher (stream open) →
 listen`; `/readyz` → 200.
-3. Admin JWT → `GET /changes?since=0&limit=500` = full users+incidents snapshot with
+3. Admin JWT → `GET /sync/changes?since=0&limit=500` = full users+incidents snapshot with
    `passwordHash` / `totpSecret` / `lastTotpStep` / `_sync` **absent** (redaction).
-4. `POST /ingest` INSERT (`X-Sync-Instance: it-1`) → `applied:[{ …, operation:"INSERT", updatedAt }]`;
+4. `POST /sync/ingest` INSERT (`X-Sync-Instance: it-1`) → `applied:[{ …, operation:"INSERT", updatedAt }]`;
    Mongo doc has `_sync.origin:"sync"`, `instanceId:"it-1"`.
-5. Echo-skip: `GET /changes` **with** `X-Sync-Instance: it-1` omits the insert; a different instance sees it.
-6. Conflict: UPDATE with a stale `baseUpdatedAt` → `conflicts[…]`, no write; `GET /conflicts` shows it; a
+5. Echo-skip: `GET /sync/changes` **with** `X-Sync-Instance: it-1` omits the insert; a different instance sees it.
+6. Conflict: UPDATE with a stale `baseUpdatedAt` → `conflicts[…]`, no write; `GET /sync/conflicts` shows it; a
    second stale ingest for that record is **held** (no new conflict; `localData` refreshed).
 7. Resolve `server` / `local` / `merged` → 200; the watcher re-emits; another instance sees it.
 8. Driven client: log in (admin), edit offline → one `pending_changes` row per record; reconnect → push,
