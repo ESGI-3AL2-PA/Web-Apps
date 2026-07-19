@@ -353,22 +353,26 @@ resolved. The resulting write flows back out through the watcher → `sync_chang
 > instance's id, `excludeInstance` (§7) would hide the resolved state from **exactly the instance that
 > needs it** to reconcile and clear its pending row (§6.5). Clearing it makes the resolution visible to
 > every instance including the originator.
-> Double-resolution is guarded (resolving an already-resolved conflict is a no-op / `400`), so it is safe
-> even though only the raising operator normally sees it.
+> **Claim before applying.** Double-resolution is guarded by an atomic `markResolved` flip, and that flip
+> **must happen before the write**, not after. If the resolution is applied first and the conflict claimed
+> second, a concurrent second resolve overwrites the first operator's decision and _then_ reports
+> `already-resolved` — silently losing the winning decision. Claiming first makes the flip the guard: the
+> loser fails the claim and never touches data. First resolve wins.
 
 ### 6.4 Reference table
 
-| Direction  | Operation                  | Behaviour                                                                                   |
-| ---------- | -------------------------- | ------------------------------------------------------------------------------------------- |
-| H2 → Mongo | INSERT (mongoId null)      | dedup by business key → insert **or** `duplicate` conflict; returns `mongoId` + `updatedAt` |
-| H2 → Mongo | INSERT retry (mongoId set) | idempotent upsert by `_id`                                                                  |
-| H2 → Mongo | UPDATE (base matches)      | allowlisted `$set` by `_id`; returns new `updatedAt`                                        |
-| H2 → Mongo | UPDATE (base stale)        | **quarantine** (`update` conflict); acked, not applied                                      |
-| H2 → Mongo | UPDATE (doc missing)       | recreate (last-write-wins)                                                                  |
-| H2 → Mongo | DELETE (base matches)      | delete by `_id`                                                                             |
-| H2 → Mongo | DELETE (base stale)        | **quarantine** (delete-vs-edit); acked, not applied                                         |
-| Mongo → H2 | INSERT/UPDATE              | client upserts by `mongo_id`; sets `base_updated_at` from `data.updatedAt`                  |
-| Mongo → H2 | DELETE                     | client deletes by `mongo_id`; ignore if absent                                              |
+| Direction  | Operation                     | Behaviour                                                                                                                                                                                           |
+| ---------- | ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| H2 → Mongo | INSERT (mongoId null)         | dedup by business key → insert **or** `duplicate` conflict; returns `mongoId` + `updatedAt`                                                                                                         |
+| H2 → Mongo | INSERT retry (mongoId set)    | idempotent upsert by `_id`                                                                                                                                                                          |
+| H2 → Mongo | UPDATE (base matches)         | allowlisted `$set` by `_id`; returns new `updatedAt`                                                                                                                                                |
+| H2 → Mongo | UPDATE (base stale)           | **quarantine** (`update` conflict); acked, not applied                                                                                                                                              |
+| H2 → Mongo | UPDATE (doc missing)          | recreate (last-write-wins)                                                                                                                                                                          |
+| H2 → Mongo | UPDATE/DELETE, `mongoId` null | **rejected** `unprocessable` — no server target. Must NOT fall through to INSERT: that would create a duplicate record rather than update one. The client's §9.1 collapse means it shouldn't occur. |
+| H2 → Mongo | DELETE (base matches)         | delete by `_id`                                                                                                                                                                                     |
+| H2 → Mongo | DELETE (base stale)           | **quarantine** (delete-vs-edit); acked, not applied                                                                                                                                                 |
+| Mongo → H2 | INSERT/UPDATE                 | client upserts by `mongo_id`; sets `base_updated_at` from `data.updatedAt`                                                                                                                          |
+| Mongo → H2 | DELETE                        | client deletes by `mongo_id`; ignore if absent                                                                                                                                                      |
 
 ### 6.5 Desktop conflict UI (the only resolution surface)
 
