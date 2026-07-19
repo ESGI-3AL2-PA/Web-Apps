@@ -28,8 +28,8 @@ import type { Db } from "mongodb";
 import { connectDB } from "../repositories/mongodb.connector.js";
 import { connectNeo4j, closeNeo4j } from "../repositories/neo4j.connector.js";
 import { Neo4jGraphRepository } from "../repositories/Graph/graph.repository.neo4j.js";
-import { DROPPED_COLLECTIONS, loadSeedFile, MONGO_COLLECTIONS } from "./seed-data/loader.js";
-import type { SeedDataset, SeedDocument } from "./seed-data/loader.js";
+import { DROPPED_COLLECTIONS, loadSeedFile, MONGO_COLLECTIONS } from "./loader.js";
+import type { SeedDataset, SeedDocument } from "./loader.js";
 
 const seedPassword = process.env.SEED_PASSWORD ?? "Password123!";
 
@@ -62,7 +62,7 @@ const describeAvailableScenarios = async (): Promise<string> => {
 // monotonic. Dropping any subset of them corrupts desktop sync — clear the change log
 // but keep the counter and clients that already saw seq N never receive the backfill,
 // silently. So they are only ever dropped together, alongside the data they mirror.
-// (SYNC_COLLECTIONS / DROPPED_COLLECTIONS live in ./seed-data/loader.js — importing
+// (SYNC_COLLECTIONS / DROPPED_COLLECTIONS live in ./loader.js — importing
 // this module would run main(), so the drop list has to be testable from elsewhere.)
 
 const dropCollection = async (db: Db, name: string): Promise<boolean> => {
