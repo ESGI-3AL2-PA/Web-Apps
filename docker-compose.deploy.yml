@@ -130,11 +130,23 @@ services:
   mongodb:
     image: mongo:8
     restart: always
-    command: ["--replSet", "rs0", "--bind_ip_all"]
+    # A keyFile is mandatory whenever auth AND replication are both enabled — without
+    # it mongod exits with `BadValue: security.keyFile is required when authorization
+    # is enabled with replica sets`. Copied to 0400/mongodb at startup because a
+    # bind-mounted file cannot carry the required mode/ownership.
+    # PROD: MONGO_KEYFILE_PATH must point at a real secret (SOPS-provisioned on the
+    # host) — never the dev keyfile committed at ./docker/mongo-keyfile.
+    command:
+      - bash
+      - -c
+      - |
+        install -m 400 -o mongodb -g mongodb /etc/mongo/keyfile /tmp/mongo-keyfile
+        exec docker-entrypoint.sh mongod --replSet rs0 --bind_ip_all --keyFile /tmp/mongo-keyfile
     # No host port: reachable only over the internal compose network. Never expose a
     # datastore to the host in prod (0.0.0.0 binding = internet-reachable DB).
     volumes:
       - mongodb_data:/data/db
+      - ${MONGO_KEYFILE_PATH:?set in the SOPS env — path to the rs0 keyfile}:/etc/mongo/keyfile:ro
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME:?set in the SOPS env}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:?set in the SOPS env}
