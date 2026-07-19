@@ -78,14 +78,25 @@ export const ingestUseCase = (deps: IngestDeps) => {
       await projectSyncWrite(graph, entity, event.operation, mongoId, doc);
     };
 
-    for (const event of events) {
+    const processEvent = async (event: IngestEventDto): Promise<void> => {
       const config = SYNC_ENTITIES[event.entity];
 
       // Districts flow server → client only (§5.3).
       if (!config.ingestAllowed) {
         logger.warn({ entity: event.entity, instanceId }, "sync ingest: refused a write to a read-only entity");
         rejected.push({ id: event.id, reason: "read-only-entity" });
-        continue;
+        return;
+      }
+
+      // An UPDATE/DELETE names no server record: structurally impossible, not an
+      // authorization call. Report it so the client drops the row instead of retrying.
+      if (event.operation !== "INSERT" && !event.mongoId) {
+        logger.warn(
+          { entity: event.entity, operation: event.operation, instanceId },
+          "sync ingest: rejected an UPDATE/DELETE carrying no mongoId",
+        );
+        rejected.push({ id: event.id, reason: "unprocessable" });
+        return;
       }
 
       const serverDoc = event.mongoId ? await writer.findById(event.entity, event.mongoId) : null;
@@ -99,7 +110,7 @@ export const ingestUseCase = (deps: IngestDeps) => {
           "sync ingest: rejected an out-of-district event",
         );
         rejected.push({ id: event.id, reason: "out-of-district" });
-        continue;
+        return;
       }
 
       // A record with an open conflict holds further ingests: refresh the captured
@@ -109,52 +120,45 @@ export const ingestUseCase = (deps: IngestDeps) => {
         if (held) {
           await conflicts.refreshLocalData(held.id, pickWritable(event.entity, event.data));
           conflicted.push({ id: event.id, mongoId: event.mongoId, conflictId: held.id });
-          continue;
+          return;
         }
       }
 
       const sync: SyncProvenance = { origin: "sync", occurredAt: event.occurredAt, instanceId };
 
       if (event.operation === "DELETE") {
-        if (!event.mongoId) {
-          // A record that never reached the server; the client collapses this pair
-          // locally (§9.1), so there is nothing to delete here.
-          logger.warn({ entity: event.entity, instanceId }, "sync ingest: DELETE without a mongoId — skipped");
-          continue;
-        }
         if (!serverDoc) {
-          await ack(event, event.mongoId, null, event.entity); // already gone — idempotent
-          continue;
+          await ack(event, event.mongoId!, null, event.entity); // already gone — idempotent
+          return;
         }
         if (isStale(event.baseUpdatedAt, serverDoc)) {
-          await raiseConflict(event, event.mongoId, "update", serverDoc); // delete-vs-edit
-          continue;
+          await raiseConflict(event, event.mongoId!, "update", serverDoc); // delete-vs-edit
+          return;
         }
-        await writer.remove(event.entity, event.mongoId);
-        await ack(event, event.mongoId, null, event.entity);
-        continue;
+        await writer.remove(event.entity, event.mongoId!);
+        await ack(event, event.mongoId!, null, event.entity);
+        return;
       }
 
-      if (event.operation === "UPDATE" && event.mongoId) {
+      if (event.operation === "UPDATE") {
         if (serverDoc && isStale(event.baseUpdatedAt, serverDoc)) {
-          await raiseConflict(event, event.mongoId, "update", serverDoc);
-          continue;
+          await raiseConflict(event, event.mongoId!, "update", serverDoc);
+          return;
         }
         // A missing doc is a remote delete racing a local edit: recreate it
         // (last-write-wins — there is nothing to conflict against).
         const { updatedAt } = serverDoc
-          ? (await writer.update(event.entity, event.mongoId, event.data ?? {}, sync))!
-          : await writer.insert(event.entity, event.data ?? {}, sync, event.mongoId);
-        await ack(event, event.mongoId, updatedAt, event.entity);
-        continue;
+          ? (await writer.update(event.entity, event.mongoId!, event.data ?? {}, sync))!
+          : await writer.insert(event.entity, event.data ?? {}, sync, event.mongoId!);
+        await ack(event, event.mongoId!, updatedAt, event.entity);
+        return;
       }
 
-      // INSERT, and UPDATE of a record the client has no server id for — both mean
-      // "make this record exist". A known mongoId makes it an idempotent upsert.
+      // INSERT carrying a known mongoId — an idempotent upsert by _id (a push retry).
       if (event.mongoId) {
         const { mongoId, updatedAt } = await writer.insert(event.entity, event.data ?? {}, sync, event.mongoId);
         await ack(event, mongoId, updatedAt, event.entity);
-        continue;
+        return;
       }
 
       // First INSERT: dedup on the business key so two sides don't create twins.
@@ -164,7 +168,7 @@ export const ingestUseCase = (deps: IngestDeps) => {
         const existing = await writer.findByBusinessKey(event.entity, keyValue);
         if (existing) {
           await raiseConflict(event, existing._id as string, "duplicate", existing);
-          continue;
+          return;
         }
       }
 
@@ -177,6 +181,27 @@ export const ingestUseCase = (deps: IngestDeps) => {
         const existing = await writer.findByBusinessKey(event.entity, keyValue);
         if (!existing) throw err;
         await raiseConflict(event, existing._id as string, "duplicate", existing);
+      }
+    };
+
+    for (const event of events) {
+      const before = applied.length + conflicted.length + rejected.length;
+      await processEvent(event);
+      const reports = applied.length + conflicted.length + rejected.length - before;
+
+      // Total accounting: an event reported in none of the three arrays would strand
+      // the client's pending row and be retried every cycle forever, so anything that
+      // fell through every write path is reported as unprocessable instead.
+      if (reports === 0) {
+        logger.error(
+          { entity: event.entity, operation: event.operation, mongoId: event.mongoId, instanceId },
+          "sync ingest: event matched no write path — reporting it as unprocessable",
+        );
+        rejected.push({ id: event.id, reason: "unprocessable" });
+      } else if (reports > 1) {
+        // Not self-healing (the rows are already pushed) — but a duplicate report is a
+        // server bug that would confuse the client's row lifecycle, so make it loud.
+        logger.error({ eventId: event.id, reports, instanceId }, "sync ingest: event reported more than once");
       }
     }
 
