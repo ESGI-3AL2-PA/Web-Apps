@@ -22,6 +22,8 @@ import {
   notificationsContract,
   transactionsContract,
   recommendationsContract,
+  syncContract,
+  conflictsContract,
 } from "@repo/contracts";
 
 import { usersRouter } from "./routes/users/users.router.js";
@@ -46,6 +48,10 @@ import { audioStreamHandler } from "./routes/conversations/voice-message.handler
 import { imageMessageStreamHandler } from "./routes/conversations/image-message.handler.js";
 import { imageUploadHandler, imageStreamHandler } from "./routes/listings/image-upload.handler.js";
 import { recommendationsRouter } from "./routes/recommendations/recommendations.router.js";
+import { syncRouter } from "./routes/sync/sync.router.js";
+import { conflictsRouter } from "./routes/sync/conflicts.router.js";
+import { startWatcher, stopWatcher } from "./watcher/change-stream.watcher.js";
+import { seedExistingDocs } from "./watcher/seed-existing-docs.js";
 import { errorHandler, NotFoundError } from "./middleware/error-handler.js";
 import { requireAuth } from "./middleware/auth.middleware.js";
 import { authorize } from "./middleware/authorize.middleware.js";
@@ -54,7 +60,7 @@ import { connectNeo4j, closeNeo4j, pingNeo4j } from "./repositories/neo4j.connec
 import { connectSatan, closeSatan } from "./repositories/satan.connector.js";
 import type { SatanClient } from "@repo/satan";
 import { setupGracefulShutdown } from "@repo/shared";
-import { initContainer } from "./repositories/container.js";
+import { initContainer, resolve } from "./repositories/container.js";
 import { generateOpenApi } from "@ts-rest/open-api";
 import { apiReference } from "@scalar/express-api-reference";
 
@@ -107,6 +113,8 @@ const openApiDocument = generateOpenApi(
     Notifications: notificationsContract,
     Transactions: transactionsContract,
     Recommendations: recommendationsContract,
+    Sync: syncContract,
+    SyncConflicts: conflictsContract,
   },
   {
     info: {
@@ -132,6 +140,8 @@ const openApiDocument = generateOpenApi(
       { name: "Notifications" },
       { name: "Transactions" },
       { name: "Recommendations" },
+      { name: "Sync" },
+      { name: "SyncConflicts" },
     ],
   },
   {
@@ -276,6 +286,8 @@ createExpressEndpoints(conversationsContract, conversationsRouter, app, endpoint
 createExpressEndpoints(notificationsContract, notificationsRouter, app, endpointOptions);
 createExpressEndpoints(transactionsContract, transactionsRouter, app, endpointOptions);
 createExpressEndpoints(recommendationsContract, recommendationsRouter, app, endpointOptions);
+createExpressEndpoints(syncContract, syncRouter, app, endpointOptions);
+createExpressEndpoints(conflictsContract, conflictsRouter, app, endpointOptions);
 
 app.use((_req, _res, next) => {
   next(new NotFoundError());
@@ -317,9 +329,20 @@ Promise.all([connectDB(), connectNeo4j()])
         "API server running — ready to accept connections",
       );
     });
+    // Offline sync: seed the change feed on first boot (making ?since=0 a full
+    // snapshot), then tail the collections. Both need a replica set — on a standalone
+    // mongod `db.watch()` throws, so this is best-effort: the rest of the api still
+    // serves, only the desktop sync feed goes stale.
+    const syncChanges = resolve("syncChanges");
+    const syncState = resolve("syncState");
+    void seedExistingDocs(db, syncChanges, syncState)
+      .then(() => startWatcher(db, syncChanges, syncState))
+      .catch((err) => logger.error({ err }, "Offline sync unavailable — is Mongo running as a replica set?"));
+
     setupGracefulShutdown(
       httpServer,
       async () => {
+        await stopWatcher();
         await Promise.all([closeDB(), closeNeo4j(), closeSatan()]);
       },
       closeSocketIo,

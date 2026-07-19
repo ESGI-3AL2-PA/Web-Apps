@@ -15,3 +15,5 @@ export * from "./src/notifications.contract";
 export * from "./src/transactions.contract";
 export * from "./src/recommendations.contract";
 export * from "./src/auth.contract";
+export * from "./src/sync.contract";
+export * from "./src/conflicts.contract";

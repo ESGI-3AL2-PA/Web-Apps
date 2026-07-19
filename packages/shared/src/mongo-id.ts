@@ -8,9 +8,9 @@
 /** The persisted shape of an entity `T` — `id` swapped for Mongo's string `_id`. */
 export type WithMongoId<T extends { id: string }> = Omit<T, "id"> & { _id: string };
 
-/** Document → entity: rename `_id` to `id`. */
+/** Document → entity: rename `_id` to `id`, and drop the internal offline-sync stamp. */
 export const toEntity = <T extends { id: string }>(doc: WithMongoId<T>): T => {
-  const { _id, ...rest } = doc;
+  const { _id, _sync, ...rest } = doc as WithMongoId<T> & { _sync?: unknown };
   return { id: _id, ...rest } as unknown as T;
 };
 

@@ -13,5 +13,6 @@ export { createContainer, type Container } from "./container.js";
 export { toEntity, toDoc, type WithMongoId } from "./mongo-id.js";
 export { USERS_COLLECTION, DISTRICT_ADMINS_COLLECTION } from "./collections.js";
 export { userDocumentSchema, UserRoleSchema, type UserDocument, type UserRole } from "./user-document.js";
+export { syncProvenanceSchema, type SyncProvenance } from "./sync-provenance.js";
 export { districtAdminDocumentSchema, type DistrictAdminDocument } from "./district-admin-document.js";
 export { TOKEN_ISSUER, TOKEN_ALG, TOKEN_AUDIENCE, TOKEN_AUDIENCE_INTERNAL, type AccessTokenClaims } from "./tokens.js";
