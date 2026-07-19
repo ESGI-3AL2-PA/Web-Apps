@@ -1,0 +1,26 @@
+# ══════════════════════════════════════════════════════════════════════════════
+#  minimal — the smallest dataset you can still log in and click around with:
+#  one district, one admin bound to it, one resident, one tag, one listing.
+#
+#  Use it when you want a clean slate to reproduce a bug against, without the
+#  demo scenario's 56 documents getting in the way. Same format as demo.txt.
+# ══════════════════════════════════════════════════════════════════════════════
+
+@collection districts
+{"_id":"seed-district-montmartre","name":"Montmartre","startingPoints":100,"geoJson":{"type":"Polygon","coordinates":[[[2.338,48.8855],[2.347,48.8855],[2.347,48.89],[2.338,48.89],[2.338,48.8855]]]}}
+
+# Both accounts share SEED_PASSWORD (default "Password123!").
+@collection users
+{"_id":"seed-user-admin","email":"admin@connected-neighbours.local","passwordHash":"{{passwordHash}}","emailVerified":true,"firstName":"Admin","lastName":"Root","phone":"0600000001","address":"1 Rue de l'Administration, Paris","role":"admin","districtId":"seed-district-montmartre","balance":0,"createdAt":"{{now}}","updatedAt":"{{now}}"}
+{"_id":"seed-user-alice","email":"alice@example.com","passwordHash":"{{passwordHash}}","emailVerified":true,"firstName":"Alice","lastName":"Martin","phone":"0612345678","address":"12 Rue des Abbesses, Paris","role":"user","districtId":"seed-district-montmartre","balance":20,"createdAt":"{{now}}","updatedAt":"{{now}}"}
+
+# Without this row the auth-service mints `adminDistrictId: null` and every
+# district-scoped route fails closed — the admin console comes up empty.
+@collection district_admins
+{"_id":"seed-district-admin-montmartre","districtId":"seed-district-montmartre","userId":"seed-user-admin","createdAt":"{{now}}"}
+
+@collection tags
+{"_id":"seed-tag-diy","name":"diy","label":{"fr":"Bricolage","en":"DIY"},"description":{"fr":"Petits travaux et bricolage","en":"Small jobs and DIY"}}
+
+@collection listings
+{"_id":"seed-listing-plumber","authorId":"seed-user-alice","districtId":"seed-district-montmartre","title":"Petit bricolage et réparations du quotidien","description":"Fuites, joints, montage de meubles — je passe un coup de main.","price":10,"status":"active","tags":["diy"],"createdAt":"{{now-7d}}","expiresAt":"{{now+30d}}"}
