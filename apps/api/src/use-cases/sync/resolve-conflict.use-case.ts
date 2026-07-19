@@ -29,6 +29,12 @@ export const resolveConflictUseCase = ({ writer, conflicts, graph }: ResolveConf
 
     const { entity, mongoId } = conflict;
 
+    // Claim the conflict BEFORE writing: the flip is the atomic guard, so a second
+    // resolve (or a concurrent one that raced past the check above) loses here and
+    // never gets to overwrite the first operator's decision.
+    const marked = await conflicts.markResolved(id, body.resolution, resolvedBy);
+    if (!marked) return { kind: "already-resolved" };
+
     if (body.resolution === "server") {
       // Keep the server doc; re-propagate it so every instance reconverges.
       await writer.touch(entity, mongoId);
@@ -38,10 +44,6 @@ export const resolveConflictUseCase = ({ writer, conflicts, graph }: ResolveConf
       // The record was deleted underneath the conflict — recreate it from the decision.
       if (!updated) await writer.insert(entity, data, null, mongoId);
     }
-
-    // Guarded flip: a concurrent second resolve finds no pending row and bows out.
-    const marked = await conflicts.markResolved(id, body.resolution, resolvedBy);
-    if (!marked) return { kind: "already-resolved" };
 
     const doc = await writer.findById(entity, mongoId);
     await projectSyncWrite(graph, entity, "UPDATE", mongoId, doc);
