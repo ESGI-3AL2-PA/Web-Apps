@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MONGO_COLLECTIONS, parseSeedData, resolveToken, SeedParseError } from "./loader.js";
+import { DROPPED_COLLECTIONS, MONGO_COLLECTIONS, parseSeedData, resolveToken, SeedParseError } from "./loader.js";
 import type { TokenContext } from "./loader.js";
 
 const ctx: TokenContext = {
@@ -211,6 +211,27 @@ describe("resolveToken", () => {
 
   it("throws on anything it does not recognise", () => {
     expect(() => resolveToken("yesterday", ctx)).toThrow(/unknown token/);
+  });
+});
+
+// The seed drops these collections outright, so this list is the blast radius of every
+// `docker compose up`. Pin it: a collection added here by accident is unrecoverable
+// data loss on someone's dev box, and silent.
+describe("DROPPED_COLLECTIONS", () => {
+  it("never includes a collection the seed does not own", () => {
+    const NEVER_DROP = ["refresh_tokens", "contracts", "authorization_codes", "migrations", "event_interactions"];
+
+    expect(DROPPED_COLLECTIONS.filter((name) => NEVER_DROP.includes(name))).toEqual([]);
+  });
+
+  it("is exactly the seeded collections plus the sync trio", () => {
+    expect([...DROPPED_COLLECTIONS]).toEqual([...MONGO_COLLECTIONS, "sync_changes", "sync_state", "counters"]);
+  });
+
+  it("keeps the sync trio intact — dropping a subset corrupts desktop clients", () => {
+    for (const name of ["sync_changes", "sync_state", "counters"]) {
+      expect(DROPPED_COLLECTIONS).toContain(name);
+    }
   });
 });
 

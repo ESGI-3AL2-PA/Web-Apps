@@ -8,9 +8,17 @@
  *   npm run seed -- ./scratch.txt   # any path, resolved against the cwd
  *   SEED_SCENARIO=minimal npm run seed
  *
- * The script is idempotent: existing seeded documents (recognised by their
- * deterministic `_id`s) are removed before reinsertion. Other documents in the
- * collections are left untouched.
+ * DESTRUCTIVE. Every run drops the seeded collections outright — not just the rows
+ * it owns — plus the offline-sync trio, then wipes and re-projects the Neo4j graph.
+ * Anything you created by hand in those collections is gone. What it does NOT touch:
+ * `refresh_tokens`, `contracts`, `authorization_codes`, and the migration state.
+ *
+ * Two consequences worth knowing:
+ *   - `users` is dropped, and the superAdmin lives there but is created by
+ *     auth-service's `seed-superadmin`. Compose runs `auth-seed` after this script
+ *     for that reason; run them in the same order by hand.
+ *   - the sync feed is only rebuilt when the api boots (`sync_state.seeded` guards
+ *     it), so restart the api afterwards or desktop clients pull an empty feed.
  */
 
 import argon2 from "argon2";
@@ -20,7 +28,7 @@ import type { Db } from "mongodb";
 import { connectDB } from "../repositories/mongodb.connector.js";
 import { connectNeo4j, closeNeo4j } from "../repositories/neo4j.connector.js";
 import { Neo4jGraphRepository } from "../repositories/Graph/graph.repository.neo4j.js";
-import { loadSeedFile, MONGO_COLLECTIONS } from "./seed-data/loader.js";
+import { DROPPED_COLLECTIONS, loadSeedFile, MONGO_COLLECTIONS } from "./seed-data/loader.js";
 import type { SeedDataset, SeedDocument } from "./seed-data/loader.js";
 
 const seedPassword = process.env.SEED_PASSWORD ?? "Password123!";
@@ -49,12 +57,43 @@ const describeAvailableScenarios = async (): Promise<string> => {
 
 // ─── Mongo ────────────────────────────────────────────────────────────────────
 
+// The offline-sync feed is three coupled collections: the change log, the watcher's
+// cursor + one-shot `seeded` flag, and the sequence counter that keeps change indices
+// monotonic. Dropping any subset of them corrupts desktop sync — clear the change log
+// but keep the counter and clients that already saw seq N never receive the backfill,
+// silently. So they are only ever dropped together, alongside the data they mirror.
+// (SYNC_COLLECTIONS / DROPPED_COLLECTIONS live in ./seed-data/loader.js — importing
+// this module would run main(), so the drop list has to be testable from elsewhere.)
+
+const dropCollection = async (db: Db, name: string): Promise<boolean> => {
+  try {
+    await db.collection(name).drop();
+    return true;
+  } catch (err) {
+    // 26 = NamespaceNotFound: nothing to drop on a fresh database.
+    if ((err as { code?: number }).code === 26) return false;
+    throw err;
+  }
+};
+
+const resetDatabases = async (db: Db, graph: Neo4jGraphRepository): Promise<void> => {
+  const dropped: string[] = [];
+  for (const name of DROPPED_COLLECTIONS) {
+    if (await dropCollection(db, name)) dropped.push(name);
+  }
+  console.log(`  ✓ dropped ${dropped.length} collection(s): ${dropped.join(", ") || "(none existed)"}`);
+
+  // The graph is a projection of Mongo, so a full wipe is safe and is the only way to
+  // clear nodes from a previously-seeded scenario — the upserts below are all MERGE
+  // and never remove anything.
+  await graph.reset();
+  console.log("  ✓ wiped the Neo4j graph");
+};
+
 const seedCollection = async (db: Db, collectionName: string, documents: SeedDocument[]) => {
   if (documents.length === 0) return;
-  const collection = db.collection(collectionName);
-  const seededIds = documents.map((d) => d._id);
-  await collection.deleteMany({ _id: { $in: seededIds as never } });
-  await collection.insertMany(documents as never);
+  // The collection was just dropped, so this is a plain insert.
+  await db.collection(collectionName).insertMany(documents as never);
   console.log(`  ✓ ${collectionName}: ${documents.length} document(s)`);
 };
 
@@ -188,11 +227,13 @@ const seedGraph = async (graph: Neo4jGraphRepository, data: SeedDataset): Promis
 };
 
 const main = async () => {
-  // Guard: this wipes+repopulates demo data. Never run it against a production
-  // database, where it would insert fake accounts (including an admin) and delete
-  // rows by seed id. Set SEED_ALLOW_PRODUCTION=true to override intentionally.
+  // Guard: this DROPS the seeded collections and the sync feed, then repopulates them
+  // with fake accounts (including an admin). Against a production database that is
+  // total data loss, not a refresh — SEED_ALLOW_PRODUCTION is the only thing standing
+  // between a stray NODE_ENV and an empty prod. Set it only to wipe on purpose.
   if (process.env.NODE_ENV === "production" && process.env.SEED_ALLOW_PRODUCTION !== "true") {
     console.error("❌  Refusing to seed with NODE_ENV=production (set SEED_ALLOW_PRODUCTION=true to override).");
+    console.error("    This script drops collections; on a real database that is unrecoverable without a backup.");
     process.exit(1);
   }
 
@@ -221,6 +262,14 @@ const main = async () => {
 
   try {
     const db = await connectDB();
+    driver = await connectNeo4j();
+    const graph = new Neo4jGraphRepository(driver);
+
+    // ── Reset ────────────────────────────────────────────────────────────
+    // Both stores go first, so a failure part-way leaves everything empty rather
+    // than half-old/half-new.
+    console.log("\n🧹  Reset");
+    await resetDatabases(db, graph);
 
     // ── Mongo ────────────────────────────────────────────────────────────
     console.log("\n📄  Mongo");
@@ -232,11 +281,12 @@ const main = async () => {
 
     // ── Neo4j ────────────────────────────────────────────────────────────
     console.log("\n🕸️  Neo4j");
-    driver = await connectNeo4j();
-    await seedGraph(new Neo4jGraphRepository(driver), dataset);
+    await seedGraph(graph, dataset);
     console.log(`  ✅ graph projection synced (nodes + relationships).`);
 
     console.log("\n✅  Seed complete.");
+    console.warn("⚠️   Restart the api so it rebuilds the offline-sync feed (sync_state was dropped).");
+    console.warn("⚠️   The superAdmin was dropped with `users` — run auth-service's seed:superadmin to restore it.");
   } catch (err) {
     console.error("\n❌  Seed failed:", err);
     process.exitCode = 1;

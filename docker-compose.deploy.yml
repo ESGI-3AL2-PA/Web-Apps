@@ -322,6 +322,11 @@ services:
         condition: service_healthy
       mongo-init:
         condition: service_completed_successfully
+      # Deliberately NOT ordered after api-seed the way the dev compose is: api-seed
+      # refuses to run here (NODE_ENV=production) and exits 1, so depending on its
+      # success would block the superAdmin from ever being provisioned. If you ever
+      # set SEED_ALLOW_PRODUCTION, run api-seed to completion BEFORE auth-seed by
+      # hand — api-seed drops `users`, which is where the superAdmin lives.
 
   # ── TLS-terminating reverse proxy. Routes subdomains to the app containers over the
   #    compose network; obtains + renews Let's Encrypt certs automatically. ─────────────

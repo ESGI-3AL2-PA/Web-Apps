@@ -421,6 +421,11 @@ services:
         condition: service_healthy
       mongo-init:
         condition: service_completed_successfully
+      # Must run AFTER api-seed: that one drops `users` wholesale, which would take
+      # the superAdmin with it. Without this the two one-shots race and the
+      # superAdmin survives or not depending on which finishes last.
+      api-seed:
+        condition: service_completed_successfully
 
 volumes:
   mongodb_data:

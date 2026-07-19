@@ -38,6 +38,20 @@ export const MONGO_COLLECTIONS = [
 
 export type MongoCollectionName = (typeof MONGO_COLLECTIONS)[number];
 
+/**
+ * The offline-sync feed: the change log, the watcher's cursor + one-shot `seeded`
+ * flag, and the sequence counter keeping change indices monotonic. The seed drops
+ * these together with the data they mirror — clearing the log while keeping the
+ * counter would leave clients that already saw seq N silently missing the backfill.
+ */
+export const SYNC_COLLECTIONS = ["sync_changes", "sync_state", "counters"] as const;
+
+/**
+ * Everything the seed script drops before reinserting. Deliberately excludes
+ * `refresh_tokens`, `contracts`, `authorization_codes` and the migration state.
+ */
+export const DROPPED_COLLECTIONS = [...MONGO_COLLECTIONS, ...SYNC_COLLECTIONS] as const;
+
 const GRAPH_TARGETS = ["interests", "event_tags"] as const;
 type GraphTarget = (typeof GRAPH_TARGETS)[number];
 
