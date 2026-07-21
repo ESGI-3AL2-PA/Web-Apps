@@ -13,7 +13,13 @@ export const connectNeo4j = async (): Promise<Driver> => {
   }
   const d = neo4j.driver(url, neo4j.auth.basic(user, password));
   // Verify connectivity once at boot; surface a clear error if the DB is down.
-  await d.verifyConnectivity();
+  // Close the driver on failure so a retrying caller doesn't leak a pool per attempt.
+  try {
+    await d.verifyConnectivity();
+  } catch (err) {
+    await d.close().catch(() => {});
+    throw err;
+  }
   driver = d;
   return d;
 };
