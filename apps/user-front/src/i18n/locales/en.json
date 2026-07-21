@@ -390,6 +390,24 @@
     "vote": "Vote",
     "error": "Vote failed (poll closed or already voted).",
     "responses_one": "{{count}} response",
-    "responses_other": "{{count}} responses"
+    "responses_other": "{{count}} responses",
+    "create": "Create poll",
+    "creating": "Creating…",
+    "createError": "Could not create the poll. Check the fields and try again.",
+    "needTwoOptions": "Add at least two options.",
+    "addOption": "Add option",
+    "removeOption": "Remove option",
+    "optionPlaceholder": "Option {{n}}",
+    "fields": {
+      "question": "Question",
+      "options": "Options",
+      "type": "Vote type",
+      "start": "Start",
+      "end": "End"
+    },
+    "type": {
+      "single_choice": "Single choice",
+      "multiple_choice": "Multiple choice"
+    }
   }
 }

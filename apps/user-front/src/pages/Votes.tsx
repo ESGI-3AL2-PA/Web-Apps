@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useAuth } from "@repo/hooks";
 import type { VoteResponseDto } from "@repo/contracts";
 import { getVotes, submitVote } from "../api-service/votes.service";
 import { useDialog } from "../components/dialog-context";
 import ErrorBanner from "../components/ErrorBanner";
+import NewVoteModal from "../components/NewVoteModal";
 
 function PollResults({ vote }: { vote: VoteResponseDto }) {
   const { t } = useTranslation();
@@ -108,9 +110,11 @@ function PollCard({ vote, onVoted }: { vote: VoteResponseDto; onVoted: (v: VoteR
 
 export default function Votes() {
   const { t } = useTranslation();
+  const { user } = useAuth();
   const [votes, setVotes] = useState<VoteResponseDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [creating, setCreating] = useState(false);
 
   const load = useCallback(() => {
     let ignore = false;
@@ -138,10 +142,22 @@ export default function Votes() {
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-extrabold text-base-content">{t("votes.title")}</h1>
-        <p className="text-base-content/60">{t("votes.subtitle")}</p>
+      <div className="mb-6 flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-extrabold text-base-content">{t("votes.title")}</h1>
+          <p className="text-base-content/60">{t("votes.subtitle")}</p>
+        </div>
+        {user?.districtId && (
+          <button onClick={() => setCreating(true)} className="btn btn-primary btn-sm shrink-0">
+            <span className="icon-[tabler--plus] size-4" />
+            {t("votes.create")}
+          </button>
+        )}
       </div>
+
+      {creating && (
+        <NewVoteModal onClose={() => setCreating(false)} onCreated={(v) => setVotes((prev) => [v, ...prev])} />
+      )}
 
       {loading ? (
         <p className="text-base-content/60">{t("common.loading")}</p>
