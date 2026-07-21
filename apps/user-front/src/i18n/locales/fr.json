@@ -368,7 +368,17 @@
     "finished": "Terminé",
     "full": "Complet",
     "unregister": "Se désinscrire",
-    "participate": "Participer"
+    "participate": "Participer",
+    "create": "Créer un événement",
+    "creating": "Création…",
+    "createError": "Impossible de créer l'événement. Vérifiez les champs et réessayez.",
+    "fields": {
+      "title": "Titre",
+      "location": "Lieu",
+      "date": "Date et heure",
+      "seats": "Places",
+      "description": "Description"
+    }
   },
   "votes": {
     "title": "Sondages du quartier",
