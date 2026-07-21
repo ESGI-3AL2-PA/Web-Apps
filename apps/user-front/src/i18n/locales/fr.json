@@ -368,7 +368,17 @@
     "finished": "Terminé",
     "full": "Complet",
     "unregister": "Se désinscrire",
-    "participate": "Participer"
+    "participate": "Participer",
+    "create": "Créer un événement",
+    "creating": "Création…",
+    "createError": "Impossible de créer l'événement. Vérifiez les champs et réessayez.",
+    "fields": {
+      "title": "Titre",
+      "location": "Lieu",
+      "date": "Date et heure",
+      "seats": "Places",
+      "description": "Description"
+    }
   },
   "votes": {
     "title": "Sondages du quartier",
@@ -380,6 +390,24 @@
     "vote": "Voter",
     "error": "Vote impossible (sondage fermé ou déjà voté).",
     "responses_one": "{{count}} réponse",
-    "responses_other": "{{count}} réponses"
+    "responses_other": "{{count}} réponses",
+    "create": "Créer un sondage",
+    "creating": "Création…",
+    "createError": "Impossible de créer le sondage. Vérifiez les champs et réessayez.",
+    "needTwoOptions": "Ajoutez au moins deux options.",
+    "addOption": "Ajouter une option",
+    "removeOption": "Supprimer l'option",
+    "optionPlaceholder": "Option {{n}}",
+    "fields": {
+      "question": "Question",
+      "options": "Options",
+      "type": "Type de vote",
+      "start": "Début",
+      "end": "Fin"
+    },
+    "type": {
+      "single_choice": "Choix unique",
+      "multiple_choice": "Choix multiple"
+    }
   }
 }

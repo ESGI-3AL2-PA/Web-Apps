@@ -1,4 +1,5 @@
 import type {
+  CreateVoteDto,
   PaginatedResponseDto,
   SubmitVoteResponseDto,
   VoteQueryInput,
@@ -13,6 +14,12 @@ type PaginatedVotes = PaginatedResponseDto<typeof VoteResponseDtoSchema>;
 export async function getVotes(filters: VoteQueryInput = {}): Promise<VoteResponseDto[]> {
   const res = await api.get<PaginatedVotes>("/votes", { params: { ...filters, limit: filters.limit ?? 50 } });
   return res.data.data;
+}
+
+// POST /votes — create a poll in the caller's district (server forces status "draft")
+export async function createVote(body: CreateVoteDto): Promise<VoteResponseDto> {
+  const res = await api.post<VoteResponseDto>("/votes", body);
+  return res.data;
 }
 
 // GET /votes/:id — single poll (with results revealed if the user has voted / it is closed)

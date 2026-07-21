@@ -8,6 +8,7 @@ import { getRecommendedEvents } from "../api-service/recommendations.service";
 import { formatDateTime } from "../lib/format";
 import { useDialog } from "../components/dialog-context";
 import ErrorBanner from "../components/ErrorBanner";
+import NewEventModal from "../components/NewEventModal";
 
 function EventCard({
   ev,
@@ -72,6 +73,7 @@ export default function Events() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
 
   const load = useCallback(() => {
     let ignore = false;
@@ -132,10 +134,22 @@ export default function Events() {
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-extrabold text-base-content">{t("events.title")}</h1>
-        <p className="text-base-content/60">{t("events.subtitle")}</p>
+      <div className="mb-6 flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-extrabold text-base-content">{t("events.title")}</h1>
+          <p className="text-base-content/60">{t("events.subtitle")}</p>
+        </div>
+        {user?.districtId && (
+          <button onClick={() => setCreating(true)} className="btn btn-primary btn-sm shrink-0">
+            <span className="icon-[tabler--plus] size-4" />
+            {t("events.create")}
+          </button>
+        )}
       </div>
+
+      {creating && (
+        <NewEventModal onClose={() => setCreating(false)} onCreated={(ev) => setEvents((prev) => [ev, ...prev])} />
+      )}
 
       {user && (loadingReco || recommended.length > 0) && (
         <section className="mb-8">
