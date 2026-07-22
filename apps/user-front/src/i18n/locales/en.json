@@ -410,7 +410,9 @@
     "type": {
       "single_choice": "Single choice",
       "multiple_choice": "Multiple choice"
-    }
+    },
+    "draft": "Not yet open",
+    "pending": "This poll is awaiting a moderator's approval before it opens for voting."
   },
   "stepUp": {
     "title": "Confirm it is you",

@@ -39,8 +39,14 @@ function PollCard({ vote, onVoted }: { vote: VoteResponseDto; onVoted: (v: VoteR
   const { alert } = useDialog();
   const [selected, setSelected] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
-  const voted = vote.userHasVoted || vote.status === "closed";
+  // A resident-proposed poll stays "draft" until an admin publishes it — only "open" polls
+  // accept votes. Show results once the caller has voted or the poll has closed; a draft
+  // shows neither the ballot (voting would 400 "not open") nor results.
+  const isDraft = vote.status === "draft";
+  const showResults = !isDraft && (vote.userHasVoted || vote.status === "closed");
   const multi = vote.voteType === "multiple_choice";
+  const statusLabel = vote.status === "closed" ? t("votes.closed") : isDraft ? t("votes.draft") : t("votes.open");
+  const statusClass = vote.status === "closed" ? "badge-neutral" : isDraft ? "badge-warning" : "badge-primary";
 
   const cast = async (options: string[]) => {
     if (options.length === 0) return;
@@ -58,14 +64,14 @@ function PollCard({ vote, onVoted }: { vote: VoteResponseDto; onVoted: (v: VoteR
   return (
     <article className="rounded-box border border-base-content/10 bg-base-100 p-5">
       <div className="mb-1 flex items-center gap-2">
-        <span className="badge badge-primary badge-soft">
-          {vote.status === "closed" ? t("votes.closed") : t("votes.open")}
-        </span>
+        <span className={`badge ${statusClass} badge-soft`}>{statusLabel}</span>
         {multi && <span className="text-xs text-base-content/60">{t("votes.multipleChoice")}</span>}
       </div>
       <h2 className="text-lg font-bold text-base-content">{vote.question}</h2>
 
-      {voted ? (
+      {isDraft ? (
+        <p className="mt-3 text-sm text-base-content/60">{t("votes.pending")}</p>
+      ) : showResults ? (
         <PollResults vote={vote} />
       ) : multi ? (
         <div className="mt-3 space-y-2">
