@@ -51,6 +51,10 @@ export const CreateVoteDtoSchema = z
     startDate: z.string().datetime(),
     endDate: z.string().datetime(),
   })
+  .refine((data) => new Date(data.endDate) > new Date(data.startDate), {
+    message: "endDate must be after startDate",
+    path: ["endDate"],
+  })
   .openapi({ title: "CreateVote" });
 export type CreateVoteDto = z.infer<typeof CreateVoteDtoSchema>;
 
@@ -62,6 +66,12 @@ export const UpdateVoteDtoSchema = z
     status: VoteStatusSchema.optional(),
     startDate: z.string().datetime().optional(),
     endDate: z.string().datetime().optional(),
+  })
+  // Only enforceable here when both bounds are in the same patch; a patch that moves
+  // just one bound past the stored other is still checked in the update use-case.
+  .refine((data) => !(data.startDate && data.endDate) || new Date(data.endDate) > new Date(data.startDate), {
+    message: "endDate must be after startDate",
+    path: ["endDate"],
   })
   .openapi({ title: "UpdateVote" });
 export type UpdateVoteDto = z.infer<typeof UpdateVoteDtoSchema>;
