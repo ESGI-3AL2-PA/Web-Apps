@@ -50,10 +50,13 @@ export const transactionsContract = c.router({
       200: PaginatedResponseDtoSchema(TransactionResponseDtoSchema),
       403: ForbiddenErrorSchema,
     },
-    summary: "Get a paginated list of transactions for a specific user (self or admin)",
+    summary: "Get a paginated list of transactions for a specific user (self, district admin, or superAdmin)",
+    // ownerField:"id" (self) + districtField (a district admin may view a user IN their
+    // district) + superAdmin bypass. Not selfParam, which short-circuits to 403 before the
+    // district check and would exclude admins.
     metadata: auth({
       audience: "api",
-      scope: { resource: "user", selfParam: "id", bypassRoles: ["superAdmin"] },
+      scope: { resource: "user", ownerField: "id", districtField: "districtId", bypassRoles: ["superAdmin"] },
     }),
   },
 
@@ -66,10 +69,10 @@ export const transactionsContract = c.router({
       403: ForbiddenErrorSchema,
       404: NotFoundErrorSchema,
     },
-    summary: "Get the current points balance of a user (self or admin)",
+    summary: "Get the current points balance of a user (self, district admin, or superAdmin)",
     metadata: auth({
       audience: "api",
-      scope: { resource: "user", selfParam: "id", bypassRoles: ["superAdmin"] },
+      scope: { resource: "user", ownerField: "id", districtField: "districtId", bypassRoles: ["superAdmin"] },
     }),
   },
 });
