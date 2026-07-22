@@ -246,7 +246,10 @@ app.post(
 const limiterMessage = { message: "Too many requests — try again later" };
 app.use(
   "/auth/login",
-  rateLimit({ windowMs: 60_000, limit: 5, standardHeaders: "draft-7", legacyHeaders: false, message: limiterMessage }),
+  // Prefix-matches /auth/login AND its sub-steps (/login/mfa, /login/enroll/*), so with
+  // mandatory MFA a single sign-in spends several requests here (password → mfa or
+  // enroll start+confirm) plus any wrong/expired-code retries. Keep it well above that.
+  rateLimit({ windowMs: 60_000, limit: 30, standardHeaders: "draft-7", legacyHeaders: false, message: limiterMessage }),
 );
 app.use(
   "/auth/register",
@@ -254,7 +257,7 @@ app.use(
 );
 app.use(
   "/auth/refresh",
-  rateLimit({ windowMs: 60_000, limit: 30, standardHeaders: "draft-7", legacyHeaders: false, message: limiterMessage }),
+  rateLimit({ windowMs: 60_000, limit: 60, standardHeaders: "draft-7", legacyHeaders: false, message: limiterMessage }),
 );
 app.use(
   "/auth/resend-verification",
@@ -274,19 +277,20 @@ app.use(
 );
 app.use(
   "/auth/login/mfa",
-  rateLimit({ windowMs: 60_000, limit: 5, standardHeaders: "draft-7", legacyHeaders: false, message: limiterMessage }),
+  rateLimit({ windowMs: 60_000, limit: 20, standardHeaders: "draft-7", legacyHeaders: false, message: limiterMessage }),
 );
 app.use(
   "/auth/totp",
-  rateLimit({ windowMs: 60_000, limit: 10, standardHeaders: "draft-7", legacyHeaders: false, message: limiterMessage }),
+  rateLimit({ windowMs: 60_000, limit: 20, standardHeaders: "draft-7", legacyHeaders: false, message: limiterMessage }),
 );
 app.use(
   "/auth/step-up",
-  rateLimit({ windowMs: 60_000, limit: 10, standardHeaders: "draft-7", legacyHeaders: false, message: limiterMessage }),
+  // One per sensitive op + wrong/expired-code retries; users may chain several ops.
+  rateLimit({ windowMs: 60_000, limit: 30, standardHeaders: "draft-7", legacyHeaders: false, message: limiterMessage }),
 );
 app.use(
   "/auth/sessions",
-  rateLimit({ windowMs: 60_000, limit: 30, standardHeaders: "draft-7", legacyHeaders: false, message: limiterMessage }),
+  rateLimit({ windowMs: 60_000, limit: 60, standardHeaders: "draft-7", legacyHeaders: false, message: limiterMessage }),
 );
 
 app.use(
