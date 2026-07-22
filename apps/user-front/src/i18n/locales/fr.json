@@ -274,7 +274,8 @@
     "insufficientFunds": "Solde insuffisant pour prendre ce service.",
     "notFound": "Annonce introuvable.",
     "seller": "Vendeur",
-    "description": "Description"
+    "description": "Description",
+    "takeUnavailable": "Le service de signature est momentanément indisponible. Veuillez réessayer dans un instant."
   },
   "post": {
     "title": "Déposer une annonce",
