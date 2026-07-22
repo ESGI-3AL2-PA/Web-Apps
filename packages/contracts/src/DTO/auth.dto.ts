@@ -112,6 +112,35 @@ export const LoginMfaRequestSchema = z
   .openapi({ title: "LoginMfaRequest" });
 export type LoginMfaRequestDto = z.infer<typeof LoginMfaRequestSchema>;
 
+export const EnrollmentRequiredResponseSchema = z
+  .object({
+    enrollment_required: z.literal(true),
+    enroll_token: z.string().openapi({ description: "Short-lived ticket to drive the /auth/login/enroll/* ceremony" }),
+  })
+  .openapi({ title: "EnrollmentRequiredResponse" });
+export type EnrollmentRequiredResponseDto = z.infer<typeof EnrollmentRequiredResponseSchema>;
+
+export const LoginChallengeResponseSchema = z
+  .union([MfaRequiredResponseSchema, EnrollmentRequiredResponseSchema])
+  .openapi({ title: "LoginChallengeResponse" });
+export type LoginChallengeResponseDto = z.infer<typeof LoginChallengeResponseSchema>;
+
+export const StepUpRequestSchema = z
+  .object({
+    code: z.string().regex(/^\d{6}$/, "6-digit code required"),
+  })
+  .openapi({ title: "StepUpRequest" });
+export type StepUpRequestDto = z.infer<typeof StepUpRequestSchema>;
+
+export const StepUpResponseSchema = z
+  .object({
+    step_up_token: z
+      .string()
+      .openapi({ description: "Short-lived token to send in X-Step-Up-Token to authorize one sensitive operation" }),
+  })
+  .openapi({ title: "StepUpResponse" });
+export type StepUpResponseDto = z.infer<typeof StepUpResponseSchema>;
+
 export const TotpEnrollResponseSchema = z
   .object({
     otpauth_url: z.string(),
@@ -119,6 +148,21 @@ export const TotpEnrollResponseSchema = z
   })
   .openapi({ title: "TotpEnrollResponse" });
 export type TotpEnrollResponseDto = z.infer<typeof TotpEnrollResponseSchema>;
+
+export const EnrollStartRequestSchema = z
+  .object({
+    enroll_token: z.string().min(1),
+  })
+  .openapi({ title: "EnrollStartRequest" });
+export type EnrollStartRequestDto = z.infer<typeof EnrollStartRequestSchema>;
+
+export const EnrollConfirmRequestSchema = z
+  .object({
+    enroll_token: z.string().min(1),
+    code: z.string().regex(/^\d{6}$/, "6-digit code required"),
+  })
+  .openapi({ title: "EnrollConfirmRequest" });
+export type EnrollConfirmRequestDto = z.infer<typeof EnrollConfirmRequestSchema>;
 
 export const TotpCodeRequestSchema = z
   .object({

@@ -56,6 +56,18 @@ export interface AuthScope {
   selfParam?: string;
 }
 
+/**
+ * Step-up (fresh-TOTP) requirement for a sensitive operation. Enforced by the api's
+ * `requireStepUp` middleware, but only in production — dev stays friction-free.
+ * The caller proves possession by sending an `X-Step-Up-Token` (minted at /auth/step-up).
+ */
+export interface StepUpPolicy {
+  /** The operation always requires step-up (e.g. delete account, token transfer). */
+  always?: boolean;
+  /** Require step-up only when the request body sets any of these fields (e.g. email/address on a PATCH). */
+  whenBodyTouches?: string[];
+}
+
 export interface AuthPolicy {
   /** No authentication at all. */
   public?: boolean;
@@ -67,6 +79,8 @@ export interface AuthPolicy {
   readBypassesRoles?: boolean;
   /** Record-level ownership / district enforcement. */
   scope?: AuthScope;
+  /** Fresh-TOTP step-up requirement (production only). */
+  stepUp?: StepUpPolicy;
 }
 
 /**
