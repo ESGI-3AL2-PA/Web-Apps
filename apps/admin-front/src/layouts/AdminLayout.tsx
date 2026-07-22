@@ -109,6 +109,21 @@ export default function AdminLayout() {
           </div>
         ))}
       </nav>
+      <div className="border-t border-base-content/10 p-3 space-y-3">
+        <div className="flex items-center gap-3 px-1">
+          <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-content">
+            {user ? `${user.firstName[0] ?? ""}${user.lastName[0] ?? ""}`.toUpperCase() : "?"}
+          </span>
+          <div className="min-w-0 leading-tight">
+            <p className="truncate text-sm font-medium">{user ? `${user.firstName} ${user.lastName}` : "—"}</p>
+            <p className="truncate text-xs text-base-content/60">{user ? t(`role.${user.role}`) : ""}</p>
+          </div>
+        </div>
+        <button className="btn btn-soft btn-error btn-sm w-full gap-2" onClick={() => logout()}>
+          <span className="icon-[tabler--logout] size-4" />
+          {t("nav.logout")}
+        </button>
+      </div>
     </>
   );
 
@@ -196,14 +211,6 @@ export default function AdminLayout() {
               aria-label={theme === "dark" ? t("nav.themeToLight") : t("nav.themeToDark")}
             >
               <span className={`${theme === "dark" ? "icon-[tabler--sun]" : "icon-[tabler--moon]"} size-5`} />
-            </button>
-            <div className="hidden sm:block text-end leading-tight">
-              <p className="text-sm font-medium">{user ? `${user.firstName} ${user.lastName}` : "—"}</p>
-              <p className="text-xs text-base-content/60">{user ? t(`role.${user.role}`) : ""}</p>
-            </div>
-            <button className="btn btn-sm btn-soft btn-error gap-2" onClick={() => logout()}>
-              <span className="icon-[tabler--logout] size-4" />
-              <span className="hidden sm:inline">{t("nav.logout")}</span>
             </button>
           </div>
         </header>
