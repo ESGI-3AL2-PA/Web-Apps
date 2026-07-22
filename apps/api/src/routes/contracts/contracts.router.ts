@@ -5,6 +5,7 @@ import { resolve } from "../../repositories/container.js";
 import type { Contract } from "../../entities/contract.entity.js";
 import { resolveListDistrictScope } from "../../middleware/district-scope.js";
 import { documensoService, DocumensoServiceError } from "../../services/documenso.service.js";
+import { logger } from "../../logger.js";
 import { getContractsUseCase } from "../../use-cases/contracts/get-contracts.use-case.js";
 import { getContractByIdUseCase } from "../../use-cases/contracts/get-contract-by-id.use-case.js";
 import {
@@ -126,8 +127,11 @@ export const contractsRouter = s.router(contractsContract, {
       if (err instanceof InsufficientFundsError) {
         return { status: 400, body: { message: err.message } };
       }
-      // The e-signature service failed — surface as a gateway error, not a 500.
+      // The e-signature service failed — surface as a gateway error, not a 500. Log the
+      // underlying reason (which upstream call failed, and why) since the client only
+      // gets a generic message; this is the sole record of a Documenso misconfiguration.
       if (err instanceof DocumensoServiceError) {
+        logger.error({ err }, "contract creation failed: Documenso error");
         return { status: 502, body: { message: "The signature service is unavailable, please retry" } };
       }
       throw err;

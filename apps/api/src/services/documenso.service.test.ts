@@ -1,11 +1,56 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import {
   assertAllowedDownloadUrl,
   documensoWebhookEventSchema,
   documensoWebhookReplayKey,
   mapDocumensoStatus,
+  readConfig,
   WebhookReplayCache,
 } from "./documenso.service.js";
+
+describe("readConfig (Documenso env guard)", () => {
+  const KEYS = ["DOCUMENSO_URL", "DOCUMENSO_API_TOKEN", "DOCUMENSO_TEMPLATE_ID"] as const;
+  const saved = Object.fromEntries(KEYS.map((k) => [k, process.env[k]]));
+  const set = (url?: string, token?: string, templateId?: string) => {
+    const vals = { DOCUMENSO_URL: url, DOCUMENSO_API_TOKEN: token, DOCUMENSO_TEMPLATE_ID: templateId };
+    for (const k of KEYS) {
+      if (vals[k] === undefined) delete process.env[k];
+      else process.env[k] = vals[k];
+    }
+  };
+
+  afterEach(() => {
+    for (const k of KEYS) {
+      if (saved[k] === undefined) delete process.env[k];
+      else process.env[k] = saved[k];
+    }
+  });
+
+  it("builds a config when all three vars are real values", () => {
+    set("https://documenso.example.com/", "api_token_abc", "42");
+    const config = readConfig();
+    expect(config).not.toBeNull();
+    expect(config?.templateId).toBe(42);
+    expect(config?.baseUrl).toBe("https://documenso.example.com"); // trailing slash trimmed
+  });
+
+  it("returns null when the scaffolding TODO placeholders are left in place", () => {
+    set("https://documenso.example.com", "TODO-from-documenso-ui", "TODO-numeric-template-id");
+    expect(readConfig()).toBeNull();
+  });
+
+  it("returns null for a non-numeric template id rather than hitting /templates/NaN", () => {
+    set("https://documenso.example.com", "api_token_abc", "not-a-number");
+    expect(readConfig()).toBeNull();
+  });
+
+  it("returns null when any required var is unset or blank", () => {
+    set(undefined, "api_token_abc", "42");
+    expect(readConfig()).toBeNull();
+    set("https://documenso.example.com", "   ", "42");
+    expect(readConfig()).toBeNull();
+  });
+});
 
 describe("mapDocumensoStatus", () => {
   it("maps every known Documenso status to its contract status", () => {
