@@ -174,7 +174,9 @@ app.use(
   cors({
     origin: allowedOrigins,
     methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
+    // X-Step-Up-Token carries the fresh-MFA proof the front replays on a sensitive op after
+    // a 401 step_up_required; without it here the browser's preflight blocks the retry.
+    allowedHeaders: ["Content-Type", "Authorization", "X-Step-Up-Token"],
     credentials: true,
   }),
 );
