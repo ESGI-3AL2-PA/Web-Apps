@@ -88,7 +88,8 @@ app.use(
   cors({
     origin: allowedOrigins,
     methods: ["GET", "POST", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization", "X-CSRF-Token"],
+    // X-Step-Up-Token is replayed on disable-TOTP (the front hits auth-service directly for it).
+    allowedHeaders: ["Content-Type", "Authorization", "X-CSRF-Token", "X-Step-Up-Token"],
     credentials: true,
   }),
 );
