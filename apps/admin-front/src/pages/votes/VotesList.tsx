@@ -1,6 +1,5 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { useAuth } from "@repo/hooks";
 import type {
   CreateVoteDto,
   UpdateVoteDto,
@@ -30,8 +29,6 @@ const VOTE_TYPES: VoteType[] = ["single_choice", "multiple_choice"];
 
 export default function VotesList() {
   const { t } = useTranslation();
-  const { user } = useAuth();
-  const isSuperAdmin = user?.role === "superAdmin";
   const list = useScopedList<VoteResponseDto>(listVotes);
   const scope = useDistrictScope();
   const toast = useToast();
@@ -90,14 +87,12 @@ export default function VotesList() {
               label={t("common.actions.edit")}
               onClick={() => setEditing(v)}
             />
-            {isSuperAdmin && (
-              <RowActionButton
-                icon="icon-[tabler--trash]"
-                label={t("common.actions.delete")}
-                variant="btn-error"
-                onClick={() => setDeleting(v)}
-              />
-            )}
+            <RowActionButton
+              icon="icon-[tabler--trash]"
+              label={t("common.actions.delete")}
+              variant="btn-error"
+              onClick={() => setDeleting(v)}
+            />
           </div>
         )}
       />

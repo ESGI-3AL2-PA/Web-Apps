@@ -1,6 +1,5 @@
 import { useState, type FormEvent, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { useAuth } from "@repo/hooks";
 import type { CreateEventDto, EventResponseDto, EventStatus, UpdateEventDto } from "@repo/contracts";
 import { useScopedList } from "../../hooks/useScopedList";
 import { createEvent, deleteEvent, listEvents, updateEvent } from "../../api-service/events";
@@ -22,8 +21,6 @@ const STATUSES: EventStatus[] = ["upcoming", "ongoing", "completed", "cancelled"
 
 export default function EventsList() {
   const { t } = useTranslation();
-  const { user } = useAuth();
-  const isSuperAdmin = user?.role === "superAdmin";
   const list = useScopedList<EventResponseDto>(listEvents);
   const scope = useDistrictScope();
   const toast = useToast();
@@ -82,14 +79,12 @@ export default function EventsList() {
               label={t("common.actions.edit")}
               onClick={() => setEditing(e)}
             />
-            {isSuperAdmin && (
-              <RowActionButton
-                icon="icon-[tabler--trash]"
-                label={t("common.actions.delete")}
-                variant="btn-error"
-                onClick={() => setDeleting(e)}
-              />
-            )}
+            <RowActionButton
+              icon="icon-[tabler--trash]"
+              label={t("common.actions.delete")}
+              variant="btn-error"
+              onClick={() => setDeleting(e)}
+            />
           </div>
         )}
       />
