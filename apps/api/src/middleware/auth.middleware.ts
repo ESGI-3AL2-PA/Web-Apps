@@ -5,7 +5,9 @@ import { resolve } from "../repositories/container.js";
 import type { IUserRepository } from "../repositories/User/user.repository.js";
 
 const jwksUrl = process.env.AUTH_JWKS_URL ?? "http://localhost:3001/.well-known/jwks.json";
-const JWKS = createRemoteJWKSet(new URL(jwksUrl));
+// Exported so `requireStepUp` validates step-up tokens against the same key set — a
+// step-up token is just another RS256 JWT auth-service signs, distinguished by its audience.
+export const JWKS = createRemoteJWKSet(new URL(jwksUrl));
 
 export interface AuthUser {
   sub: string;
