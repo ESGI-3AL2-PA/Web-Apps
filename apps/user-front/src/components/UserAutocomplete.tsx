@@ -91,7 +91,7 @@ export default function UserAutocomplete({
         </button>
       )}
       {open && !selected && (
-        <ul className="menu absolute inset-x-0 top-[calc(100%+4px)] z-[60] max-h-56 flex-nowrap overflow-y-auto rounded-box border border-base-content/10 bg-base-100 p-1 shadow-lg">
+        <ul className="menu absolute inset-x-0 top-[calc(100%+4px)] z-[60] max-h-44 flex-nowrap overflow-y-auto rounded-box border border-base-content/10 bg-base-100 p-1 shadow-lg">
           {loading && <li className="px-3 py-2 text-sm text-base-content/60">{t("messages.searching")}</li>}
           {!loading && results.length === 0 && (
             <li className="px-3 py-2 text-sm text-base-content/60">{t("messages.noNeighbour")}</li>

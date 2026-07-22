@@ -274,7 +274,8 @@
     "insufficientFunds": "Not enough points to take this service.",
     "notFound": "Ad not found.",
     "seller": "Seller",
-    "description": "Description"
+    "description": "Description",
+    "takeUnavailable": "The signing service is temporarily unavailable. Please try again in a moment."
   },
   "post": {
     "title": "Post an ad",

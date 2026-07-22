@@ -86,7 +86,15 @@ export default function ListingDetail() {
       navigate("/mes-contrats");
     } catch (e) {
       const status = (e as { response?: { status?: number } })?.response?.status;
-      await alert({ message: status === 400 ? t("detail.insufficientFunds") : t("detail.takeError") });
+      // 400 = not enough points; 5xx = the e-signature service is down (don't blame the
+      // listing's state); anything else = the listing is gone/already taken.
+      const message =
+        status === 400
+          ? t("detail.insufficientFunds")
+          : status && status >= 500
+            ? t("detail.takeUnavailable")
+            : t("detail.takeError");
+      await alert({ message });
       setTaking(false);
     }
   };
