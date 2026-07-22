@@ -44,6 +44,10 @@ const NAV: { section: string; items: NavItem[] }[] = [
       { to: "/votes", label: "nav.votes", icon: "icon-[tabler--checkbox]" },
     ],
   },
+  {
+    section: "nav.account",
+    items: [{ to: "/security", label: "nav.security", icon: "icon-[tabler--shield-lock]" }],
+  },
 ];
 
 export default function AdminLayout() {

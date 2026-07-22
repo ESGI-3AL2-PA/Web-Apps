@@ -16,11 +16,15 @@ import {
   ResendVerificationRequestSchema,
   ForgotPasswordRequestSchema,
   ResetPasswordRequestSchema,
-  MfaRequiredResponseSchema,
+  LoginChallengeResponseSchema,
   LoginMfaRequestSchema,
+  StepUpRequestSchema,
+  StepUpResponseSchema,
   TotpEnrollResponseSchema,
   TotpCodeRequestSchema,
   TotpDisableRequestSchema,
+  EnrollStartRequestSchema,
+  EnrollConfirmRequestSchema,
   SessionListResponseDtoSchema,
   SessionParamsDtoSchema,
 } from "./DTO";
@@ -34,11 +38,11 @@ export const authContract = c.router({
     body: LoginRequestDtoSchema,
     responses: {
       200: LoginResponseDtoSchema,
-      202: MfaRequiredResponseSchema,
+      202: LoginChallengeResponseSchema,
       401: UnauthorizedErrorSchema,
       403: ForbiddenErrorSchema,
     },
-    summary: "Validate credentials. 200 → tokens; 202 → MFA required; 403 → email not verified.",
+    summary: "Validate credentials. 200 → tokens; 202 → MFA required or enrollment required; 403 → email not verified.",
   },
 
   loginMfa: {
@@ -50,6 +54,29 @@ export const authContract = c.router({
       401: UnauthorizedErrorSchema,
     },
     summary: "Complete MFA login: exchange mfa_token + TOTP code for the real tokens.",
+  },
+
+  loginEnrollStart: {
+    method: "POST",
+    path: "/auth/login/enroll/start",
+    body: EnrollStartRequestSchema,
+    responses: {
+      200: TotpEnrollResponseSchema,
+      401: UnauthorizedErrorSchema,
+    },
+    summary: "Mandatory-enrollment ceremony: exchange enroll_token for the otpauth URL + secret.",
+  },
+
+  loginEnrollConfirm: {
+    method: "POST",
+    path: "/auth/login/enroll/confirm",
+    body: EnrollConfirmRequestSchema,
+    responses: {
+      200: LoginResponseDtoSchema,
+      400: AuthMessageResponseDtoSchema,
+      401: UnauthorizedErrorSchema,
+    },
+    summary: "Mandatory-enrollment ceremony: verify the first code, flip totpEnabled, and issue the real tokens.",
   },
 
   refresh: {
@@ -216,6 +243,17 @@ export const authContract = c.router({
       200: AuthMessageResponseDtoSchema,
       401: UnauthorizedErrorSchema,
     },
-    summary: "Disable TOTP. Requires current password confirmation.",
+    summary: "Disable TOTP. Requires current password confirmation (and a step-up token in production).",
+  },
+
+  stepUp: {
+    method: "POST",
+    path: "/auth/step-up",
+    body: StepUpRequestSchema,
+    responses: {
+      200: StepUpResponseSchema,
+      401: UnauthorizedErrorSchema,
+    },
+    summary: "Verify a fresh TOTP code (Bearer) and mint a short-lived step-up token for one sensitive operation.",
   },
 });

@@ -122,7 +122,9 @@
     "themeToLight": "Passer au thème clair",
     "themeToDark": "Passer au thème sombre",
     "logout": "Déconnexion",
-    "language": "Langue"
+    "language": "Langue",
+    "account": "Compte",
+    "security": "Sécurité"
   },
   "dashboard": {
     "title": "Tableau de bord",
@@ -305,5 +307,32 @@
     "requirement": "Les versions .jar nécessitent Java 21.",
     "viewReleases": "Voir toutes les versions",
     "fetchError": "Impossible de joindre GitHub — les liens de téléchargement directs ci-dessous fonctionnent toujours."
+  },
+  "security": {
+    "title": "Sécurité",
+    "subtitle": "Gérez l'authentification à deux facteurs de votre compte administrateur.",
+    "twoFactor": {
+      "title": "Authentification à deux facteurs",
+      "desc": "Ajoutez un code à usage unique d'une application d'authentification en plus de votre mot de passe.",
+      "on": "Activée",
+      "enable": "Activer la 2FA",
+      "disable": "Désactiver",
+      "confirmDisable": "Désactiver la 2FA",
+      "passwordLabel": "Confirmez votre mot de passe pour désactiver",
+      "scanHint": "Ajoutez ce compte à votre application d'authentification (Google Authenticator, Authy…) avec la clé ou le lien otpauth ci-dessous, puis saisissez le code à 6 chiffres affiché.",
+      "secret": "Clé de configuration",
+      "otpauth": "lien otpauth",
+      "codeLabel": "Code à 6 chiffres",
+      "verify": "Vérifier et activer",
+      "error": "Impossible de mettre à jour l'authentification à deux facteurs."
+    }
+  },
+  "stepUp": {
+    "title": "Confirmez votre identité",
+    "desc": "Saisissez le code à 6 chiffres de votre application d'authentification pour autoriser cette action.",
+    "codeLabel": "Code à 6 chiffres",
+    "verify": "Confirmer",
+    "error": "Impossible de vérifier votre identité. Réessayez.",
+    "invalid": "Code invalide ou expiré."
   }
 }

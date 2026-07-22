@@ -122,7 +122,9 @@
     "themeToLight": "Switch to light theme",
     "themeToDark": "Switch to dark theme",
     "logout": "Logout",
-    "language": "Language"
+    "language": "Language",
+    "account": "Account",
+    "security": "Security"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -305,5 +307,32 @@
     "requirement": "The .jar builds require Java 21.",
     "viewReleases": "View all releases",
     "fetchError": "Couldn't reach GitHub — the direct download links below still work."
+  },
+  "security": {
+    "title": "Security",
+    "subtitle": "Manage two-factor authentication for your admin account.",
+    "twoFactor": {
+      "title": "Two-factor authentication",
+      "desc": "Add a time-based one-time code from an authenticator app on top of your password.",
+      "on": "Enabled",
+      "enable": "Enable 2FA",
+      "disable": "Disable",
+      "confirmDisable": "Disable 2FA",
+      "passwordLabel": "Confirm your password to disable",
+      "scanHint": "Add this account to your authenticator app (Google Authenticator, Authy…) using the key or the otpauth link below, then enter the 6-digit code it shows.",
+      "secret": "Setup key",
+      "otpauth": "otpauth link",
+      "codeLabel": "6-digit code",
+      "verify": "Verify & enable",
+      "error": "Couldn't update two-factor authentication."
+    }
+  },
+  "stepUp": {
+    "title": "Confirm it is you",
+    "desc": "Enter the 6-digit code from your authenticator app to authorize this action.",
+    "codeLabel": "6-digit code",
+    "verify": "Confirm",
+    "error": "Could not verify your identity. Try again.",
+    "invalid": "Invalid or expired code."
   }
 }

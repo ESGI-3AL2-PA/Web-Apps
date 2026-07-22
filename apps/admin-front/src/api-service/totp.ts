@@ -1,11 +1,10 @@
 import { config } from "@repo/config";
 import type { TotpEnrollResponseDto } from "@repo/contracts";
 
-// TOTP/MFA lives on the auth-service, not the api — hit it directly with a Bearer token
-// (mirrors sessions.service). credentials:"include" matches the CORS credentials policy.
+// TOTP/MFA lives on the auth-service, not the api — hit it directly with a Bearer token.
 const AUTH = config.authServiceUrl;
 
-// Error thrown when the auth-service demands a step-up (production disable-TOTP). Carries the
+// Thrown when the auth-service demands a step-up (production disable-TOTP). Carries the
 // discriminator so the caller can prompt for a code and retry with an X-Step-Up-Token.
 export class StepUpRequiredError extends Error {
   code = "step_up_required" as const;

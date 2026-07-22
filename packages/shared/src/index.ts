@@ -16,4 +16,13 @@ export { USERS_COLLECTION, DISTRICT_ADMINS_COLLECTION } from "./collections.js";
 export { userDocumentSchema, UserRoleSchema, type UserDocument, type UserRole } from "./user-document.js";
 export { syncProvenanceSchema, type SyncProvenance } from "./sync-provenance.js";
 export { districtAdminDocumentSchema, type DistrictAdminDocument } from "./district-admin-document.js";
-export { TOKEN_ISSUER, TOKEN_ALG, TOKEN_AUDIENCE, TOKEN_AUDIENCE_INTERNAL, type AccessTokenClaims } from "./tokens.js";
+export {
+  TOKEN_ISSUER,
+  TOKEN_ALG,
+  TOKEN_AUDIENCE,
+  TOKEN_AUDIENCE_INTERNAL,
+  TOKEN_AUDIENCE_STEP_UP,
+  TOKEN_AUDIENCE_ENROLL,
+  type AccessTokenClaims,
+  type StepUpClaims,
+} from "./tokens.js";

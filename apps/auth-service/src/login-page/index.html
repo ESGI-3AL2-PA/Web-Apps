@@ -101,6 +101,38 @@
         margin-bottom: 1rem;
         display: none;
       }
+      .hint {
+        font-size: 0.875rem;
+        color: #4b5563;
+        margin-bottom: 1rem;
+      }
+      .secretBox {
+        background: #f3f4f6;
+        border-radius: 0.5rem;
+        padding: 0.75rem;
+        margin-bottom: 1rem;
+      }
+      .secretLabel {
+        display: block;
+        font-size: 0.75rem;
+        color: #6b7280;
+        margin-top: 0.5rem;
+      }
+      .secretLabel:first-child {
+        margin-top: 0;
+      }
+      .secretBox .secret {
+        display: block;
+        font-weight: 600;
+        word-break: break-all;
+        font-size: 0.875rem;
+      }
+      .secretBox .otpauth {
+        display: block;
+        color: #4b5563;
+        word-break: break-all;
+        font-size: 0.75rem;
+      }
       .link {
         text-align: center;
         margin-top: 1rem;
@@ -176,6 +208,13 @@
           resend: "Renvoyer l'e-mail",
           resendSent: "E-mail renvoyé — vérifiez votre boîte mail.",
           resendFailed: "Échec de l'envoi, réessayez.",
+          enrollTitle: "Sécurisez votre compte",
+          enrollHint:
+            "L'authentification à deux facteurs est obligatoire. Ajoutez ce compte à votre application d'authentification avec la clé ou le lien ci-dessous, puis saisissez le code à 6 chiffres.",
+          enrollSecret: "Clé de configuration",
+          enrollOtpauth: "lien otpauth",
+          enrollVerify: "Activer et se connecter",
+          enrollFailed: "Échec de l'activation, réessayez.",
         },
         en: {
           title: "Sign In",
@@ -194,6 +233,13 @@
           resend: "Resend email",
           resendSent: "Email resent — check your inbox.",
           resendFailed: "Couldn't resend, try again.",
+          enrollTitle: "Secure your account",
+          enrollHint:
+            "Two-factor authentication is required. Add this account to your authenticator app using the key or link below, then enter the 6-digit code it shows.",
+          enrollSecret: "Setup key",
+          enrollOtpauth: "otpauth link",
+          enrollVerify: "Enable & sign in",
+          enrollFailed: "Couldn't enable, try again.",
         },
       };
 
@@ -306,6 +352,11 @@
             return;
           }
 
+          if (res.status === 202 && data.enrollment_required) {
+            showEnrollForm(data.enroll_token);
+            return;
+          }
+
           // Unverified email is a 403 (as is "banned") — gate on the machine-readable
           // code so only the not-verified case offers a resend fallback.
           if (res.status === 403 && data.code === "email_not_verified") {
@@ -365,6 +416,80 @@
             errEl.textContent = e.message;
             errEl.style.display = "block";
             btn2.disabled = false;
+          }
+        });
+      }
+
+      // Mandatory-enrollment ceremony (production): fetch a fresh secret with the enroll
+      // ticket, show it, then confirm the first code to flip totpEnabled and issue tokens.
+      async function showEnrollForm(enrollToken) {
+        let secret = "",
+          otpauth = "";
+        try {
+          const r = await fetch("/auth/login/enroll/start", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ enroll_token: enrollToken }),
+          });
+          const d = await r.json().catch(() => ({}));
+          if (!r.ok) throw new Error(d.message || t.enrollFailed);
+          secret = d.secret;
+          otpauth = d.otpauth_url;
+        } catch (e) {
+          const errorEl = document.getElementById("error");
+          errorEl.textContent = e.message;
+          errorEl.style.display = "block";
+          document.getElementById("submitBtn").disabled = false;
+          return;
+        }
+
+        document.querySelector(".card").innerHTML =
+          "<h1>" +
+          t.enrollTitle +
+          "</h1>" +
+          '<div id="error" class="error"></div>' +
+          '<p class="hint">' +
+          t.enrollHint +
+          "</p>" +
+          '<div class="secretBox"><span class="secretLabel">' +
+          t.enrollSecret +
+          '</span><code class="secret">' +
+          secret +
+          '</code><span class="secretLabel">' +
+          t.enrollOtpauth +
+          '</span><code class="otpauth">' +
+          otpauth +
+          "</code></div>" +
+          '<form id="enrollForm">' +
+          '<label for="code">' +
+          t.mfaLabel +
+          "</label>" +
+          '<input type="text" id="code" name="code" required inputmode="numeric" pattern="\\d{6}" maxlength="6" autocomplete="one-time-code">' +
+          '<button type="submit" id="enrollBtn">' +
+          t.enrollVerify +
+          "</button>" +
+          "</form>";
+        const errEl = document.getElementById("error");
+        const btn3 = document.getElementById("enrollBtn");
+        document.getElementById("enrollForm").addEventListener("submit", async (ev) => {
+          ev.preventDefault();
+          errEl.style.display = "none";
+          btn3.disabled = true;
+          try {
+            const r = await fetch("/auth/login/enroll/confirm", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              credentials: "include",
+              body: JSON.stringify({ enroll_token: enrollToken, code: document.getElementById("code").value }),
+            });
+            const d = await r.json().catch(() => ({}));
+            if (!r.ok) throw new Error(d.message || t.invalidCode);
+            window.location.href = redirectUri;
+          } catch (e) {
+            errEl.textContent = e.message;
+            errEl.style.display = "block";
+            btn3.disabled = false;
           }
         });
       }

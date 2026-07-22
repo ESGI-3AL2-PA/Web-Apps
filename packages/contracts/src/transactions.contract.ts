@@ -38,7 +38,7 @@ export const transactionsContract = c.router({
     },
     summary:
       "Create a transaction (transfer between users or system credit/debit). Returns the resulting transaction entries.",
-    metadata: auth({ audience: "api" }),
+    metadata: auth({ audience: "api", stepUp: { always: true } }),
   },
 
   getUserTransactions: {

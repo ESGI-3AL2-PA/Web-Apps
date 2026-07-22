@@ -95,6 +95,8 @@ export const usersContract = c.router({
     metadata: auth({
       audience: "api",
       scope: { resource: "user", selfParam: "id", bypassRoles: ["superAdmin"] },
+      // Identity/recovery + district-moving fields require a fresh TOTP step-up in production.
+      stepUp: { whenBodyTouches: ["email", "address", "newPassword"] },
     }),
   },
 
@@ -191,6 +193,7 @@ export const usersContract = c.router({
     metadata: auth({
       audience: "api",
       scope: { resource: "user", selfParam: "id", notFoundOnDeny: true },
+      stepUp: { always: true },
     }),
   },
 });

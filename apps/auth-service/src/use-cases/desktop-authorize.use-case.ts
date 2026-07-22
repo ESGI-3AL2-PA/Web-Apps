@@ -9,7 +9,7 @@ const CODE_TTL_MS = 60 * 1000;
 
 export type AuthorizeOutcome =
   | { status: "unauthenticated" }
-  | { status: "forbidden"; reason: "role" | "banned" | "unverified" }
+  | { status: "forbidden"; reason: "role" | "banned" | "unverified" | "totp" }
   | { status: "ok"; code: string };
 
 export interface AuthorizeInput {
@@ -61,6 +61,10 @@ export const desktopAuthorizeUseCase = (
     if (user.banned) return { status: "forbidden", reason: "banned" };
     if (!user.emailVerified) return { status: "forbidden", reason: "unverified" };
     if (!ADMIN_SSO_ROLES.has(user.role)) return { status: "forbidden", reason: "role" };
+    // Defense-in-depth for mandatory MFA: even though a desktop code is minted from an
+    // existing web session (which in prod only exists post-enrollment), refuse to issue one
+    // for a non-enrolled admin so this path can never become an MFA bypass.
+    if (process.env.NODE_ENV === "production" && !user.totpEnabled) return { status: "forbidden", reason: "totp" };
 
     const code = randomBytes(32).toString("hex");
     const now = new Date();

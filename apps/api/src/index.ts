@@ -55,6 +55,7 @@ import { seedExistingDocs } from "./watcher/seed-existing-docs.js";
 import { errorHandler, NotFoundError } from "./middleware/error-handler.js";
 import { requireAuth } from "./middleware/auth.middleware.js";
 import { authorize } from "./middleware/authorize.middleware.js";
+import { requireStepUp } from "./middleware/requireStepUp.js";
 import { connectDB, closeDB, pingDB } from "./repositories/mongodb.connector.js";
 import { connectNeo4j, closeNeo4j, pingNeo4j } from "./repositories/neo4j.connector.js";
 import { connectSatan, closeSatan } from "./repositories/satan.connector.js";
@@ -266,7 +267,7 @@ app.post("/uploads/images", makeLimiter(30), imageUploadHandler);
 // middleware. Typed `any` so it doesn't perturb each call's TRouter inference
 // (the contract's generic flows from args 1-2); `authorize` is a valid Express handler.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const endpointOptions: any = { globalMiddleware: [authorize] };
+const endpointOptions: any = { globalMiddleware: [authorize, requireStepUp] };
 
 // Tighter cap on contract creation — each call fans out to Documenso (document
 // generation + invitation emails) and escrows funds. Registered before the ts-rest
