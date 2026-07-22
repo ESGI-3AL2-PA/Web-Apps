@@ -38,6 +38,12 @@ export const CreateEventDtoSchema = z
     totalSeats: z.number().int().min(1).openapi({ description: "Total number of seats (minimum 1)" }),
     eventDate: z.string().datetime().openapi({ description: "Event date and time (ISO 8601)" }),
   })
+  // eventDate is an absolute instant (ISO 8601), so comparing to `now` is timezone-safe:
+  // an event can't be scheduled in the past.
+  .refine((data) => new Date(data.eventDate) > new Date(), {
+    message: "eventDate must be in the future",
+    path: ["eventDate"],
+  })
   .openapi("CreateEvent");
 export type CreateEventDto = z.infer<typeof CreateEventDtoSchema>;
 
@@ -49,6 +55,11 @@ export const UpdateEventDtoSchema = z
     totalSeats: z.number().int().min(1).optional(),
     status: EventStatusSchema.optional(),
     eventDate: z.string().datetime().optional(),
+  })
+  // Rescheduling is allowed, but not into the past (checked only when eventDate is patched).
+  .refine((data) => data.eventDate === undefined || new Date(data.eventDate) > new Date(), {
+    message: "eventDate must be in the future",
+    path: ["eventDate"],
   })
   .openapi("UpdateEvent");
 export type UpdateEventDto = z.infer<typeof UpdateEventDtoSchema>;
