@@ -19,6 +19,7 @@ const DisputesList = lazy(() => import("../pages/disputes/DisputesList"));
 const EventsList = lazy(() => import("../pages/events/EventsList"));
 const VotesList = lazy(() => import("../pages/votes/VotesList"));
 const ClientDownload = lazy(() => import("../pages/client-download/ClientDownload"));
+const SecurityPage = lazy(() => import("../pages/account/SecurityPage"));
 
 export const router = createBrowserRouter([
   {
@@ -43,6 +44,7 @@ export const router = createBrowserRouter([
       { path: "/events", element: <EventsList />, handle: { title: "nav.events" } },
       { path: "/votes", element: <VotesList />, handle: { title: "nav.votes" } },
       { path: "/client", element: <ClientDownload />, handle: { title: "nav.client" } },
+      { path: "/security", element: <SecurityPage />, handle: { title: "nav.security" } },
       { path: "*", element: <NotFound /> },
     ],
   },

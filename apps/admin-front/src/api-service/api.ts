@@ -18,6 +18,15 @@ export function setupInterceptors(tokenGetter: () => string | null, refresher: (
   refreshFn = refresher;
 }
 
+// Prompts for a fresh TOTP code and resolves to a step-up token (or null on cancel).
+// Registered by StepUpProvider; only used in production, where the api answers sensitive
+// operations with 401 { code: "step_up_required" }.
+let stepUpHandler: (() => Promise<string | null>) | null = null;
+
+export function setStepUpHandler(handler: (() => Promise<string | null>) | null) {
+  stepUpHandler = handler;
+}
+
 // Proactively refresh token before it expires, then attach Bearer header
 let refreshPromise: Promise<string | null> | null = null;
 
@@ -45,6 +54,25 @@ api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const original = error.config;
+
+    // Sensitive operation needs a fresh TOTP step-up (production only). The access token is
+    // still valid — prompt for a code and retry once with X-Step-Up-Token, not a refresh.
+    if (
+      error.response?.status === 401 &&
+      error.response?.data?.code === "step_up_required" &&
+      original &&
+      !original._stepUpRetry &&
+      stepUpHandler
+    ) {
+      original._stepUpRetry = true;
+      const stepUpToken = await stepUpHandler();
+      if (stepUpToken) {
+        original.headers["X-Step-Up-Token"] = stepUpToken;
+        return api(original);
+      }
+      return Promise.reject(error);
+    }
+
     if (error.response?.status === 401 && !original._retry && refreshFn) {
       original._retry = true;
       const newToken = await refreshFn();

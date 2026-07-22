@@ -3,6 +3,7 @@ import { AuthProvider, useAuth } from "@repo/hooks";
 import { config } from "@repo/config";
 import { setupInterceptors } from "../api-service/api";
 import { ToastProvider } from "../components/Toast";
+import { StepUpProvider } from "../components/StepUpProvider";
 
 const AUTH_SERVICE_URL = config.authServiceUrl;
 
@@ -20,7 +21,9 @@ export default function Providers({ children }: { children: ReactNode }) {
   return (
     <AuthProvider authServiceUrl={AUTH_SERVICE_URL}>
       <InterceptorSetup>
-        <ToastProvider>{children}</ToastProvider>
+        <ToastProvider>
+          <StepUpProvider>{children}</StepUpProvider>
+        </ToastProvider>
       </InterceptorSetup>
     </AuthProvider>
   );
