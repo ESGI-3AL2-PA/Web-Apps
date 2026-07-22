@@ -38,6 +38,12 @@ export const CreateEventDtoSchema = z
     totalSeats: z.number().int().min(1).openapi({ description: "Total number of seats (minimum 1)" }),
     eventDate: z.string().datetime().openapi({ description: "Event date and time (ISO 8601)" }),
   })
+  // eventDate is an absolute instant (ISO 8601), so comparing to `now` is timezone-safe:
+  // an event can't be scheduled in the past.
+  .refine((data) => new Date(data.eventDate) > new Date(), {
+    message: "eventDate must be in the future",
+    path: ["eventDate"],
+  })
   .openapi("CreateEvent");
 export type CreateEventDto = z.infer<typeof CreateEventDtoSchema>;
 
@@ -50,6 +56,9 @@ export const UpdateEventDtoSchema = z
     status: EventStatusSchema.optional(),
     eventDate: z.string().datetime().optional(),
   })
+  // No future-date guard here: edit forms resubmit the stored eventDate, so an event that
+  // has already happened must stay editable (fix a typo, cancel it). The past-date guard
+  // lives on create, where the date is always new input.
   .openapi("UpdateEvent");
 export type UpdateEventDto = z.infer<typeof UpdateEventDtoSchema>;
 

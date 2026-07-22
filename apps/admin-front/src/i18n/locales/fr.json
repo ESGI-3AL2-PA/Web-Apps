@@ -186,6 +186,7 @@
     "title": "Quartier",
     "loadFailed": "Échec du chargement du quartier.",
     "invalidPolygon": "Dessinez un polygone valide (au moins 3 points distincts) avant d'enregistrer.",
+    "nameRequired": "Le nom du quartier est obligatoire.",
     "saved": "Quartier enregistré",
     "startingPoints": "Points de départ",
     "create": "Nouveau quartier",

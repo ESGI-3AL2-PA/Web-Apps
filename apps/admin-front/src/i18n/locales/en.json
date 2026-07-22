@@ -186,6 +186,7 @@
     "title": "District",
     "loadFailed": "Failed to load district.",
     "invalidPolygon": "Draw a valid polygon (at least 3 distinct points) before saving.",
+    "nameRequired": "A district name is required.",
     "saved": "District saved",
     "startingPoints": "Starting points",
     "create": "New district",
