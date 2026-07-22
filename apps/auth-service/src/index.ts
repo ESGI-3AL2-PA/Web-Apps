@@ -23,7 +23,7 @@ import { MongoRefreshTokenRepository } from "./repositories/RefreshToken/refresh
 import { MongoAuthorizationCodeRepository } from "./repositories/AuthorizationCode/authorization-code.repository.mongo.js";
 import type { IRefreshTokenRepository } from "./repositories/RefreshToken/refresh-token.repository.js";
 import { initKeys } from "./keys.js";
-import { setupGracefulShutdown } from "@repo/shared";
+import { setupGracefulShutdown, requestValidationErrorHandler } from "@repo/shared";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -305,7 +305,11 @@ app.use("/auth/desktop/token", express.urlencoded({ extended: false }));
 app.use(desktopSsoRouter);
 
 // Auth endpoints (ts-rest)
-createExpressEndpoints({ ...authContract }, { ...authRouter }, app);
+// Typed `any` to match the api's convention: ts-rest's option signature types the handler's
+// req as TsRestRequest, which our Express-typed handler is structurally rejected against.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const endpointOptions: any = { requestValidationErrorHandler };
+createExpressEndpoints({ ...authContract }, { ...authRouter }, app, endpointOptions);
 
 app.use((_req, _res, next) => {
   next(new NotFoundError());
