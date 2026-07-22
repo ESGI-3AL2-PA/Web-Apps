@@ -7,6 +7,7 @@ import { banUser, kickFromDistrict, listUsers, requestPasswordReset } from "../.
 import { createDistrictAdmin, deleteDistrictAdmin, listDistrictAdmins } from "../../api-service/district-admins";
 import { getUserBalance, getUserTransactions } from "../../api-service/transactions";
 import { DataTable, type Column } from "../../components/DataTable";
+import { RowActionButton } from "../../components/RowActionButton";
 import { Pagination } from "../../components/Pagination";
 import { Toolbar } from "../../components/Toolbar";
 import { StatusBadge } from "../../components/StatusBadge";
@@ -77,33 +78,45 @@ export default function UsersList() {
         error={list.error}
         actions={(u) => (
           <div className="flex justify-end gap-1">
-            <button className="btn btn-xs btn-text" onClick={() => setViewing(u)}>
-              {t("common.actions.view")}
-            </button>
+            <RowActionButton icon="icon-[tabler--eye]" label={t("common.actions.view")} onClick={() => setViewing(u)} />
             {u.role === "user" && (
               <>
-                <button className="btn btn-xs btn-text" onClick={() => setResetting(u)}>
-                  {t("users.resetPassword")}
-                </button>
+                <RowActionButton
+                  icon="icon-[tabler--key]"
+                  label={t("users.resetPassword")}
+                  onClick={() => setResetting(u)}
+                />
                 {u.districtId && (
-                  <button className="btn btn-xs btn-text btn-warning" onClick={() => setKicking(u)}>
-                    {t("users.kick")}
-                  </button>
+                  <RowActionButton
+                    icon="icon-[tabler--user-off]"
+                    label={t("users.kick")}
+                    variant="btn-warning"
+                    onClick={() => setKicking(u)}
+                  />
                 )}
-                <button className={`btn btn-xs btn-text ${u.banned ? "" : "btn-error"}`} onClick={() => setBanning(u)}>
-                  {u.banned ? t("users.unban") : t("users.ban")}
-                </button>
+                <RowActionButton
+                  icon={u.banned ? "icon-[tabler--lock-open]" : "icon-[tabler--ban]"}
+                  label={u.banned ? t("users.unban") : t("users.ban")}
+                  variant={u.banned ? undefined : "btn-error"}
+                  onClick={() => setBanning(u)}
+                />
                 {canPromote && !u.banned && (
-                  <button className="btn btn-xs btn-text btn-primary" onClick={() => setPromoting(u)}>
-                    {t("users.promote")}
-                  </button>
+                  <RowActionButton
+                    icon="icon-[tabler--arrow-up]"
+                    label={t("users.promote")}
+                    variant="btn-primary"
+                    onClick={() => setPromoting(u)}
+                  />
                 )}
               </>
             )}
             {u.role === "admin" && u.id !== me?.id && assignments[u.id] && (
-              <button className="btn btn-xs btn-text btn-warning" onClick={() => setDemoting(u)}>
-                {t("users.demote")}
-              </button>
+              <RowActionButton
+                icon="icon-[tabler--arrow-down]"
+                label={t("users.demote")}
+                variant="btn-warning"
+                onClick={() => setDemoting(u)}
+              />
             )}
           </div>
         )}

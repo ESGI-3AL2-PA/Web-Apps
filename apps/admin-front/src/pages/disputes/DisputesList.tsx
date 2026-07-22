@@ -4,6 +4,7 @@ import type { ContractResponseDto, ResolveDisputeDto } from "@repo/contracts";
 import { useScopedList } from "../../hooks/useScopedList";
 import { listContracts, resolveDispute } from "../../api-service/contracts";
 import { DataTable, type Column } from "../../components/DataTable";
+import { RowActionButton } from "../../components/RowActionButton";
 import { Pagination } from "../../components/Pagination";
 import { StatusBadge } from "../../components/StatusBadge";
 import { UserName } from "../../components/UserName";
@@ -44,9 +45,12 @@ export default function DisputesList() {
         emptyLabel={t("disputes.empty")}
         actions={(c) => (
           <div className="flex justify-end gap-1">
-            <button className="btn btn-xs btn-primary" onClick={() => setResolving(c)}>
-              {t("disputes.resolve")}
-            </button>
+            <RowActionButton
+              icon="icon-[tabler--gavel]"
+              label={t("disputes.resolve")}
+              variant="btn-primary"
+              onClick={() => setResolving(c)}
+            />
           </div>
         )}
       />

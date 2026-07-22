@@ -25,7 +25,7 @@ export function DataTable<T>({ columns, rows, rowKey, loading, error, emptyLabel
 
   return (
     <div className="overflow-x-auto rounded-box border border-base-content/10">
-      <table className="table">
+      <table className="table table-sm">
         <thead>
           <tr>
             {columns.map((col) => (
