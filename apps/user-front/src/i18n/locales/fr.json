@@ -369,6 +369,8 @@
     "full": "Complet",
     "unregister": "Se désinscrire",
     "participate": "Participer",
+    "interested": "Ça m'intéresse",
+    "notInterested": "Pas intéressé",
     "create": "Créer un événement",
     "creating": "Création…",
     "createError": "Impossible de créer l'événement. Vérifiez les champs et réessayez.",

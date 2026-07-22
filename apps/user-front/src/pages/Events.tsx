@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "@repo/hooks";
 import type { AuthUser } from "@repo/hooks";
 import type { EventResponseDto } from "@repo/contracts";
-import { getEvents, registerToEvent, unregisterFromEvent } from "../api-service/events.service";
+import { getEvents, markInterest, registerToEvent, unregisterFromEvent } from "../api-service/events.service";
 import { getRecommendedEvents } from "../api-service/recommendations.service";
 import { formatDateTime } from "../lib/format";
 import { useDialog } from "../components/dialog-context";
@@ -14,12 +14,16 @@ function EventCard({
   ev,
   user,
   busy,
+  interest,
   onToggle,
+  onInterest,
 }: {
   ev: EventResponseDto;
   user: AuthUser | null;
   busy: string | null;
+  interest: 1 | -1 | undefined;
   onToggle: (ev: EventResponseDto) => void;
+  onInterest: (ev: EventResponseDto, rating: 1 | -1) => void;
 }) {
   const { t } = useTranslation();
   const isRegistered = user ? ev.registrants.includes(user.id) : false;
@@ -59,6 +63,28 @@ function EventCard({
               ? t("events.unregister")
               : t("events.participate")}
       </button>
+      {user && (
+        <div className="mt-2 flex gap-2">
+          <button
+            type="button"
+            aria-label={t("events.interested")}
+            title={t("events.interested")}
+            onClick={() => onInterest(ev, 1)}
+            className={`btn btn-sm flex-1 ${interest === 1 ? "btn-primary" : "btn-soft"}`}
+          >
+            <span className="icon-[tabler--thumb-up] size-4" />
+          </button>
+          <button
+            type="button"
+            aria-label={t("events.notInterested")}
+            title={t("events.notInterested")}
+            onClick={() => onInterest(ev, -1)}
+            className={`btn btn-sm flex-1 ${interest === -1 ? "btn-primary" : "btn-soft"}`}
+          >
+            <span className="icon-[tabler--thumb-down] size-4" />
+          </button>
+        </div>
+      )}
     </article>
   );
 }
@@ -74,6 +100,7 @@ export default function Events() {
   const [error, setError] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
+  const [interest, setInterest] = useState<Record<string, 1 | -1>>({});
 
   const load = useCallback(() => {
     let ignore = false;
@@ -115,6 +142,32 @@ export default function Events() {
       ignore = true;
     };
   }, [user?.id]);
+
+  // Fire-and-forget taste signal for the reco engine. Optimistic; reverts on failure.
+  // State is session-local — EventResponseDto carries no persisted per-user interest.
+  const onInterest = async (ev: EventResponseDto, rating: 1 | -1) => {
+    if (!user) return;
+    const prev = interest[ev.id];
+    const next = prev === rating ? undefined : rating;
+    setInterest((m) => {
+      const copy = { ...m };
+      if (next) copy[ev.id] = next;
+      else delete copy[ev.id];
+      return copy;
+    });
+    if (!next) return;
+    try {
+      await markInterest(ev.id, next);
+    } catch {
+      setInterest((m) => {
+        const copy = { ...m };
+        if (prev) copy[ev.id] = prev;
+        else delete copy[ev.id];
+        return copy;
+      });
+      await alert({ message: t("events.actionError") });
+    }
+  };
 
   const toggle = async (ev: EventResponseDto) => {
     if (!user) return;
@@ -159,7 +212,15 @@ export default function Events() {
           ) : (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {recommended.map((ev) => (
-                <EventCard key={ev.id} ev={ev} user={user} busy={busy} onToggle={toggle} />
+                <EventCard
+                  key={ev.id}
+                  ev={ev}
+                  user={user}
+                  busy={busy}
+                  interest={interest[ev.id]}
+                  onToggle={toggle}
+                  onInterest={onInterest}
+                />
               ))}
             </div>
           )}
@@ -175,7 +236,15 @@ export default function Events() {
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {events.map((ev) => (
-            <EventCard key={ev.id} ev={ev} user={user} busy={busy} onToggle={toggle} />
+            <EventCard
+              key={ev.id}
+              ev={ev}
+              user={user}
+              busy={busy}
+              interest={interest[ev.id]}
+              onToggle={toggle}
+              onInterest={onInterest}
+            />
           ))}
         </div>
       )}

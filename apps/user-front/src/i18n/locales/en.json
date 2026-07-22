@@ -369,6 +369,8 @@
     "full": "Full",
     "unregister": "Cancel registration",
     "participate": "Take part",
+    "interested": "I'm interested",
+    "notInterested": "Not interested",
     "create": "Create event",
     "creating": "Creating…",
     "createError": "Could not create the event. Check the fields and try again.",

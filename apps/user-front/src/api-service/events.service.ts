@@ -3,6 +3,7 @@ import type {
   EventQueryInput,
   EventResponseDto,
   EventResponseDtoSchema,
+  MarkInterestDto,
   PaginatedResponseDto,
 } from "@repo/contracts";
 import api from "./api";
@@ -31,4 +32,9 @@ export async function registerToEvent(id: string): Promise<EventResponseDto> {
 export async function unregisterFromEvent(id: string): Promise<EventResponseDto> {
   const res = await api.delete<EventResponseDto>(`/events/${id}/register`);
   return res.data;
+}
+
+// POST /events/:id/interest — 👍/👎 taste signal feeding the Neo4j reco engine
+export async function markInterest(id: string, rating: MarkInterestDto["rating"]): Promise<void> {
+  await api.post(`/events/${id}/interest`, { rating });
 }
