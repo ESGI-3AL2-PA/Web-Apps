@@ -165,16 +165,34 @@ export const assertAllowedDownloadUrl = (rawUrl: string, allowedHosts: readonly 
   return url;
 };
 
-const readConfig = (): DocumensoConfig | null => {
-  const baseUrl = process.env.DOCUMENSO_URL;
-  const apiToken = process.env.DOCUMENSO_API_TOKEN;
-  const templateId = process.env.DOCUMENSO_TEMPLATE_ID;
-  if (!baseUrl || !apiToken || !templateId) return null;
+// A value is "set" only if it's non-empty and not a scaffolding placeholder — the
+// `.env.dist` / SOPS templates ship `TODO-…` markers, and treating those as configured
+// would build a real client that 502s on the first upstream call instead of falling back
+// to the disabled stand-in (which fails loudly at boot). Trim first so stray whitespace
+// doesn't count as configured.
+const configured = (value: string | undefined): string | undefined => {
+  const trimmed = value?.trim();
+  if (!trimmed || /^todo\b/i.test(trimmed)) return undefined;
+  return trimmed;
+};
+
+export const readConfig = (): DocumensoConfig | null => {
+  const baseUrl = configured(process.env.DOCUMENSO_URL);
+  const apiToken = configured(process.env.DOCUMENSO_API_TOKEN);
+  const templateIdRaw = configured(process.env.DOCUMENSO_TEMPLATE_ID);
+  if (!baseUrl || !apiToken || !templateIdRaw) return null;
+  // A non-numeric template id (e.g. the `TODO-numeric-template-id` placeholder) would
+  // become NaN and silently hit `/templates/NaN`; treat it as unconfigured instead.
+  const templateId = Number(templateIdRaw);
+  if (!Number.isFinite(templateId)) {
+    logger.warn(`DOCUMENSO_TEMPLATE_ID is not a number ("${templateIdRaw}") — Documenso disabled.`);
+    return null;
+  }
   const normalizedBaseUrl = baseUrl.replace(/\/+$/, "");
   return {
     baseUrl: normalizedBaseUrl,
     apiToken,
-    templateId: Number(templateId),
+    templateId,
     webhookSecret: process.env.DOCUMENSO_WEBHOOK_SECRET ?? "",
     signingLanguage: process.env.DOCUMENSO_SIGNING_LANGUAGE ?? "fr",
     // Allow the Documenso host itself, the object-store endpoint(s) the api already knows
