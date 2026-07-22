@@ -10,6 +10,7 @@ export { createMongoConnector, type MongoConnector } from "./mongo-connector.js"
 export { setupGracefulShutdown } from "./shutdown.js";
 export { withRetry, type RetryOptions } from "./retry.js";
 export { AppError, NotFoundError, errorHandler } from "./error-handler.js";
+export { requestValidationErrorHandler, validationMessage } from "./request-validation-error-handler.js";
 export { createContainer, type Container } from "./container.js";
 export { toEntity, toDoc, type WithMongoId } from "./mongo-id.js";
 export { USERS_COLLECTION, DISTRICT_ADMINS_COLLECTION } from "./collections.js";
