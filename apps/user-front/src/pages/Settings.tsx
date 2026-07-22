@@ -4,10 +4,11 @@ import { useAuth } from "@repo/hooks";
 import type { SessionResponseDto } from "@repo/contracts";
 import { getSessions, revokeOtherSessions, revokeSession } from "../api-service/sessions.service";
 import { deleteAccount, exportMyData, requestPasswordReset } from "../api-service/account.service";
-import { confirmTotp, disableTotp, enrollTotp } from "../api-service/totp.service";
+import { confirmTotp, disableTotp, enrollTotp, StepUpRequiredError } from "../api-service/totp.service";
 import { formatRelative } from "../lib/format";
 import { getTheme, setTheme, type Theme } from "../lib/theme";
 import { useDialog } from "../components/dialog-context";
+import { useStepUp } from "../components/step-up-context";
 
 // Best-effort, presentation-only parse of the stored user-agent string.
 function describeDevice(ua: string | null, fallback: string): string {
@@ -50,6 +51,7 @@ function Card({ title, description, children }: { title: string; description?: s
 // endpoints live on the auth-service (totp.service).
 function TwoFactorCard({ token, initialEnabled }: { token: () => Promise<string | null>; initialEnabled: boolean }) {
   const { t } = useTranslation();
+  const { requestStepUp } = useStepUp();
   const [enabled, setEnabled] = useState(initialEnabled);
   const [enroll, setEnroll] = useState<{ secret: string; url: string } | null>(null);
   const [code, setCode] = useState("");
@@ -86,7 +88,17 @@ function TwoFactorCard({ token, initialEnabled }: { token: () => Promise<string 
     });
   const disable = () =>
     withTok(async (tok) => {
-      await disableTotp(tok, password);
+      try {
+        await disableTotp(tok, password);
+      } catch (e) {
+        // Production requires a fresh code on top of the password — prompt and retry once.
+        if (e instanceof StepUpRequiredError) {
+          const stepUpToken = await requestStepUp();
+          await disableTotp(tok, password, stepUpToken);
+        } else {
+          throw e;
+        }
+      }
       setEnabled(false);
       setDisarming(false);
       setPassword("");

@@ -4,6 +4,7 @@ import { config } from "@repo/config";
 import { setupInterceptors } from "../api-service/api";
 import { SocketProvider } from "../sockets/SocketProvider";
 import { DialogProvider } from "../components/DialogProvider";
+import { StepUpProvider } from "../components/StepUpProvider";
 import ApiHealthGuard from "../components/ApiHealthGuard";
 
 const AUTH_SERVICE_URL = config.authServiceUrl;
@@ -24,7 +25,9 @@ export default function Providers({ children }: { children: ReactNode }) {
       <InterceptorSetup>
         <ApiHealthGuard>
           <SocketProvider>
-            <DialogProvider>{children}</DialogProvider>
+            <StepUpProvider>
+              <DialogProvider>{children}</DialogProvider>
+            </StepUpProvider>
           </SocketProvider>
         </ApiHealthGuard>
       </InterceptorSetup>

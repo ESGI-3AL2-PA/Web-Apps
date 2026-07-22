@@ -411,5 +411,13 @@
       "single_choice": "Choix unique",
       "multiple_choice": "Choix multiple"
     }
+  },
+  "stepUp": {
+    "title": "Confirmez votre identité",
+    "desc": "Saisissez le code à 6 chiffres de votre application d'authentification pour autoriser cette action.",
+    "codeLabel": "Code à 6 chiffres",
+    "verify": "Confirmer",
+    "error": "Impossible de vérifier votre identité. Réessayez.",
+    "invalid": "Code invalide ou expiré."
   }
 }
