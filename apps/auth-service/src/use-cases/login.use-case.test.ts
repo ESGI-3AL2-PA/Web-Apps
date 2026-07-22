@@ -177,4 +177,37 @@ describe("loginUseCase", () => {
     // No full session is issued until the second factor is proven.
     expect(issueTokens).not.toHaveBeenCalled();
   });
+
+  it("in production a user without TOTP is forced to enroll (enrollment-required), no tokens", async () => {
+    const prev = process.env.NODE_ENV;
+    process.env.NODE_ENV = "production";
+    try {
+      const userReader = makeUserReader(makeUser({ totpEnabled: false, totpSecret: null }));
+      const login = loginUseCase(userReader as unknown as IUserReaderRepository, refreshRepo, districtAdminReader);
+
+      const result = await login(CREDS);
+
+      expect(result.kind).toBe("enrollment-required");
+      if (result.kind === "enrollment-required") expect(result.enrollToken).toBe("fake.mfa.token");
+      expect(issueTokens).not.toHaveBeenCalled();
+    } finally {
+      process.env.NODE_ENV = prev;
+    }
+  });
+
+  it("outside production a user without TOTP logs in normally (MFA stays optional in dev)", async () => {
+    const prev = process.env.NODE_ENV;
+    process.env.NODE_ENV = "test";
+    try {
+      const userReader = makeUserReader(makeUser({ totpEnabled: false, totpSecret: null }));
+      const login = loginUseCase(userReader as unknown as IUserReaderRepository, refreshRepo, districtAdminReader);
+
+      const result = await login(CREDS);
+
+      expect(result.kind).toBe("ok");
+      expect(issueTokens).toHaveBeenCalled();
+    } finally {
+      process.env.NODE_ENV = prev;
+    }
+  });
 });

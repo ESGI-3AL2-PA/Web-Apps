@@ -3,10 +3,14 @@ import { initServer } from "@ts-rest/express";
 import { jwtVerify } from "jose";
 import type { Request } from "express";
 import { authContract } from "@repo/contracts";
+import { TOKEN_ISSUER, TOKEN_AUDIENCE_STEP_UP } from "@repo/shared";
 import { resolve } from "../../repositories/container.js";
 import { getPublicKey } from "../../keys.js";
 import { loginUseCase } from "../../use-cases/login.use-case.js";
 import { loginMfaUseCase } from "../../use-cases/login-mfa.use-case.js";
+import { loginEnrollStartUseCase } from "../../use-cases/login-enroll-start.use-case.js";
+import { loginEnrollConfirmUseCase } from "../../use-cases/login-enroll-confirm.use-case.js";
+import { stepUpUseCase } from "../../use-cases/step-up.use-case.js";
 import { refreshUseCase } from "../../use-cases/refresh.use-case.js";
 import { logoutUseCase } from "../../use-cases/logout.use-case.js";
 import { userinfoUseCase } from "../../use-cases/userinfo.use-case.js";
@@ -78,6 +82,26 @@ const verifyBearer = async (req: Request): Promise<string | null> => {
   }
 };
 
+// Validates the X-Step-Up-Token minted by /auth/step-up for the same user. Only enforced
+// in production — dev leaves sensitive auth-service ops (disable TOTP) friction-free.
+const STEP_UP_HEADER = "x-step-up-token";
+const hasValidStepUp = async (req: Request, userId: string): Promise<boolean> => {
+  if (process.env.NODE_ENV !== "production") return true;
+  const raw = req.headers[STEP_UP_HEADER];
+  const token = typeof raw === "string" ? raw : null;
+  if (!token) return false;
+  try {
+    const { payload } = await jwtVerify(token, getPublicKey(), {
+      algorithms: ["RS256"],
+      issuer: TOKEN_ISSUER,
+      audience: TOKEN_AUDIENCE_STEP_UP,
+    });
+    return payload.sub === userId;
+  } catch {
+    return false;
+  }
+};
+
 const s = initServer();
 
 export const authRouter = s.router(authContract, {
@@ -109,11 +133,47 @@ export const authRouter = s.router(authContract, {
     if (result.kind === "mfa-required") {
       return { status: 202 as const, body: { mfa_required: true, mfa_token: result.mfaToken } };
     }
+    if (result.kind === "enrollment-required") {
+      return { status: 202 as const, body: { enrollment_required: true, enroll_token: result.enrollToken } };
+    }
 
     const csrfToken = generateCsrf();
     res.cookie(REFRESH_COOKIE, result.refreshToken, COOKIE_OPTIONS);
     res.cookie(CSRF_COOKIE, csrfToken, CSRF_COOKIE_OPTIONS);
 
+    return {
+      status: 200 as const,
+      body: { access_token: result.accessToken, csrf_token: csrfToken, user: result.user },
+    };
+  },
+
+  loginEnrollStart: async ({ body }) => {
+    const result = await loginEnrollStartUseCase(resolve("userReader"))(body.enroll_token);
+    if (result.kind === "invalid-token") {
+      return { status: 401 as const, body: { message: "Invalid or expired enrollment session" } };
+    }
+    if (result.kind === "already-enabled") {
+      // Already enrolled: the ceremony no longer applies — sign in normally.
+      return { status: 401 as const, body: { message: "TOTP already enabled — sign in again" } };
+    }
+    return { status: 200 as const, body: { otpauth_url: result.otpauthUrl, secret: result.secret } };
+  },
+
+  loginEnrollConfirm: async ({ body, req, res }) => {
+    const result = await loginEnrollConfirmUseCase(
+      resolve("userReader"),
+      resolve("refreshToken"),
+      resolve("districtAdmin"),
+    )(body.enroll_token, body.code, sessionContext(req));
+    if (result.kind === "invalid-code") {
+      return { status: 400 as const, body: { message: "Invalid TOTP code" } };
+    }
+    if (result.kind !== "ok") {
+      return { status: 401 as const, body: { message: "Invalid or expired enrollment session" } };
+    }
+    const csrfToken = generateCsrf();
+    res.cookie(REFRESH_COOKIE, result.refreshToken, COOKIE_OPTIONS);
+    res.cookie(CSRF_COOKIE, csrfToken, CSRF_COOKIE_OPTIONS);
     return {
       status: 200 as const,
       body: { access_token: result.accessToken, csrf_token: csrfToken, user: result.user },
@@ -343,10 +403,27 @@ export const authRouter = s.router(authContract, {
     if (!userId) {
       return { status: 401 as const, body: { message: "Missing or invalid access token" } };
     }
+    // Disabling MFA is the highest-value downgrade: require a fresh code (step-up) in
+    // production on top of the password, so a stolen access token alone can't remove it.
+    if (!(await hasValidStepUp(req, userId))) {
+      return { status: 401 as const, body: { message: "Step-up verification required", code: "step_up_required" } };
+    }
     const result = await disableTotpUseCase(resolve("userReader"))(userId, body.password);
     if (result === "ok") {
       return { status: 200 as const, body: { message: "TOTP disabled" } };
     }
     return { status: 401 as const, body: { message: "Wrong password or user not found" } };
+  },
+
+  stepUp: async ({ req, body }) => {
+    const userId = await verifyBearer(req);
+    if (!userId) {
+      return { status: 401 as const, body: { message: "Missing or invalid access token" } };
+    }
+    const result = await stepUpUseCase(resolve("userReader"))(userId, body.code);
+    if (result.kind !== "ok") {
+      return { status: 401 as const, body: { message: "Invalid code or TOTP not enabled" } };
+    }
+    return { status: 200 as const, body: { step_up_token: result.stepUpToken } };
   },
 });

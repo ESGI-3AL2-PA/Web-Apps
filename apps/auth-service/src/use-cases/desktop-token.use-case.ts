@@ -70,6 +70,8 @@ export const desktopTokenUseCase = (
     if (user.banned || !user.emailVerified || !ADMIN_SSO_ROLES.has(user.role)) {
       return { status: "access_denied" };
     }
+    // Mandatory MFA (prod): a code minted just before enrollment must not be redeemable.
+    if (process.env.NODE_ENV === "production" && !user.totpEnabled) return { status: "access_denied" };
 
     const adminDistrictId = await lookupAdminDistrictId(user, districtAdminReader);
     const accessToken = await signAccessToken(user, adminDistrictId);

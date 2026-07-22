@@ -1,5 +1,6 @@
 import argon2 from "argon2";
 import { SignJWT } from "jose";
+import { TOKEN_AUDIENCE_ENROLL } from "@repo/shared";
 import type { IUserReaderRepository } from "../repositories/User/user-reader.repository.js";
 import type { IRefreshTokenRepository } from "../repositories/RefreshToken/refresh-token.repository.js";
 import type { IDistrictAdminReaderRepository } from "../repositories/DistrictAdmin/district-admin-reader.repository.js";
@@ -11,7 +12,8 @@ export type LoginResult =
   | { kind: "invalid-credentials" }
   | { kind: "banned" }
   | { kind: "email-not-verified" }
-  | { kind: "mfa-required"; mfaToken: string };
+  | { kind: "mfa-required"; mfaToken: string }
+  | { kind: "enrollment-required"; enrollToken: string };
 
 // Cached argon2 hash of a throwaway value — verified against when the email is
 // unknown so login takes the same time whether or not the account exists
@@ -38,7 +40,7 @@ export const loginUseCase = (
 
     if (!user.emailVerified) return { kind: "email-not-verified" };
 
-    // MFA is opt-in: only users who enrolled and confirmed TOTP are challenged.
+    // Already-enrolled users are challenged for their TOTP code (opt-in or mandatory alike).
     if (user.totpEnabled) {
       // Issue a short-lived MFA token; client must POST it + a TOTP code to /auth/login/mfa.
       const mfaToken = await new SignJWT({})
@@ -50,6 +52,21 @@ export const loginUseCase = (
         .setExpirationTime("5m")
         .sign(getPrivateKey());
       return { kind: "mfa-required", mfaToken };
+    }
+
+    // In production MFA is mandatory: a user without TOTP must enroll before any tokens are
+    // issued. We hand back a short-lived `enroll` ticket that drives /auth/login/enroll/*.
+    // In dev this branch is skipped, so TOTP stays fully opt-in locally.
+    if (process.env.NODE_ENV === "production") {
+      const enrollToken = await new SignJWT({})
+        .setProtectedHeader({ alg: "RS256", kid: getKeyId() })
+        .setSubject(user.id)
+        .setIssuer("auth-service")
+        .setAudience(TOKEN_AUDIENCE_ENROLL)
+        .setIssuedAt()
+        .setExpirationTime("10m")
+        .sign(getPrivateKey());
+      return { kind: "enrollment-required", enrollToken };
     }
 
     const tokens = await issueTokensForUser(user, refreshTokenRepo, districtAdminReader, context);
