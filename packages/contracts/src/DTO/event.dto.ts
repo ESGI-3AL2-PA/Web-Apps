@@ -56,11 +56,9 @@ export const UpdateEventDtoSchema = z
     status: EventStatusSchema.optional(),
     eventDate: z.string().datetime().optional(),
   })
-  // Rescheduling is allowed, but not into the past (checked only when eventDate is patched).
-  .refine((data) => data.eventDate === undefined || new Date(data.eventDate) > new Date(), {
-    message: "eventDate must be in the future",
-    path: ["eventDate"],
-  })
+  // No future-date guard here: edit forms resubmit the stored eventDate, so an event that
+  // has already happened must stay editable (fix a typo, cancel it). The past-date guard
+  // lives on create, where the date is always new input.
   .openapi("UpdateEvent");
 export type UpdateEventDto = z.infer<typeof UpdateEventDtoSchema>;
 
