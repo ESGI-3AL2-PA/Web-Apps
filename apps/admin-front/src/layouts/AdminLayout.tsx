@@ -20,7 +20,10 @@ interface NavItem {
 const NAV: { section: string; items: NavItem[] }[] = [
   {
     section: "nav.overview",
-    items: [{ to: "/", label: "nav.dashboard", icon: "icon-[tabler--layout-dashboard]" }],
+    items: [
+      { to: "/", label: "nav.dashboard", icon: "icon-[tabler--layout-dashboard]" },
+      { to: "/client", label: "nav.client", icon: "icon-[tabler--device-desktop-down]" },
+    ],
   },
   {
     section: "nav.community",

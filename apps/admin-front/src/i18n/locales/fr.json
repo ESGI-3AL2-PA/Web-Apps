@@ -102,6 +102,7 @@
     "community": "Communauté",
     "moderation": "Modération",
     "dashboard": "Tableau de bord",
+    "client": "Client bureau",
     "users": "Utilisateurs",
     "districts": "Quartiers",
     "tags": "Tags",
@@ -289,5 +290,20 @@
   "voteType": {
     "single_choice": "Choix unique",
     "multiple_choice": "Choix multiple"
+  },
+  "client": {
+    "title": "Client bureau",
+    "subtitle": "Téléchargez la dernière version du client bureau Java d'administration.",
+    "latest": "Dernière version : {{version}} ({{date}})",
+    "downloadExe": "Installeur Windows (.exe)",
+    "downloadJar": "{{os}} (.jar)",
+    "os": {
+      "windows": "Windows",
+      "linux": "Linux",
+      "macos": "macOS"
+    },
+    "requirement": "Les versions .jar nécessitent Java 21.",
+    "viewReleases": "Voir toutes les versions",
+    "fetchError": "Impossible de joindre GitHub — les liens de téléchargement directs ci-dessous fonctionnent toujours."
   }
 }

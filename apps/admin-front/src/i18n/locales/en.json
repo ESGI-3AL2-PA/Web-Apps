@@ -102,6 +102,7 @@
     "community": "Community",
     "moderation": "Moderation",
     "dashboard": "Dashboard",
+    "client": "Desktop client",
     "users": "Users",
     "districts": "Districts",
     "tags": "Tags",
@@ -289,5 +290,20 @@
   "voteType": {
     "single_choice": "Single choice",
     "multiple_choice": "Multiple choice"
+  },
+  "client": {
+    "title": "Desktop client",
+    "subtitle": "Download the latest Java admin desktop client.",
+    "latest": "Latest: {{version}} ({{date}})",
+    "downloadExe": "Windows installer (.exe)",
+    "downloadJar": "{{os}} (.jar)",
+    "os": {
+      "windows": "Windows",
+      "linux": "Linux",
+      "macos": "macOS"
+    },
+    "requirement": "The .jar builds require Java 21.",
+    "viewReleases": "View all releases",
+    "fetchError": "Couldn't reach GitHub — the direct download links below still work."
   }
 }
