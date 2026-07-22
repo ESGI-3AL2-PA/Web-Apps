@@ -5,6 +5,7 @@ import type { ListingResponseDto, ListingStatus } from "@repo/contracts";
 import { useScopedList } from "../../hooks/useScopedList";
 import { deleteListing, listListings } from "../../api-service/listings";
 import { DataTable, type Column } from "../../components/DataTable";
+import { RowActionButton } from "../../components/RowActionButton";
 import { Pagination } from "../../components/Pagination";
 import { Toolbar } from "../../components/Toolbar";
 import { StatusBadge } from "../../components/StatusBadge";
@@ -62,13 +63,14 @@ export default function ListingsList() {
         error={list.error}
         actions={(l) => (
           <div className="flex justify-end gap-1">
-            <button className="btn btn-xs btn-text" onClick={() => setViewing(l)}>
-              {t("common.actions.view")}
-            </button>
+            <RowActionButton icon="icon-[tabler--eye]" label={t("common.actions.view")} onClick={() => setViewing(l)} />
             {isSuperAdmin && (
-              <button className="btn btn-xs btn-text btn-error" onClick={() => setDeleting(l)}>
-                {t("common.actions.delete")}
-              </button>
+              <RowActionButton
+                icon="icon-[tabler--trash]"
+                label={t("common.actions.delete")}
+                variant="btn-error"
+                onClick={() => setDeleting(l)}
+              />
             )}
           </div>
         )}

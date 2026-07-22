@@ -4,6 +4,7 @@ import type { CreateTagDto, TagResponseDto, UpdateTagDto } from "@repo/contracts
 import { useList } from "../../hooks/useList";
 import { createTag, deleteTag, listTags, updateTag } from "../../api-service/tags";
 import { DataTable, type Column } from "../../components/DataTable";
+import { RowActionButton } from "../../components/RowActionButton";
 import { Pagination } from "../../components/Pagination";
 import { Toolbar } from "../../components/Toolbar";
 import { FormModal } from "../../components/FormModal";
@@ -48,12 +49,17 @@ export default function TagsList() {
         error={list.error}
         actions={(t) => (
           <div className="flex justify-end gap-1">
-            <button className="btn btn-xs btn-text" onClick={() => setEditing(t)}>
-              {tr("common.actions.edit")}
-            </button>
-            <button className="btn btn-xs btn-text btn-error" onClick={() => setDeleting(t)}>
-              {tr("common.actions.delete")}
-            </button>
+            <RowActionButton
+              icon="icon-[tabler--pencil]"
+              label={tr("common.actions.edit")}
+              onClick={() => setEditing(t)}
+            />
+            <RowActionButton
+              icon="icon-[tabler--trash]"
+              label={tr("common.actions.delete")}
+              variant="btn-error"
+              onClick={() => setDeleting(t)}
+            />
           </div>
         )}
       />

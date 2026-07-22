@@ -5,6 +5,7 @@ import { useList } from "../../hooks/useList";
 import { useDistrictScope } from "../../app/DistrictScopeProvider";
 import { createDistrictAdmin, deleteDistrictAdmin, listDistrictAdmins } from "../../api-service/district-admins";
 import { DataTable, type Column } from "../../components/DataTable";
+import { RowActionButton } from "../../components/RowActionButton";
 import { Pagination } from "../../components/Pagination";
 import { UserName } from "../../components/UserName";
 import { UserAutocomplete } from "../../components/UserAutocomplete";
@@ -87,9 +88,12 @@ export default function DistrictAdminsList() {
         emptyLabel={t("districtAdmins.empty")}
         actions={(a) => (
           <div className="flex justify-end gap-1">
-            <button className="btn btn-xs btn-text btn-error" onClick={() => setRevoking(a)}>
-              {t("districtAdmins.revoke")}
-            </button>
+            <RowActionButton
+              icon="icon-[tabler--user-minus]"
+              label={t("districtAdmins.revoke")}
+              variant="btn-error"
+              onClick={() => setRevoking(a)}
+            />
           </div>
         )}
       />
