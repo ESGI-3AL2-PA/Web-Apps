@@ -59,7 +59,7 @@ import { connectDB, closeDB, pingDB } from "./repositories/mongodb.connector.js"
 import { connectNeo4j, closeNeo4j, pingNeo4j } from "./repositories/neo4j.connector.js";
 import { connectSatan, closeSatan } from "./repositories/satan.connector.js";
 import type { SatanClient } from "@repo/satan";
-import { setupGracefulShutdown } from "@repo/shared";
+import { setupGracefulShutdown, withRetry } from "@repo/shared";
 import { initContainer, resolve } from "./repositories/container.js";
 import { generateOpenApi } from "@ts-rest/open-api";
 import { apiReference } from "@scalar/express-api-reference";
@@ -314,7 +314,11 @@ const maybeConnectSatan = async (): Promise<SatanClient | undefined> => {
   }
 };
 
-Promise.all([connectDB(), connectNeo4j()])
+// Retry the initial datastore connections with backoff: `depends_on:
+// service_healthy` only gates the first boot, and tsx --watch won't re-run the
+// entrypoint after a fatal exit — so a transient Mongo/Neo4j blip on (re)start
+// would otherwise wedge the process until a file changes.
+withRetry(() => Promise.all([connectDB(), connectNeo4j()]), { label: "database connection" })
   .then(async ([db, neo4jDriver]) => {
     const satan = await maybeConnectSatan();
     initContainer(db, neo4jDriver, satan);
@@ -349,6 +353,6 @@ Promise.all([connectDB(), connectNeo4j()])
     );
   })
   .catch((err) => {
-    logger.fatal({ err }, "Failed to connect to databases");
+    logger.fatal({ err }, "Failed to connect to databases after retries");
     process.exit(1);
   });

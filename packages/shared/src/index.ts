@@ -8,6 +8,7 @@
 export { logger, createLogger } from "./logger.js";
 export { createMongoConnector, type MongoConnector } from "./mongo-connector.js";
 export { setupGracefulShutdown } from "./shutdown.js";
+export { withRetry, type RetryOptions } from "./retry.js";
 export { AppError, NotFoundError, errorHandler } from "./error-handler.js";
 export { createContainer, type Container } from "./container.js";
 export { toEntity, toDoc, type WithMongoId } from "./mongo-id.js";
