@@ -410,7 +410,9 @@
     "type": {
       "single_choice": "Choix unique",
       "multiple_choice": "Choix multiple"
-    }
+    },
+    "draft": "Pas encore ouvert",
+    "pending": "Ce sondage attend la validation d'un modérateur avant d'être ouvert au vote."
   },
   "stepUp": {
     "title": "Confirmez votre identité",
