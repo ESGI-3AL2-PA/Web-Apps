@@ -1,5 +1,15 @@
 import { createContext, useContext, useState, useRef, useEffect, useCallback, useMemo, type ReactNode } from "react";
 
+// A login the programmatic hook cannot complete on its own: the account needs a second
+// factor (mfa) or must enroll one (enrollment). The auth-service HTML login page drives
+// these ceremonies; a caller of the hook should send the user there rather than proceed.
+export class LoginChallengeError extends Error {
+  constructor(public kind: "mfa" | "enrollment") {
+    super(kind === "enrollment" ? "MFA enrollment required" : "MFA verification required");
+    this.name = "LoginChallengeError";
+  }
+}
+
 export interface AuthUser {
   id: string;
   email: string;
@@ -122,6 +132,11 @@ export function AuthProvider({ children, authServiceUrl }: AuthProviderProps) {
       }
 
       const data = await res.json();
+      // 202: credentials were valid but a second factor is outstanding. No tokens are issued
+      // here — signal the caller to route to the hosted login page, which runs the ceremony.
+      if (res.status === 202) {
+        throw new LoginChallengeError(data.enrollment_required ? "enrollment" : "mfa");
+      }
       accessTokenRef.current = data.access_token;
       if (typeof data.csrf_token === "string") csrfTokenRef.current = data.csrf_token;
       setUser(data.user);
