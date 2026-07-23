@@ -4,6 +4,10 @@ import { toEntity, type WithMongoId } from "@repo/shared";
 import type { AuthorizationCode } from "../../entities/authorization-code.entity.js";
 import type { IAuthorizationCodeRepository } from "./authorization-code.repository.js";
 
+/**
+ * Implémentation Mongo de IAuthorizationCodeRepository (collection `authorization_codes`).
+ * Stocke les codes d'autorisation OAuth à usage unique et courte durée de vie.
+ */
 export class MongoAuthorizationCodeRepository implements IAuthorizationCodeRepository {
   private collection: Collection<WithMongoId<AuthorizationCode>>;
 
@@ -11,10 +15,11 @@ export class MongoAuthorizationCodeRepository implements IAuthorizationCodeRepos
     this.collection = db.collection("authorization_codes");
   }
 
-  // Codes live 60 seconds and are single-use, so rows are dead almost immediately;
-  // the TTL index reaps them instead of letting the collection grow without bound.
-  // expireAfterSeconds: 0 means "delete once the indexed date has passed". Unique on
-  // codeHash so a collision surfaces as a write error rather than an ambiguous claim.
+  // Les codes vivent 60 secondes et sont à usage unique : les documents sont morts presque
+  // immédiatement. L'index TTL les récupère plutôt que de laisser la collection grossir sans
+  // limite. expireAfterSeconds: 0 signifie « supprimer dès que la date indexée est passée ».
+  // Index unique sur codeHash pour qu'une collision remonte en erreur d'écriture plutôt qu'en
+  // réclamation ambiguë.
   async ensureIndexes(): Promise<void> {
     await this.collection.createIndex({ expiresAtDate: 1 }, { expireAfterSeconds: 0 });
     await this.collection.createIndex({ codeHash: 1 }, { unique: true });
@@ -27,12 +32,14 @@ export class MongoAuthorizationCodeRepository implements IAuthorizationCodeRepos
   }
 
   async claimByCodeHash(codeHash: string): Promise<AuthorizationCode | null> {
+    // Compare-and-swap : ne matche que si usedAt est null, et le passe à « maintenant » dans
+    // la même opération atomique. `before` retourne le document tel qu'avant marquage.
     const res = await this.collection.findOneAndUpdate(
       { codeHash, usedAt: null },
       { $set: { usedAt: new Date().toISOString() } },
       { returnDocument: "before" },
     );
-    // mongodb <6 returned { value }, >=6 returns the document directly — handle both.
+    // mongodb <6 renvoyait { value }, >=6 renvoie le document directement — on gère les deux.
     const doc = (
       res && "value" in res ? (res as { value: unknown }).value : res
     ) as WithMongoId<AuthorizationCode> | null;

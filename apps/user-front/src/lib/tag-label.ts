@@ -1,13 +1,19 @@
+/**
+ * Helpers (lib) pour libeller les tags dans la langue active.
+ */
 import type { TagResponseDto } from "@repo/contracts";
 
 export type TagLang = "fr" | "en";
 
-// i18next may report region variants ("en-US"); tags only carry fr/en, default fr.
+/**
+ * Réduit une langue i18next à `fr` ou `en`. i18next peut remonter des variantes
+ * régionales (« en-US ») ; les tags ne portent que fr/en, avec fr par défaut.
+ */
 export function normalizeTagLang(lang: string): TagLang {
   return lang.toLowerCase().startsWith("en") ? "en" : "fr";
 }
 
-// Display text for a tag in the active language, falling back to the stable key.
+/** Libellé d'affichage d'un tag dans la langue active ; retombe sur la clé stable `name`. */
 export function tagLabel(tag: TagResponseDto, lang: string): string {
   return tag.label?.[normalizeTagLang(lang)] || tag.name;
 }

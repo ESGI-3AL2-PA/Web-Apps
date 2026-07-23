@@ -1,35 +1,39 @@
 import { quote, type SatanClient, type Scalar } from "@repo/satan";
 
 /**
- * SATAN QL query-building helpers shared by the SATAN-backed repositories.
+ * Helpers de construction de requêtes SATAN QL, partagés par les repositories
+ * adossés à SATAN.
  *
- * They keep the paginated list methods declarative: build a list of WHERE
- * conditions from the optional filter params, then hand collection + clause to
- * `paginate`, which runs a `COUNT` and a paginated `FIND` and reshapes the
- * result into the `{ data, total, page, limit }` envelope every list endpoint
- * returns. All values go through `quote`, so callers never interpolate raw
- * strings into the query.
+ * Ils gardent les méthodes de listing paginé déclaratives : on construit une
+ * liste de conditions WHERE à partir des paramètres de filtre optionnels, puis
+ * on passe collection + clause à `paginate`, qui exécute un `COUNT` et un `FIND`
+ * paginé et remet en forme le résultat dans l'enveloppe `{ data, total, page, limit }`
+ * que renvoie chaque endpoint de liste. Toutes les valeurs passent par `quote`,
+ * de sorte que les appelants n'interpolent jamais de chaînes brutes dans la requête
+ * (protection contre l'injection).
  */
 
-/** `field = value`. */
+/** Condition `field = value`. */
 export const eq = (field: string, value: Scalar): string => `${field} = ${quote(value)}`;
 
 /**
- * Case-insensitive literal-substring match across one or more fields, OR-combined
- * — the SATAN QL equivalent of Mongo's `{ $regex: term, $options: "i" }` search.
- * Parenthesised when it spans several fields so it AND-composes safely.
+ * Recherche par sous-chaîne littérale, insensible à la casse, sur un ou plusieurs
+ * champs, combinés en OU — l'équivalent SATAN QL du `{ $regex: term, $options: "i" }`
+ * de Mongo. Mis entre parenthèses quand il porte sur plusieurs champs pour composer
+ * proprement avec un AND englobant.
  */
 export const containsAny = (fields: string[], text: string): string => {
   const clause = fields.map((f) => `${f} CONTAINS ${quote(text)}`).join(" OR ");
   return fields.length > 1 ? `(${clause})` : clause;
 };
 
-/** Join the truthy conditions into a ` WHERE …` clause (empty string if none). */
+/** Assemble les conditions non-falsy en une clause ` WHERE …` (chaîne vide si aucune). */
 export const where = (conditions: Array<string | false | null | undefined>): string => {
   const parts = conditions.filter((c): c is string => Boolean(c));
   return parts.length ? ` WHERE ${parts.join(" AND ")}` : "";
 };
 
+/** Enveloppe de résultat paginé renvoyée par tous les endpoints de liste. */
 export interface Page<T> {
   data: T[];
   total: number;
@@ -38,9 +42,9 @@ export interface Page<T> {
 }
 
 /**
- * Run a `COUNT` + a paginated `FIND` (the two-query shape Mongo does with
- * `countDocuments` + `find().skip().limit()`) and return the standard envelope.
- * `sort` is a raw ORDER BY body, e.g. `"createdAt DESC"`.
+ * Exécute un `COUNT` + un `FIND` paginé (le schéma à deux requêtes que Mongo fait
+ * avec `countDocuments` + `find().skip().limit()`) et renvoie l'enveloppe standard.
+ * `sort` est un corps ORDER BY brut, ex. `"createdAt DESC"`.
  */
 export async function paginate<T>(
   satan: SatanClient,

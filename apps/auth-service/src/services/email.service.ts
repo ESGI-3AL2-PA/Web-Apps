@@ -1,3 +1,10 @@
+/**
+ * Service d'e-mail de l'auth-service.
+ *
+ * Sélectionne le transport (SMTP dev → Resend prod → log de repli), expose les gabarits
+ * localisés (vérification de compte, réinitialisation de mot de passe) en FR/EN, et les
+ * helpers d'envoi `sendVerificationEmail` / `sendPasswordResetEmail`.
+ */
 import { Resend } from "resend";
 import nodemailer from "nodemailer";
 import { logger } from "../logger.js";
@@ -6,36 +13,41 @@ const apiKey = process.env.RESEND_API_KEY;
 const fromEmail = process.env.FROM_EMAIL ?? "no-reply@example.com";
 const appName = process.env.APP_NAME ?? "Web-Apps";
 
-// Transport priority: SMTP (dev — e.g. the local mailpit sink) → Resend (prod) → logger.
-// Setting SMTP_HOST routes all mail to that server, letting local dev inspect
-// verification/reset emails in mailpit's UI instead of hitting a real provider.
+// Priorité des transports : SMTP (dev — p. ex. le collecteur mailpit local) → Resend
+// (prod) → logger. Définir SMTP_HOST route tout le courrier vers ce serveur, permettant
+// au dev local d'inspecter les e-mails de vérification/réinitialisation dans l'UI de
+// mailpit plutôt que d'appeler un vrai fournisseur.
 const smtpHost = process.env.SMTP_HOST;
 const smtpTransport = smtpHost
   ? nodemailer.createTransport({
       host: smtpHost,
       port: Number(process.env.SMTP_PORT ?? 1025),
       secure: process.env.SMTP_SECURE === "true",
-      // mailpit accepts unauthenticated mail; only pass credentials when provided.
+      // mailpit accepte le courrier non authentifié ; on ne passe des identifiants que
+      // s'ils sont fournis.
       auth: process.env.SMTP_USER ? { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS } : undefined,
     })
   : null;
 
-// Falls back to a structured log line when neither SMTP nor Resend is configured (dev without a provider).
+// Repli vers une ligne de log structurée quand ni SMTP ni Resend n'est configuré
+// (dev sans fournisseur).
 const resend = apiKey ? new Resend(apiKey) : null;
 
 const logFallback = (subject: string, to: string, body: string) => {
   logger.info({ to, subject, body }, "email-fallback (no SMTP/Resend configured)");
 };
 
+// Envoi bas niveau : applique la priorité des transports (SMTP → Resend → log de repli).
 const send = async (to: string, subject: string, html: string, text: string) => {
   if (smtpTransport) {
     await smtpTransport.sendMail({ from: fromEmail, to, subject, html, text });
     return;
   }
   if (!resend) {
-    // The fallback logs the full verification/reset link (a bearer secret). That is
-    // acceptable for local dev but MUST NOT happen in production, so fail closed there
-    // rather than leaking account-takeover tokens into the logs.
+    // Le repli logue le lien complet de vérification/réinitialisation (un secret de type
+    // bearer). Acceptable en dev local, mais NE DOIT PAS arriver en production : on
+    // échoue donc (fail closed) là-bas plutôt que de fuiter des tokens de prise de
+    // contrôle de compte dans les logs.
     if (process.env.NODE_ENV === "production") {
       throw new Error("No email transport configured (set SMTP_HOST or RESEND_API_KEY)");
     }
@@ -51,11 +63,13 @@ const send = async (to: string, subject: string, html: string, text: string) => 
 
 export type Lang = "fr" | "en";
 
-// Default to French — missing/unknown locales are treated as fr per product decision.
+// Français par défaut — les locales manquantes/inconnues sont traitées comme fr
+// (décision produit).
 const resolveLang = (lang?: Lang): Lang => (lang === "en" ? "en" : "fr");
 
 type Template = { subject: string; text: string; html: string };
 
+/** Gabarits d'e-mail de vérification de compte, indexés par langue. Le lien expire après 24 h. */
 export const verificationTemplates: Record<Lang, (link: string) => Template> = {
   en: (link) => ({
     subject: `Verify your ${appName} account`,
@@ -79,6 +93,7 @@ export const verificationTemplates: Record<Lang, (link: string) => Template> = {
   }),
 };
 
+/** Gabarits d'e-mail de réinitialisation de mot de passe, indexés par langue. Le lien expire après 1 h. */
 export const passwordResetTemplates: Record<Lang, (link: string) => Template> = {
   en: (link) => ({
     subject: `Reset your ${appName} password`,
@@ -102,11 +117,13 @@ export const passwordResetTemplates: Record<Lang, (link: string) => Template> = 
   }),
 };
 
+/** Envoie l'e-mail de vérification de compte dans la langue demandée (fr par défaut). */
 export const sendVerificationEmail = async (to: string, link: string, lang?: Lang) => {
   const { subject, text, html } = verificationTemplates[resolveLang(lang)](link);
   await send(to, subject, html, text);
 };
 
+/** Envoie l'e-mail de réinitialisation de mot de passe dans la langue demandée (fr par défaut). */
 export const sendPasswordResetEmail = async (to: string, link: string, lang?: Lang) => {
   const { subject, text, html } = passwordResetTemplates[resolveLang(lang)](link);
   await send(to, subject, html, text);

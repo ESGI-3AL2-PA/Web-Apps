@@ -1,7 +1,11 @@
-// Full-screen 500 page, also the router's errorElement. Self-contained (no api or
-// router dependencies) so it renders even when a route crashes or the api is down.
-// Never surfaces the raw error/stack — that stays in the console.
+// Page 500 plein écran, également utilisée comme errorElement du router. Autonome (aucune
+// dépendance à l'api ni au router) afin de s'afficher même quand une route plante ou que l'api
+// est indisponible. N'expose jamais l'erreur/la stack brute — celle-ci reste dans la console.
+//
+// Props : `onRetry` action de réessai (défaut : recharger la page), `retrying` indicateur d'état
+// en cours pour désactiver le bouton et montrer le spinner.
 export default function ServerError({ onRetry, retrying }: { onRetry?: () => void; retrying?: boolean }) {
+  // À défaut de callback fourni, on recharge simplement la page.
   const handleClick = onRetry ?? (() => window.location.reload());
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-base-100 p-6 text-center">

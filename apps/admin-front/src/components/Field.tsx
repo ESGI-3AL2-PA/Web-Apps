@@ -1,17 +1,22 @@
+// Composant : wrapper libellé + contrôle pour les formulaires de modale.
 import { cloneElement, isValidElement, useId } from "react";
 import type { ReactElement, ReactNode } from "react";
 
 interface FieldProps {
   label: string;
   children: ReactNode;
-  hint?: string;
-  required?: boolean;
+  hint?: string; // texte d'aide affiché sous le contrôle
+  required?: boolean; // ajoute l'astérisque rouge sur le libellé
 }
 
-// Label + control wrapper for modal forms. Generates an id, links the <label> to it via
-// htmlFor, and injects it onto the child control (respecting an id the caller already set).
+/**
+ * Enveloppe un contrôle de formulaire avec son libellé. Génère un id, relie le
+ * <label> au contrôle via htmlFor, et injecte cet id sur l'enfant — sauf si
+ * l'appelant a déjà défini son propre id (préservé le cas échéant).
+ */
 export function Field({ label, children, hint, required }: FieldProps) {
   const id = useId();
+  // Clone l'enfant pour lui imposer l'id du label ; à défaut d'élément valide, rendu tel quel.
   const control = isValidElement(children)
     ? cloneElement(children as ReactElement<{ id?: string }>, {
         id: (children.props as { id?: string }).id ?? id,

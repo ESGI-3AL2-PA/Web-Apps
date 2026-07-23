@@ -1,21 +1,25 @@
+// Composant : champ d'autocomplétion pour sélectionner un utilisateur par son nom.
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { UserResponseDto } from "@repo/contracts";
 import { getUserPublic, listUsers } from "../api-service/users";
 
 type UserAutocompleteProps = {
-  // Selected user id (controlled). Empty string = no assignee.
+  // Id de l'utilisateur sélectionné (contrôlé). Chaîne vide = aucun assigné.
   value: string;
   onChange: (userId: string) => void;
   placeholder?: string;
-  // Restrict candidates to a single role (e.g. "admin" for incident assignment).
+  // Restreint les candidats à un seul rôle (ex. "admin" pour l'assignation d'un signalement).
   role?: "user" | "admin" | "superAdmin";
-  // Forwarded onto the inner input so a wrapping <label htmlFor> can target it.
+  // Relayé sur l'input interne pour qu'un <label htmlFor> englobant puisse le cibler.
   id?: string;
 };
 
-// Name-based user picker backed by GET /users (district-scoped server-side). Resolves the
-// initial value's id to a name, then lets the admin search by name and pick — writes the id back.
+/**
+ * Sélecteur d'utilisateur par nom, adossé à GET /users (filtré par quartier côté serveur).
+ * Résout l'id de la valeur initiale en un nom affiché, puis laisse l'admin chercher par
+ * nom et choisir — le composant réécrit l'id via onChange. Recherche debouncée à 300 ms.
+ */
 export function UserAutocomplete({ value, onChange, placeholder, role, id }: UserAutocompleteProps) {
   const { t } = useTranslation();
   const [query, setQuery] = useState("");
@@ -24,7 +28,8 @@ export function UserAutocomplete({ value, onChange, placeholder, role, id }: Use
   const [loading, setLoading] = useState(false);
   const boxRef = useRef<HTMLDivElement>(null);
 
-  // Resolve the incoming id → name so the field shows the current assignee on open.
+  // Résout l'id entrant → nom pour que le champ affiche l'assigné courant à l'ouverture.
+  // Le drapeau `cancelled` ignore la réponse si la valeur a changé entre-temps (course).
   useEffect(() => {
     if (!value) {
       setQuery("");
@@ -39,7 +44,7 @@ export function UserAutocomplete({ value, onChange, placeholder, role, id }: Use
     };
   }, [value, t]);
 
-  // Debounced search (300ms). Skipped while a selection is reflected in the field.
+  // Recherche debouncée (300 ms), déclenchée dès 2 caractères et seulement quand la liste est ouverte.
   useEffect(() => {
     if (!open) return;
     const q = query.trim();
@@ -61,6 +66,7 @@ export function UserAutocomplete({ value, onChange, placeholder, role, id }: Use
     };
   }, [query, open, role]);
 
+  // Ferme la liste au clic en dehors du composant.
   useEffect(() => {
     const onDocClick = (e: MouseEvent) => {
       if (boxRef.current && !boxRef.current.contains(e.target as Node)) setOpen(false);
@@ -69,6 +75,7 @@ export function UserAutocomplete({ value, onChange, placeholder, role, id }: Use
     return () => document.removeEventListener("mousedown", onDocClick);
   }, []);
 
+  // Sélection d'un résultat : remonte l'id, affiche le nom, referme la liste.
   const pick = (u: UserResponseDto) => {
     onChange(u.id);
     setQuery(`${u.firstName} ${u.lastName}`);
@@ -86,6 +93,7 @@ export function UserAutocomplete({ value, onChange, placeholder, role, id }: Use
           onChange={(e) => {
             setQuery(e.target.value);
             setOpen(true);
+            // Retaper invalide la sélection courante : on remet l'id à vide tant qu'aucun choix n'est refait.
             if (value) onChange("");
           }}
           onFocus={() => setOpen(true)}

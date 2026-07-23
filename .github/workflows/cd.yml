@@ -1,13 +1,13 @@
 name: CD
 
-# Manual continuous delivery + deployment. Building each app's prod image, pushing it to
-# GHCR, and (optionally) rolling it out to the self-hosted VM over SSH. Triggered by hand
-# from the Actions tab so deploys are deliberate.
+# Livraison + deploiement continus manuels. Construit l'image de prod de chaque app, la pousse
+# vers GHCR et (optionnellement) la deploie sur la VM auto-hebergee via SSH. Declenche a la main
+# depuis l'onglet Actions pour que les deploiements restent deliberes.
 #
-# One SOPS-encrypted file (prod.enc.env) is the single source of truth for
-# every secret AND every environment URL. CI decrypts only the public VITE_* URLs (via the
-# SOPS_AGE_KEY secret) to bake into the front bundles; the VM decrypts the whole file at
-# runtime with its own age key.
+# Un unique fichier chiffre par SOPS (prod.enc.env) est la source de verite unique pour
+# TOUS les secrets ET toutes les URL d'environnement. La CI ne dechiffre que les URL publiques
+# VITE_* (via le secret SOPS_AGE_KEY) pour les figer dans les bundles des fronts ; la VM
+# dechiffre le fichier entier a l'execution avec sa propre cle age.
 on:
   workflow_dispatch:
     inputs:
@@ -27,8 +27,8 @@ concurrency:
 
 permissions:
   contents: read
-  packages: write # push to GHCR
-  security-events: write # upload Trivy SARIF
+  packages: write # pousser vers GHCR
+  security-events: write # televerser le SARIF de Trivy
 
 jobs:
   build-push:
@@ -44,7 +44,7 @@ jobs:
         with:
           ref: ${{ inputs.ref }}
 
-      # GHCR image paths must be lowercase; the repo owner has capitals.
+      # Les chemins d'image GHCR doivent etre en minuscules ; le proprietaire du depot a des majuscules.
       - name: Compute image name
         run: echo "IMAGE=ghcr.io/${GITHUB_REPOSITORY,,}/${{ matrix.app }}" >> "$GITHUB_ENV"
 
@@ -67,9 +67,9 @@ jobs:
             type=raw,value=latest,enable={{is_default_branch}}
             type=sha,format=long
 
-      # Fronts bake their API/auth URLs into the bundle at build time. Pull ONLY the public
-      # VITE_* URLs out of the SOPS file (real secrets stay encrypted and never touch the log
-      # or $GITHUB_ENV) so they can be passed as build args.
+      # Les fronts figent leurs URL API/auth dans le bundle au build. On extrait UNIQUEMENT les
+      # URL publiques VITE_* du fichier SOPS (les vrais secrets restent chiffres et ne touchent
+      # jamais le log ni $GITHUB_ENV) afin de les passer en build args.
       - name: Decrypt front URLs (fronts only)
         if: contains(fromJSON('["admin-front","user-front","landing"]'), matrix.app)
         env:
@@ -93,7 +93,7 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha,scope=${{ matrix.app }}
           cache-to: type=gha,mode=max,scope=${{ matrix.app }}
-          # Empty for the backends (they ignore unknown args); populated for the fronts.
+          # Vide pour les backends (ils ignorent les args inconnus) ; renseigne pour les fronts.
           build-args: |
             VITE_AUTH_SERVICE_URL=${{ env.VITE_AUTH_SERVICE_URL }}
             VITE_API_URL=${{ env.VITE_API_URL }}
@@ -101,8 +101,8 @@ jobs:
             VITE_ADMIN_URL=${{ env.VITE_ADMIN_URL }}
             VITE_LANDING_URL=${{ env.VITE_LANDING_URL }}
 
-      # Report-only: surface CRITICAL/HIGH fixable CVEs in the Security tab without blocking
-      # delivery on unfixable base-image noise.
+      # Simple rapport : remonte les CVE CRITICAL/HIGH corrigeables dans l'onglet Security sans
+      # bloquer la livraison sur le bruit non corrigeable des images de base.
       - name: Scan image (Trivy)
         uses: aquasecurity/trivy-action@v0.36.0
         with:
@@ -124,8 +124,9 @@ jobs:
     name: Deploy to VM
     needs: build-push
     runs-on: ubuntu-latest
-    # Skipped until a deploy target is configured, so build/push/scan is green out of the box.
-    # Set the DEPLOY_HOST/DEPLOY_USER/DEPLOY_PATH repo Variables + DEPLOY_SSH_KEY secret to enable.
+    # Ignore tant qu'aucune cible de deploiement n'est configuree, pour que build/push/scan
+    # soit vert d'emblee. Definir les Variables DEPLOY_HOST/DEPLOY_USER/DEPLOY_PATH + le secret
+    # DEPLOY_SSH_KEY pour l'activer.
     if: ${{ inputs.deploy && vars.DEPLOY_HOST != '' }}
     environment: production
     steps:
@@ -133,8 +134,8 @@ jobs:
         uses: appleboy/ssh-action@v1.2.0
         env:
           SHA: ${{ github.sha }}
-          # Ephemeral, job-scoped token (packages:write ⇒ read) so the VM can pull the private
-          # GHCR images without a long-lived PAT stored on the box. Expires when the job ends.
+          # Token ephemere limite au job (packages:write => read) pour que la VM tire les images
+          # GHCR privees sans PAT longue duree stocke sur la machine. Expire a la fin du job.
           GHCR_USER: ${{ github.actor }}
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -142,10 +143,10 @@ jobs:
           username: ${{ vars.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           envs: SHA,GHCR_USER,GHCR_TOKEN
-          # The VM holds the age private key (~/.config/sops/age/keys.txt), docker/auth/ RS256
-          # keys, and the caddy volumes. It downloads the raw compose/Caddyfile/encrypted-env
-          # pinned to this commit, then sops-decrypts the secrets into the environment for
-          # compose interpolation (no plaintext secret ever lands on disk).
+          # La VM detient la cle privee age (~/.config/sops/age/keys.txt), les cles RS256 de
+          # docker/auth/ et les volumes de caddy. Elle telecharge les compose/Caddyfile/env-chiffre
+          # bruts epingles a ce commit, puis sops dechiffre les secrets dans l'environnement pour
+          # l'interpolation de compose (aucun secret en clair n'atterrit sur le disque).
           script: |
             set -euo pipefail
             cd "${{ vars.DEPLOY_PATH }}"
@@ -153,7 +154,7 @@ jobs:
             for f in docker-compose.deploy.yml Caddyfile prod.enc.env; do
               curl -fsSL "$RAW/$f" --create-dirs -o "$f"
             done
-            # Authenticate to GHCR just-in-time so `compose pull` can read the private images.
+            # Authentification a GHCR juste-a-temps pour que `compose pull` lise les images privees.
             echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GHCR_USER" --password-stdin
             trap 'docker logout ghcr.io >/dev/null 2>&1 || true' EXIT
             C="docker compose -f docker-compose.deploy.yml"

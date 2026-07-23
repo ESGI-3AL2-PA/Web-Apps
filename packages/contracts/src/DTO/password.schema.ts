@@ -1,7 +1,12 @@
 import { z } from "../zod";
 
-// Min 12 chars with at least one lowercase, uppercase, digit, and symbol.
-// Login uses a looser min(8) so existing accounts can still authenticate.
+/**
+ * Schéma zod du mot de passe fort, réutilisé à l'inscription et au changement de mot de passe.
+ *
+ * Exige au moins 12 caractères dont une minuscule, une majuscule, un chiffre et un symbole.
+ * La connexion applique volontairement un `min(8)` plus permissif afin que les comptes
+ * existants (créés avant cette règle) puissent toujours s'authentifier.
+ */
 export const StrongPasswordSchema = z
   .string()
   .min(12, "Password must be at least 12 characters")

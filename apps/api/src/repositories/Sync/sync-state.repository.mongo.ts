@@ -1,6 +1,14 @@
+/**
+ * Repository (implémentation Mongo) de l'état du watcher de synchronisation.
+ *
+ * Persiste deux informations dans un unique document `watcher` : le resume token
+ * des Change Streams (pour reprendre l'écoute là où elle s'est arrêtée) et le
+ * drapeau one-shot indiquant que le flux initial (seed) a été produit.
+ */
 import type { Collection, Db, ResumeToken } from "mongodb";
 import type { ISyncStateRepository } from "./sync-state.repository.js";
 
+// Id du document unique qui stocke tout l'état du watcher.
 const WATCHER_ID = "watcher";
 
 interface SyncStateDoc {
@@ -26,6 +34,7 @@ export class MongoSyncStateRepository implements ISyncStateRepository {
     await this.collection.updateOne({ _id: WATCHER_ID }, { $set: { resumeToken: token } }, { upsert: true });
   }
 
+  // Efface le token (ex. l'oplog l'a dépassé) pour que la prochaine ouverture reparte de maintenant.
   async clearResumeToken(): Promise<void> {
     await this.collection.updateOne({ _id: WATCHER_ID }, { $unset: { resumeToken: "" } });
   }

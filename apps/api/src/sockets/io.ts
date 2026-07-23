@@ -1,3 +1,7 @@
+// Couche sockets : configure le serveur Socket.IO (temps réel), authentifie chaque
+// connexion via JWT, suit la présence des utilisateurs (rooms par user, multi-onglets)
+// et expose des helpers de broadcast que les use-cases REST appellent après une action
+// (nouveau message, nouvelle notification).
 import type { Server as HttpServer } from "http";
 import { Server, type Socket } from "socket.io";
 import { createRemoteJWKSet, jwtVerify } from "jose";
@@ -14,12 +18,14 @@ let io: Server | null = null;
 // userId → Set des socketIds actifs (multi-onglets).
 const onlineSockets = new Map<string, Set<string>>();
 
+// Socket dont le middleware d'auth a renseigné l'id utilisateur dans `data`.
 type AuthedSocket = Socket & { data: { userId: string } };
 
 const allowedOrigins = (process.env.CORS_ORIGINS ?? "http://localhost:4000,http://localhost:5000")
   .split(",")
   .map((s) => s.trim());
 
+/** Initialise le serveur Socket.IO sur le serveur HTTP donné, câble l'auth et la présence, et renvoie l'instance. */
 export const setupSocketIo = (httpServer: HttpServer): Server => {
   io = new Server(httpServer, {
     cors: { origin: allowedOrigins, credentials: true },
@@ -76,9 +82,10 @@ export const setupSocketIo = (httpServer: HttpServer): Server => {
   return io;
 };
 
-// Called during graceful shutdown: forcibly disconnect every live socket so the
-// underlying HTTP server's keep-alive WS connections drop and `server.close()` can
-// actually complete (otherwise it hangs until the shutdown watchdog force-exits).
+// Appelé lors de l'arrêt gracieux : déconnecte de force chaque socket vivant pour que
+// les connexions WS keep-alive du serveur HTTP sous-jacent tombent et que `server.close()`
+// puisse réellement se terminer (sinon il reste bloqué jusqu'à ce que le watchdog d'arrêt
+// force la sortie).
 export const closeSocketIo = (): void => {
   if (!io) return;
   io.disconnectSockets(true);

@@ -4,6 +4,11 @@ import type { IUserReaderRepository, UserRecord } from "./user-reader.repository
 
 type UserDoc = WithMongoId<UserRecord>;
 
+/**
+ * Implémentation Mongo de IUserReaderRepository (collection `users`, partagée avec l'api).
+ * Lit les utilisateurs pour l'authentification et écrit les seuls champs liés à l'auth
+ * (email vérifié, hash de mot de passe, secret TOTP, dernier pas TOTP consommé).
+ */
 export class MongoUserReaderRepository implements IUserReaderRepository {
   private collection: Collection<UserDoc>;
 
@@ -40,8 +45,8 @@ export class MongoUserReaderRepository implements IUserReaderRepository {
   }
 
   async consumeTotpStep(userId: string, step: number): Promise<boolean> {
-    // The $or guard makes the update match only when this step is strictly newer than the last
-    // one consumed (or none has been), so replaying a code resolves to modifiedCount 0.
+    // Le garde $or ne fait matcher l'update que si ce pas est strictement plus récent que le
+    // dernier consommé (ou qu'aucun ne l'a été), si bien que rejouer un code donne modifiedCount 0.
     const res = await this.collection.updateOne(
       { _id: userId, $or: [{ lastTotpStep: { $exists: false } }, { lastTotpStep: { $lt: step } }] },
       { $set: { lastTotpStep: step, updatedAt: new Date().toISOString() } },

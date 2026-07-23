@@ -4,6 +4,11 @@ import { toEntity, type WithMongoId } from "@repo/shared";
 import type { RefreshToken } from "../../entities/refresh-token.entity.js";
 import type { IRefreshTokenRepository } from "./refresh-token.repository.js";
 
+/**
+ * Implémentation Mongo de IRefreshTokenRepository (collection `refresh_tokens`).
+ * Gère le cycle de vie des sessions : création, rotation atomique, révocation ciblée ou en
+ * masse, purge TTL et opérations RGPD.
+ */
 export class MongoRefreshTokenRepository implements IRefreshTokenRepository {
   private collection: Collection<WithMongoId<RefreshToken>>;
 
@@ -11,23 +16,24 @@ export class MongoRefreshTokenRepository implements IRefreshTokenRepository {
     this.collection = db.collection("refresh_tokens");
   }
 
-  // TTL index so expired (and revoked-but-expired) rows self-purge, bounding how
-  // long a session's IP/User-Agent history is retained. expireAfterSeconds: 0 means
-  // "delete once the indexed date has passed". Indexes the BSON `expiresAtDate` Date
-  // field — the TTL monitor ignores the ISO-string `expiresAt`. Only tokens created
-  // after this deploy carry the Date, so the TTL is forward-looking. Idempotent:
-  // createIndex is a no-op if an identical index already exists.
+  // Index TTL pour que les lignes expirées (et révoquées-mais-expirées) s'auto-purgent, ce
+  // qui borne la durée de conservation de l'historique IP/User-Agent d'une session.
+  // expireAfterSeconds: 0 signifie « supprimer dès que la date indexée est passée ». Indexe
+  // le champ BSON Date `expiresAtDate` — le moniteur TTL ignore la chaîne ISO `expiresAt`.
+  // Seuls les tokens créés après ce déploiement portent la Date, donc le TTL n'agit que vers
+  // l'avenir. Idempotent : createIndex est un no-op si un index identique existe déjà.
   async ensureIndexes(): Promise<void> {
     await this.collection.createIndex({ expiresAtDate: 1 }, { expireAfterSeconds: 0 });
   }
 
-  // One-time backfill for storage-limitation (GDPR Art. 5(1)(e), finding gdpr-H3):
-  // rows created before `expiresAtDate` existed have no BSON Date, so the TTL index
-  // never touches them and their IP/User-Agent history is retained indefinitely.
-  // Set `expiresAtDate` = createdAt + the same 7-day window issue-tokens.ts applies, so
-  // legacy sessions expire consistently with policy rather than surprisingly-immediately.
-  // Idempotent: `{ expiresAtDate: null }` matches both missing and null fields and is a
-  // cheap index-backed no-op once every row has been backfilled. Run after ensureIndexes.
+  // Backfill ponctuel pour la limitation de conservation (RGPD Art. 5(1)(e), finding gdpr-H3) :
+  // les lignes créées avant l'existence de `expiresAtDate` n'ont pas de Date BSON, donc l'index
+  // TTL ne les touche jamais et leur historique IP/User-Agent est conservé indéfiniment.
+  // On pose `expiresAtDate` = createdAt + la même fenêtre de 7 jours qu'applique issue-tokens.ts,
+  // pour que les anciennes sessions expirent conformément à la politique plutôt que de disparaître
+  // brutalement tout de suite. Idempotent : `{ expiresAtDate: null }` matche à la fois le champ
+  // manquant et null, et devient un no-op bon marché adossé à l'index une fois toutes les lignes
+  // rattrapées. À exécuter après ensureIndexes.
   async backfillMissingExpiresAtDate(): Promise<number> {
     const result = await this.collection.updateMany({ expiresAtDate: null }, [
       {
@@ -51,12 +57,13 @@ export class MongoRefreshTokenRepository implements IRefreshTokenRepository {
   }
 
   async claimByTokenHash(tokenHash: string): Promise<RefreshToken | null> {
+    // Compare-and-swap : révoque le token seulement s'il est encore actif, atomiquement.
     const res = await this.collection.findOneAndUpdate(
       { tokenHash, revokedAt: null },
       { $set: { revokedAt: new Date().toISOString() } },
       { returnDocument: "before" },
     );
-    // mongodb <6 returned { value }, >=6 returns the document directly — handle both.
+    // mongodb <6 renvoyait { value }, >=6 renvoie le document directement — on gère les deux.
     const doc = (res && "value" in res ? (res as { value: unknown }).value : res) as WithMongoId<RefreshToken> | null;
     return doc ? toEntity<RefreshToken>(doc) : null;
   }
@@ -68,6 +75,8 @@ export class MongoRefreshTokenRepository implements IRefreshTokenRepository {
 
   async findActiveByUserId(userId: string): Promise<RefreshToken[]> {
     const now = new Date().toISOString();
+    // Actives = non révoquées et pas encore expirées ; triées de la plus récemment utilisée
+    // à la plus ancienne pour l'affichage des sessions.
     const docs = await this.collection
       .find({ userId, revokedAt: null, expiresAt: { $gt: now } })
       .sort({ lastUsedAt: -1, createdAt: -1 })
@@ -89,8 +98,8 @@ export class MongoRefreshTokenRepository implements IRefreshTokenRepository {
   }
 
   async revokeBySessionId(sessionId: string, userId?: string): Promise<boolean> {
-    // Match by family id, or by token _id as a fallback so sessions created before
-    // the sessionId field existed (null family) are still revocable by their id.
+    // Matche par id de famille, ou par _id de token en repli, pour que les sessions créées
+    // avant l'existence du champ sessionId (famille null) restent révocables par leur id.
     const filter = {
       $or: [{ sessionId }, { _id: sessionId }],
       revokedAt: null,

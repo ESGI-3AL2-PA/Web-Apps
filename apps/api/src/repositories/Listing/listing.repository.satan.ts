@@ -3,9 +3,12 @@ import type { Listing } from "../../entities/listing.entity.js";
 import type { IListingRepository } from "./listing.repository.js";
 import { containsAny, eq, paginate, where } from "../satan.helpers.js";
 
-/** SATAN QL for the id lookup, deletes, the paginated list (CONTAINS search +
- *  IEQ tag match) and the active-count (COUNT); Mongo only for the
- *  server-generated create/update. */
+/**
+ * Implémentation SATAN QL du repository des annonces. SATAN pour la lecture par
+ * id, les suppressions, la liste paginée (recherche CONTAINS + match de tag
+ * IEQ) et le décompte des annonces actives (COUNT) ; Mongo uniquement pour les
+ * create/update qui génèrent des champs côté serveur.
+ */
 export class SatanListingRepository implements IListingRepository {
   constructor(
     private readonly mongo: IListingRepository,
@@ -33,10 +36,11 @@ export class SatanListingRepository implements IListingRepository {
       status && eq("status", status),
       districtId && eq("districtId", districtId),
       authorId && eq("authorId", authorId),
-      // `tags` is an array; IEQ is a literal case-insensitive equality (escaped,
-      // anchored), so it matches an element equal to `tag` — mirrors the Mongo
-      // `^tag$/i` regex. NB: uses IEQ, not ILIKE, so `*`/`?` in `tag` stay
-      // literal rather than becoming regex wildcards (no injection / ReDoS).
+      // `tags` est un tableau ; IEQ est une égalité littérale insensible à la
+      // casse (échappée, ancrée), donc elle matche un élément égal à `tag` —
+      // équivalent de la regex Mongo `^tag$/i`. NB : on utilise IEQ, pas ILIKE,
+      // pour que `*`/`?` dans `tag` restent littéraux au lieu de devenir des
+      // jokers regex (pas d'injection / ReDoS).
       tag && `tags IEQ ${quote(tag)}`,
     ]);
     return paginate<Listing>(this.satan, "listings", clause, { page, limit });
@@ -48,7 +52,7 @@ export class SatanListingRepository implements IListingRepository {
     return res.count;
   }
 
-  // --- delegated to Mongo (server-generated fields) ---
+  // --- délégué à Mongo (champs générés côté serveur) ---
   ensureIndexes(): Promise<void> {
     return this.mongo.ensureIndexes();
   }

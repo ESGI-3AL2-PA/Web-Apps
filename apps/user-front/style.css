@@ -1,1 +1,4 @@
+/* Feuille de style racine de user-front : importe le thème FlyonUI partagé
+   (packages/theme/theme.css), source unique des couleurs de marque, polices et
+   tokens clair/sombre [data-theme]. */
 @import "../../packages/theme/theme.css";

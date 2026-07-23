@@ -8,10 +8,21 @@ import { tagLabel } from "../lib/tag-label";
 import { useFocusTrap } from "../lib/useFocusTrap";
 import ListingCard from "../components/ListingCard";
 
+// Page de recherche/parcours des annonces (couche page React de user-front).
+// Combine des filtres serveur (recherche texte + quartier via query params) avec
+// un tri appliqué côté client, une pagination « Charger plus » et un panneau de
+// filtres mobile en bottom sheet.
+
 const PAGE_SIZE = 24;
+// Options de tri exposées dans le select ; « recent » est la valeur par défaut/implicite.
 const SORTS = ["recent", "price-asc", "price-desc"] as const;
 type Sort = (typeof SORTS)[number];
 
+/**
+ * Page « Rechercher » : liste paginée d'annonces filtrable par mot-clé et par
+ * catégorie (tag), triable par date ou prix. L'état des filtres vit dans l'URL
+ * (useSearchParams) pour être partageable et survivre au rechargement.
+ */
 export default function Search() {
   const { t, i18n } = useTranslation();
   const [params, setParams] = useSearchParams();
@@ -33,8 +44,9 @@ export default function Search() {
   const sort: Sort = (SORTS as readonly string[]).includes(rawSort) ? (rawSort as Sort) : "recent";
   const activeFilters = tag ? 1 : 0;
 
-  // Server-supported filters only (search / tag / type / status). Sort and price
-  // ordering are NOT backend query params, so they are applied client-side below.
+  // Uniquement les filtres reconnus par le backend (recherche / tag / type / statut).
+  // Le tri et l'ordre par prix NE SONT PAS des query params serveur : ils sont
+  // appliqués côté client plus bas.
   const baseFilter = useMemo<ListingQueryInput>(
     () => ({
       status: "active",
@@ -45,6 +57,7 @@ export default function Search() {
     [search, tag],
   );
 
+  // Chargement des tags (catégories) une seule fois ; échec silencieux -> liste vide.
   useEffect(() => {
     let ignore = false;
     getTags()
@@ -59,7 +72,8 @@ export default function Search() {
     };
   }, []);
 
-  // Initial load + refetch whenever a server-side filter (or retry) changes.
+  // Chargement initial + rechargement dès qu'un filtre serveur (ou un retry) change.
+  // Le drapeau `cancelled` ignore les réponses d'un effet obsolète.
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
@@ -83,6 +97,7 @@ export default function Search() {
     };
   }, [baseFilter, reloadKey]);
 
+  // « Charger plus » : récupère la page suivante et l'ajoute à la liste courante.
   const loadMore = () => {
     const next = page + 1;
     setLoadingMore(true);
@@ -97,9 +112,9 @@ export default function Search() {
       .finally(() => setLoadingMore(false));
   };
 
-  // Client-side ordering over the currently loaded set. The backend returns pages
-  // in natural (unordered) Mongo order and exposes no sort param, so this sorts
-  // what has been fetched so far — "Load more" pulls the rest into the set.
+  // Tri côté client sur l'ensemble déjà chargé. Le backend renvoie les pages dans
+  // l'ordre naturel (non ordonné) de Mongo et n'expose aucun paramètre de tri : on
+  // trie donc uniquement ce qui a été récupéré — « Charger plus » complète l'ensemble.
   const sortedListings = useMemo(() => {
     const arr = [...listings];
     if (sort === "price-asc") arr.sort((a, b) => a.price - b.price);
@@ -110,6 +125,7 @@ export default function Search() {
 
   const hasMore = listings.length < total;
 
+  // Écrit/efface un filtre dans l'URL (valeur vide -> paramètre supprimé).
   const setFilter = (key: string, value: string) => {
     const next = new URLSearchParams(params);
     if (value) next.set(key, value);
@@ -117,9 +133,11 @@ export default function Search() {
     setParams(next, { replace: true });
   };
 
+  // Classe d'un bouton-pilule de filtre (état actif surligné en primary).
   const pill = (active: boolean) =>
     `rounded px-2 py-1.5 text-left ${active ? "bg-primary/10 font-semibold text-primary" : "hover:bg-base-200"}`;
 
+  // Contrôles de filtre partagés entre la sidebar desktop et la bottom sheet mobile.
   const filterControls = (
     <>
       <div>
@@ -145,7 +163,7 @@ export default function Search() {
 
   return (
     <div className="grid grid-cols-1 gap-6 md:grid-cols-[220px_1fr]">
-      {/* Desktop sidebar */}
+      {/* Sidebar desktop */}
       <aside className="hidden space-y-6 md:block">{filterControls}</aside>
 
       <section>
@@ -170,7 +188,7 @@ export default function Search() {
               <option value="price-asc">{t("search.sortPriceAsc")}</option>
               <option value="price-desc">{t("search.sortPriceDesc")}</option>
             </select>
-            {/* Mobile filter trigger */}
+            {/* Déclencheur des filtres en mobile (ouvre la bottom sheet) */}
             <button
               onClick={() => setFiltersOpen(true)}
               className="flex items-center gap-1.5 rounded-lg border border-base-content/20 px-3 py-1.5 text-sm font-medium text-base-content/80 md:hidden"
@@ -227,7 +245,7 @@ export default function Search() {
         )}
       </section>
 
-      {/* Mobile filter sheet */}
+      {/* Bottom sheet des filtres en mobile (piège le focus via useFocusTrap) */}
       {filtersOpen && (
         <div
           className="fixed inset-0 z-50 md:hidden"

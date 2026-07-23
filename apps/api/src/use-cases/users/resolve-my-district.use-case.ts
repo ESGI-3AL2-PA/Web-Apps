@@ -4,14 +4,20 @@ import { getCoordinatesFromAddress } from "../../services/address.service.js";
 import { logger } from "../../logger.js";
 import { joinDistrict, type MembershipDeps } from "./district-membership.use-case.js";
 
+// Résultat : `resolved` indique si l'utilisateur a bien été rattaché ; `candidates` liste les
+// quartiers possibles quand un choix reste à faire (chevauchement ou choix invalide).
 type ResolveResult = { resolved: boolean; user?: User; candidates: District[] };
 
-// Re-geocodes the caller's stored address and joins the containing district. Idempotent:
-// a user who already has a district is returned unchanged.
-// - exactly one district contains the address => join it
-// - several contain it => return them as `candidates` (no join) unless the caller passes
-//   a `chosenDistrictId` that is one of them
-// - none contain it => resolved:false, empty candidates
+/**
+ * Cas d'usage (domaine users) : re-géocode l'adresse enregistrée de l'appelant et le rattache
+ * au quartier qui la contient. Idempotent — un utilisateur qui a déjà un quartier est renvoyé
+ * inchangé. Comportement selon le nombre de quartiers englobant l'adresse :
+ * - exactement un => on le rejoint ;
+ * - plusieurs => renvoyés comme `candidates` (aucun rattachement), sauf si l'appelant fournit
+ *   un `chosenDistrictId` faisant partie des candidats ;
+ * - aucun => `resolved: false`, candidats vides.
+ * Un échec de géocodage/recherche laisse l'utilisateur non résolu (aucune mutation).
+ */
 export const resolveMyDistrictUseCase = (deps: MembershipDeps) => {
   return async (userId: string, chosenDistrictId?: string): Promise<ResolveResult> => {
     const user = await deps.userRepository.getUserById(userId);
@@ -20,6 +26,7 @@ export const resolveMyDistrictUseCase = (deps: MembershipDeps) => {
 
     let matches: District[] = [];
     try {
+      // Géocode l'adresse, puis interroge les quartiers dont le polygone contient le point.
       const coordinates = await getCoordinatesFromAddress(user.address);
       matches = await deps.districtRepository.findDistrictsContaining(coordinates);
     } catch (err) {
@@ -32,11 +39,11 @@ export const resolveMyDistrictUseCase = (deps: MembershipDeps) => {
     let target: District | undefined;
     if (chosenDistrictId) {
       target = matches.find((d) => d.id === chosenDistrictId);
-      if (!target) return { resolved: false, candidates: matches }; // invalid choice — re-present
+      if (!target) return { resolved: false, candidates: matches }; // choix invalide — on re-présente
     } else if (matches.length === 1) {
       target = matches[0];
     } else {
-      return { resolved: false, candidates: matches }; // overlap — the user must choose
+      return { resolved: false, candidates: matches }; // chevauchement — l'utilisateur doit choisir
     }
 
     const joined = await joinDistrict(deps, userId, target!.id);

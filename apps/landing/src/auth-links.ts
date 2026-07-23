@@ -1,9 +1,10 @@
+// URLs de connexion / inscription pointant vers les pages HTML de l'auth-service.
 import { config } from "@repo/config";
 
-// The auth-service serves the /login and /register HTML pages and honours a
-// ?redirect_uri that it validates against its allowlist. We send freshly
-// authenticated visitors straight into the product (user-front), which is
-// already an allowlisted origin — so no auth-service config change is needed.
+// L'auth-service sert les pages HTML /login et /register et honore un
+// ?redirect_uri qu'il valide contre sa liste blanche. On renvoie les visiteurs
+// fraîchement authentifiés directement dans le produit (user-front), déjà une
+// origine autorisée — aucune modif de config de l'auth-service nécessaire.
 const redirect = encodeURIComponent(config.appUrl);
 
 export const loginUrl = `${config.authServiceUrl}/login?redirect_uri=${redirect}`;

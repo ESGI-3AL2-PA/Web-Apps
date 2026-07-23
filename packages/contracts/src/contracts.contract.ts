@@ -19,7 +19,12 @@ import { auth } from "./auth-meta";
 
 const c = initContract();
 
+// Contrat ts-rest des contrats de service entre voisins (api). Un contrat lie un
+// fournisseur (provider) et un bénéficiaire (payeur), avec séquestre de points et
+// signature électronique Documenso. Toutes les routes exigent audience "api" ; le
+// `scope` déclare l'enforcement propriété (provider/beneficiary) et/ou quartier.
 export const contractsContract = c.router({
+  // GET /contracts — authentifié. Liste paginée des contrats.
   getContracts: {
     method: "GET",
     path: "/contracts",
@@ -31,6 +36,8 @@ export const contractsContract = c.router({
     metadata: auth({ audience: "api" }),
   },
 
+  // GET /contracts/:id — partie (provider/beneficiary), admin du quartier ou
+  // superAdmin. 404 (au lieu de 403) si l'accès est refusé, pour masquer l'existence.
   getContractById: {
     method: "GET",
     path: "/contracts/:id",
@@ -52,6 +59,8 @@ export const contractsContract = c.router({
     }),
   },
 
+  // POST /contracts — authentifié. Crée un contrat ; l'appelant en est le bénéficiaire
+  // (payeur). 502 si Documenso est indisponible.
   createContract: {
     method: "POST",
     path: "/contracts",
@@ -68,6 +77,8 @@ export const contractsContract = c.router({
     metadata: auth({ audience: "api" }),
   },
 
+  // POST /contracts/:id/resend — partie uniquement. Renvoie les emails d'invitation à
+  // signer Documenso.
   resendContract: {
     method: "POST",
     path: "/contracts/:id/resend",
@@ -85,6 +96,8 @@ export const contractsContract = c.router({
     }),
   },
 
+  // POST /contracts/:id/dispute — partie ou admin de quartier. Marque le contrat comme
+  // litigieux (états pending/completed seulement).
   disputeContract: {
     method: "POST",
     path: "/contracts/:id/dispute",
@@ -103,6 +116,8 @@ export const contractsContract = c.router({
     }),
   },
 
+  // POST /contracts/:id/resolve-dispute — admin de quartier ou superAdmin. Tranche le
+  // litige en versant le séquestre au fournisseur (release) ou au bénéficiaire (refund).
   resolveDispute: {
     method: "POST",
     path: "/contracts/:id/resolve-dispute",
@@ -112,20 +127,21 @@ export const contractsContract = c.router({
       200: ContractResponseDtoSchema,
       403: ForbiddenErrorSchema,
       404: NotFoundErrorSchema,
-      // The dispute targets a contract whose escrow is already settled to the provider —
-      // a refund would need a clawback this path doesn't perform.
+      // Le litige vise un contrat dont le séquestre est déjà versé au fournisseur — un
+      // remboursement exigerait un clawback que ce chemin n'effectue pas.
       409: ConflictErrorSchema,
     },
     summary:
       "Resolve a dispute, settling the escrow to the provider (release) or beneficiary (refund) (district admin only)",
-    // No ownerFields: only a district admin (matching districtId) or superAdmin may
-    // resolve — the parties can raise a dispute but not clear it themselves.
+    // Pas d'ownerFields : seul un admin du quartier (districtId correspondant) ou un
+    // superAdmin peut trancher — les parties peuvent ouvrir un litige mais pas le clore.
     metadata: auth({
       audience: "api",
       scope: { resource: "contract", districtField: "districtId", bypassRoles: ["superAdmin"] },
     }),
   },
 
+  // DELETE /contracts/:id — partie, admin de quartier ou superAdmin.
   deleteContract: {
     method: "DELETE",
     path: "/contracts/:id",

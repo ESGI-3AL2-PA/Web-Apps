@@ -7,6 +7,12 @@ import { useDialog } from "../components/dialog-context";
 import ErrorBanner from "../components/ErrorBanner";
 import NewVoteModal from "../components/NewVoteModal";
 
+// Page des votes / sondages du quartier (couche page React de user-front) :
+// liste les sondages, permet de voter et — pour un membre d'un quartier — d'en
+// proposer un nouveau (qui reste en brouillon jusqu'à publication par un admin).
+
+// Barres de résultats d'un sondage : pourcentage par option, l'option choisie par
+// l'utilisateur est mise en avant (cochée + couleur primary).
 function PollResults({ vote }: { vote: VoteResponseDto }) {
   const { t } = useTranslation();
   const total = vote.totalResponses ?? vote.results.reduce((s, r) => s + r.count, 0);
@@ -34,20 +40,28 @@ function PollResults({ vote }: { vote: VoteResponseDto }) {
   );
 }
 
+/**
+ * Carte d'un sondage : affiche le bulletin de vote, l'état d'attente (brouillon) ou
+ * les résultats selon le statut et si l'utilisateur a déjà voté.
+ * @param onVoted remonte le sondage mis à jour après un vote réussi.
+ */
 function PollCard({ vote, onVoted }: { vote: VoteResponseDto; onVoted: (v: VoteResponseDto) => void }) {
   const { t } = useTranslation();
   const { alert } = useDialog();
   const [selected, setSelected] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
-  // A resident-proposed poll stays "draft" until an admin publishes it — only "open" polls
-  // accept votes. Show results once the caller has voted or the poll has closed; a draft
-  // shows neither the ballot (voting would 400 "not open") nor results.
+  // Un sondage proposé par un résident reste « draft » (brouillon) tant qu'un admin
+  // ne l'a pas publié — seuls les sondages « open » acceptent des votes. On affiche
+  // les résultats dès que l'utilisateur a voté ou que le sondage est clos ; un brouillon
+  // n'affiche ni le bulletin (voter renverrait 400 « not open ») ni les résultats.
   const isDraft = vote.status === "draft";
   const showResults = !isDraft && (vote.userHasVoted || vote.status === "closed");
+  // Choix multiple -> cases à cocher ; sinon boutons à choix unique.
   const multi = vote.voteType === "multiple_choice";
   const statusLabel = vote.status === "closed" ? t("votes.closed") : isDraft ? t("votes.draft") : t("votes.open");
   const statusClass = vote.status === "closed" ? "badge-neutral" : isDraft ? "badge-warning" : "badge-primary";
 
+  // Soumet le vote (payload multi vs unique) puis remonte le sondage mis à jour.
   const cast = async (options: string[]) => {
     if (options.length === 0) return;
     setBusy(true);
@@ -114,6 +128,10 @@ function PollCard({ vote, onVoted }: { vote: VoteResponseDto; onVoted: (v: VoteR
   );
 }
 
+/**
+ * Page « Votes / sondages » : charge la liste des sondages et affiche une grille de
+ * cartes. Le bouton de création n'apparaît que si l'utilisateur appartient à un quartier.
+ */
 export default function Votes() {
   const { t } = useTranslation();
   const { user } = useAuth();
@@ -122,6 +140,7 @@ export default function Votes() {
   const [error, setError] = useState(false);
   const [creating, setCreating] = useState(false);
 
+  // Charge les sondages ; `ignore` neutralise une réponse tardive après démontage.
   const load = useCallback(() => {
     let ignore = false;
     setLoading(true);
@@ -143,6 +162,7 @@ export default function Votes() {
 
   useEffect(load, [load]);
 
+  // Remplace en place le sondage voté par sa version à jour.
   const onVoted = (updated: VoteResponseDto) =>
     setVotes((prev) => prev.map((v) => (v.id === updated.id ? updated : v)));
 

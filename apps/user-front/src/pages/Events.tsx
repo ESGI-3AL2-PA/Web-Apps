@@ -10,6 +10,15 @@ import { useDialog } from "../components/dialog-context";
 import ErrorBanner from "../components/ErrorBanner";
 import NewEventModal from "../components/NewEventModal";
 
+// Page : liste des événements du quartier + bande de recommandations personnalisées,
+// avec inscription/désinscription et signaux d'intérêt (pouce haut/bas) alimentant le moteur de reco.
+
+/**
+ * Carte d'un événement : titre, statut, places restantes, date/lieu, bouton
+ * d'inscription et boutons d'intérêt (visibles seulement si connecté).
+ * @param busy id de l'événement en cours de mutation (désactive son bouton).
+ * @param interest intérêt local pour cet événement (1 = intéressé, -1 = pas intéressé).
+ */
 function EventCard({
   ev,
   user,
@@ -27,7 +36,9 @@ function EventCard({
 }) {
   const { t } = useTranslation();
   const isRegistered = user ? ev.registrants.includes(user.id) : false;
+  // « Complet » ne s'applique que si l'utilisateur n'est pas déjà inscrit.
   const full = ev.remainingSeats <= 0 && !isRegistered;
+  // « Terminé » : tout statut qui n'est ni à venir ni en cours.
   const closed = ev.status !== "upcoming" && ev.status !== "ongoing";
 
   return (
@@ -89,6 +100,11 @@ function EventCard({
   );
 }
 
+/**
+ * Page des événements : charge la liste complète et, pour un utilisateur
+ * connecté, une bande de recommandations personnalisées ; gère inscription et
+ * signaux d'intérêt.
+ */
 export default function Events() {
   const { t } = useTranslation();
   const { user } = useAuth();
@@ -123,7 +139,7 @@ export default function Events() {
 
   useEffect(load, [load]);
 
-  // Personalized "for you" strip (collaborative filtering, requires auth).
+  // Bande « pour vous » personnalisée (filtrage collaboratif, nécessite d'être connecté).
   useEffect(() => {
     if (!user?.id) return;
     let ignore = false;
@@ -143,11 +159,13 @@ export default function Events() {
     };
   }, [user?.id]);
 
-  // Fire-and-forget taste signal for the reco engine. Optimistic; reverts on failure.
-  // State is session-local — EventResponseDto carries no persisted per-user interest.
+  // Signal de goût « fire-and-forget » pour le moteur de reco. Optimiste ; revert
+  // en cas d'échec. L'état est local à la session — EventResponseDto ne persiste
+  // pas d'intérêt par utilisateur.
   const onInterest = async (ev: EventResponseDto, rating: 1 | -1) => {
     if (!user) return;
     const prev = interest[ev.id];
+    // Re-cliquer sur le même intérêt le retire (bascule).
     const next = prev === rating ? undefined : rating;
     setInterest((m) => {
       const copy = { ...m };
@@ -155,10 +173,12 @@ export default function Events() {
       else delete copy[ev.id];
       return copy;
     });
+    // Désélection : rien à envoyer au serveur.
     if (!next) return;
     try {
       await markInterest(ev.id, next);
     } catch {
+      // Échec : on rétablit l'état d'intérêt précédent.
       setInterest((m) => {
         const copy = { ...m };
         if (prev) copy[ev.id] = prev;
@@ -175,6 +195,7 @@ export default function Events() {
     setBusy(ev.id);
     try {
       const updated = isRegistered ? await unregisterFromEvent(ev.id) : await registerToEvent(ev.id);
+      // On applique la version renvoyée aux deux listes (toutes + recommandées).
       const patch = (list: EventResponseDto[]) => list.map((e) => (e.id === ev.id ? updated : e));
       setEvents(patch);
       setRecommended(patch);

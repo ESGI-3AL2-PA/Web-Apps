@@ -5,8 +5,14 @@ import type { Incident, IncidentStatus } from "../../entities/incident.entity.js
 import { escapeRegex } from "../escape-regex.js";
 import type { IIncidentRepository } from "./incident.repository.js";
 
+// Document Mongo = entité Incident + son `_id` (id métier stocké tel quel).
 type IncidentDoc = WithMongoId<Incident>;
 
+/**
+ * Implémentation Mongo du repository des signalements (collection `incidents`).
+ * Recherche plein-texte par regex, filtres cumulables, pagination skip/limit
+ * et agrégations de stats par statut / catégorie.
+ */
 export class MongoIncidentRepository implements IIncidentRepository {
   private collection: Collection<IncidentDoc>;
 
@@ -15,7 +21,7 @@ export class MongoIncidentRepository implements IIncidentRepository {
   }
 
   async ensureIndexes(): Promise<void> {
-    // Backs district-scoped list filtering.
+    // Index qui sert au filtrage des listes par quartier.
     await this.collection.createIndex({ districtId: 1 });
   }
 
@@ -38,6 +44,8 @@ export class MongoIncidentRepository implements IIncidentRepository {
 
     const filter: Filter<IncidentDoc> = {};
 
+    // Recherche insensible à la casse sur description + catégorie ; on échappe
+    // les métacaractères regex de la saisie pour éviter toute injection.
     if (search) {
       const safe = escapeRegex(search);
       filter.$or = [{ description: { $regex: safe, $options: "i" } }, { category: { $regex: safe, $options: "i" } }];
@@ -112,6 +120,9 @@ export class MongoIncidentRepository implements IIncidentRepository {
     return { total, byStatus, byCategory };
   }
 
+  // Agrège un $group + compte par valeur du champ donné (ex. "$status"),
+  // renvoyé sous forme de map { valeur: nombre }. Les buckets null/undefined
+  // sont ignorés.
   private async aggregateCount(field: string, match: Record<string, unknown>): Promise<Record<string, number>> {
     const pipeline = [];
     if (Object.keys(match).length > 0) pipeline.push({ $match: match });
@@ -123,6 +134,7 @@ export class MongoIncidentRepository implements IIncidentRepository {
     }, {});
   }
 
+  // Supprime tous les signalements d'un rapporteur (suppression de compte).
   async deleteByReporter(reporterId: string): Promise<void> {
     await this.collection.deleteMany({ reporterId });
   }

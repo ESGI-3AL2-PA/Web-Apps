@@ -1,4 +1,6 @@
 {
+  // Config TypeScript de build : réutilise tsconfig.json mais exclut les fichiers
+  // de test pour qu'ils ne soient pas émis dans dist.
   "extends": "./tsconfig.json",
   "exclude": ["node_modules", "src/**/*.test.ts"]
 }

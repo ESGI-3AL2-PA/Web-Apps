@@ -1,10 +1,14 @@
 import { z } from "zod";
 
-// Contract signature lifecycle, mirrored from the Documenso document status.
-// draft: contract row created, Documenso document not yet generated/sent.
-// pending: document sent, awaiting one or more signatures.
-// completed: every party has signed (Documenso DOCUMENT_COMPLETED).
-// rejected: a party declined (Documenso DOCUMENT_REJECTED) — escrow is refunded.
+// Entité Contract : matérialise un accord entre un prestataire et un bénéficiaire
+// autour d'une annonce (listing), avec signature électronique déléguée à Documenso
+// et séquestre (escrow) des points le temps de la signature.
+
+// Cycle de vie de la signature du contrat, calqué sur le statut du document Documenso.
+// draft     : ligne de contrat créée, document Documenso pas encore généré/envoyé.
+// pending   : document envoyé, en attente d'une ou plusieurs signatures.
+// completed : toutes les parties ont signé (Documenso DOCUMENT_COMPLETED).
+// rejected  : une partie a refusé (Documenso DOCUMENT_REJECTED) — le séquestre est remboursé.
 export const ContractSignatureStatusSchema = z.enum(["draft", "pending", "completed", "rejected"]);
 export type ContractSignatureStatus = z.infer<typeof ContractSignatureStatusSchema>;
 
@@ -15,14 +19,14 @@ export const ContractSchema = z.object({
   providerId: z.string(),
   beneficiaryId: z.string(),
   price: z.number().int().min(0),
-  // Documenso document id (numeric) once the document is generated; null before.
+  // Id (numérique) du document Documenso une fois généré ; null avant.
   documensoDocumentId: z.number().int().nullable(),
   signatureStatus: ContractSignatureStatusSchema,
-  // Per-party Documenso signing URLs; null until the document is generated.
+  // URLs de signature Documenso propres à chaque partie ; null tant que le document n'est pas généré.
   providerSigningUrl: z.string().nullable(),
   beneficiarySigningUrl: z.string().nullable(),
   disputed: z.boolean().default(false),
-  // Free-text reason captured when a party raises a dispute; null otherwise.
+  // Motif en texte libre saisi quand une partie ouvre un litige ; null sinon.
   disputeReason: z.string().nullable().default(null),
   createdAt: z.string().datetime(),
 });

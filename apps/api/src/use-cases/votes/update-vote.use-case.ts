@@ -1,9 +1,16 @@
+/**
+ * Cas d'usage : mise à jour partielle d'un vote / sondage.
+ *
+ * Applique le patch, en garantissant l'invariant `endDate > startDate` lorsque l'une des
+ * deux bornes change (l'autorisation et la validation de forme du corps sont assurées en
+ * amont par le router/contrat).
+ */
 import type { Vote } from "../../entities/vote.entity.js";
 import type { IVoteRepository } from "../../repositories/Vote/vote.repository.js";
 
-// Thrown when a patch would leave the vote with endDate <= startDate. The DTO refine
-// already rejects a patch carrying both bounds; this covers a patch that moves only one
-// bound past the stored other.
+// Levée lorsqu'un patch laisserait le vote avec endDate <= startDate. Le refine du DTO rejette
+// déjà un patch portant les deux bornes ; ceci couvre le patch qui ne déplace qu'une seule
+// borne au-delà de l'autre borne déjà stockée.
 export class VoteDateRangeError extends Error {
   constructor(message = "endDate must be after startDate") {
     super(message);
@@ -11,6 +18,7 @@ export class VoteDateRangeError extends Error {
   }
 }
 
+/** Applique un patch partiel (hors `id`) au vote et retourne l'entité mise à jour, ou `null` si absente. */
 export const updateVoteUseCase = (voteRepository: IVoteRepository) => {
   return async (id: string, data: Partial<Omit<Vote, "id">>): Promise<Vote | null> => {
     if (data.startDate !== undefined || data.endDate !== undefined) {

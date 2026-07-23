@@ -1,22 +1,26 @@
+// Infrastructure partagée (couche « connecteur base de données »). Expose une
+// fabrique de connecteur Mongo mutualisée par les deux backends.
 import { MongoClient, type Db } from "mongodb";
 
 export interface MongoConnector {
-  /** Connect (idempotent — the driver pools) and return the app database handle. */
+  /** Se connecte (idempotent — le driver mutualise) et renvoie le handle de la base applicative. */
   connectDB: () => Promise<Db>;
-  /** The underlying client, exposed so the tx helper can start sessions for multi-document writes. */
+  /** Le client sous-jacent, exposé pour que le helper de transaction puisse ouvrir des sessions (écritures multi-documents). */
   getMongoClient: () => MongoClient;
   /**
-   * Readiness check: cheap round-trip to the server. Rejects if the connection is
-   * dead (server down, auth revoked, network partition) so /readyz can return 503.
+   * Contrôle de disponibilité : aller-retour peu coûteux vers le serveur. Rejette
+   * si la connexion est morte (serveur arrêté, auth révoquée, partition réseau)
+   * afin que /readyz puisse renvoyer 503.
    */
   pingDB: () => Promise<void>;
   closeDB: () => Promise<void>;
 }
 
 /**
- * Builds a Mongo connector bound to a single shared client. Both backends were
- * maintaining a byte-identical connector; this is the one source of truth. Defaults
- * come from the same env vars the apps used (read once, at construction).
+ * Construit un connecteur Mongo lié à un unique client partagé. Les deux backends
+ * maintenaient un connecteur byte-à-byte identique ; ceci en est la source unique
+ * de vérité. Les valeurs par défaut viennent des mêmes variables d'env que les
+ * apps utilisaient (lues une seule fois, à la construction).
  */
 export const createMongoConnector = (
   url: string = process.env.MONGODB_URL ?? "mongodb://root:root@localhost:27017",

@@ -1,8 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-// Records a short voice note via MediaRecorder (audio/webm), previews it, and
-// hands the Blob to the parent on send.
+/**
+ * Composant d'enregistrement d'une note vocale courte via MediaRecorder (audio/webm).
+ * Capture, prévisualise (balise <audio>), puis remet le Blob au parent à l'envoi.
+ *
+ * @param onSubmit - appelé avec le Blob audio enregistré ; peut être asynchrone.
+ * @param onCancel - ferme le panneau sans envoyer.
+ */
 export default function AudioRecorder({
   onSubmit,
   onCancel,
@@ -19,11 +24,12 @@ export default function AudioRecorder({
   const [elapsed, setElapsed] = useState(0);
 
   const recorderRef = useRef<MediaRecorder | null>(null);
-  const chunksRef = useRef<Blob[]>([]);
+  const chunksRef = useRef<Blob[]>([]); // fragments audio accumulés au fil de l'enregistrement
   const streamRef = useRef<MediaStream | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const autoStartedRef = useRef(false);
+  const autoStartedRef = useRef(false); // garde-fou contre le double-montage de StrictMode
 
+  // Nettoyage au démontage : révoque l'object URL, coupe les pistes micro et arrête le timer.
   useEffect(
     () => () => {
       if (previewUrl) URL.revokeObjectURL(previewUrl);
@@ -33,11 +39,12 @@ export default function AudioRecorder({
     [previewUrl],
   );
 
+  // Démarre la capture micro et le chronomètre.
   const start = async () => {
     setError(null);
-    // getUserMedia only exists in a secure context (https, or http on localhost). Over
-    // plain http on a LAN IP/hostname `mediaDevices` is undefined — surface why, don't
-    // fall through to the generic "check your permissions" message.
+    // getUserMedia n'existe que dans un contexte sécurisé (https, ou http sur localhost). En
+    // http simple sur une IP/hôte de réseau local, `mediaDevices` est undefined — on affiche
+    // la vraie raison au lieu de retomber sur le message générique « vérifiez vos permissions ».
     if (!navigator.mediaDevices?.getUserMedia) {
       setError(t("messages.micUnsupported"));
       return;
@@ -50,6 +57,8 @@ export default function AudioRecorder({
       rec.ondataavailable = (e) => {
         if (e.data.size > 0) chunksRef.current.push(e.data);
       };
+      // À l'arrêt : assemble les fragments en un Blob, en génère l'URL de prévisualisation
+      // et libère les pistes du micro.
       rec.onstop = () => {
         const b = new Blob(chunksRef.current, { type: "audio/webm" });
         setBlob(b);
@@ -67,21 +76,23 @@ export default function AudioRecorder({
     }
   };
 
+  // Stoppe l'enregistrement (déclenche onstop) et arrête le chronomètre.
   const stop = () => {
     recorderRef.current?.stop();
     setRecording(false);
     if (timerRef.current) clearInterval(timerRef.current);
   };
 
-  // Start capturing immediately on mount: the parent only shows this panel once the user
-  // has already tapped the mic, so a second "start" tap is redundant. The ref guards against
-  // React StrictMode's double-invoke in dev.
+  // Démarre la capture immédiatement au montage : le parent n'affiche ce panneau qu'une fois
+  // que l'utilisateur a déjà tapé sur le micro, un second appui « start » serait redondant.
+  // Le ref protège du double-appel de React StrictMode en développement.
   useEffect(() => {
     if (autoStartedRef.current) return;
     autoStartedRef.current = true;
     void start();
   }, []);
 
+  // Réinitialise l'enregistrement (« refaire ») : libère la prévisualisation et efface le Blob.
   const reset = () => {
     if (previewUrl) URL.revokeObjectURL(previewUrl);
     setBlob(null);
@@ -89,6 +100,7 @@ export default function AudioRecorder({
     setElapsed(0);
   };
 
+  // Remet le Blob au parent via onSubmit, en gérant l'état « envoi en cours ».
   const send = async () => {
     if (!blob) return;
     setSending(true);

@@ -15,7 +15,17 @@ import { auth } from "./auth-meta";
 
 const c = initContract();
 
+/**
+ * Contract ts-rest des notifications.
+ *
+ * Une notification appartient à un unique destinataire. Marquer une
+ * notification comme lue ou la supprimer relève d'une action strictement
+ * personnelle : aucun bypass admin/superAdmin (lire l'état de la boîte de
+ * réception de quelqu'un n'est pas de la modération). La création est réservée
+ * aux admins, mais elle est normalement déclenchée côté serveur.
+ */
 export const notificationsContract = c.router({
+  // GET /notifications — liste paginée des notifications. Tout utilisateur authentifié.
   getNotifications: {
     method: "GET",
     path: "/notifications",
@@ -27,6 +37,7 @@ export const notificationsContract = c.router({
     metadata: auth({ audience: "api" }),
   },
 
+  // POST /notifications — crée une notification (admin uniquement ; normalement déclenché côté serveur).
   createNotification: {
     method: "POST",
     path: "/notifications",
@@ -50,9 +61,11 @@ export const notificationsContract = c.router({
       404: NotFoundErrorSchema,
     },
     summary: "Mark a single notification as read (recipient only)",
-    // A notification belongs to exactly one person. No districtField and no bypassRoles:
-    // reading someone's inbox state is not moderation, so neither a district admin nor a
-    // superAdmin may mark it read on their behalf. Same reasoning as conversation writes.
+    // PATCH /notifications/:id/read — marque une notification comme lue. Destinataire uniquement.
+    // Une notification appartient à exactement une personne. Pas de districtField ni de bypassRoles :
+    // lire l'état de la boîte de réception de quelqu'un n'est pas de la modération, donc ni un admin de
+    // quartier ni un superAdmin ne peuvent la marquer lue à sa place. Même raisonnement que pour les
+    // écritures de conversation.
     metadata: auth({
       audience: "api",
       scope: {
@@ -63,6 +76,7 @@ export const notificationsContract = c.router({
     }),
   },
 
+  // PATCH /notifications/read-all — marque toutes les notifications de l'utilisateur authentifié comme lues.
   markAllNotificationsRead: {
     method: "PATCH",
     path: "/notifications/read-all",
@@ -84,6 +98,7 @@ export const notificationsContract = c.router({
       404: NotFoundErrorSchema,
     },
     summary: "Delete a notification (recipient only)",
+    // DELETE /notifications/:id — supprime une notification. Destinataire uniquement (404-sur-refus).
     metadata: auth({
       audience: "api",
       scope: {

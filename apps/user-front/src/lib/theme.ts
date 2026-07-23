@@ -1,17 +1,24 @@
+/**
+ * Helpers (lib) de gestion du thème clair/sombre.
+ *
+ * Le thème est porté par l'attribut `<html data-theme>` (un script inline dans
+ * index.html le pose avant le premier paint pour éviter le flash). Ces fonctions
+ * lisent l'attribut courant et le mettent à jour en persistant le choix.
+ */
 export type Theme = "light" | "dark";
 
-// The theme is applied to <html data-theme> (an inline script in index.html sets
-// it before paint). Persist the choice so it survives reloads.
+/** Lit le thème actif depuis `<html data-theme>` ; « light » par défaut. */
 export function getTheme(): Theme {
   const attr = document.documentElement.getAttribute("data-theme");
   return attr === "dark" ? "dark" : "light";
 }
 
+/** Applique un thème sur `<html>` et le mémorise en localStorage pour les rechargements. */
 export function setTheme(theme: Theme): void {
   document.documentElement.setAttribute("data-theme", theme);
   try {
     localStorage.setItem("theme", theme);
   } catch {
-    // storage may be unavailable (private mode); the attribute is still applied
+    // le stockage peut être indisponible (mode privé) ; l'attribut reste appliqué
   }
 }

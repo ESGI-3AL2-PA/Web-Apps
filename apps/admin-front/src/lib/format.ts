@@ -1,8 +1,10 @@
+// Utilitaires de formatage (dates, points) localisés selon la langue i18next active.
 import i18n from "../i18n";
 
-// Map the active i18next language to a BCP-47 locale for Intl formatting.
+// Convertit la langue i18next active en locale BCP-47 pour le formatage Intl.
 const locale = (): string => (i18n.language?.startsWith("en") ? "en-US" : "fr-FR");
 
+/** Formate une date ISO en date/heure localisée ; renvoie "—" si absente, l'ISO brut si invalide. */
 export function formatDate(iso?: string): string {
   if (!iso) return "—";
   const d = new Date(iso);
@@ -16,6 +18,7 @@ export function formatDate(iso?: string): string {
   });
 }
 
+/** Formate un nombre de points avec séparateurs de milliers localisés + le libellé "points". */
 export function formatTokens(n: number): string {
   return `${n.toLocaleString(locale())} ${i18n.t("common.points")}`;
 }

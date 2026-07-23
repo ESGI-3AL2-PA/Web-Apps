@@ -8,10 +8,15 @@ import { getUserPublic } from "../api-service/users.service";
 import { formatPrice } from "../lib/format";
 import { useDialog } from "../components/dialog-context";
 
-// react-pdf and its ~1 MB pdfjs worker live in a separate chunk, loaded only
-// when a preview is actually opened.
+// Page : liste des contrats de l'utilisateur (côté fournisseur ou bénéficiaire).
+// Chaque ligne surface le statut de signature, les actions (signer, relancer,
+// consulter le PDF, contester) et l'aperçu PDF.
+
+// react-pdf et son worker pdfjs (~1 Mo) vivent dans un chunk séparé, chargé
+// uniquement lorsqu'un aperçu est effectivement ouvert.
 const ContractPdf = lazy(() => import("./ContractPdf"));
 
+// Classes de badge par statut de signature Documenso.
 const STATUS_CLASS: Record<ContractSignatureStatus, string> = {
   draft: "bg-base-200 text-base-content/80",
   pending: "bg-warning/15 text-warning",
@@ -19,7 +24,8 @@ const STATUS_CLASS: Record<ContractSignatureStatus, string> = {
   rejected: "bg-error/15 text-error",
 };
 
-// The counterparty is the party the current user is *not* — provider looks at the beneficiary and vice versa.
+// La contrepartie est la partie que l'utilisateur courant n'est *pas* : côté
+// fournisseur on renvoie le bénéficiaire, et inversement.
 const counterpartyId = (c: ContractResponseDto, userId: string | undefined) =>
   c.providerId === userId ? c.beneficiaryId : c.providerId;
 
@@ -34,7 +40,8 @@ export default function Contracts() {
   const [busyId, setBusyId] = useState<string | null>(null);
   const [previewId, setPreviewId] = useState<string | null>(null);
   const [disputeFor, setDisputeFor] = useState<ContractResponseDto | null>(null);
-  // Resolved context, keyed by id — populated lazily so a row can render before its labels arrive.
+  // Contexte résolu, indexé par id — peuplé en lazy pour qu'une ligne s'affiche
+  // avant l'arrivée de ses libellés (titre d'annonce, nom de la contrepartie).
   const [listingTitles, setListingTitles] = useState<Record<string, string>>({});
   const [partyNames, setPartyNames] = useState<Record<string, string>>({});
 
@@ -56,7 +63,8 @@ export default function Contracts() {
     void load();
   }, [load]);
 
-  // Resolve listing titles + counterparty names once per distinct id (getUserPublic is itself cached).
+  // Résout les titres d'annonces + les noms de contrepartie une fois par id distinct
+  // (getUserPublic est lui-même mis en cache).
   useEffect(() => {
     if (contracts.length === 0) return;
     let cancelled = false;
@@ -108,7 +116,8 @@ export default function Contracts() {
     }
   };
 
-  // A contract can be disputed by a party while it's pending or fully signed, and not already disputed.
+  // Un contrat peut être contesté par une partie tant qu'il est en attente ou
+  // entièrement signé, et pas déjà contesté.
   const canDispute = (c: ContractResponseDto) =>
     !c.disputed && (c.signatureStatus === "pending" || c.signatureStatus === "completed");
 
@@ -171,7 +180,7 @@ export default function Contracts() {
                 </div>
 
                 <div className="mt-3 flex flex-wrap gap-2">
-                  {/* Signing happens on Documenso; the api hands us the caller's signing URL. */}
+                  {/* La signature a lieu sur Documenso ; l'api nous fournit l'URL de signature de l'appelant. */}
                   {c.signingUrl && (
                     <a
                       href={c.signingUrl}
@@ -233,7 +242,10 @@ export default function Contracts() {
   );
 }
 
-// Local modal to capture a dispute reason — useDialog has no text-input primitive.
+/**
+ * Modale locale de saisie du motif de contestation — useDialog n'a pas de
+ * primitive de champ texte. Valide qu'un motif non vide est fourni avant de soumettre.
+ */
 function DisputeModal({
   contract,
   busy,

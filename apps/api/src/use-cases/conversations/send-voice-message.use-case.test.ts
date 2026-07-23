@@ -1,3 +1,6 @@
+// Suite de tests du cas d'usage « envoyer un message vocal ».
+// Vérifie le refus des non-participants (404 sans création), le chemin nominal, et la
+// compensation transactionnelle quand l'écriture audio ou le rattachement du média échoue.
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Conversation, Message } from "../../entities/conversation.entity.js";
 import type { IConversationRepository } from "../../repositories/Conversation/conversation.repository.js";
@@ -45,6 +48,7 @@ beforeEach(() => {
 });
 
 describe("sendVoiceMessageUseCase", () => {
+  // Non-participant : renvoie null (404) sans jamais créer de message.
   it("returns 404 (null) for a non-participant without creating a message", async () => {
     const repo = makeRepo();
     const result = await sendVoiceMessageUseCase(repo)("conv-1", "mallory", "base64");
@@ -53,6 +57,7 @@ describe("sendVoiceMessageUseCase", () => {
     expect(repo.createMessage).not.toHaveBeenCalled();
   });
 
+  // Chemin nominal : message renvoyé avec sa mediaUrl, aucune compensation.
   it("returns the message with mediaUrl on the happy path", async () => {
     const repo = makeRepo();
     const result = await sendVoiceMessageUseCase(repo)("conv-1", "alice", "base64");
@@ -63,6 +68,7 @@ describe("sendVoiceMessageUseCase", () => {
     expect(repo.deleteMessage).not.toHaveBeenCalled();
   });
 
+  // Échec de l'écriture audio : la ligne créée est supprimée et l'erreur remontée.
   it("compensates (delete row) and rethrows when the audio write fails", async () => {
     saveAudioFromBase64.mockRejectedValue(new Error("minio down"));
     const repo = makeRepo();
@@ -71,6 +77,7 @@ describe("sendVoiceMessageUseCase", () => {
     expect(repo.deleteMessage).toHaveBeenCalledWith("msg-1");
   });
 
+  // attachMedia renvoie null : compensation complète (audio + ligne) puis VoiceMediaAttachError.
   it("fully compensates and throws VoiceMediaAttachError when attachMedia returns null", async () => {
     const repo = makeRepo({ attachMedia: vi.fn().mockResolvedValue(null) });
 
@@ -81,6 +88,7 @@ describe("sendVoiceMessageUseCase", () => {
     expect(repo.deleteMessage).toHaveBeenCalledWith("msg-1");
   });
 
+  // attachMedia lève : compensation complète (audio + ligne) puis l'erreur d'origine est remontée.
   it("fully compensates and rethrows when attachMedia throws", async () => {
     const repo = makeRepo({ attachMedia: vi.fn().mockRejectedValue(new Error("mongo write failed")) });
 

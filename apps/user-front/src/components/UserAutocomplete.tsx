@@ -2,8 +2,18 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { searchUsersPublic, type UserPublic } from "../api-service/users.service";
 
-// Search neighbours by name (backend scopes to the caller's district). The parent
-// owns the selected user; this only drives the query + dropdown.
+/**
+ * Composant React : autocomplétion de recherche de voisins par nom.
+ *
+ * Le backend restreint la recherche au quartier de l'appelant. Le parent possède
+ * l'utilisateur sélectionné (props `selected` / `onSelect`) ; ce composant ne gère
+ * que la requête et le menu déroulant.
+ *
+ * @param selected  Utilisateur actuellement sélectionné (ou null).
+ * @param onSelect  Callback appelé à la sélection ou à l'effacement (null).
+ * @param autoFocus Met le focus sur le champ au montage.
+ * @param id        Identifiant DOM du champ (pour un <label> associé).
+ */
 export default function UserAutocomplete({
   selected,
   onSelect,
@@ -22,6 +32,8 @@ export default function UserAutocomplete({
   const [loading, setLoading] = useState(false);
   const boxRef = useRef<HTMLDivElement>(null);
 
+  // Recherche debouncée : ne déclenche qu'à partir de 2 caractères, 300 ms après la
+  // dernière frappe. `cancelled` ignore la réponse d'une requête devenue obsolète.
   useEffect(() => {
     if (selected) return;
     const q = query.trim();
@@ -48,6 +60,7 @@ export default function UserAutocomplete({
     };
   }, [query, selected]);
 
+  // Ferme le menu déroulant au clic en dehors du composant.
   useEffect(() => {
     const onDoc = (e: MouseEvent) => {
       if (boxRef.current && !boxRef.current.contains(e.target as Node)) setOpen(false);
@@ -56,6 +69,7 @@ export default function UserAutocomplete({
     return () => document.removeEventListener("mousedown", onDoc);
   }, []);
 
+  // Sélectionne un utilisateur : remonte le choix au parent et remplit le champ.
   const pick = (u: UserPublic) => {
     onSelect(u);
     setQuery(`${u.firstName} ${u.lastName}`);
@@ -70,6 +84,7 @@ export default function UserAutocomplete({
         autoFocus={autoFocus}
         placeholder={t("messages.searchNeighbour")}
         onChange={(e) => {
+          // Toute frappe après une sélection efface celle-ci pour relancer une recherche.
           if (selected) onSelect(null);
           setQuery(e.target.value);
         }}

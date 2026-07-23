@@ -1,3 +1,6 @@
+// Suite de tests de l'invariant `endDate > startDate` d'un vote, aux deux niveaux : le refine du
+// DTO `CreateVoteDtoSchema` (qui porte les deux bornes) et le garde-fou de `updateVoteUseCase` sur
+// un patch partiel (une seule borne déplacée au-delà de l'autre borne déjà stockée). Repo stubbé.
 import { describe, expect, it, vi } from "vitest";
 import { CreateVoteDtoSchema } from "@repo/contracts";
 import type { Vote } from "../../entities/vote.entity.js";

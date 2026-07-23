@@ -1,5 +1,10 @@
 name: Claude Code Review
 
+# Revue de code automatique par Claude. Se declenche a l'ouverture / mise a jour / passage en
+# "pret pour revue" / reouverture d'une PR. L'action anthropics/claude-code-action recoit le
+# prompt ci-dessous (chaine fonctionnelle en anglais, laissee telle quelle) qui pilote la revue :
+# recuperation du diff, categories a inspecter, pose de commentaires inline, verdict + label +
+# commit status `claude/review`. Necessite le secret CLAUDE_CODE_OAUTH_TOKEN.
 on:
   pull_request:
     types: [opened, synchronize, ready_for_review, reopened]

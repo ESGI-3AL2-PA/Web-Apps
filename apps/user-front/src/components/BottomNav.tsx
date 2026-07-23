@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "@repo/hooks";
 import { useFocusTrap } from "../lib/useFocusTrap";
 
-// A single bottom-bar tab: icon + label, brand-colored when active.
+// Un onglet de la barre inférieure : icône + libellé, coloré aux couleurs de la marque quand actif.
 function Tab({ to, label, icon }: { to: string; label: string; icon: string }) {
   return (
     <NavLink
@@ -22,6 +22,7 @@ function Tab({ to, label, icon }: { to: string; label: string; icon: string }) {
   );
 }
 
+// Liens listés dans la feuille « compte » qui glisse depuis le bas.
 const SHEET_LINKS = [
   { to: "/profil", key: "header.profile" },
   { to: "/mes-annonces", key: "header.myListings" },
@@ -30,6 +31,12 @@ const SHEET_LINKS = [
   { to: "/parametres", key: "header.settings" },
 ] as const;
 
+/**
+ * Barre de navigation inférieure, affichée uniquement sur mobile (`md:hidden`).
+ * Onglets fixes (accueil, recherche, dépôt d'annonce, messages) plus un bouton « compte »
+ * qui ouvre une feuille glissante contenant les liens de profil, le sélecteur de langue
+ * et la déconnexion. Le focus y est piégé via useFocusTrap.
+ */
 export default function BottomNav() {
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
@@ -37,6 +44,7 @@ export default function BottomNav() {
   const [sheet, setSheet] = useState(false);
   const sheetRef = useFocusTrap<HTMLDivElement>(sheet, () => setSheet(false));
 
+  // Ferme la feuille puis navigue vers la destination choisie.
   const go = (to: string) => {
     setSheet(false);
     navigate(to);
@@ -44,7 +52,7 @@ export default function BottomNav() {
 
   return (
     <>
-      {/* Account sheet (slides up from the bottom nav) */}
+      {/* Feuille « compte » (glisse depuis la barre inférieure) */}
       {sheet && (
         <div
           className="fixed inset-0 z-50 md:hidden"
@@ -80,6 +88,7 @@ export default function BottomNav() {
                 {t(link.key)}
               </button>
             ))}
+            {/* Sélecteur de langue FR / EN (bouton actif surligné via aria-pressed) */}
             <div className="flex items-center justify-between rounded-lg px-3 py-3">
               <span className="text-sm font-medium text-base-content">{t("common.language")}</span>
               <div className="join">
@@ -110,13 +119,13 @@ export default function BottomNav() {
         </div>
       )}
 
-      {/* Fixed bottom bar — mobile only */}
+      {/* Barre inférieure fixe — mobile uniquement */}
       <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-base-content/10 bg-base-100 pb-[env(safe-area-inset-bottom)] md:hidden">
         <div className="flex items-stretch">
           <Tab to="/" label={t("header.home")} icon="icon-[tabler--home]" />
           <Tab to="/recherche" label={t("header.search")} icon="icon-[tabler--search]" />
 
-          {/* Center action — post an ad */}
+          {/* Action centrale — déposer une annonce (bouton flottant mis en avant) */}
           <NavLink
             to="/deposer"
             className="flex flex-1 flex-col items-center justify-center gap-0.5 py-1.5 text-[10px] font-medium text-base-content/60"
@@ -124,6 +133,7 @@ export default function BottomNav() {
             <span className="-mt-4 flex size-11 items-center justify-center rounded-full bg-primary text-primary-content shadow-lg shadow-primary/30">
               <span className="icon-[tabler--plus] size-6" />
             </span>
+            {/* Retire un éventuel « + » de tête du libellé traduit (l'icône « + » le rend déjà) */}
             <span className="-mt-2.5">{t("myListings.deposit").replace(/^\+\s*/, "")}</span>
           </NavLink>
 

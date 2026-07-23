@@ -2,8 +2,14 @@ import type { IAuthTokenRepository } from "../repositories/AuthToken/auth-token.
 import type { IUserReaderRepository } from "../repositories/User/user-reader.repository.js";
 import { sendVerificationEmailUseCase } from "./send-verification-email.use-case.js";
 
-// Always succeeds silently (no user enumeration). If user exists and is unverified,
-// sends a fresh verification email; otherwise no-op.
+/**
+ * Cas d'usage : renvoi de l'e-mail de vérification.
+ *
+ * Réussit toujours silencieusement pour éviter l'énumération d'utilisateurs : la
+ * réponse est identique que l'e-mail existe ou non. Si l'utilisateur existe et
+ * n'est pas encore vérifié, un nouvel e-mail de vérification est envoyé ; sinon,
+ * aucune action.
+ */
 export const resendVerificationUseCase = (userReader: IUserReaderRepository, authTokenRepo: IAuthTokenRepository) => {
   return async (email: string): Promise<void> => {
     const user = await userReader.findByEmail(email);

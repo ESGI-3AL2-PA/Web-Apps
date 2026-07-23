@@ -2,13 +2,22 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { IUserReaderRepository, UserRecord } from "../repositories/User/user-reader.repository.js";
 import { stepUpUseCase } from "./step-up.use-case.js";
 
-// verifyTotpStep wraps otplib; stub it so a "valid" code maps to a known step.
+/**
+ * Suite de tests du cas d'usage de step-up (ré-authentification TOTP forte).
+ *
+ * Vérifie qu'un code TOTP valide et non rejoué émet un token d'audience "step-up",
+ * et que les cas d'échec (pas de TOTP confirmé, code invalide, code rejoué) ne
+ * signent rien.
+ */
+
+// verifyTotpStep enveloppe otplib ; on le stub pour qu'un code « valide »
+// corresponde à un « step » connu.
 vi.mock("../services/totp.js", () => ({
   verifyTotpStep: vi.fn(),
 }));
 
-// The step-up token is a real RS256 JWT in prod; capture the audience it is signed with
-// without touching a real key pair.
+// En prod le token de step-up est un vrai JWT RS256 ; on capture l'audience avec
+// laquelle il est signé sans toucher à une vraie paire de clés.
 const signMock = vi.fn().mockResolvedValue("fake.step-up.token");
 let signedAudience: string | null = null;
 vi.mock("jose", () => {
@@ -83,6 +92,7 @@ describe("stepUpUseCase", () => {
     verifyTotpStepMock.mockReturnValue(4242);
   });
 
+  // Un code valide non consommé émet un token de step-up d'audience "step-up".
   it("a valid unused code mints a step-up token with audience 'step-up'", async () => {
     const userReader = makeUserReader(makeUser());
     const result = await stepUpUseCase(userReader as unknown as IUserReaderRepository)("user-1", "123456");
@@ -92,6 +102,7 @@ describe("stepUpUseCase", () => {
     expect(userReader.consumeTotpStep).toHaveBeenCalledWith("user-1", 4242);
   });
 
+  // Rejette quand l'utilisateur n'a pas de TOTP confirmé.
   it("rejects when the user has no confirmed TOTP", async () => {
     const userReader = makeUserReader(makeUser({ totpEnabled: false, totpSecret: null }));
     const result = await stepUpUseCase(userReader as unknown as IUserReaderRepository)("user-1", "123456");
@@ -100,6 +111,7 @@ describe("stepUpUseCase", () => {
     expect(verifyTotpStepMock).not.toHaveBeenCalled();
   });
 
+  // Rejette un code invalide et n'émet rien.
   it("rejects an invalid code and mints nothing", async () => {
     verifyTotpStepMock.mockReturnValue(null);
     const userReader = makeUserReader(makeUser());
@@ -110,6 +122,7 @@ describe("stepUpUseCase", () => {
     expect(signMock).not.toHaveBeenCalled();
   });
 
+  // Rejette un code rejoué (step déjà consommé) même s'il se vérifie.
   it("rejects a replayed code (step already consumed) even though it verifies", async () => {
     const userReader = makeUserReader(makeUser());
     userReader.consumeTotpStep.mockResolvedValue(false);

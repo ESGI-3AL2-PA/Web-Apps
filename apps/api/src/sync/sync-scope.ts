@@ -1,28 +1,30 @@
 /**
- * District scoping for the sync surface (§5.5 / Decision D1).
+ * Couche sync : scoping par quartier de la surface de sync (§5.5 / Décision D1).
  *
- * Built on the same `resolveCallerListDistrict` the incident / listing / vote list
- * routes use, so the sync feed can never be broader than the interactive routes it
- * shadows. Collapsed to a three-way result the use-cases can branch on without
- * knowing about roles.
+ * Construit sur le même `resolveCallerListDistrict` qu'utilisent les routes de liste
+ * incident / annonce / vote, de sorte que le flux de sync ne puisse jamais être plus
+ * large que les routes interactives qu'il reflète. Réduit à un résultat à trois cas sur
+ * lequel les use-cases peuvent brancher sans connaître les rôles.
  */
 import type { AuthUser } from "../middleware/auth.middleware.js";
 import type { IUserRepository } from "../repositories/User/user.repository.js";
 import { resolveCallerListDistrict } from "../middleware/district-scope.js";
 
+/** Scope de sync : tout (`all`), un quartier précis (`districtId`), ou aucun accès (`empty`). */
 export type SyncScope = { all: true } | { districtId: string } | { empty: true };
 
+/** Résout le scope de sync d'un appelant à partir de son rôle et de son quartier. */
 export const resolveSyncScope = async (user: AuthUser, userRepo: IUserRepository): Promise<SyncScope> => {
-  // `requested: undefined` — the caller never picks its own scope on a sync route.
+  // `requested: undefined` — l'appelant ne choisit jamais son propre scope sur une route de sync.
   const scope = await resolveCallerListDistrict(user, undefined, userRepo);
   if ("empty" in scope) return { empty: true };
-  // Only superAdmin / service fall through unbound; admins always carry a districtId.
+  // Seuls superAdmin / service passent sans contrainte ; les admins portent toujours un districtId.
   return scope.districtId ? { districtId: scope.districtId } : { all: true };
 };
 
 /**
- * Fail-closed write check: an unknown district (`null`) is only writable by an
- * unscoped caller, never by a district admin.
+ * Contrôle d'écriture fail-closed : un quartier inconnu (`null`) n'est modifiable que par
+ * un appelant non contraint (unscoped), jamais par un administrateur de quartier.
  */
 export const scopeAllowsDistrict = (scope: SyncScope, districtId: string | null): boolean => {
   if ("all" in scope) return true;

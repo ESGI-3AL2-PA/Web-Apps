@@ -1,3 +1,12 @@
+/**
+ * Cas d'usage : enregistrer le bulletin d'un utilisateur sur un vote / sondage.
+ *
+ * Couche use-case du domaine « vote ». Il concentre TOUS les garde-fous serveur
+ * (appartenance au quartier, statut/deadline du scrutin, validité des options)
+ * avant d'écrire le bulletin de façon atomique, puis reflète le geste dans le graphe.
+ * Expose la factory `submitVoteResponseUseCase` et deux erreurs métier typées que le
+ * router traduit en codes HTTP.
+ */
 import type { SubmitVoteResponseDto } from "@repo/contracts";
 import type { Vote } from "../../entities/vote.entity.js";
 import type { IVoteRepository } from "../../repositories/Vote/vote.repository.js";
@@ -6,6 +15,7 @@ import type { IGraphRepository } from "../../repositories/Graph/graph.repository
 import { syncGraph } from "../../repositories/Graph/graph.sync.js";
 import { runInTransaction } from "../../repositories/tx.js";
 
+/** Bulletin refusé pour cause de contenu invalide (option inconnue, vote clos, doublon vide…). */
 export class InvalidVoteSubmissionError extends Error {
   constructor(reason: string) {
     super(reason);
@@ -13,6 +23,7 @@ export class InvalidVoteSubmissionError extends Error {
   }
 }
 
+/** Votant qui tente de se prononcer sur un scrutin hors de son quartier de résidence. */
 export class VoteDistrictForbiddenError extends Error {
   constructor() {
     super("Vous ne pouvez voter que sur un scrutin concernant votre quartier");
@@ -20,6 +31,15 @@ export class VoteDistrictForbiddenError extends Error {
   }
 }
 
+/**
+ * Factory du cas d'usage de soumission d'un bulletin.
+ *
+ * Renvoie une fonction `(voteId, userId, data)` qui : vérifie l'appartenance au
+ * quartier, l'ouverture et la date limite du scrutin, dédoublonne et valide les
+ * options, remplace atomiquement le bulletin précédent puis relie l'utilisateur au
+ * vote dans le graphe. Retourne le vote rafraîchi, ou `{ vote: null }` si introuvable.
+ * Lève `VoteDistrictForbiddenError` / `InvalidVoteSubmissionError` selon le garde-fou.
+ */
 export const submitVoteResponseUseCase = (
   voteRepository: IVoteRepository,
   graphRepository: IGraphRepository,

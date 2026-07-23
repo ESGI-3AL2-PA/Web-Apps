@@ -1,3 +1,5 @@
+// Page de consultation des annonces du quartier actif : liste filtrable/paginée en lecture,
+// consultation détaillée en modale, et suppression réservée au superAdmin.
 import { useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@repo/hooks";
@@ -117,6 +119,7 @@ export default function ListingsList() {
   );
 }
 
+/** Paire libellé/valeur en lecture seule dans la fiche de consultation de l'annonce. */
 function Info({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div>

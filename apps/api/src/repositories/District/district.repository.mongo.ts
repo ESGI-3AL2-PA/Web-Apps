@@ -7,10 +7,17 @@ import type { IDistrictRepository, UpdateDistrictData } from "./district.reposit
 
 type DistrictDoc = WithMongoId<District>;
 
-// Parse through the schema so legacy docs predating startingPoints/status read back
-// with their defaults (startingPoints: 0, status: "active") applied.
+// On passe par le schéma zod pour que les vieux documents antérieurs aux champs
+// startingPoints/status soient relus avec leurs valeurs par défaut appliquées
+// (startingPoints: 0, status: "active").
 const toDistrict = (doc: DistrictDoc): District => DistrictSchema.parse(toEntity<District>(doc));
 
+/**
+ * Implémentation Mongo du repository des quartiers.
+ *
+ * Persiste la collection `districts` avec un index géospatial 2dsphere sur la
+ * frontière GeoJSON.
+ */
 export class MongoDistrictRepository implements IDistrictRepository {
   private collection: Collection<DistrictDoc>;
 
@@ -19,7 +26,8 @@ export class MongoDistrictRepository implements IDistrictRepository {
   }
 
   async ensureIndexes(): Promise<void> {
-    // Backs $geoIntersects lookups; districts must store geoJson as valid GeoJSON geometry.
+    // Sous-tend les recherches $geoIntersects ; les quartiers doivent stocker geoJson
+    // comme une géométrie GeoJSON valide.
     await this.collection.createIndex({ geoJson: "2dsphere" });
   }
 
@@ -65,8 +73,9 @@ export class MongoDistrictRepository implements IDistrictRepository {
   }
 
   async updateDistrict(id: string, data: UpdateDistrictData): Promise<District | null> {
-    // geoJson: null means "clear the boundary" — $unset it rather than $set null, since the
-    // 2dsphere index rejects a literal null value but tolerates the field being absent.
+    // geoJson: null signifie "effacer la frontière" — on le $unset plutôt que de le
+    // $set à null, car l'index 2dsphere rejette une valeur null littérale mais
+    // tolère l'absence du champ.
     const { geoJson, ...rest } = data;
     const update: UpdateFilter<DistrictDoc> = { $set: { ...rest, ...(geoJson ? { geoJson } : {}) } };
     if (geoJson === null) {

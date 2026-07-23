@@ -5,12 +5,21 @@ import type { IContractRepository } from "../../repositories/Contract/contract.r
 import type { ITransactionRepository } from "../../repositories/Transaction/transaction.repository.js";
 import { runInTransaction } from "../../repositories/tx.js";
 
+/**
+ * Cas d'usage : résolution d'un signalement (dispute) par un administrateur.
+ *
+ * Ce fichier expose la factory du cas d'usage, l'erreur métier UnsettleableDisputeError
+ * et un helper `settle` de règlement + écriture de journal.
+ */
+
+/** Sens de résolution : `release` verse le séquestre au prestataire, `refund` le rembourse au bénéficiaire. */
 export type DisputeResolution = "release" | "refund";
 
-// A dispute raised *after* the contract already completed leaves the escrow already
-// released to the provider. Refunding it would require clawing settled funds back from
-// the provider — out of scope for this contained in-transaction path, so we refuse and
-// let an operator handle it manually rather than silently move nothing (or double-pay).
+// Un signalement ouvert *après* que le contrat est déjà terminé laisse le séquestre
+// déjà versé au prestataire. Le rembourser exigerait de reprendre des fonds déjà réglés
+// au prestataire — hors du périmètre de ce chemin transactionnel contenu ; on refuse
+// donc et on laisse un opérateur traiter le cas manuellement, plutôt que de ne rien
+// déplacer en silence (ou de payer deux fois).
 export class UnsettleableDisputeError extends Error {
   constructor() {
     super("Impossible de rembourser un contrat déjà réglé — l'escrow a déjà été versé au prestataire");
@@ -18,9 +27,10 @@ export class UnsettleableDisputeError extends Error {
   }
 }
 
-// Credits `amount` to a user and records the ledger entry — mirrors the webhook
-// release path and the delete refund path. Releases the held escrow to the provider
-// on `release` or refunds it to the beneficiary on `refund`.
+// Crédite le prix du contrat à un utilisateur et enregistre l'écriture de journal —
+// reflète le chemin de versement du webhook et le chemin de remboursement de la
+// suppression. Verse le séquestre bloqué au prestataire (`release`) ou le rembourse au
+// bénéficiaire (`refund`).
 const settle = async (
   transactionRepository: ITransactionRepository,
   contract: Contract,
@@ -42,31 +52,38 @@ const settle = async (
     session,
   );
   if (session) {
-    // Inside a transaction: the dispute clear + balance move + ledger row commit or roll
-    // back together, so a ledger failure can't leave the escrow settled without a record.
+    // Dans une transaction : la levée du signalement + le mouvement de solde + l'écriture
+    // de journal sont validés ou annulés ensemble, si bien qu'un échec de journal ne peut
+    // pas laisser le séquestre réglé sans trace.
     await ledgerWrite;
   } else {
-    // Sequential fallback (standalone Mongo): the balance move already settled the escrow
-    // and the atomic resolve gate fired, so keep the ledger write best-effort.
+    // Repli séquentiel (Mongo autonome) : le mouvement de solde a déjà réglé le séquestre
+    // et la garde atomique de résolution a joué, donc on garde l'écriture de journal en best-effort.
     await ledgerWrite.catch((err) =>
       logger.error({ err, contractId: contract.id }, "[contracts] dispute-settle ledger write failed"),
     );
   }
 };
 
-// Resolves a dispute per the admin's choice: `release` settles the escrow to the
-// provider, `refund` returns it to the beneficiary. The chosen settlement + the flag
-// clear + the terminal transition all happen atomically inside runInTransaction, with
-// the matching ledger entry. Returns null if the contract isn't disputed (→ 404).
+/**
+ * Fabrique le cas d'usage de résolution de signalement.
+ *
+ * Résout un signalement selon le choix de l'administrateur : `release` verse le séquestre
+ * au prestataire, `refund` le rend au bénéficiaire. Le règlement choisi + la levée du
+ * drapeau de contestation + la transition vers l'état terminal se font tous atomiquement
+ * dans runInTransaction, avec l'écriture de journal correspondante. Renvoie `null` si le
+ * contrat n'est pas contesté (→ 404), ou lève UnsettleableDisputeError sur un refund d'un
+ * contrat déjà réglé.
+ */
 export const resolveDisputeUseCase = (
   contractRepository: IContractRepository,
   transactionRepository: ITransactionRepository,
 ) => {
   return async ({ id, resolution }: { id: string; resolution: DisputeResolution }): Promise<Contract | null> => {
-    // Refuse a refund of an already-settled (completed) contract up front — before any
-    // write, so there's no half-applied state in the standalone (no-transaction) path.
-    // A disputed contract is frozen (the webhook can't complete it while disputed), so
-    // this read is stable against a concurrent settlement.
+    // Refuse d'emblée le remboursement d'un contrat déjà réglé (completed) — avant toute
+    // écriture, pour qu'il n'y ait pas d'état à moitié appliqué dans le chemin autonome
+    // (sans transaction). Un contrat contesté est gelé (le webhook ne peut pas le compléter
+    // tant qu'il est contesté), donc cette lecture est stable face à un règlement concurrent.
     if (resolution === "refund") {
       const current = await contractRepository.getContractById(id);
       if (current?.disputed && current.signatureStatus === "completed") {
@@ -76,8 +93,8 @@ export const resolveDisputeUseCase = (
 
     return runInTransaction(async (session) => {
       const terminalStatus = resolution === "release" ? "completed" : "rejected";
-      // Atomically clear the dispute + move to the terminal state, returning the contract's
-      // pre-resolution state so we know whether the escrow was still held.
+      // Lève atomiquement le signalement + passe à l'état terminal, en renvoyant l'état
+      // *pré-résolution* du contrat pour savoir si le séquestre était encore bloqué.
       const before = await contractRepository.resolveDispute(id, terminalStatus, session);
       if (!before) return null;
 
@@ -86,8 +103,9 @@ export const resolveDisputeUseCase = (
         const payee = resolution === "release" ? before.providerId : before.beneficiaryId;
         await settle(transactionRepository, before, payee, session);
       }
-      // Escrow not held (contract completed before the dispute) → the provider already
-      // holds the funds: `release` needs no move, `refund` was refused above.
+      // Séquestre non bloqué (contrat terminé avant le signalement) → le prestataire
+      // détient déjà les fonds : `release` ne nécessite aucun mouvement, `refund` a été
+      // refusé plus haut.
 
       return {
         ...before,

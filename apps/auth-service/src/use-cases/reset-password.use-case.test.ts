@@ -6,8 +6,16 @@ import type { IRefreshTokenRepository } from "../repositories/RefreshToken/refre
 import type { IUserReaderRepository, UserRecord } from "../repositories/User/user-reader.repository.js";
 import { resetPasswordUseCase } from "./reset-password.use-case.js";
 
-// Real argon2 hashing is slow and irrelevant here; assert setPasswordHash is
-// called with the derived hash, not the hash's contents.
+/**
+ * Suite de tests du cas d'usage de réinitialisation de mot de passe.
+ *
+ * Couvre les quatre issues : token valide (mot de passe changé, token brûlé,
+ * autres sessions déconnectées), token inconnu/réutilisé, token expiré, et compte
+ * supprimé.
+ */
+
+// Le vrai hashage argon2 est lent et sans intérêt ici ; on vérifie que
+// setPasswordHash est appelé avec le hash dérivé, pas son contenu réel.
 vi.mock("argon2", () => ({
   default: {
     hash: vi.fn().mockResolvedValue("new-password-hash"),
@@ -90,6 +98,7 @@ describe("resetPasswordUseCase", () => {
     vi.clearAllMocks();
   });
 
+  // Token valide : met à jour le mot de passe, consomme le token, déconnecte les autres sessions.
   it("a valid token updates the password, consumes the token, and logs out other sessions", async () => {
     const authTokenRepo = makeAuthTokenRepo(makeRecord());
     const userReader = makeUserReader(makeUser());
@@ -103,15 +112,16 @@ describe("resetPasswordUseCase", () => {
     const result = await reset(RAW_TOKEN, "new-password");
 
     expect(result).toBe("ok");
-    // Token is looked up by its sha256 hash, scoped to the reset_password type.
+    // Le token est recherché par son hash sha256, restreint au type reset_password.
     expect(authTokenRepo.findActiveByHash).toHaveBeenCalledWith(TOKEN_HASH, "reset_password");
     expect(userReader.setPasswordHash).toHaveBeenCalledWith("user-1", "new-password-hash");
-    // Single-use: the token is burned.
+    // Usage unique : le token est brûlé.
     expect(authTokenRepo.markUsed).toHaveBeenCalledWith("token-1");
-    // Every existing session is invalidated after a password change.
+    // Toute session existante est invalidée après un changement de mot de passe.
     expect(refreshRepo.revokeAllForUser).toHaveBeenCalledWith("user-1");
   });
 
+  // Token inconnu/réutilisé : rejeté comme invalide sans toucher au mot de passe.
   it("an unknown/reused token is rejected as invalid without touching the password", async () => {
     const authTokenRepo = makeAuthTokenRepo(null);
     const userReader = makeUserReader(makeUser());
@@ -129,6 +139,7 @@ describe("resetPasswordUseCase", () => {
     expect(authTokenRepo.markUsed).not.toHaveBeenCalled();
   });
 
+  // Token expiré : brûlé et rejeté, le mot de passe reste inchangé.
   it("an expired token is burned and rejected, leaving the password unchanged", async () => {
     const authTokenRepo = makeAuthTokenRepo(makeRecord({ expiresAt: pastIso }));
     const userReader = makeUserReader(makeUser());
@@ -142,12 +153,13 @@ describe("resetPasswordUseCase", () => {
     const result = await reset(RAW_TOKEN, "new-password");
 
     expect(result).toBe("expired");
-    // Even expired, the row is marked used so it can't be retried.
+    // Même expirée, la ligne est marquée utilisée pour ne pas pouvoir être réessayée.
     expect(authTokenRepo.markUsed).toHaveBeenCalledWith("token-1");
     expect(userReader.setPasswordHash).not.toHaveBeenCalled();
     expect(refreshRepo.revokeAllForUser).not.toHaveBeenCalled();
   });
 
+  // Renvoie user-not-found quand le token référence un compte supprimé.
   it("returns user-not-found when the token references a deleted account", async () => {
     const authTokenRepo = makeAuthTokenRepo(makeRecord());
     const userReader = makeUserReader(null);

@@ -1,3 +1,6 @@
+// Page de gestion des votes / sondages du quartier actif : liste filtrable, création et édition
+// (question, options, type de vote — choix unique ou multiple —, statut, période) et consultation
+// des résultats sous forme de barres de progression. La création requiert un quartier en scope.
 import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import type {
@@ -145,11 +148,16 @@ export default function VotesList() {
   );
 }
 
+/**
+ * Modale de consultation d'un vote : charge ses résultats au montage et affiche, pour chaque
+ * option, le nombre de réponses et le pourcentage sous forme de barre de progression.
+ */
 function VoteView({ vote, onClose }: { vote: VoteResponseDto; onClose: () => void }) {
   const { t } = useTranslation();
   const [results, setResults] = useState<VoteResultsResponseDto | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // Récupère les résultats du vote ; `cancelled` neutralise la réponse si la modale ferme avant.
   useEffect(() => {
     let cancelled = false;
     getVoteResults(vote.id)
@@ -207,6 +215,7 @@ function VoteView({ vote, onClose }: { vote: VoteResponseDto; onClose: () => voi
   );
 }
 
+/** Paire libellé/valeur en lecture seule dans la fiche de consultation du vote. */
 function Info({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div>
@@ -216,16 +225,22 @@ function Info({ label, value }: { label: string; value: ReactNode }) {
   );
 }
 
-// datetime-local <-> ISO: the input speaks local "YYYY-MM-DDTHH:mm", the API speaks ISO.
+// Conversion datetime-local <-> ISO : l'input parle en local "YYYY-MM-DDTHH:mm", l'API parle en ISO.
 const toLocalInput = (iso: string): string => {
   const d = new Date(iso);
   return new Date(d.getTime() - d.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
 };
+/** Instant courant (+ `plusDays` jours) au format datetime-local, pour préremplir les dates à la création. */
 const nowLocal = (plusDays = 0): string => {
   const d = new Date(Date.now() + plusDays * 86_400_000);
   return new Date(d.getTime() - d.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
 };
 
+/**
+ * Formulaire de création/édition d'un vote (mode déduit de la présence de `vote`). Le statut
+ * n'est éditable qu'en modification ; la création exige au moins deux options non vides.
+ * @param districtId quartier auquel rattacher le vote à la création.
+ */
 function VoteForm({
   vote,
   districtId,
@@ -255,6 +270,7 @@ function VoteForm({
     e.preventDefault();
     setSubmitting(true);
     setError(null);
+    // Nettoie les options (trim + suppression des vides) ; un vote exige au moins deux choix.
     const cleanOptions = options.map((o) => o.trim()).filter(Boolean);
     if (cleanOptions.length < 2) {
       setError(t("votes.needTwoOptions"));

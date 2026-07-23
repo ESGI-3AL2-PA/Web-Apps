@@ -1,7 +1,8 @@
+/** Contrat du repository de compteurs (séquences atomiques nommées). */
 export interface ICounterRepository {
   /**
-   * Hand out the next value of a named counter. A single-document `$inc` is atomic
-   * in Mongo without a transaction, so this is safe under concurrency.
+   * Distribue la valeur suivante d'un compteur nommé. Un `$inc` sur un unique
+   * document est atomique dans Mongo sans transaction, donc sûr en concurrence.
    */
   next(name: string): Promise<number>;
 }

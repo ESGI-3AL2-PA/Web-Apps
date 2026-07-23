@@ -1,11 +1,16 @@
+// DTO zod de la messagerie : conversations (directes ou de groupe, cloisonnées par
+// quartier) et messages (texte / image / audio / fichier), avec les envois média en base64.
 import { z } from "../zod";
 
+/** Type de conversation : à deux (direct) ou de groupe. */
 export const ConversationTypeSchema = z.enum(["direct", "group"]);
 export type ConversationType = z.infer<typeof ConversationTypeSchema>;
 
+/** Nature d'un message et donc du contenu porté. */
 export const MessageTypeSchema = z.enum(["text", "image", "audio", "file"]);
 export type MessageType = z.infer<typeof MessageTypeSchema>;
 
+/** Conversation renvoyée au client : participants, quartier partagé, dernier message. */
 export const ConversationResponseDtoSchema = z
   .object({
     id: z.string().openapi({ description: "Unique conversation identifier" }),
@@ -19,6 +24,7 @@ export const ConversationResponseDtoSchema = z
   .openapi({ title: "ConversationResponse" });
 export type ConversationResponseDto = z.infer<typeof ConversationResponseDtoSchema>;
 
+// Création d'une conversation : au moins 2 participants requis.
 export const CreateConversationDtoSchema = z
   .object({
     participants: z.array(z.string()).min(2).openapi({ description: "IDs of the participants" }),
@@ -31,6 +37,7 @@ export type CreateConversationDto = z.infer<typeof CreateConversationDtoSchema>;
 export const ConversationParamsDtoSchema = z.object({ id: z.string() }).openapi({ title: "ConversationParams" });
 export type ConversationParamsDto = z.infer<typeof ConversationParamsDtoSchema>;
 
+// Query de listing des conversations : pagination + filtres participant / quartier.
 export const ConversationQueryDtoSchema = z
   .object({
     page: z.coerce.number().int().min(1).optional().default(1),
@@ -42,6 +49,7 @@ export const ConversationQueryDtoSchema = z
 export type ConversationQueryDto = z.infer<typeof ConversationQueryDtoSchema>;
 export type ConversationQueryInput = z.input<typeof ConversationQueryDtoSchema>;
 
+// Message renvoyé au client : émetteur, contenu (ou légende), média éventuel, statut lu.
 export const MessageResponseDtoSchema = z
   .object({
     id: z.string(),
@@ -57,6 +65,7 @@ export const MessageResponseDtoSchema = z
   .openapi({ title: "MessageResponse" });
 export type MessageResponseDto = z.infer<typeof MessageResponseDtoSchema>;
 
+// Envoi d'un message : par défaut texte ; mediaUrl requis (URL) pour les types média.
 export const SendMessageDtoSchema = z
   .object({
     type: MessageTypeSchema.default("text"),
@@ -69,8 +78,9 @@ export type SendMessageDto = z.infer<typeof SendMessageDtoSchema>;
 export const MessageParamsDtoSchema = z.object({ id: z.string() }).openapi({ title: "MessageParams" });
 export type MessageParamsDto = z.infer<typeof MessageParamsDtoSchema>;
 
-// Voice note upload: base64 (data-URL or raw). Bounded to ~5 MB decoded — base64
-// inflates ~4/3, so 7M chars ≈ 5 MB — to guard against filling object storage.
+// Envoi d'une note vocale : base64 (data-URL ou brut). Borné à ~5 Mo décodés —
+// le base64 gonfle d'environ 4/3, donc 7M caractères ≈ 5 Mo — pour ne pas saturer
+// le stockage objet.
 export const SendVoiceMessageDtoSchema = z
   .object({
     audioBase64: z
@@ -82,8 +92,8 @@ export const SendVoiceMessageDtoSchema = z
   .openapi({ title: "SendVoiceMessage" });
 export type SendVoiceMessageDto = z.infer<typeof SendVoiceMessageDtoSchema>;
 
-// Image message upload: base64 data-URL (png/jpeg/webp/gif). Same ~5 MB bound as voice.
-// Served privately (participant-checked), unlike public listing images.
+// Envoi d'une image : data-URL base64 (png/jpeg/webp/gif). Même borne ~5 Mo que la voix.
+// Servie en privé (contrôle des participants), contrairement aux images publiques d'annonces.
 export const SendImageMessageDtoSchema = z
   .object({
     imageBase64: z
@@ -95,6 +105,7 @@ export const SendImageMessageDtoSchema = z
   .openapi({ title: "SendImageMessage" });
 export type SendImageMessageDto = z.infer<typeof SendImageMessageDtoSchema>;
 
+// Query de listing des messages d'une conversation : pagination (jusqu'à 200 par page).
 export const MessageQueryDtoSchema = z
   .object({
     page: z.coerce.number().int().min(1).optional().default(1),
@@ -104,6 +115,7 @@ export const MessageQueryDtoSchema = z
 export type MessageQueryDto = z.infer<typeof MessageQueryDtoSchema>;
 export type MessageQueryInput = z.input<typeof MessageQueryDtoSchema>;
 
+// Rattachement d'un média déjà téléversé : URL fournie par le service d'upload + son type.
 export const UploadMediaDtoSchema = z
   .object({
     mediaUrl: z.string().url().openapi({ description: "URL of the uploaded media (provided by upload service)" }),

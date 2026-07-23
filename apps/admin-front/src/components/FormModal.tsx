@@ -1,3 +1,5 @@
+// Composant : modale de formulaire générique (création / édition / détail).
+// S'appuie sur ModalFrame pour l'habillage (backdrop + piège de focus).
 import { useId, type FormEvent, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { ModalFrame } from "./ModalFrame";
@@ -6,19 +8,22 @@ interface FormModalProps {
   open: boolean;
   title: string;
   onClose: () => void;
-  /** When provided, the modal renders a <form> and footer submit button. */
+  /** Si fourni, la modale rend un <form> et un bouton de soumission dans le pied. */
   onSubmit?: (e: FormEvent) => void;
   submitLabel?: string;
-  submitting?: boolean;
-  error?: string | null;
+  submitting?: boolean; // affiche un spinner et désactive le bouton pendant l'envoi
+  error?: string | null; // message d'erreur affiché en bas du corps (role="alert")
   children: ReactNode;
-  /** Hide the default footer (e.g. read-only detail views). */
+  /** Masque le pied par défaut (ex. vues de détail en lecture seule). */
   readOnly?: boolean;
   size?: "md" | "lg";
 }
 
-// Controlled modal — rendered as a focus-trapped overlay (see ModalFrame) rather than relying on
-// flyonui's JS toggle, so open/close is pure React state.
+/**
+ * Modale contrôlée : rendue comme un overlay avec piège de focus (voir ModalFrame)
+ * plutôt que via le toggle JS de flyonui — l'ouverture/fermeture reste du pur état React.
+ * En readOnly (sans onSubmit), le pied n'affiche qu'un bouton "Fermer".
+ */
 export function FormModal({
   open,
   title,
@@ -34,6 +39,7 @@ export function FormModal({
   const { t } = useTranslation();
   const titleId = useId();
   const errorId = useId();
+  // Rendu court-circuité tant que la modale est fermée (pas d'overlay dans le DOM).
   if (!open) return null;
 
   const body = (
@@ -72,6 +78,7 @@ export function FormModal({
   );
 
   return (
+    // Non-dismissible pendant l'envoi : ni Échap ni clic backdrop ne ferment la modale.
     <ModalFrame
       onClose={onClose}
       dismissible={!submitting}

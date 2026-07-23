@@ -3,10 +3,18 @@ import type { ITransactionRepository } from "../../repositories/Transaction/tran
 import { runInTransaction } from "../../repositories/tx.js";
 import { logger } from "../../logger.js";
 
-// Deletes a contract and, if it was still pending (escrow held, not yet released to
-// the provider or refunded), refunds the escrow to the beneficiary. Uses the state
-// of the atomically-deleted document so it can't race a completion/rejection. The
-// delete + refund + ledger row commit together when Mongo transactions are available.
+/**
+ * Cas d'usage : suppression d'un contrat.
+ *
+ * Supprime un contrat et, s'il était encore en attente (séquestre bloqué, pas encore
+ * versé au prestataire ni remboursé), rembourse le séquestre au bénéficiaire. S'appuie
+ * sur l'état du document supprimé atomiquement, ce qui empêche une course avec une
+ * complétion/un rejet. La suppression + le remboursement + l'écriture de journal sont
+ * validés ensemble lorsque les transactions Mongo sont disponibles.
+ *
+ * @returns Un handler renvoyant `true` si un contrat a été supprimé, `false` s'il
+ *   n'existait pas (→ 404).
+ */
 export const deleteContractUseCase = (
   contractRepository: IContractRepository,
   transactionRepository: ITransactionRepository,
@@ -16,6 +24,8 @@ export const deleteContractUseCase = (
       const deleted = await contractRepository.deleteContract(params.id, session);
       if (!deleted) return false;
 
+      // Le séquestre n'est encore bloqué que tant que le contrat n'est pas terminal
+      // (états "pending"/"draft") ; s'il est completed/rejected, l'argent a déjà bougé.
       const escrowStillHeld = deleted.signatureStatus === "pending" || deleted.signatureStatus === "draft";
       if (escrowStillHeld && deleted.price > 0) {
         await transactionRepository.adjustBalance(deleted.beneficiaryId, deleted.price, session);
@@ -33,9 +43,10 @@ export const deleteContractUseCase = (
           session,
         );
         if (session) {
-          await ledgerWrite; // atomic with the delete + refund
+          await ledgerWrite; // atomique avec la suppression + le remboursement
         } else {
-          // Sequential fallback: the refund already settled; keep the ledger best-effort.
+          // Repli séquentiel : le remboursement est déjà appliqué ; on garde l'écriture de
+          // journal en best-effort.
           await ledgerWrite.catch((err) =>
             logger.error({ err, contractId: deleted.id }, "escrow-refund ledger write failed"),
           );

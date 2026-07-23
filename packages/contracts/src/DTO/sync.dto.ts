@@ -1,17 +1,23 @@
+// DTO (couche contracts) : schémas zod de la passerelle de synchronisation offline
+// entre le client desktop JavaFX (base H2 locale) et Mongo. On y trouve l'ingestion
+// d'un lot d'événements locaux (ingest), sa comptabilité de retour (applied / conflicts
+// / rejected) et le flux de changements descendant (changes) que le client rejoue.
 import { z } from "../zod";
 
-/** Entities bridged between the desktop app's H2 database and Mongo. */
+/** Entités relayées entre la base H2 de l'app desktop et Mongo. */
 export const SyncEntitySchema = z.enum(["user", "incident", "district"]);
 export type SyncEntity = z.infer<typeof SyncEntitySchema>;
 
+/** Nature de l'opération locale à répercuter côté serveur. */
 export const SyncOperationSchema = z.enum(["INSERT", "UPDATE", "DELETE"]);
 export type SyncOperation = z.infer<typeof SyncOperationSchema>;
 
-/** Per-install identifier the desktop client sends on every sync call. */
+/** En-tête d'identification propre à chaque installation, envoyé par le client desktop à chaque appel de sync. */
 export const SyncInstanceHeaderSchema = z.object({
   "x-sync-instance": z.string().min(1).max(64).openapi({ description: "Desktop install UUID" }),
 });
 
+/** Un événement local soumis à l'ingestion : décrit une écriture (INSERT/UPDATE/DELETE) sur une entité, avec son instantané de données. */
 export const IngestEventDtoSchema = z
   .object({
     id: z.number().int().openapi({ description: "The client's stable per-record correlation id" }),
@@ -20,6 +26,8 @@ export const IngestEventDtoSchema = z
     mongoId: z.string().nullable().openapi({ description: "Server id, null until the server assigns one" }),
     data: z.record(z.unknown()).nullable().openapi({ description: "Local snapshot of the record; null for DELETE" }),
     occurredAt: z.string().datetime(),
+    // Jeton de concurrence optimiste : valeur d'updatedAt connue du client, comparée
+    // côté serveur pour détecter un conflit (édition concurrente) sur UPDATE/DELETE.
     baseUpdatedAt: z
       .string()
       .datetime()
@@ -29,26 +37,31 @@ export const IngestEventDtoSchema = z
   .openapi({ title: "IngestEvent" });
 export type IngestEventDto = z.infer<typeof IngestEventDtoSchema>;
 
+/** Taille maximale d'un lot d'ingestion (nombre d'événements par appel). */
 export const INGEST_BATCH_MAX = 100;
 
+/** Corps de la requête d'ingestion : un tableau d'événements borné à INGEST_BATCH_MAX. */
 export const IngestBatchDtoSchema = z
   .array(IngestEventDtoSchema)
   .max(INGEST_BATCH_MAX)
   .openapi({ title: "IngestBatch" });
 export type IngestBatchDto = z.infer<typeof IngestBatchDtoSchema>;
 
+/** Accusé d'un événement appliqué avec succès : renvoie l'id serveur et la valeur d'updatedAt réellement persistée. */
 export const AppliedEventDtoSchema = z
   .object({
     id: z.number().int(),
     mongoId: z.string(),
     operation: SyncOperationSchema,
-    // The exact persisted value, so the client can advance its optimistic-concurrency
-    // token straight from the ack instead of waiting for its own change-feed echo.
+    // La valeur exactement persistée : le client peut ainsi avancer son jeton de
+    // concurrence optimiste directement depuis l'accusé, sans attendre l'écho de
+    // sa propre modification dans le flux de changements.
     updatedAt: z.string().datetime().nullable().openapi({ description: "null for an applied DELETE" }),
   })
   .openapi({ title: "AppliedEvent" });
 export type AppliedEventDto = z.infer<typeof AppliedEventDtoSchema>;
 
+/** Événement en conflit : pointe vers l'enregistrement de conflit (conflictId) à résoudre côté desktop. */
 export const ConflictedEventDtoSchema = z
   .object({
     id: z.number().int(),
@@ -59,14 +72,16 @@ export const ConflictedEventDtoSchema = z
 export type ConflictedEventDto = z.infer<typeof ConflictedEventDtoSchema>;
 
 /**
- * Refusals that can never succeed on retry, so the client drops the pending row
- * rather than looping. `out-of-district` and `read-only-entity` are authorization
- * failures; `unprocessable` is a structurally impossible event (an UPDATE/DELETE
- * with no `mongoId`, or anything the server could not route to a write path).
+ * Refus qui ne pourront jamais aboutir à la réessai : le client abandonne la ligne
+ * en attente plutôt que de boucler. `out-of-district` et `read-only-entity` sont des
+ * échecs d'autorisation ; `unprocessable` désigne un événement structurellement
+ * impossible (UPDATE/DELETE sans `mongoId`, ou tout ce que le serveur n'a pas pu
+ * router vers un chemin d'écriture).
  */
 export const IngestRejectionReasonSchema = z.enum(["out-of-district", "read-only-entity", "unprocessable"]);
 export type IngestRejectionReason = z.infer<typeof IngestRejectionReasonSchema>;
 
+/** Événement rejeté définitivement, avec le motif du refus. */
 export const RejectedEventDtoSchema = z
   .object({
     id: z.number().int(),
@@ -76,10 +91,11 @@ export const RejectedEventDtoSchema = z
 export type RejectedEventDto = z.infer<typeof RejectedEventDtoSchema>;
 
 /**
- * Total accounting: every submitted event id appears in exactly one of the three
- * arrays — never zero, never twice. The client keys its pending-row lifecycle off
- * this (applied → clear + advance the token; conflicts → keep; rejected → drop), so
- * an unreported event would strand its row and be retried every cycle forever.
+ * Comptabilité exhaustive : chaque id d'événement soumis apparaît dans exactement
+ * l'un des trois tableaux — jamais zéro fois, jamais deux fois. Le client pilote le
+ * cycle de vie de ses lignes en attente là-dessus (applied → purge + avance du jeton ;
+ * conflicts → conserve ; rejected → abandonne) ; un événement non rapporté laisserait
+ * donc sa ligne orpheline, réessayée à chaque cycle indéfiniment.
  */
 export const IngestResultDtoSchema = z
   .object({
@@ -90,6 +106,7 @@ export const IngestResultDtoSchema = z
   .openapi({ title: "IngestResult" });
 export type IngestResultDto = z.infer<typeof IngestResultDtoSchema>;
 
+/** Entrée du flux de changements descendant : une écriture serveur à rejouer localement, repérée par un curseur `index` monotone. */
 export const ChangeEntryDtoSchema = z
   .object({
     index: z.number().int().openapi({ description: "Monotonic feed cursor" }),
@@ -102,8 +119,10 @@ export const ChangeEntryDtoSchema = z
   .openapi({ title: "ChangeEntry" });
 export type ChangeEntryDto = z.infer<typeof ChangeEntryDtoSchema>;
 
+/** Nombre maximal d'entrées renvoyées par une lecture du flux de changements. */
 export const CHANGES_LIMIT_MAX = 500;
 
+/** Query du flux de changements : reprise depuis un curseur (`since`), pagination (`limit`) et exclusion de sa propre instance (`excludeInstance`). */
 export const ChangesQueryDtoSchema = z
   .object({
     since: z.coerce

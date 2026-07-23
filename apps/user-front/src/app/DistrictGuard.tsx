@@ -2,14 +2,19 @@ import type { ReactNode } from "react";
 import { useAuth } from "@repo/hooks";
 import NoDistrict from "../pages/NoDistrict";
 
-// Gates the app on district membership — but only for regular users. A user with no
-// districtId can't use the app and sees the access-denied wall (NoDistrict). Admins have
-// no districtId of their own (they operate via adminDistrictId) so they are never gated;
-// superAdmins are already redirected to the admin console by the outer ProtectedRoute and
-// never reach here.
+/**
+ * Garde d'accès conditionnant l'app à l'appartenance à un quartier — mais uniquement
+ * pour les utilisateurs standards. Un `user` sans `districtId` ne peut rien faire et
+ * voit le mur d'accès refusé (NoDistrict).
+ *
+ * Les administrateurs n'ont pas de `districtId` propre (ils opèrent via `adminDistrictId`)
+ * et ne sont donc jamais bloqués ; les superAdmins sont redirigés vers la console admin
+ * par le `ProtectedRoute` parent et n'atteignent jamais ce composant.
+ */
 export function DistrictGuard({ children }: { children: ReactNode }) {
   const { user } = useAuth();
 
+  // Seuls les rôles "user" sont soumis à la condition ; les autres passent librement.
   if (user?.role === "user" && !user.districtId) {
     return <NoDistrict />;
   }

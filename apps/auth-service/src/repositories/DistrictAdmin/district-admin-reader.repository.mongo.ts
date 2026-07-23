@@ -4,6 +4,10 @@ import type { IDistrictAdminReaderRepository } from "./district-admin-reader.rep
 
 type DistrictAdminDoc = WithMongoId<DistrictAdminDocument>;
 
+/**
+ * Implémentation Mongo en lecture seule de IDistrictAdminReaderRepository.
+ * Lit la collection partagée des administrateurs de quartier (écrite par l'api).
+ */
 export class MongoDistrictAdminReaderRepository implements IDistrictAdminReaderRepository {
   private collection: Collection<DistrictAdminDoc>;
 

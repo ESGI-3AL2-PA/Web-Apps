@@ -1,25 +1,27 @@
 /**
- * Minimal, forward-only MongoDB migration runner.
+ * Runner de migrations MongoDB minimal, uniquement forward (pas de rejeu arrière
+ * automatique au-delà du dernier down).
  *
- * This is a *convention + runner*, deliberately not a migration framework:
- *   - Migrations live in `apps/api/src/migrations/` and are named `NNN-description.ts`
- *     (zero-padded numeric prefix — ordering is a lexicographic sort on the name).
- *   - Each migration module exports an async `up(db)` and, optionally, `down(db)`.
- *   - Applied migrations are recorded in the `_migrations` collection (one document
- *     per migration, `_id` = the file name without extension). Anything not recorded
- *     there is considered pending and is run in order.
+ * C'est une *convention + un runner*, délibérément pas un framework de migration :
+ *   - Les migrations vivent dans `apps/api/src/migrations/` et sont nommées
+ *     `NNN-description.ts` (préfixe numérique zéro-paddé — l'ordre est un tri
+ *     lexicographique sur le nom).
+ *   - Chaque module de migration exporte un `up(db)` async et, optionnellement, `down(db)`.
+ *   - Les migrations appliquées sont enregistrées dans la collection `_migrations`
+ *     (un document par migration, `_id` = nom de fichier sans extension). Tout ce
+ *     qui n'y figure pas est considéré comme en attente et exécuté dans l'ordre.
  *
- * Connection settings come from the same env vars the app uses (MONGODB_URL /
- * MONGODB_DB) via the shared connector, so no extra configuration is needed.
+ * Les paramètres de connexion viennent des mêmes variables d'env que l'app
+ * (MONGODB_URL / MONGODB_DB) via le connecteur partagé — aucune configuration en plus.
  *
- * Usage:
- *   npm run migrate          -w api   # apply all pending migrations
- *   npm run migrate:status   -w api   # list migrations and their state
- *   npm run migrate:down     -w api   # roll back the most recent migration
- *   tsx src/scripts/migrate.ts up     # (equivalent, run directly)
+ * Usage :
+ *   npm run migrate          -w api   # applique toutes les migrations en attente
+ *   npm run migrate:status   -w api   # liste les migrations et leur état
+ *   npm run migrate:down     -w api   # annule la migration la plus récente
+ *   tsx src/scripts/migrate.ts up     # (équivalent, exécution directe)
  *
- * In dev the migrations run as `.ts` via tsx; after `tsc` they run as the compiled
- * `.js` in `dist/migrations` — the runner resolves whichever sits next to it.
+ * En dev les migrations tournent en `.ts` via tsx ; après `tsc` elles tournent en
+ * `.js` compilé dans `dist/migrations` — le runner résout celles qui sont à côté de lui.
  */
 
 import { readdir } from "node:fs/promises";
@@ -28,13 +30,13 @@ import { fileURLToPath } from "node:url";
 import type { Collection, Db } from "mongodb";
 import { closeDB, connectDB } from "../repositories/mongodb.connector.js";
 
-/** Shape every migration file must satisfy (re-export `up`/`down` as named exports). */
+/** Forme que tout fichier de migration doit respecter (exports nommés `up`/`down`). */
 export interface Migration {
   up: (db: Db) => Promise<void>;
   down?: (db: Db) => Promise<void>;
 }
 
-/** A row in the `_migrations` ledger. `_id` is the migration file name (no ext). */
+/** Une ligne du registre `_migrations`. `_id` est le nom de fichier (sans extension). */
 interface MigrationRecord {
   _id: string;
   appliedAt: Date;
@@ -42,15 +44,17 @@ interface MigrationRecord {
 
 const MIGRATIONS_COLLECTION = "_migrations";
 
-// Typed accessor so `_id` is a string (the driver otherwise defaults it to ObjectId).
+// Accesseur typé pour que `_id` soit une chaîne (sinon le driver le typerait ObjectId).
 const ledger = (db: Db): Collection<MigrationRecord> => db.collection<MigrationRecord>(MIGRATIONS_COLLECTION);
+// Répertoire des migrations, résolu relativement à ce fichier (marche en .ts comme en .js).
 const migrationsDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../migrations");
 
-// NNN-description.(ts|js). Skip declaration/test/map siblings a build might drop.
+// NNN-description.(ts|js). Écarte les fichiers .d.ts / .test / .map qu'un build pourrait déposer.
 const FILE_RE = /^\d+-.+\.(ts|js)$/;
 
 const nameOf = (file: string): string => file.replace(/\.(ts|js)$/, "");
 
+// Liste les fichiers de migration valides, triés numériquement par préfixe NNN.
 const listMigrationFiles = async (): Promise<string[]> => {
   const entries = await readdir(migrationsDir);
   return entries
@@ -65,6 +69,7 @@ const appliedNames = async (db: Db): Promise<Set<string>> => {
   return new Set(docs.map((d) => d._id));
 };
 
+// Importe dynamiquement un module de migration et vérifie qu'il expose bien `up`.
 const loadMigration = async (file: string): Promise<Migration> => {
   const mod: Partial<Migration> = await import(path.join(migrationsDir, file));
   if (typeof mod.up !== "function") {
@@ -73,6 +78,8 @@ const loadMigration = async (file: string): Promise<Migration> => {
   return mod as Migration;
 };
 
+// Applique dans l'ordre toutes les migrations non encore enregistrées, en inscrivant
+// chacune au registre après son `up` (pas de transaction : un up doit être robuste).
 const runUp = async (db: Db): Promise<void> => {
   const done = await appliedNames(db);
   const pending = (await listMigrationFiles()).filter((f) => !done.has(nameOf(f)));
@@ -93,9 +100,9 @@ const runUp = async (db: Db): Promise<void> => {
   console.warn(`[migrate] up: applied ${pending.length} migration(s)`);
 };
 
+// Annule uniquement la dernière migration appliquée.
 const runDown = async (db: Db): Promise<void> => {
-  // Roll back only the most recently applied migration. `_id` is the zero-padded
-  // name, so a descending sort on it yields the latest.
+  // `_id` est le nom zéro-paddé, donc un tri décroissant dessus donne la plus récente.
   const [last] = await ledger(db).find({}).sort({ _id: -1 }).limit(1).toArray();
   if (!last) {
     console.warn("[migrate] down: nothing to roll back");
@@ -119,6 +126,7 @@ const runDown = async (db: Db): Promise<void> => {
   console.warn(`[migrate] reverted ${name}`);
 };
 
+// Affiche, pour chaque fichier de migration, s'il est `applied` ou `pending`.
 const runStatus = async (db: Db): Promise<void> => {
   const done = await appliedNames(db);
   const files = await listMigrationFiles();
@@ -132,6 +140,7 @@ const runStatus = async (db: Db): Promise<void> => {
   }
 };
 
+// Point d'entrée : dispatch selon la sous-commande (up | down | status), défaut `up`.
 const main = async (): Promise<void> => {
   const cmd = process.argv[2] ?? "up";
   const db = await connectDB();

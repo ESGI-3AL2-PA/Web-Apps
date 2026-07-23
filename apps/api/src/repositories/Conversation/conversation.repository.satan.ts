@@ -3,10 +3,14 @@ import type { Conversation, Message } from "../../entities/conversation.entity.j
 import type { IConversationRepository } from "./conversation.repository.js";
 import { eq, paginate, where } from "../satan.helpers.js";
 
-/** SATAN QL for the two id lookups, the single-message delete and the two
- *  paginated lists (COUNT + FIND, newest first); Mongo for the order-insensitive
- *  pair match, the two-collection message create and the read-then-delete
- *  cascade. */
+/**
+ * Repository de messagerie en implémentation hybride.
+ *
+ * SATAN QL pour les deux recherches par id, la suppression d'un message unique et
+ * les deux listes paginées (COUNT + FIND, plus récent d'abord) ; Mongo pour le
+ * match de paire insensible à l'ordre, la création de message sur deux collections
+ * et la cascade read-then-delete de suppression de compte.
+ */
 export class SatanConversationRepository implements IConversationRepository {
   constructor(
     private readonly mongo: IConversationRepository,
@@ -42,7 +46,7 @@ export class SatanConversationRepository implements IConversationRepository {
     return paginate<Message>(this.satan, "messages", clause, { page, limit, sort: "createdAt DESC" });
   }
 
-  // --- delegated to Mongo (pair match / two-collection writes / cascade) ---
+  // --- délégué à Mongo (match de paire / écritures deux-collections / cascade) ---
   ensureIndexes(): Promise<void> {
     return this.mongo.ensureIndexes();
   }

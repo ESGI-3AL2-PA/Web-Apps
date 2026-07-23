@@ -5,23 +5,25 @@ import { getAuthPolicy } from "@repo/contracts";
 import { TOKEN_ISSUER, TOKEN_ALG, TOKEN_AUDIENCE_STEP_UP } from "@repo/shared";
 import { JWKS } from "./auth.middleware.js";
 
+// Middleware — step-up MFA. Impose une preuve de TOTP fraîche sur les opérations sensibles.
+
 const STEP_UP_HEADER = "x-step-up-token";
 
 /**
- * Enforces a fresh-TOTP step-up on sensitive operations, driven by the contract's
- * `metadata.auth.stepUp` policy — the same declarative pattern as `authorize`. A stolen
- * live access token is not enough for these; the caller must present an `X-Step-Up-Token`
- * minted moments ago at /auth/step-up (proving a fresh code).
+ * Impose un step-up TOTP frais sur les opérations sensibles, piloté par la politique
+ * `metadata.auth.stepUp` du contrat — même approche déclarative que `authorize`. Un access token
+ * live volé ne suffit pas ici ; l'appelant doit présenter un `X-Step-Up-Token` émis il y a quelques
+ * instants sur /auth/step-up (prouvant un code frais).
  *
- * Production-only: in dev this short-circuits so MFA stays fully optional locally. Runs
- * after `authorize`, so `req.user` (and audience/ownership) is already established.
+ * Prod uniquement : en dev, court-circuité pour que la MFA reste totalement optionnelle en local.
+ * S'exécute après `authorize`, donc `req.user` (et audience/propriété) est déjà établi.
  */
 export const requireStepUp: RequestHandler = async (req, res, next) => {
   const route = (req as { tsRestRoute?: AppRoute }).tsRestRoute;
   const stepUp = route ? getAuthPolicy(route)?.stepUp : undefined;
   if (!stepUp) return next();
 
-  // Dev/local: never require step-up — the endpoints exist but enforcement is prod-only.
+  // Dev/local : ne jamais exiger de step-up — les endpoints existent mais l'application est prod-only.
   if (process.env.NODE_ENV !== "production") return next();
 
   const body = (req.body ?? {}) as Record<string, unknown>;

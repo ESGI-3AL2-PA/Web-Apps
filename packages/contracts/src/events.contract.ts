@@ -18,7 +18,17 @@ import { auth } from "./auth-meta";
 
 const c = initContract();
 
+/**
+ * Contract ts-rest des événements.
+ *
+ * Lectures ouvertes à tout utilisateur authentifié. La création est ouverte ;
+ * la mise à jour et la suppression sont réservées au créateur ou à un
+ * administrateur du quartier de l'événement (bypass superAdmin). Des routes
+ * complémentaires gèrent l'inscription, la présence et les signaux d'intérêt
+ * (ces derniers alimentant le moteur de recommandation Neo4j).
+ */
 export const eventsContract = c.router({
+  // GET /events — liste paginée des événements. Tout utilisateur authentifié.
   getEvents: {
     method: "GET",
     path: "/events",
@@ -30,6 +40,7 @@ export const eventsContract = c.router({
     metadata: auth({ audience: "api" }),
   },
 
+  // GET /events/:id — un événement par son id. Tout utilisateur authentifié.
   getEventById: {
     method: "GET",
     path: "/events/:id",
@@ -42,6 +53,7 @@ export const eventsContract = c.router({
     metadata: auth({ audience: "api" }),
   },
 
+  // POST /events — crée un événement. Tout utilisateur authentifié.
   createEvent: {
     method: "POST",
     path: "/events",
@@ -53,6 +65,7 @@ export const eventsContract = c.router({
     metadata: auth({ audience: "api" }),
   },
 
+  // PATCH /events/:id — mise à jour partielle. Créateur (ownerField) ou admin du quartier de l'événement.
   updateEvent: {
     method: "PATCH",
     path: "/events/:id",
@@ -75,6 +88,7 @@ export const eventsContract = c.router({
     }),
   },
 
+  // DELETE /events/:id — supprime un événement. Créateur ou admin du quartier de l'événement.
   deleteEvent: {
     method: "DELETE",
     path: "/events/:id",
@@ -97,6 +111,7 @@ export const eventsContract = c.router({
     }),
   },
 
+  // POST /events/:id/register — inscrit l'utilisateur authentifié à l'événement.
   registerToEvent: {
     method: "POST",
     path: "/events/:id/register",
@@ -110,6 +125,7 @@ export const eventsContract = c.router({
     metadata: auth({ audience: "api" }),
   },
 
+  // DELETE /events/:id/register — annule l'inscription de l'utilisateur authentifié.
   unregisterFromEvent: {
     method: "DELETE",
     path: "/events/:id/register",
@@ -123,6 +139,7 @@ export const eventsContract = c.router({
     metadata: auth({ audience: "api" }),
   },
 
+  // POST /events/:id/attend — marque la présence d'un utilisateur à l'événement (avec note optionnelle).
   attendEvent: {
     method: "POST",
     path: "/events/:id/attend",
@@ -136,6 +153,7 @@ export const eventsContract = c.router({
     metadata: auth({ audience: "api" }),
   },
 
+  // POST /events/:id/interest — exprime un intérêt (👍) ou désintérêt (👎) ; alimente le moteur de reco Neo4j.
   markInterest: {
     method: "POST",
     path: "/events/:id/interest",

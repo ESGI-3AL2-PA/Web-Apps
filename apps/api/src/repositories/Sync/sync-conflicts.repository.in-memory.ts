@@ -1,14 +1,21 @@
+/**
+ * Repository (implémentation en mémoire) des conflits de synchronisation.
+ *
+ * Réplique fidèlement le comportement de la version Mongo (gardes de résolution
+ * incluses) sur un simple tableau, pour que les tests exercent la vraie logique
+ * sans dépendre d'une base.
+ */
 import { randomUUID } from "crypto";
 import type { ConflictResolution, ConflictStatus, SyncEntity } from "@repo/contracts";
 import type { ISyncConflictsRepository, NewSyncConflict, SyncConflict } from "./sync-conflicts.repository.js";
 
 export class InMemorySyncConflictsRepository implements ISyncConflictsRepository {
   rows: SyncConflict[] = [];
-  /** Injectable so tests can assert on stable conflict ids. */
+  /** Injectable pour que les tests puissent asserter sur des ids de conflit stables. */
   nextId: () => string = () => randomUUID();
 
   async ensureIndexes(): Promise<void> {
-    // No-op: the in-memory repository has no indexes.
+    // No-op : le repository en mémoire n'a pas d'index.
   }
 
   async create(conflict: NewSyncConflict): Promise<SyncConflict> {
@@ -51,7 +58,7 @@ export class InMemorySyncConflictsRepository implements ISyncConflictsRepository
     return this.rows.find((r) => r.id === id) ?? null;
   }
 
-  // Guarded like the Mongo one: a second resolve finds nothing pending and bows out.
+  // Gardé comme la version Mongo : une seconde résolution ne trouve plus rien de « pending » et s'abstient.
   async markResolved(id: string, resolution: ConflictResolution, resolvedBy: string): Promise<SyncConflict | null> {
     const row = this.rows.find((r) => r.id === id && r.status === "pending");
     if (!row) return null;

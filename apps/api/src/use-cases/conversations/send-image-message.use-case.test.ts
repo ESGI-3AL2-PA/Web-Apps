@@ -1,11 +1,15 @@
+// Suite de tests du cas d'usage « envoyer un message image ».
+// Vérifie surtout la compensation transactionnelle : quand le rattachement du média
+// (attachMedia) échoue après que l'image a déjà été stockée, on doit supprimer et les
+// octets stockés ET la ligne de message pour ne laisser aucun orphelin.
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Message } from "../../entities/conversation.entity.js";
 import type { IConversationRepository } from "../../repositories/Conversation/conversation.repository.js";
 import { ImageAttachError } from "../../middleware/error-handler.js";
 import { sendImageMessageUseCase } from "./send-image-message.use-case.js";
 
-// Stub the object-storage layer so no real MinIO is touched. saveMessageImage
-// succeeds; deleteMessageImage is a spy we assert the compensation calls.
+// On mocke la couche de stockage objet pour ne toucher aucun MinIO réel. saveMessageImage
+// réussit ; deleteMessageImage est un spy dont on vérifie qu'il est appelé en compensation.
 const saveMessageImage = vi.fn(async (..._args: unknown[]) => {});
 const deleteMessageImage = vi.fn(async (..._args: unknown[]) => {});
 vi.mock("../../services/media-storage.service.js", () => ({
@@ -31,9 +35,11 @@ const makeRepo = (overrides: Partial<IConversationRepository>): IConversationRep
 
 const image = { bytes: Buffer.from("png-bytes"), contentType: "image/png" };
 
+// Compensation du cas d'usage image face à un échec du rattachement média.
 describe("sendImageMessageUseCase attach-failure compensation", () => {
   beforeEach(() => vi.clearAllMocks());
 
+  // attachMedia lève une erreur → on supprime image + ligne et on remonte l'erreur.
   it("deletes the stored image AND the message row, then throws ImageAttachError when attachMedia throws", async () => {
     const repo = makeRepo({
       attachMedia: vi.fn(async () => {
@@ -47,6 +53,7 @@ describe("sendImageMessageUseCase attach-failure compensation", () => {
     expect(repo.deleteMessage).toHaveBeenCalledWith("msg-1");
   });
 
+  // attachMedia renvoie null (ligne introuvable) → même compensation, ImageAttachError levée.
   it("deletes the stored image AND the message row, then throws ImageAttachError when attachMedia returns null", async () => {
     const repo = makeRepo({ attachMedia: vi.fn(async () => null) });
 
@@ -56,6 +63,7 @@ describe("sendImageMessageUseCase attach-failure compensation", () => {
     expect(repo.deleteMessage).toHaveBeenCalledWith("msg-1");
   });
 
+  // Chemin nominal : le message rattaché est renvoyé et aucune compensation n'est déclenchée.
   it("returns the updated message and does NOT compensate on the happy path", async () => {
     const repo = makeRepo({ attachMedia: vi.fn(async () => makeMessage("msg-1")) });
 

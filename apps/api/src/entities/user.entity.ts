@@ -1,7 +1,9 @@
-// The user document schema is the single source of truth in @repo/shared — the
-// shared `users` collection is read by both api and auth-service, so its shape lives
-// once (previously each app hand-declared it and they drifted). Re-exported under the
-// api's local names so existing imports (`User`, `UserSchema`, `UserRole`) stay stable.
+// Entity — schéma du document utilisateur.
+//
+// Le schéma vit une seule fois dans @repo/shared : la collection `users` est lue à la fois
+// par l'api et par l'auth-service, donc sa forme y est centralisée pour que les deux services
+// partagent une définition unique. Réexporté ici sous les noms locaux de l'api pour que les
+// imports existants (`User`, `UserSchema`, `UserRole`) restent stables.
 export {
   userDocumentSchema as UserSchema,
   UserRoleSchema,

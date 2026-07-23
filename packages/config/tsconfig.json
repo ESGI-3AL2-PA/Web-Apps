@@ -1,4 +1,5 @@
 {
+  // Package config partagé (utilisé par les frontends) : hérite du preset lib React.
   "extends": "../typescript-config/react-library.json",
   "include": ["."],
   "exclude": ["node_modules"]

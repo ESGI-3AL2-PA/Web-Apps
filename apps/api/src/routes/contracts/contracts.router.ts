@@ -28,9 +28,16 @@ import { deleteContractUseCase } from "../../use-cases/contracts/delete-contract
 
 const s = initServer();
 
-// Maps a contract entity to its response, exposing only the *caller's* signing URL.
-// A recipient's Documenso signing URL carries a token that authorizes signing as
-// that party, so the other party's URL must never be returned.
+/**
+ * Router ts-rest des contrats (mandats de service entre un prestataire et un
+ * bénéficiaire, avec signature électronique Documenso et séquestre de points).
+ * Chaque handler résout ses dépendances via `resolve()` et délègue au cas d'usage.
+ */
+
+// Mappe une entité contrat vers sa réponse, en n'exposant que l'URL de signature de
+// *l'appelant*. L'URL de signature Documenso d'un destinataire porte un token qui
+// autorise à signer en tant que cette partie ; l'URL de l'autre partie ne doit donc
+// jamais être renvoyée.
 const toResponse = (contract: Contract, userId: string | undefined): ContractResponseDto => ({
   id: contract.id,
   listingId: contract.listingId,
@@ -53,6 +60,7 @@ const toResponse = (contract: Contract, userId: string | undefined): ContractRes
 });
 
 export const contractsRouter = s.router(contractsContract, {
+  // GET /contracts — liste paginée, bornée au quartier de l'appelant.
   getContracts: async ({
     query: { page, limit, listingId, districtId, providerId, beneficiaryId, signatureStatus, disputed },
     req,
@@ -65,7 +73,8 @@ export const contractsRouter = s.router(contractsContract, {
     const result = await getContractsUseCase(resolve("contract"))({
       listingId,
       districtId: scope.districtId,
-      // Non-admins only see contracts they are a party to; admins may filter by either side.
+      // Les non-admins ne voient que les contrats dont ils sont partie ; les admins
+      // peuvent filtrer par l'un ou l'autre côté (prestataire/bénéficiaire).
       providerId: isAdmin ? providerId : undefined,
       beneficiaryId: isAdmin ? beneficiaryId : undefined,
       partyId: isAdmin ? undefined : req.user!.sub,
@@ -80,8 +89,9 @@ export const contractsRouter = s.router(contractsContract, {
     };
   },
 
+  // GET /contracts/:id — l'autorisation partie/admin (404 en cas de refus) est
+  // assurée par le middleware contract-metadata en amont.
   getContractById: async ({ params: { id }, req }) => {
-    // Party/admin authorization (404-on-deny) is enforced by the contract-metadata middleware.
     const contract = await getContractByIdUseCase(resolve("contract"))({ id });
     if (!contract) {
       return { status: 404, body: { message: "Contract not found" } };
@@ -89,10 +99,11 @@ export const contractsRouter = s.router(contractsContract, {
     return { status: 200, body: toResponse(contract, req.user!.sub) };
   },
 
+  // POST /contracts — crée un contrat. L'appelant est le bénéficiaire (le payeur,
+  // dont les points sont mis en séquestre) ; le prestataire réservé vient du body.
+  // La recherche de l'annonce, les invariants de réservation et la dérivation
+  // côté serveur de districtId/price vivent dans le cas d'usage (testés là-bas).
   createContract: async ({ body, req }) => {
-    // The caller is the beneficiary (payer, whose tokens are escrowed); the provider
-    // being booked comes from the body. Listing lookup, the booking invariants, and
-    // the server-side districtId/price derivation all live in the use-case (tested there).
     try {
       const newContract = await createContractUseCase(
         resolve("contract"),
@@ -107,29 +118,30 @@ export const contractsRouter = s.router(contractsContract, {
       });
       return { status: 201, body: toResponse(newContract, req.user!.sub) };
     } catch (err) {
-      // Referenced listing missing / party not found.
+      // Annonce référencée absente / partie introuvable.
       if (err instanceof ListingNotFoundError || err instanceof ContractPartyNotFoundError) {
         return { status: 404, body: { message: err.message } };
       }
-      // Listing closed, or the two parties are the same person.
+      // Annonce fermée, ou les deux parties sont la même personne.
       if (err instanceof ListingNotActiveError || err instanceof SamePartyError) {
         return { status: 400, body: { message: err.message } };
       }
-      // The caller booked a listing they don't provide.
+      // L'appelant a réservé une annonce dont il n'est pas le prestataire.
       if (err instanceof NotListingProviderError) {
         return { status: 403, body: { message: err.message } };
       }
-      // An identical active contract already exists (double-submit).
+      // Un contrat actif identique existe déjà (double soumission).
       if (err instanceof DuplicateContractError) {
         return { status: 409, body: { message: err.message } };
       }
-      // Beneficiary can't cover the price to escrow.
+      // Le bénéficiaire ne peut pas couvrir le prix à mettre en séquestre.
       if (err instanceof InsufficientFundsError) {
         return { status: 400, body: { message: err.message } };
       }
-      // The e-signature service failed — surface as a gateway error, not a 500. Log the
-      // underlying reason (which upstream call failed, and why) since the client only
-      // gets a generic message; this is the sole record of a Documenso misconfiguration.
+      // Le service de signature électronique a échoué — remonté comme erreur de
+      // gateway, pas un 500. On logue la raison sous-jacente (quel appel amont a
+      // échoué, et pourquoi) puisque le client ne reçoit qu'un message générique ;
+      // c'est la seule trace d'une mauvaise configuration Documenso.
       if (err instanceof DocumensoServiceError) {
         logger.error({ err }, "contract creation failed: Documenso error");
         return { status: 502, body: { message: "The signature service is unavailable, please retry" } };
@@ -138,8 +150,9 @@ export const contractsRouter = s.router(contractsContract, {
     }
   },
 
+  // POST /contracts/:id/resend — renvoie l'e-mail de signature. Autorisation
+  // réservée aux parties, assurée par le middleware contract-metadata.
   resendContract: async ({ params: { id } }) => {
-    // Party-only authorization is enforced by the contract-metadata middleware.
     const resent = await resendContractUseCase(resolve("contract"), documensoService)({ id });
     if (!resent) {
       return { status: 404, body: { message: "Contract not found" } };
@@ -147,6 +160,7 @@ export const contractsRouter = s.router(contractsContract, {
     return { status: 200, body: { resent: true } };
   },
 
+  // POST /contracts/:id/dispute — une partie conteste le contrat (avec motif).
   disputeContract: async ({ params: { id }, body, req }) => {
     try {
       const contract = await disputeContractUseCase(resolve("contract"))(id, body);
@@ -162,8 +176,10 @@ export const contractsRouter = s.router(contractsContract, {
     }
   },
 
+  // POST /contracts/:id/resolve-dispute — l'administrateur de quartier tranche le
+  // litige (remboursement ou règlement au prestataire). Autorisation réservée à
+  // l'administrateur de quartier, assurée par le middleware contract-metadata.
   resolveDispute: async ({ params: { id }, body, req }) => {
-    // District-admin-only authorization is enforced by the contract-metadata middleware.
     try {
       const contract = await resolveDisputeUseCase(
         resolve("contract"),
@@ -177,7 +193,7 @@ export const contractsRouter = s.router(contractsContract, {
       }
       return { status: 200, body: toResponse(contract, req.user!.sub) };
     } catch (err) {
-      // A refund was requested on a contract whose escrow is already settled to the provider.
+      // Un remboursement a été demandé sur un contrat dont le séquestre est déjà réglé au prestataire.
       if (err instanceof UnsettleableDisputeError) {
         return { status: 409, body: { message: err.message } };
       }
@@ -185,6 +201,7 @@ export const contractsRouter = s.router(contractsContract, {
     }
   },
 
+  // DELETE /contracts/:id — supprime le contrat (transaction pour dénouer le séquestre).
   deleteContract: async ({ params: { id } }) => {
     const deleted = await deleteContractUseCase(resolve("contract"), resolve("transaction"))({ id });
     if (!deleted) {

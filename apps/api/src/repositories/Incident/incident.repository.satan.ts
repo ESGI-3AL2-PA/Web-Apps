@@ -3,9 +3,12 @@ import type { Incident } from "../../entities/incident.entity.js";
 import type { IIncidentRepository } from "./incident.repository.js";
 import { containsAny, eq, paginate, where } from "../satan.helpers.js";
 
-/** SATAN QL for id lookup, deletes and the paginated list (COUNT + CONTAINS
- *  search); Mongo for the `$group` stats and the `history[]`-touching
- *  create/update. */
+/**
+ * Implémentation SATAN QL du repository des signalements. Utilise SATAN pour la
+ * lecture par id, les suppressions et la liste paginée (COUNT + recherche
+ * CONTAINS) ; délègue à Mongo les stats en `$group` et les create/update qui
+ * touchent le tableau `history[]`.
+ */
 export class SatanIncidentRepository implements IIncidentRepository {
   constructor(
     private readonly mongo: IIncidentRepository,
@@ -39,7 +42,7 @@ export class SatanIncidentRepository implements IIncidentRepository {
     return paginate<Incident>(this.satan, "incidents", clause, { page, limit });
   }
 
-  // --- delegated to Mongo (aggregation / history[] writes) ---
+  // --- délégué à Mongo (agrégation / écritures sur history[]) ---
   ensureIndexes(): Promise<void> {
     return this.mongo.ensureIndexes();
   }

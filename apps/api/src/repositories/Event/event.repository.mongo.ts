@@ -7,8 +7,8 @@ import type { IEventRepository } from "./event.repository.js";
 
 type EventDoc = WithMongoId<Event>;
 
-// Per-user attendance/interest signals — the durable source of truth, mirrored
-// into Neo4j (best-effort) for the recommendation engine.
+// Signaux de présence/intérêt par utilisateur — la source de vérité durable,
+// répliquée dans Neo4j (best-effort) pour le moteur de recommandation.
 type InteractionDoc = {
   eventId: string;
   userId: string;
@@ -18,9 +18,16 @@ type InteractionDoc = {
   at: string;
 };
 
-// Default event duration: within 4h of start = "ongoing", after = "completed".
+// Durée par défaut d'un événement : dans les 4h suivant le début = "ongoing"
+// (en cours), au-delà = "completed" (terminé).
 const FOUR_HOURS_MS = 4 * 60 * 60 * 1000;
 
+/**
+ * Implémentation Mongo du repository des événements.
+ *
+ * Persiste deux collections : `events` et `event_interactions` (présence /
+ * intérêt, un upsert par (event, user, kind)).
+ */
 export class MongoEventRepository implements IEventRepository {
   private collection: Collection<EventDoc>;
   private interactions: Collection<InteractionDoc>;
@@ -31,9 +38,10 @@ export class MongoEventRepository implements IEventRepository {
   }
 
   async ensureIndexes(): Promise<void> {
-    // Backs district-scoped list filtering.
+    // Sous-tend le filtrage de la liste par quartier.
     await this.collection.createIndex({ districtId: 1 });
-    // One interaction row per (event, user, kind) — makes record* an idempotent upsert.
+    // Une seule ligne d'interaction par (event, user, kind) — rend record* un upsert
+    // idempotent.
     await this.interactions.createIndex({ eventId: 1, userId: 1, kind: 1 }, { unique: true });
     await this.interactions.createIndex({ userId: 1 });
   }
@@ -56,7 +64,8 @@ export class MongoEventRepository implements IEventRepository {
 
     const filter: Filter<EventDoc> = {};
 
-    // Title-only search — matching description/location caused false positives.
+    // Recherche sur le titre uniquement — matcher description/lieu produisait des
+    // faux positifs.
     if (search) {
       filter.title = { $regex: escapeRegex(search), $options: "i" };
     }
@@ -65,11 +74,14 @@ export class MongoEventRepository implements IEventRepository {
     if (creatorId) filter.creatorId = creatorId;
     if (registrantId) filter.registrants = registrantId;
 
-    // Date-derived status (see computeStatus in the use-case); "cancelled" stays explicit.
+    // Statut dérivé de la date (cf. computeStatus dans le cas d'usage) ; "cancelled"
+    // reste un statut explicite stocké.
     if (status) {
       if (status === "cancelled") {
         filter.status = "cancelled";
       } else {
+        // Les autres statuts se déduisent de eventDate par rapport à maintenant et à
+        // la fenêtre de 4h ; on exclut d'abord les événements annulés.
         filter.status = { $ne: "cancelled" };
         const nowIso = new Date().toISOString();
         const fourHoursAgoIso = new Date(Date.now() - FOUR_HOURS_MS).toISOString();
@@ -128,6 +140,9 @@ export class MongoEventRepository implements IEventRepository {
   }
 
   async addRegistrant(id: string, userId: string): Promise<Event | null> {
+    // Filtre gardé : l'utilisateur ne doit pas déjà être inscrit et il doit rester au
+    // moins un siège — sinon findOneAndUpdate ne matche rien et renvoie null (pas de
+    // double inscription ni de siège négatif, sans transaction).
     const result = await this.collection.findOneAndUpdate(
       { _id: id, registrants: { $ne: userId }, remainingSeats: { $gt: 0 } },
       { $addToSet: { registrants: userId }, $inc: { remainingSeats: -1 } },
@@ -137,6 +152,8 @@ export class MongoEventRepository implements IEventRepository {
   }
 
   async removeRegistrant(id: string, userId: string): Promise<Event | null> {
+    // Ne libère un siège que si l'utilisateur était bien inscrit (garde contre les
+    // désinscriptions en double qui gonfleraient remainingSeats).
     const result = await this.collection.findOneAndUpdate(
       { _id: id, registrants: userId },
       { $pull: { registrants: userId }, $inc: { remainingSeats: 1 } },
@@ -146,6 +163,8 @@ export class MongoEventRepository implements IEventRepository {
   }
 
   async recordAttendance(eventId: string, userId: string, rating?: number): Promise<void> {
+    // Upsert idempotent sur (event, user, kind=attendance) : ré-enregistrer met
+    // simplement la note à jour.
     await this.interactions.updateOne(
       { eventId, userId, kind: "attendance" },
       { $set: { rating, at: new Date().toISOString() } },
@@ -177,7 +196,7 @@ export class MongoEventRepository implements IEventRepository {
   }
 
   async removeUserFromAllEvents(userId: string): Promise<void> {
-    // Free the seat everywhere they were registered.
+    // Libère le siège partout où l'utilisateur était inscrit.
     await this.collection.updateMany(
       { registrants: userId },
       { $pull: { registrants: userId }, $inc: { remainingSeats: 1 } },

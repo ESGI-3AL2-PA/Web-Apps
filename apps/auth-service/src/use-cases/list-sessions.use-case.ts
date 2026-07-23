@@ -1,5 +1,8 @@
+// Cas d'usage : liste les sessions actives de l'utilisateur pour la vue « appareils
+// connectés », une ligne par famille de session, en marquant la session courante.
 import type { IRefreshTokenRepository } from "../repositories/RefreshToken/refresh-token.repository.js";
 
+/** Vue d'une session exposée à l'utilisateur ; `id` est l'ID de famille (stable), `current` marque l'appareil courant. */
 export interface SessionView {
   id: string;
   userAgent: string | null;
@@ -10,18 +13,21 @@ export interface SessionView {
   current: boolean;
 }
 
-// Lists the user's active sessions, one row per session family. `currentHash` is
-// the sha256 of the caller's own refresh cookie (or null), used to flag which
-// session is "this device". The returned `id` is the session family id so that
-// revoking survives token rotation (the token id changes on every refresh).
+/**
+ * Liste les sessions actives de l'utilisateur, une ligne par famille de session. `currentHash`
+ * est le sha256 du refresh cookie de l'appelant (ou null), utilisé pour marquer la session
+ * « cet appareil ». L'`id` renvoyé est l'ID de famille, pour que la révocation survive à la
+ * rotation des tokens (l'ID du token change à chaque refresh).
+ */
 export const listSessionsUseCase = (refreshTokenRepo: IRefreshTokenRepository) => {
   return async (userId: string, currentHash: string | null): Promise<SessionView[]> => {
     const active = await refreshTokenRepo.findActiveByUserId(userId);
-    // Collapse a family to a single row (a rotation can momentarily leave two
-    // active tokens). findActiveByUserId is sorted newest-first, so the first
-    // token seen per family is the one to keep.
+    // Réduit une famille à une seule ligne (une rotation peut laisser momentanément deux
+    // tokens actifs). findActiveByUserId trie du plus récent au plus ancien, donc le premier
+    // token vu par famille est celui à conserver.
     const byFamily = new Map<string, SessionView>();
     for (const s of active) {
+      // Clé de regroupement : l'ID de famille de session, ou l'ID du token pour les anciens tokens sans sessionId.
       const key = s.sessionId ?? s.id;
       const view: SessionView = {
         id: key,
@@ -34,7 +40,7 @@ export const listSessionsUseCase = (refreshTokenRepo: IRefreshTokenRepository) =
       };
       const existing = byFamily.get(key);
       if (!existing) byFamily.set(key, view);
-      else if (view.current) existing.current = true; // don't lose the current flag on the kept row
+      else if (view.current) existing.current = true; // ne pas perdre le marqueur « courant » sur la ligne conservée
     }
     return [...byFamily.values()];
   };

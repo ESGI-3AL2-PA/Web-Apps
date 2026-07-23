@@ -8,7 +8,7 @@ import { getUserBalance } from "../api-service/transactions.service";
 import { formatPrice } from "../lib/format";
 import NotificationBell from "./NotificationBell";
 
-// A classifieds-style icon action: icon on top, small label below.
+// Action icône façon site de petites annonces : icône en haut, petit libellé en dessous.
 function IconAction({ to, label, icon }: { to: string; label: string; icon: string }) {
   return (
     <Link
@@ -21,6 +21,7 @@ function IconAction({ to, label, icon }: { to: string; label: string; icon: stri
   );
 }
 
+// Liens du menu déroulant « compte » (desktop).
 const MENU_LINKS = [
   { to: "/profil", key: "header.profile" },
   { to: "/mes-annonces", key: "header.myListings" },
@@ -29,6 +30,11 @@ const MENU_LINKS = [
   { to: "/parametres", key: "header.settings" },
 ] as const;
 
+/**
+ * En-tête desktop collant : logo, bouton dépôt d'annonce, barre de recherche, cloche de
+ * notifications, actions icônes (événements / sondages / messages), solde de points, menu
+ * compte et sélecteur de langue. Une seconde rangée affiche la barre de catégories (tags).
+ */
 export default function Header() {
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
@@ -40,7 +46,7 @@ export default function Header() {
   const menuRef = useRef<HTMLDivElement>(null);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
 
-  // Live points balance in the avatar area (silent on 403).
+  // Solde de points en direct affiché près de l'avatar (silencieux en cas de 403).
   useEffect(() => {
     if (!user?.id) return;
     getUserBalance(user.id)
@@ -48,7 +54,7 @@ export default function Header() {
       .catch(() => setBalance(null));
   }, [user?.id]);
 
-  // Close the account menu on outside click.
+  // Ferme le menu compte lors d'un clic à l'extérieur.
   useEffect(() => {
     const onDoc = (e: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
@@ -57,6 +63,7 @@ export default function Header() {
     return () => document.removeEventListener("mousedown", onDoc);
   }, []);
 
+  // Redirige vers la page de recherche avec le terme saisi (encodé en query).
   const onSearch = (e: FormEvent) => {
     e.preventDefault();
     navigate(`/recherche?search=${encodeURIComponent(q.trim())}`);
@@ -64,7 +71,7 @@ export default function Header() {
 
   return (
     <header className="sticky top-0 z-40 border-b border-base-content/10 bg-base-100">
-      {/* Row 1 — logo · deposer · search · account actions */}
+      {/* Rangée 1 — logo · déposer · recherche · actions compte */}
       <div className="mx-auto flex max-w-6xl items-center gap-4 px-4 py-2.5">
         <Link to="/" className="flex shrink-0 select-none items-center gap-2 text-xl font-extrabold tracking-tight">
           <img src="/Logo-connectedNeighbours.png" alt={t("header.brand")} className="h-9 w-9" />
@@ -141,9 +148,10 @@ export default function Header() {
                     </Link>
                   </li>
                 ))}
+                {/* Lien vers l'appli admin, réservé aux rôles admin / superAdmin */}
                 {user && ["admin", "superAdmin"].includes(user.role) && (
                   <li>
-                    {/* Separate origin (admin app) — a plain anchor, not a router Link. */}
+                    {/* Origine distincte (appli admin) — ancre simple, pas un Link du router. */}
                     <a href={config.adminUrl} onClick={() => setMenuOpen(false)}>
                       <span className="icon-[tabler--shield] size-4" />
                       {t("header.adminApp")}
@@ -176,10 +184,10 @@ export default function Header() {
         </nav>
       </div>
 
-      {/* Row 2 — category bar (district tags) */}
+      {/* Rangée 2 — barre de catégories (tags) */}
       <div className="border-t border-base-content/10">
         <nav className="mx-auto flex max-w-6xl items-center gap-5 overflow-x-auto px-4 py-2 text-sm font-medium whitespace-nowrap text-base-content/80">
-          {/* Events / polls live in the icon nav on desktop; surface them here on mobile. */}
+          {/* Événements / sondages sont dans la nav icônes en desktop ; on les remonte ici sur mobile. */}
           <Link to="/evenements" className="shrink-0 hover:text-primary md:hidden">
             {t("header.events")}
           </Link>

@@ -6,9 +6,16 @@ import { getTags } from "../api-service/tags.service";
 import { tagLabel } from "../lib/tag-label";
 import { useFocusTrap } from "../lib/useFocusTrap";
 
-// Self-contained edit form for a single listing. Kept inside MyListings' scope on
-// purpose (see PR notes): PostListing owns its own form, so we duplicate the field
-// layout here rather than share a component and risk a cross-PR collision.
+/**
+ * Modale d'édition autonome d'une annonce. Volontairement cantonnée au périmètre de
+ * MyListings (cf. notes de PR) : PostListing possède déjà son propre formulaire, on
+ * duplique donc ici la disposition des champs plutôt que de partager un composant et
+ * risquer une collision entre PR.
+ *
+ * @param listing - l'annonce à éditer (valeurs initiales du formulaire).
+ * @param onClose - ferme la modale sans enregistrer.
+ * @param onUpdated - reçoit l'annonce mise à jour après un PATCH réussi.
+ */
 export default function EditListingModal({
   listing,
   onClose,
@@ -24,10 +31,11 @@ export default function EditListingModal({
   const [title, setTitle] = useState(listing.title);
   const [description, setDescription] = useState(listing.description);
   const [price, setPrice] = useState(String(listing.price));
-  const [tag, setTag] = useState(listing.tags?.[0] ?? "");
+  const [tag, setTag] = useState(listing.tags?.[0] ?? ""); // on ne gère qu'une seule catégorie
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Charge la liste des catégories (tags) pour le menu déroulant ; en cas d'échec, liste vide.
   useEffect(() => {
     let ignore = false;
     getTags()
@@ -42,6 +50,7 @@ export default function EditListingModal({
     };
   }, []);
 
+  // Construit le DTO de mise à jour et envoie le PATCH ; remonte l'annonce à jour au parent.
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     setBusy(true);
@@ -50,7 +59,7 @@ export default function EditListingModal({
       const body: UpdateListingDto = {
         title: title.trim(),
         description: description.trim(),
-        price: Number(price) || 0,
+        price: Number(price) || 0, // prix en points ; NaN retombe sur 0
         tags: tag ? [tag] : [],
       };
       const updated = await updateListing(listing.id, body);

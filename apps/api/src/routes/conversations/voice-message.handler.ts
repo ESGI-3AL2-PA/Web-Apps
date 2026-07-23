@@ -3,9 +3,10 @@ import { resolve } from "../../repositories/container.js";
 import type { IConversationRepository } from "../../repositories/Conversation/conversation.repository.js";
 import { getAudioStream, AUDIO_MIME } from "../../services/media-storage.service.js";
 
-// GET /messages/:id/audio — sert le fichier audio (binaire). Auth + party check.
-// The voice-message POST is a ts-rest contract route (conversationsRouter); only this
-// binary stream stays a raw handler, like the listing-image and contract-PDF streams.
+// GET /messages/:id/audio — sert le fichier audio (binaire). Auth + contrôle de
+// participation. Le POST du message vocal est une route de contrat ts-rest
+// (conversationsRouter) ; seul ce flux binaire reste un handler brut, comme les flux
+// image d'annonce et PDF de contrat.
 export const audioStreamHandler = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const user = req.user;

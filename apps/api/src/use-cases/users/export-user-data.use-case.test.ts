@@ -1,7 +1,14 @@
+/**
+ * Suite de tests du cas d'usage `exportUserDataUseCase` (export RGPD des données personnelles).
+ * Vérifie l'agrégation de toutes les catégories de données, le retrait des secrets (hash de
+ * mot de passe, secret TOTP), la récupération des messages par conversation, le cas utilisateur
+ * inexistant, et la dégradation gracieuse d'une source défaillante en section vide.
+ */
 import { describe, expect, it, vi } from "vitest";
 import type { User } from "../../entities/user.entity.js";
 import { exportUserDataUseCase, type ExportUserDataDeps } from "./export-user-data.use-case.js";
 
+// Fabrique une réponse paginée factice à partir d'un tableau de lignes.
 const page = <T>(data: T[]) => ({ data, total: data.length, page: 1, limit: 10_000 });
 
 const makeUser = (id: string): User =>
@@ -17,8 +24,8 @@ const makeUser = (id: string): User =>
     districtId: "d1",
   }) as unknown as User;
 
-// A deps object whose every source returns a single tagged row, so the test can assert
-// each section is wired to its own repository call.
+// Objet de dépendances dont chaque source renvoie une unique ligne étiquetée, afin que le
+// test puisse vérifier que chaque section est bien câblée à son propre appel de repository.
 const makeDeps = (user: User | null): ExportUserDataDeps =>
   ({
     userRepository: { getUserById: vi.fn(async () => user) },
@@ -49,6 +56,7 @@ const makeDeps = (user: User | null): ExportUserDataDeps =>
   }) as unknown as ExportUserDataDeps;
 
 describe("exportUserDataUseCase", () => {
+  // Toutes les catégories de données personnelles sont agrégées dans un seul document.
   it("aggregates every personal-data category into one document", async () => {
     const deps = makeDeps(makeUser("u1"));
     const result = await exportUserDataUseCase(deps)({ id: "u1" });
@@ -70,6 +78,7 @@ describe("exportUserDataUseCase", () => {
     expect(result!.exportedAt).toEqual(expect.any(String));
   });
 
+  // Les données personnelles de l'utilisateur sont incluses, mais le hash de mot de passe et le secret TOTP sont retirés.
   it("includes the user PII but strips the password hash and TOTP secret", async () => {
     const deps = makeDeps(makeUser("u1"));
     const result = await exportUserDataUseCase(deps)({ id: "u1" });
@@ -79,6 +88,7 @@ describe("exportUserDataUseCase", () => {
     expect(result!.user).not.toHaveProperty("totpSecret");
   });
 
+  // Les messages sont récupérés pour chaque conversation à laquelle l'utilisateur participe.
   it("pulls messages for every conversation the user participates in", async () => {
     const deps = makeDeps(makeUser("u1"));
     await exportUserDataUseCase(deps)({ id: "u1" });
@@ -89,12 +99,14 @@ describe("exportUserDataUseCase", () => {
     expect(deps.conversationRepository.getMessages).toHaveBeenCalledWith("conv-1", expect.objectContaining({}));
   });
 
+  // Renvoie null quand l'utilisateur n'existe pas (le routeur mappe ça sur un 404).
   it("returns null when the user does not exist", async () => {
     const deps = makeDeps(null);
     const result = await exportUserDataUseCase(deps)({ id: "ghost" });
     expect(result).toBeNull();
   });
 
+  // Une source défaillante est dégradée en section vide au lieu de faire échouer tout l'export.
   it("degrades a failing source to an empty section instead of failing the export", async () => {
     const deps = makeDeps(makeUser("u1"));
     deps.notificationRepository.getNotifications = vi.fn(async () => {
@@ -107,7 +119,7 @@ describe("exportUserDataUseCase", () => {
     const result = await exportUserDataUseCase(deps)({ id: "u1" });
     expect(result!.notifications).toEqual([]);
     expect(result!.sessions).toEqual([]);
-    // Unaffected sections still populate.
+    // Les sections non affectées restent bien remplies.
     expect(result!.listings).toEqual([{ id: "listing-1" }]);
   });
 });

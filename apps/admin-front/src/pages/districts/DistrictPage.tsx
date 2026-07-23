@@ -1,3 +1,6 @@
+// Page Quartiers de la console : vue carte du quartier actif (celui en scope) pour éditer son
+// nom, son tracé et ses points de départ, avec sauvegarde sur place. Un superAdmin peut basculer
+// de quartier via le sélecteur de barre supérieure et en créer un nouveau via une modale.
 import { useEffect, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@repo/hooks";
@@ -9,6 +12,11 @@ import { useToast } from "../../components/Toast";
 import { useDistrictScope } from "../../app/DistrictScopeProvider";
 import { DistrictMapEditor } from "./DistrictMapEditor";
 
+/**
+ * Vérifie qu'un GeoJSON est un Polygon exploitable : type Polygon et chaque anneau ferme
+ * comportant au moins 4 positions (contrainte minimale d'un anneau linéaire fermé).
+ * Sert de garde de type pour restreindre `GeoJson` à `GeoJsonInput` avant envoi à l'API.
+ */
 function isValidPolygon(geoJson: GeoJson): geoJson is GeoJsonInput {
   return (
     geoJson.type === "Polygon" &&
@@ -18,14 +26,12 @@ function isValidPolygon(geoJson: GeoJson): geoJson is GeoJsonInput {
   );
 }
 
+/** Extrait un message d'erreur lisible (réponse API puis message brut), avec repli fourni. */
 const errMessage = (err: unknown, fallback: string): string => {
   const e = err as { response?: { data?: { message?: string } }; message?: string };
   return e?.response?.data?.message ?? e?.message ?? fallback;
 };
 
-// The Districts screen is a map view of the active district (the one in scope): edit its
-// name/boundary/starting points and save in place. A superAdmin switches which district this
-// shows via the top-bar selector, and can create a new one via "New district".
 export default function DistrictPage() {
   const { t } = useTranslation();
   const { user } = useAuth();
@@ -42,6 +48,8 @@ export default function DistrictPage() {
   const [saved, setSaved] = useState(false);
   const [creating, setCreating] = useState(false);
 
+  // Charge le quartier actif à chaque changement de scope ; réinitialise le formulaire si aucun
+  // quartier n'est sélectionné. `cancelled` neutralise une réponse tardive après un nouveau scope.
   useEffect(() => {
     if (!districtId) {
       setName("");
@@ -77,8 +85,8 @@ export default function DistrictPage() {
     setSaved(false);
     if (!districtId) return;
 
-    // `required` blocks a truly-empty field but not a whitespace-only one, and gives no
-    // in-app message — validate explicitly and save the trimmed value.
+    // `required` bloque un champ vraiment vide mais pas un champ composé uniquement d'espaces,
+    // et n'affiche aucun message dans l'app — on valide explicitement et on sauve la valeur nettoyée.
     const trimmedName = name.trim();
     if (!trimmedName) {
       setError(t("districts.nameRequired"));
@@ -92,7 +100,7 @@ export default function DistrictPage() {
 
     setSubmitting(true);
     try {
-      // null explicitly clears an existing boundary; undefined would be dropped by JSON.
+      // null efface explicitement un tracé existant ; undefined serait supprimé par la sérialisation JSON.
       await updateDistrict(districtId, { name: trimmedName, geoJson, startingPoints });
       setSaved(true);
       toast.show(t("districts.saved"));
@@ -185,6 +193,10 @@ export default function DistrictPage() {
   );
 }
 
+/**
+ * Modale de création d'un quartier (superAdmin) : nom, points de départ et tracé obligatoire.
+ * Après création réussie, recharge le scope sur le nouveau quartier via `reload(id)` puis ferme.
+ */
 function NewDistrictModal({ onClose }: { onClose: () => void }) {
   const { t } = useTranslation();
   const toast = useToast();

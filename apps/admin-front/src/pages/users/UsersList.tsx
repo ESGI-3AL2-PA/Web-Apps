@@ -1,3 +1,7 @@
+// Page de gestion des utilisateurs du quartier actif : consultation (solde + transactions
+// récentes), envoi d'un lien de réinitialisation de mot de passe, exclusion du quartier,
+// bannissement/débannissement, et promotion/rétrogradation en administrateur de quartier
+// (superAdmin uniquement, sur le quartier en scope).
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@repo/hooks";
@@ -35,15 +39,15 @@ export default function UsersList() {
   const [kicking, setKicking] = useState<UserResponseDto | null>(null);
   const [promoting, setPromoting] = useState<UserResponseDto | null>(null);
   const [demoting, setDemoting] = useState<UserResponseDto | null>(null);
-  // userId -> assignment id, for the active district only (see loadAssignments).
+  // userId -> id d'attribution, pour le quartier actif uniquement (voir loadAssignments).
   const [assignments, setAssignments] = useState<Record<string, string>>({});
 
-  // Promotion grants district-admin rights, so it's superAdmin-only (same rule as the
-  // /district-admins page) and needs an active district to attach the assignment to.
+  // La promotion confère les droits d'administrateur de quartier : réservée au superAdmin (même
+  // règle que la page /district-admins) et nécessite un quartier actif auquel rattacher l'attribution.
   const canPromote = me?.role === "superAdmin" && !!scope.districtId;
 
-  // Which admins in this district were promoted through an assignment row — the only ones
-  // this page can revoke. Fetched per district rather than per row to keep it to one request.
+  // Recense les admins de ce quartier promus via une ligne d'attribution — les seuls que cette page
+  // peut rétrograder. Chargé par quartier plutôt que par ligne pour tenir en une seule requête.
   const loadAssignments = useCallback(async () => {
     if (!canPromote) return setAssignments({});
     const res = await listDistrictAdmins({ page: 1, limit: 100, districtId: scope.districtId! });
@@ -239,6 +243,10 @@ export default function UsersList() {
   );
 }
 
+/**
+ * Fiche de consultation d'un utilisateur : affiche ses informations, son solde à jour et ses
+ * dix dernières transactions (chargés en parallèle au montage).
+ */
 function UserView({ user, onClose }: { user: UserResponseDto; onClose: () => void }) {
   const { t } = useTranslation();
   const scope = useDistrictScope();
@@ -246,6 +254,7 @@ function UserView({ user, onClose }: { user: UserResponseDto; onClose: () => voi
   const [txns, setTxns] = useState<TransactionResponseDto[]>([]);
   const [error, setError] = useState<string | null>(null);
 
+  // Charge solde et transactions en parallèle ; `cancelled` ignore la réponse si la modale ferme avant.
   useEffect(() => {
     let cancelled = false;
     Promise.all([getUserBalance(user.id), getUserTransactions(user.id, { page: 1, limit: 10 })])
@@ -296,6 +305,7 @@ function UserView({ user, onClose }: { user: UserResponseDto; onClose: () => voi
   );
 }
 
+/** Paire libellé/valeur en lecture seule dans la fiche utilisateur. */
 function Info({ label, value }: { label: string; value: string }) {
   return (
     <div>

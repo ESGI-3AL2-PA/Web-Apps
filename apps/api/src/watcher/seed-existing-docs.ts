@@ -1,11 +1,12 @@
 /**
- * First-boot feed seeding (§5.2).
+ * Amorçage du flux au premier démarrage (§5.2).
  *
- * Streams every existing document of each synced collection into `sync_changes` as a
- * synthetic api-origin INSERT, which makes `GET /changes?since=0` a complete
- * snapshot. That collapses bootstrap and incremental sync into a single client pull
- * path. Idempotent — guarded by the one-shot `sync_state.seeded` flag, and it shares
- * the same counter as the live watcher so indices stay monotonic across the boundary.
+ * Parcourt chaque document existant de toutes les collections synchronisées et l'insère
+ * dans `sync_changes` comme un INSERT synthétique d'origine api ; ainsi
+ * `GET /changes?since=0` devient un snapshot complet. Bootstrap et synchro incrémentale
+ * partagent donc un unique chemin de pull côté client. Idempotent : protégé par le
+ * drapeau one-shot `sync_state.seeded`, et il partage le même compteur que le watcher
+ * live pour que les indices restent monotones de part et d'autre de la frontière.
  */
 import type { Db } from "mongodb";
 import { logger } from "../logger.js";
@@ -14,16 +15,24 @@ import type { ISyncStateRepository } from "../repositories/Sync/sync-state.repos
 import { SYNC_ENTITIES, redactServerDoc } from "../sync/sync-entity-config.js";
 import type { SyncEntity } from "@repo/contracts";
 
+/**
+ * Amorce `sync_changes` à partir des documents déjà présents. No-op si déjà amorcé.
+ * Retourne le nombre de documents injectés. Un unique `occurredAt` est partagé par
+ * toutes les lignes de ce seed.
+ */
 export const seedExistingDocs = async (
   db: Db,
   changes: ISyncChangesRepository,
   state: ISyncStateRepository,
 ): Promise<number> => {
+  // Garde d'idempotence : ne rejoue jamais le seed sur un flux déjà amorcé.
   if (await state.isSeeded()) return 0;
 
   const occurredAt = new Date().toISOString();
   let seeded = 0;
 
+  // Pour chaque entité synchronisée, on stream sa collection au curseur et on émet un
+  // INSERT synthétique par document. `redactServerDoc` retire les champs non exposables.
   for (const [entity, config] of Object.entries(SYNC_ENTITIES) as [SyncEntity, (typeof SYNC_ENTITIES)[SyncEntity]][]) {
     const cursor = db.collection(config.collection).find({});
     for await (const doc of cursor) {
@@ -40,6 +49,7 @@ export const seedExistingDocs = async (
     }
   }
 
+  // Pose le drapeau one-shot pour qu'un futur démarrage n'amorce pas de nouveau.
   await state.markSeeded();
   logger.info({ seeded }, "sync: seeded the change feed from existing documents");
   return seeded;

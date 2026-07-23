@@ -1,3 +1,5 @@
+// Composant : provider de « step-up » (re-confirmation TOTP fraîche) pour les
+// opérations admin sensibles. Fournit le contexte StepUpContext au reste de l'app.
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@repo/hooks";
@@ -6,20 +8,25 @@ import { setStepUpHandler } from "../api-service/api";
 import { FormModal } from "./FormModal";
 import { StepUpContext } from "./step-up-context";
 
-// Fresh-TOTP re-confirmation for sensitive admin operations. Exposes an imperative
-// `requestStepUp()` and registers itself as the api interceptor's handler, so any sensitive
-// api call that gets 401 { code: "step_up_required" } transparently prompts and retries.
-// Only fires in production — in dev the backend never demands step-up.
+/**
+ * Re-confirmation TOTP fraîche pour les opérations admin sensibles. Expose un
+ * `requestStepUp()` impératif (renvoie une Promise résolue avec le step-up token)
+ * et s'enregistre comme handler de l'intercepteur api : tout appel sensible qui
+ * reçoit un 401 { code: "step_up_required" } déclenche la modale puis rejoue la requête.
+ * N'intervient qu'en production — en dev le backend n'exige jamais de step-up.
+ */
 export function StepUpProvider({ children }: { children: ReactNode }) {
   const { t } = useTranslation();
   const { getAccessToken, refresh } = useAuth();
 
+  // Conserve les callbacks resolve/reject de la Promise en attente pendant que la modale est ouverte.
   const resolverRef = useRef<{ resolve: (token: string) => void; reject: (err: Error) => void } | null>(null);
   const [open, setOpen] = useState(false);
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Ouvre la modale et renvoie une Promise résolue au submit (token) ou rejetée à l'annulation.
   const requestStepUp = useCallback(
     () =>
       new Promise<string>((resolve, reject) => {
@@ -32,6 +39,8 @@ export function StepUpProvider({ children }: { children: ReactNode }) {
     [],
   );
 
+  // Branche/débranche ce provider comme handler de step-up de l'intercepteur api.
+  // Un rejet (annulation) est ramené à null pour que l'appel d'origine échoue proprement.
   useEffect(() => {
     setStepUpHandler(() => requestStepUp().catch(() => null));
     return () => setStepUpHandler(null);
@@ -47,13 +56,15 @@ export function StepUpProvider({ children }: { children: ReactNode }) {
     close();
   }, [close]);
 
+  // Vérifie le code TOTP : échange (access token + code) contre un step-up token et résout la Promise.
   const submit = useCallback(
     async (e: FormEvent) => {
       e.preventDefault();
-      if (code.length !== 6) return;
+      if (code.length !== 6) return; // TOTP = exactement 6 chiffres
       setBusy(true);
       setError(null);
       try {
+        // Token courant, ou refresh si expiré, avant d'appeler l'échange step-up.
         const tok = getAccessToken() ?? (await refresh());
         if (!tok) throw new Error(t("stepUp.error"));
         const stepUpToken = await fetchStepUpToken(tok, code);

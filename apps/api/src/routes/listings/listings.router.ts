@@ -12,7 +12,13 @@ import { deleteListingUseCase } from "../../use-cases/listings/delete-listing.us
 
 const s = initServer();
 
+/**
+ * Router ts-rest des annonces d'entraide (offres/demandes de service au sein d'un
+ * quartier). Les annonces sont publiques DANS un quartier mais cloisonnées entre
+ * quartiers ; les écritures propagent aussi des relations dans le graphe.
+ */
 export const listingsRouter = s.router(listingsContract, {
+  // GET /listings — liste paginée, bornée au(x) quartier(s) lisibles par l'appelant.
   getListings: async ({ query: { page, limit, search, status, districtId, authorId, tag, sort }, req }) => {
     const scope = await resolveCallerListDistrict(req.user!, districtId, resolve("user"));
     if ("empty" in scope) {
@@ -31,6 +37,7 @@ export const listingsRouter = s.router(listingsContract, {
     return { status: 200, body: result };
   },
 
+  // GET /listings/:id — détail d'une annonce.
   getListingById: async ({ params: { id }, req }) => {
     const listing = await getListingByIdUseCase(resolve("listing"))({ id });
     if (!listing) {
@@ -44,10 +51,12 @@ export const listingsRouter = s.router(listingsContract, {
     return { status: 200, body: listing };
   },
 
+  // POST /listings — crée une annonce. L'auteur et le quartier sont dérivés côté
+  // serveur depuis l'utilisateur appelant, jamais depuis le client.
   createListing: async ({ body, req }) => {
-    // Annotated so resolve("user") gets a contextual type — without it, TS infers
-    // `never` here under ts-rest's generic handler context (works elsewhere because
-    // the result flows into a typed use-case parameter).
+    // Annoté pour que resolve("user") reçoive un type contextuel — sans ça, TS infère
+    // `never` ici dans le contexte de handler générique de ts-rest (ça marche ailleurs
+    // car le résultat alimente un paramètre de cas d'usage typé).
     const userRepo: IUserRepository = resolve("user");
     const author = await userRepo.getUserById(req.user!.sub);
     if (!author) {
@@ -64,8 +73,9 @@ export const listingsRouter = s.router(listingsContract, {
     return { status: 201, body: newListing };
   },
 
+  // PATCH /listings/:id — met à jour une annonce. Autorisation propriétaire/admin
+  // assurée par le middleware contract-metadata.
   updateListing: async ({ params: { id }, body }) => {
-    // Ownership/admin authorization is enforced by the contract-metadata middleware.
     const listing = await updateListingUseCase(resolve("listing"))(id, body);
     if (!listing) {
       return { status: 404, body: { message: "Listing not found" } };
@@ -73,6 +83,7 @@ export const listingsRouter = s.router(listingsContract, {
     return { status: 200, body: listing };
   },
 
+  // DELETE /listings/:id — supprime une annonce (et nettoie le graphe).
   deleteListing: async ({ params: { id } }) => {
     const deleted = await deleteListingUseCase(resolve("listing"), resolve("graph"))({ id });
     if (!deleted) {
@@ -81,13 +92,14 @@ export const listingsRouter = s.router(listingsContract, {
     return { status: 204, body: undefined };
   },
 
+  // GET /listings/active-count — nombre d'annonces actives dans le quartier ciblé.
   getActiveListingsCount: async ({ query: { districtId }, req }) => {
     const scope = await resolveCallerListDistrict(req.user!, districtId, resolve("user"));
     if ("empty" in scope) {
       return { status: 200, body: { count: 0 } };
     }
-    // Annotated so resolve("listing") gets a contextual type — without it, TS infers
-    // `never` in this bare handler (same reason as createListing's userRepo annotation).
+    // Annoté pour que resolve("listing") reçoive un type contextuel — sans ça, TS
+    // infère `never` dans ce handler nu (même raison que l'annotation userRepo de createListing).
     const listingRepo: IListingRepository = resolve("listing");
     const count = await listingRepo.countActiveListings(scope.districtId);
     return { status: 200, body: { count } };

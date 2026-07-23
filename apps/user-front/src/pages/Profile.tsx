@@ -20,8 +20,17 @@ import { formatDateTime, formatPrice } from "../lib/format";
 import { useDialog } from "../components/dialog-context";
 import AddressAutocomplete from "../components/AddressAutocomplete";
 
+// Page : profil de l'utilisateur — infos éditables, statistiques d'activité,
+// solde de points et historique paginé des transactions.
+
+// Taille de page de l'historique des transactions.
 const HISTORY_PAGE_SIZE = 10;
 
+/**
+ * Historique paginé des transactions de points d'un utilisateur. Charge par
+ * pages de HISTORY_PAGE_SIZE et accumule les lignes (bouton « charger plus »).
+ * @param userId utilisateur dont on affiche l'historique.
+ */
 function PointsHistory({ userId }: { userId: string }) {
   const { t } = useTranslation();
   const [items, setItems] = useState<TransactionResponseDto[]>([]);
@@ -37,6 +46,7 @@ function PointsHistory({ userId }: { userId: string }) {
     getUserTransactions(userId, { page, limit: HISTORY_PAGE_SIZE })
       .then((res) => {
         if (cancelled) return;
+        // Page 1 : remplace ; pages suivantes : ajoute à la suite (accumulation).
         setItems((prev) => (page === 1 ? res.data : [...prev, ...res.data]));
         setTotal(res.total);
       })
@@ -108,6 +118,7 @@ function PointsHistory({ userId }: { userId: string }) {
   );
 }
 
+/** Section en carte avec un titre et un contenu arbitraire. */
 function Card({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="card border border-base-content/10 bg-base-100 p-5">
@@ -119,6 +130,7 @@ function Card({ title, children }: { title: string; children: React.ReactNode })
   );
 }
 
+/** Paire libellé/valeur en lecture seule pour la fiche d'informations. */
 function Info({ label, value }: { label: string; value: string }) {
   return (
     <div>
@@ -130,6 +142,11 @@ function Info({ label, value }: { label: string; value: string }) {
 
 const inputClass = "input mt-1 w-full";
 
+/**
+ * Page de profil : charge le détail complet de l'utilisateur, le nom de son
+ * quartier, son solde et ses statistiques d'activité ; permet d'éditer nom,
+ * prénom, téléphone et adresse.
+ */
 export default function Profile() {
   const { t } = useTranslation();
   const { user } = useAuth();
@@ -183,12 +200,13 @@ export default function Profile() {
         if (cancelled) return;
         setStats({
           listings: listings.total,
+          // Total des contrats = ceux où l'utilisateur est fournisseur + bénéficiaire.
           contracts: cProvider.total + cBenef.total,
           events: events.length,
           votes: votes.length,
         });
       } catch {
-        // stats are best-effort
+        // Les stats sont « best-effort » : un échec est ignoré silencieusement.
       }
     })();
     return () => {
@@ -199,12 +217,12 @@ export default function Profile() {
   const save = async () => {
     if (!uid || !fullUser) return;
 
-    // Send only the fields that actually changed. PATCH /users/:id gates a fresh-TOTP
-    // step-up on the body touching `address` (whenBodyTouches), so blindly resending the
-    // unchanged address made *every* profile save — even a plain phone edit — demand a
-    // step-up code. Diffing against the loaded profile keeps step-up scoped to real
-    // address/email/password changes. Empty strings are kept (not dropped) so clearing an
-    // optional field like phone persists.
+    // On n'envoie que les champs réellement modifiés (diff contre le profil chargé). PATCH
+    // /users/:id exige une ré-authentification TOTP fraîche (step-up) dès que le corps touche
+    // `address`/`email`/`newPassword` (whenBodyTouches) : n'envoyer que ce qui change cantonne
+    // le step-up à un vrai changement d'adresse/email/mot de passe, sans le déclencher sur une
+    // simple modif de téléphone. Les chaînes vides sont conservées (pas supprimées) pour
+    // qu'effacer un champ optionnel comme le téléphone persiste.
     const changed: UpdateUserDto = {};
     if (form.firstName !== fullUser.firstName) changed.firstName = form.firstName;
     if (form.lastName !== fullUser.lastName) changed.lastName = form.lastName;
@@ -248,7 +266,7 @@ export default function Profile() {
     <div className="mx-auto max-w-2xl space-y-6">
       <h1 className="text-2xl font-extrabold text-base-content">{t("profile.title")}</h1>
 
-      {/* Info */}
+      {/* Informations personnelles */}
       <section className="card border border-base-content/10 bg-base-100 p-5">
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-lg font-bold text-base-content">{t("profile.info.title")}</h2>
@@ -321,7 +339,7 @@ export default function Profile() {
         )}
       </section>
 
-      {/* Stats */}
+      {/* Statistiques d'activité */}
       <Card title={t("profile.stats.title")}>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {(
@@ -340,13 +358,13 @@ export default function Profile() {
         </div>
       </Card>
 
-      {/* Points */}
+      {/* Solde de points */}
       <Card title={t("profile.points.title")}>
         <p className="text-3xl font-extrabold text-primary">{formatPrice(balance ?? user.balance)}</p>
         <p className="mt-1 text-sm text-base-content/60">{t("profile.points.desc")}</p>
       </Card>
 
-      {/* Points history */}
+      {/* Historique des points */}
       <Card title={t("profile.history.title")}>
         {uid ? (
           <PointsHistory userId={uid} />

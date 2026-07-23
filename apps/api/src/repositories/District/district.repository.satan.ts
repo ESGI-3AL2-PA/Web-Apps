@@ -3,8 +3,13 @@ import type { District, GeoJson } from "../../entities/district.entity.js";
 import type { IDistrictRepository, UpdateDistrictData } from "./district.repository.js";
 import { containsAny, paginate, where } from "../satan.helpers.js";
 
-/** SATAN QL for id lookup, delete and the paginated list (COUNT + CONTAINS
- *  search); Mongo for the geo query and the geoJson-shaped create/update. */
+/**
+ * Repository des quartiers en implémentation hybride.
+ *
+ * SATAN QL pour la recherche par id, la suppression et la liste paginée (COUNT +
+ * recherche CONTAINS) ; Mongo pour la requête géospatiale et les créations/mises à
+ * jour comportant du geoJson.
+ */
 export class SatanDistrictRepository implements IDistrictRepository {
   constructor(
     private readonly mongo: IDistrictRepository,
@@ -27,7 +32,7 @@ export class SatanDistrictRepository implements IDistrictRepository {
     return paginate<District>(this.satan, "districts", clause, { page, limit });
   }
 
-  // --- delegated to Mongo (geo / geoJson-shaped writes) ---
+  // --- délégué à Mongo (géospatial / écritures comportant du geoJson) ---
   ensureIndexes(): Promise<void> {
     return this.mongo.ensureIndexes();
   }

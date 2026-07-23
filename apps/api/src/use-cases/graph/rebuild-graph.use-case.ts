@@ -7,10 +7,17 @@ import type { IIncidentRepository } from "../../repositories/Incident/incident.r
 import type { ITagRepository } from "../../repositories/Tag/tag.repository.js";
 import type { IGraphRepository } from "../../repositories/Graph/graph.repository.js";
 
-// Fetch-all page size for the rebuild. The projection is small (a neighbourhood app);
-// a single large page avoids threading pagination through every collection.
+// Fichier : cas d'usage de reconstruction integrale de la projection de graphe.
+// Repart des donnees Mongo (source de verite) pour reconstruire le graphe Neo4j
+// depuis zero. Expose la factory `rebuildGraphUseCase`, ses dependances (une
+// entree par repository de domaine) et le type de statistiques renvoyees.
+
+// Taille de page « tout charger » pour la reconstruction. La projection est
+// petite (application de quartier) ; une seule grande page evite de propager la
+// pagination a travers chaque collection.
 const ALL = 100_000;
 
+/** Dependances de la reconstruction : un repository par domaine mirore vers le graphe. */
 export interface RebuildGraphDeps {
   userRepository: IUserRepository;
   districtRepository: IDistrictRepository;
@@ -22,6 +29,7 @@ export interface RebuildGraphDeps {
   graphRepository: IGraphRepository;
 }
 
+/** Compteurs des noeuds et interactions reprojetes, renvoyes en fin de reconstruction. */
 export interface RebuildGraphStats {
   users: number;
   districts: number;
@@ -34,15 +42,18 @@ export interface RebuildGraphStats {
 }
 
 /**
- * Reconciliation job: wipe the Neo4j projection and rebuild it from Mongo (the source
- * of truth). Because per-request syncGraph is best-effort (it logs and continues on a
- * degraded Neo4j), Mongo and the graph drift over time; running this restores them to
- * a consistent state and makes the projection self-healing.
+ * Cas d'usage : tache de reconciliation qui vide la projection Neo4j et la
+ * reconstruit depuis Mongo (source de verite). Comme le syncGraph par requete
+ * est best-effort (il journalise et poursuit sur un Neo4j degrade), Mongo et le
+ * graphe divergent avec le temps ; cette tache les remet dans un etat coherent
+ * et rend la projection auto-reparatrice.
  *
- * Covers the nodes + the relationships the recommendation engine and traversals rely
- * on: residence, event authorship/containment/registration/attendance/interest, listing
- * authorship + tags, vote district-scope, and incident authorship/containment. Contract
- * → service edges are intentionally out of scope (contracts are managed separately).
+ * Couvre les noeuds + les relations dont dependent le moteur de recommandation
+ * et les traversees : residence, evenement (auteur / rattachement au quartier /
+ * inscription / participation / interet), annonce (auteur + tags), portee des
+ * votes par quartier, et signalement (auteur / rattachement au quartier). Les
+ * aretes contrat -> service sont volontairement hors perimetre (les contrats
+ * sont geres separement).
  */
 export const rebuildGraphUseCase = (deps: RebuildGraphDeps) => {
   return async (): Promise<RebuildGraphStats> => {
@@ -57,6 +68,7 @@ export const rebuildGraphUseCase = (deps: RebuildGraphDeps) => {
       graphRepository: graph,
     } = deps;
 
+    // Charge en parallele l'integralite de chaque collection (source de verite Mongo).
     const [users, districts, events, listings, votes, incidents, tags, interactions] = await Promise.all([
       userRepository.getUsers({ limit: ALL }).then((r) => r.data),
       districtRepository.getDistricts({ limit: ALL }).then((r) => r.data),
@@ -68,10 +80,10 @@ export const rebuildGraphUseCase = (deps: RebuildGraphDeps) => {
       eventRepository.getAllInteractions(),
     ]);
 
-    // 1. Start from a clean projection so nodes/edges deleted in Mongo don't linger.
+    // 1. Repartir d'une projection vierge pour que les noeuds/aretes supprimes dans Mongo ne persistent pas.
     await graph.reset();
 
-    // 2. Nodes.
+    // 2. Noeuds (quartiers, tags, utilisateurs).
     await Promise.all(districts.map((d) => graph.upsertDistrict({ id: d.id, name: d.name })));
     await Promise.all(tags.map((t) => graph.upsertTag({ name: t.name })));
     await Promise.all(
@@ -80,10 +92,10 @@ export const rebuildGraphUseCase = (deps: RebuildGraphDeps) => {
       ),
     );
 
-    // 3. Residence.
+    // 3. Residence (arete utilisateur -> quartier d'habitation).
     await Promise.all(users.map((u) => graph.linkUserLivesIn(u.id, u.districtId, u.createdAt, u.address)));
 
-    // 4. Events: node + author + containment + registrations.
+    // 4. Evenements : noeud + auteur + rattachement au quartier + inscriptions.
     for (const e of events) {
       await graph.upsertEvent({ id: e.id, title: e.title, date: e.eventDate });
       await graph.linkUserCreatedEvent(e.creatorId, e.id);
@@ -93,7 +105,7 @@ export const rebuildGraphUseCase = (deps: RebuildGraphDeps) => {
       }
     }
 
-    // 5. Attendance + interest (Mongo event_interactions is the source of truth).
+    // 5. Participation + interet (la collection Mongo event_interactions fait foi).
     for (const i of interactions) {
       if (i.kind === "attendance") {
         await graph.linkUserAttendedEvent(i.userId, i.eventId, i.rating);
@@ -102,7 +114,7 @@ export const rebuildGraphUseCase = (deps: RebuildGraphDeps) => {
       }
     }
 
-    // 6. Listings: node + author + tags.
+    // 6. Annonces : noeud + auteur + tags.
     for (const l of listings) {
       await graph.upsertListing({ id: l.id, category: l.tags[0] });
       await graph.linkUserPublishedListing(l.authorId, l.id);
@@ -111,7 +123,7 @@ export const rebuildGraphUseCase = (deps: RebuildGraphDeps) => {
       }
     }
 
-    // 7. Votes: node + district scope.
+    // 7. Votes / sondages : noeud + portee par quartier.
     for (const v of votes) {
       await graph.upsertVote({ id: v.id, question: v.question, endDate: v.endDate });
       for (const districtId of v.districtIds) {
@@ -119,7 +131,7 @@ export const rebuildGraphUseCase = (deps: RebuildGraphDeps) => {
       }
     }
 
-    // 8. Incidents: node + author + containment.
+    // 8. Signalements : noeud + auteur + rattachement au quartier.
     for (const inc of incidents) {
       await graph.upsertIncident({ id: inc.id, category: inc.category, status: inc.status });
       await graph.linkUserReportedIncident(inc.reporterId, inc.id);

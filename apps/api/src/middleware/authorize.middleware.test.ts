@@ -1,10 +1,13 @@
+// Suite de tests du middleware `authorize` : vérifie les prédicats purs (ownsRecord / inDistrict /
+// hasRecordCheck) puis le wrapper middleware (décision audience / rôle / self-param / niveau
+// enregistrement, y compris l'accès modération par quartier et l'audit des lectures de conversations).
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Request, Response } from "express";
 import type { AppRoute } from "@ts-rest/core";
 import type { AuthPolicy, AuthScope } from "@repo/contracts";
 
-// The middleware pulls every record loader through the DI container's `resolve`.
-// Stub it so record-level tests never touch a real repository / Mongo.
+// Le middleware récupère chaque loader d'enregistrement via le `resolve` du container d'injection.
+// On le stubbe pour que les tests au niveau enregistrement ne touchent jamais un vrai repository / Mongo.
 vi.mock("../repositories/container.js", () => ({
   resolve: vi.fn(),
 }));
@@ -17,8 +20,8 @@ const mockResolve = vi.mocked(resolve);
 
 type Rec = Record<string, unknown>;
 
-// Any loader (getUserById / getListingById / getConversationById / …) resolves to this one
-// record, so the record-level branch runs without a concrete repository implementation.
+// N'importe quel loader (getUserById / getListingById / getConversationById / …) renvoie cet
+// unique enregistrement, pour que la branche « niveau enregistrement » s'exécute sans repository concret.
 const stubRecord = (rec: Rec | null): void => {
   mockResolve.mockReturnValue(new Proxy({}, { get: () => async () => rec }) as never);
 };
@@ -58,15 +61,16 @@ const makeReq = (opts: {
     user: opts.user,
     params: opts.params ?? {},
     method: opts.method ?? "GET",
-    // pino-http per-request child logger — mocked so audit log assertions can inspect it.
+    // Logger enfant par requête de pino-http — mocké pour que les assertions sur les logs d'audit puissent l'inspecter.
     log: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
   } as unknown as Request;
 };
 
 // -----------------------------------------------------------------------------
-// Pure predicates
+// Prédicats purs
 // -----------------------------------------------------------------------------
 
+// ownsRecord : détermine la propriété d'un enregistrement selon les différentes formes de scope.
 describe("ownsRecord", () => {
   it("matches on a single ownerField", () => {
     expect(ownsRecord({ authorId: "user-1" }, { resource: "listing", ownerField: "authorId" }, "user-1")).toBe(true);
@@ -108,6 +112,7 @@ describe("ownsRecord", () => {
   });
 });
 
+// inDistrict : correspondance entre le quartier administré et le(s) quartier(s) de l'enregistrement.
 describe("inDistrict", () => {
   it("degrades to false when adminDistrictId is null, even against a matching field", () => {
     const scope: AuthScope = { resource: "incident", districtField: "districtId" };
@@ -150,6 +155,7 @@ describe("inDistrict", () => {
   });
 });
 
+// hasRecordCheck : indique si le scope impose de charger l'enregistrement (champ propriétaire ou quartier).
 describe("hasRecordCheck", () => {
   it.each([
     ["ownerField", { resource: "listing", ownerField: "authorId" }],
@@ -171,7 +177,7 @@ describe("hasRecordCheck", () => {
 });
 
 // -----------------------------------------------------------------------------
-// Middleware wrapper (audience / role / selfParam / record decision)
+// Wrapper middleware (décision audience / rôle / selfParam / enregistrement)
 // -----------------------------------------------------------------------------
 
 describe("authorize middleware", () => {
@@ -255,6 +261,7 @@ describe("authorize middleware", () => {
     expect(captured.statusCode).toBe(403);
   });
 
+  // selfParam : le param d'URL (ex. :id) doit correspondre au sujet du token, sauf bypassRoles.
   describe("selfParam", () => {
     const policy: AuthPolicy = { scope: { resource: "user", selfParam: "id" } };
 
@@ -305,6 +312,8 @@ describe("authorize middleware", () => {
     });
   });
 
+  // Propriété / quartier au niveau enregistrement : chargement du record, propriétaire vs admin de
+  // quartier (modération) vs bypass, et distinction 403 / 404 selon notFoundOnDeny.
   describe("record-level ownership / district", () => {
     const ownedPolicy: AuthPolicy = { scope: { resource: "listing", ownerField: "authorId" } };
 
@@ -463,9 +472,9 @@ describe("authorize middleware", () => {
     });
   });
 
-  // GET /incidents/:id — a resident may read only what they reported, while a district admin
-  // keeps the moderation view. The district grant keys off adminDistrictId, which is null for
-  // a resident, so the same policy yields both behaviours.
+  // GET /incidents/:id — un résident ne peut lire que ce qu'il a signalé, tandis qu'un administrateur
+  // de quartier garde la vue de modération. L'accès par quartier repose sur adminDistrictId, null pour
+  // un résident, donc la même politique produit les deux comportements.
   describe("incident visibility", () => {
     const policy: AuthPolicy = {
       scope: {
@@ -492,7 +501,7 @@ describe("authorize middleware", () => {
       const next = vi.fn();
       await authorize(makeReq({ policy, user: makeUser({ sub: "user-1" }), params: { id: "inc-1" } }), res, next);
       expect(next).not.toHaveBeenCalled();
-      expect(captured.statusCode).toBe(404); // not 403 — do not disclose that it exists
+      expect(captured.statusCode).toBe(404); // 404 et non 403 — ne pas révéler que l'enregistrement existe
     });
 
     it("allows the district admin as moderator", async () => {
@@ -541,8 +550,8 @@ describe("authorize middleware", () => {
     });
   });
 
-  // PATCH /notifications/:id/read and DELETE /notifications/:id — an inbox belongs to one
-  // person, so no role may act on it but its recipient.
+  // PATCH /notifications/:id/read et DELETE /notifications/:id — une boîte de réception appartient à
+  // une seule personne : aucun rôle ne peut agir dessus, sauf son destinataire (ni admin, ni superAdmin).
   describe("notification writes are recipient-only", () => {
     const policy: AuthPolicy = {
       scope: { resource: "notification", ownerField: "recipientId", notFoundOnDeny: true },

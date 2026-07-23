@@ -1,3 +1,6 @@
+// Suite de tests des garde-fous d'unicité de clé des tags : `createTagUseCase` rejette une clé
+// (`name`) déjà présente dans le quartier, et `updateTagUseCase` refuse de renommer un tag vers
+// une clé déjà prise. Le repository est stubbé (aucun Mongo/Neo4j réel).
 import { describe, expect, it, vi } from "vitest";
 import type { Tag } from "../../entities/tag.entity.js";
 import { createTagUseCase, TagConflictError } from "./create-tag.use-case.js";

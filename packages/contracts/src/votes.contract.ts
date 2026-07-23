@@ -18,7 +18,18 @@ import { auth } from "./auth-meta";
 
 const c = initContract();
 
+/**
+ * Contract ts-rest des votes / sondages.
+ *
+ * Un vote peut cibler plusieurs quartiers (districtIds). Lectures ouvertes à
+ * tout utilisateur authentifié. La création est ouverte (les résidents ne
+ * peuvent viser que leur propre quartier) ; la mise à jour et la suppression
+ * sont réservées au créateur ou à un admin de l'un des quartiers ciblés
+ * (districtArrayField, bypass superAdmin). Des routes complémentaires
+ * enregistrent une réponse et agrègent les résultats.
+ */
 export const votesContract = c.router({
+  // GET /votes — liste paginée des votes. Tout utilisateur authentifié.
   getVotes: {
     method: "GET",
     path: "/votes",
@@ -30,6 +41,7 @@ export const votesContract = c.router({
     metadata: auth({ audience: "api" }),
   },
 
+  // GET /votes/:id — un vote par son id. Tout utilisateur authentifié.
   getVoteById: {
     method: "GET",
     path: "/votes/:id",
@@ -42,6 +54,7 @@ export const votesContract = c.router({
     metadata: auth({ audience: "api" }),
   },
 
+  // POST /votes — crée un vote (brouillon ; les résidents ne peuvent viser que leur propre quartier).
   createVote: {
     method: "POST",
     path: "/votes",
@@ -54,6 +67,7 @@ export const votesContract = c.router({
     metadata: auth({ audience: "api" }),
   },
 
+  // PATCH /votes/:id — mise à jour partielle. Créateur (ownerField) ou admin d'un des quartiers ciblés.
   updateVote: {
     method: "PATCH",
     path: "/votes/:id",
@@ -77,6 +91,7 @@ export const votesContract = c.router({
     }),
   },
 
+  // DELETE /votes/:id — supprime un vote. Créateur ou admin d'un des quartiers ciblés.
   deleteVote: {
     method: "DELETE",
     path: "/votes/:id",
@@ -99,6 +114,7 @@ export const votesContract = c.router({
     }),
   },
 
+  // POST /votes/:id/responses — enregistre la réponse de l'utilisateur au vote. Tout utilisateur authentifié.
   submitVoteResponse: {
     method: "POST",
     path: "/votes/:id/responses",
@@ -114,6 +130,7 @@ export const votesContract = c.router({
     metadata: auth({ audience: "api" }),
   },
 
+  // GET /votes/:id/results — résultats agrégés d'un vote. Tout utilisateur authentifié.
   getVoteResults: {
     method: "GET",
     path: "/votes/:id/results",

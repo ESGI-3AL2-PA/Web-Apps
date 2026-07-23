@@ -1,5 +1,7 @@
 name: CI
 
+# Integration continue : sur chaque PR vers main et chaque push sur main, installe les
+# dependances puis lance build + lint + test sur tout le monorepo turbo (sauf la suite E2E).
 on:
   pull_request:
     branches: [main]
@@ -15,8 +17,8 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up Node.js
-        # Match the Node 22 LTS line the Docker images ship (apps/*/Dockerfile) so CI tests on
-        # the same runtime that gets deployed.
+        # Aligne sur la ligne Node 22 LTS des images Docker (apps/*/Dockerfile) pour que la CI
+        # teste sur le meme runtime que celui deploye.
         uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -25,9 +27,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # playwright_testbook is an E2E suite that hits a live backend (api,
-      # auth-service, Mongo/Neo4j) which this job does not provision, so it is
-      # excluded here. The vitest suites (api, auth-service) still gate, and any
-      # new unit test suites are picked up automatically.
+      # playwright_testbook est une suite E2E qui frappe un backend vivant (api,
+      # auth-service, Mongo/Neo4j) que ce job ne provisionne pas ; elle est donc
+      # exclue ici. Les suites vitest (api, auth-service) restent bloquantes, et toute
+      # nouvelle suite de tests unitaires est prise en compte automatiquement.
       - name: Build, lint & test
         run: npx turbo run build lint test --filter='!playwright_testbook'

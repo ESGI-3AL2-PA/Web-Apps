@@ -4,12 +4,18 @@ import type { IContractRepository } from "../../repositories/Contract/contract.r
 import type { ITransactionRepository } from "../../repositories/Transaction/transaction.repository.js";
 import { resolveDisputeUseCase, UnsettleableDisputeError } from "./resolve-dispute.use-case.js";
 
-// Run the money movement without a real Mongo transaction (sequential fallback path):
-// the use-case's escrow/ledger logic is what we're exercising, not the tx wiring.
+// Suite de tests de la résolution de signalement : vérifie le versement (release) au
+// prestataire, le remboursement (refund) au bénéficiaire, la réponse 404 sur un contrat
+// non contesté, le refus de rembourser un contrat déjà réglé, et le release d'un contrat
+// déjà complété (simple levée d'état, sans mouvement d'argent).
+
+// Exécute le mouvement d'argent sans vraie transaction Mongo (chemin de repli séquentiel) :
+// on teste la logique séquestre/journal du cas d'usage, pas le câblage transactionnel.
 vi.mock("../../repositories/tx.js", () => ({
   runInTransaction: (fn: (session?: unknown) => unknown) => fn(undefined),
 }));
 
+// Fabrique un contrat de test (contesté par défaut) avec valeurs surchargeable.
 const makeContract = (over: Partial<Contract> = {}): Contract => ({
   id: "contract-1",
   listingId: "listing-1",
@@ -30,6 +36,7 @@ const makeContract = (over: Partial<Contract> = {}): Contract => ({
 type ContractRepoMock = { [K in keyof IContractRepository]: ReturnType<typeof vi.fn> };
 type TxRepoMock = { [K in keyof ITransactionRepository]: ReturnType<typeof vi.fn> };
 
+// Fabrique un mock du repository de contrats, toutes méthodes stubées.
 const makeContractRepo = (): ContractRepoMock => ({
   ensureIndexes: vi.fn(),
   getContracts: vi.fn(),
@@ -46,6 +53,7 @@ const makeContractRepo = (): ContractRepoMock => ({
   deleteContract: vi.fn(),
 });
 
+// Fabrique un mock du repository de transactions, toutes méthodes stubées.
 const makeTxRepo = (): TxRepoMock => ({
   ensureIndexes: vi.fn(),
   getTransactions: vi.fn(),
@@ -66,8 +74,9 @@ describe("resolveDisputeUseCase", () => {
     txRepo = makeTxRepo();
   });
 
+  // release : verse le séquestre bloqué au prestataire une seule fois et écrit une ligne de journal.
   it("release: settles the held escrow to the provider once and writes a ledger row", async () => {
-    // resolveDispute returns the *pre-resolution* state (pending, escrow still held).
+    // resolveDispute renvoie l'état *pré-résolution* (pending, séquestre encore bloqué).
     contractRepo.resolveDispute.mockResolvedValue(makeContract({ signatureStatus: "pending" }));
 
     const result = await resolveDisputeUseCase(
@@ -76,10 +85,10 @@ describe("resolveDisputeUseCase", () => {
     )({ id: "contract-1", resolution: "release" });
 
     expect(contractRepo.resolveDispute).toHaveBeenCalledWith("contract-1", "completed", undefined);
-    // Provider credited exactly once for the escrowed price.
+    // Prestataire crédité exactement une fois du prix mis sous séquestre.
     expect(txRepo.adjustBalance).toHaveBeenCalledTimes(1);
     expect(txRepo.adjustBalance).toHaveBeenCalledWith("provider-1", 10, undefined);
-    // Matching ledger row written exactly once.
+    // Ligne de journal correspondante écrite exactement une fois.
     expect(txRepo.createTransactions).toHaveBeenCalledTimes(1);
     expect(txRepo.createTransactions.mock.calls[0]![0]).toEqual([
       {
@@ -91,10 +100,11 @@ describe("resolveDisputeUseCase", () => {
         refType: "contract",
       },
     ]);
-    // The resolved contract is terminal + no longer disputed.
+    // Le contrat résolu est terminal + n'est plus contesté.
     expect(result).toMatchObject({ signatureStatus: "completed", disputed: false, disputeReason: null });
   });
 
+  // refund : rend le séquestre bloqué au bénéficiaire une seule fois.
   it("refund: returns the held escrow to the beneficiary once", async () => {
     contractRepo.getContractById.mockResolvedValue(makeContract({ signatureStatus: "pending" }));
     contractRepo.resolveDispute.mockResolvedValue(makeContract({ signatureStatus: "pending" }));
@@ -115,6 +125,7 @@ describe("resolveDisputeUseCase", () => {
     expect(result).toMatchObject({ signatureStatus: "rejected", disputed: false });
   });
 
+  // Contrat non contesté : resolveDispute renvoie null → réponse 404, aucun mouvement d'argent.
   it("returns null (404) when the contract is not disputed", async () => {
     contractRepo.resolveDispute.mockResolvedValue(null);
 
@@ -127,6 +138,7 @@ describe("resolveDisputeUseCase", () => {
     expect(txRepo.adjustBalance).not.toHaveBeenCalled();
   });
 
+  // Refuse de rembourser un contrat dont le séquestre est déjà réglé (completed) — aucun mouvement d'argent.
   it("refuses to refund a contract whose escrow was already settled (completed) — no money moves", async () => {
     contractRepo.getContractById.mockResolvedValue(makeContract({ signatureStatus: "completed", disputed: true }));
 
@@ -137,13 +149,14 @@ describe("resolveDisputeUseCase", () => {
       )({ id: "contract-1", resolution: "refund" }),
     ).rejects.toBeInstanceOf(UnsettleableDisputeError);
 
-    // Refused before touching state or money.
+    // Refusé avant de toucher à l'état ou à l'argent.
     expect(contractRepo.resolveDispute).not.toHaveBeenCalled();
     expect(txRepo.adjustBalance).not.toHaveBeenCalled();
   });
 
+  // release sur un contrat déjà complété : lève juste le signalement, sans mouvement d'argent.
   it("release on an already-completed contract clears the dispute without moving money", async () => {
-    // Escrow already went to the provider on completion → release is a pure state-clear.
+    // Le séquestre est déjà allé au prestataire à la complétion → release est une pure levée d'état.
     contractRepo.resolveDispute.mockResolvedValue(makeContract({ signatureStatus: "completed", disputed: true }));
 
     const result = await resolveDisputeUseCase(

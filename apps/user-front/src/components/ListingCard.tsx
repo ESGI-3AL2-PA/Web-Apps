@@ -5,10 +5,15 @@ import { formatPrice, formatRelative, placeholderColor } from "../lib/format";
 import { useTags } from "../app/tags-context";
 import AuthedImage from "./AuthedImage";
 
+/**
+ * Carte d'annonce cliquable menant à la page détail. Affiche la couverture (première image,
+ * via AuthedImage), ou à défaut un placeholder coloré déterministe portant l'initiale du titre.
+ * En pied : prix en points, titre tronqué, catégorie et date relative de publication.
+ */
 export default function ListingCard({ listing }: { listing: ListingResponseDto }) {
   const { t } = useTranslation();
   const { labelFor } = useTags();
-  const cover = listing.images?.[0];
+  const cover = listing.images?.[0]; // première image = couverture
 
   return (
     <Link

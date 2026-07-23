@@ -10,14 +10,25 @@ import { getCoordinatesFromAddress } from "../../services/address.service.js";
 import { moveUserDistrict, type MembershipDeps } from "./district-membership.use-case.js";
 import { logger } from "../../logger.js";
 
+/**
+ * Cas d'usage (domaine users) : met à jour le profil d'un utilisateur. Gère, en plus des champs
+ * de profil, trois logiques sensibles : le changement de mot de passe (vérification argon2 de
+ * l'ancien puis re-hash du nouveau), le changement d'email (qui force une re-vérification) et le
+ * changement d'adresse (qui re-résout l'appartenance au quartier via `moveUserDistrict`).
+ * Les attributs projetés sont mis en miroir dans le graphe Neo4j.
+ */
+
+// Résultat discriminé du cas d'usage : succès, cible introuvable, ancien mot de passe erroné,
+// ou conflit sur l'email (adresse déjà prise).
 export type UpdateUserResult =
   | { kind: "ok"; user: User }
   | { kind: "not-found" }
   | { kind: "wrong-password" }
   | { kind: "email-conflict" };
 
-// Mongo duplicate-key error code. The unique index on users.email is the real guard
-// against two accounts sharing an address; a pre-check would still race a concurrent update.
+// Code d'erreur Mongo de clé dupliquée. L'index unique sur users.email est le vrai garde-fou
+// contre deux comptes partageant une même adresse email ; une pré-vérification resterait sujette
+// à une course avec une mise à jour concurrente.
 const isDuplicateKeyError = (err: unknown): boolean =>
   typeof err === "object" && err !== null && "code" in err && (err as { code?: unknown }).code === 11000;
 
@@ -30,9 +41,10 @@ export const updateUserUseCase = (
   return async (id: string, data: UpdateUserDto): Promise<UpdateUserResult> => {
     const { currentPassword, newPassword } = data;
 
-    // Explicit allowlist — never let privileged fields (role, balance, emailVerified,
-    // districtId, totpSecret) be set through this path from client input, even if the
-    // DTO/validation changes. emailVerified is only ever forced to false server-side below.
+    // Liste blanche explicite — ne jamais laisser des champs privilégiés (role, balance,
+    // emailVerified, districtId, totpSecret) être positionnés par cette voie depuis l'entrée
+    // client, même si le DTO/la validation évolue. emailVerified n'est forcé (à false) que côté
+    // serveur, plus bas.
     const update: Partial<Omit<User, "id" | "createdAt" | "updatedAt">> = {};
     if (data.firstName !== undefined) update.firstName = data.firstName;
     if (data.lastName !== undefined) update.lastName = data.lastName;
@@ -41,8 +53,9 @@ export const updateUserUseCase = (
     if (data.address !== undefined) update.address = data.address;
     if (data.lang !== undefined) update.lang = data.lang;
 
-    // Need the current record to verify a password change, detect an email change, and
-    // detect an address change (which re-resolves the user's district).
+    // On a besoin de l'enregistrement courant pour vérifier un changement de mot de passe,
+    // détecter un changement d'email, et détecter un changement d'adresse (qui re-résout le
+    // quartier de l'utilisateur). On ne le charge que si l'un de ces cas est concerné.
     const existing =
       newPassword || data.email !== undefined || data.address !== undefined
         ? await userRepository.getUserById(id)
@@ -51,15 +64,17 @@ export const updateUserUseCase = (
     if (newPassword) {
       if (!existing) return { kind: "not-found" };
 
+      // On exige la preuve de l'ancien mot de passe (argon2.verify) avant de re-hasher le nouveau.
       const valid = currentPassword ? await argon2.verify(existing.passwordHash, currentPassword) : false;
       if (!valid) return { kind: "wrong-password" };
 
       update.passwordHash = await argon2.hash(newPassword);
     }
 
-    // Changing the email invalidates prior verification: force re-verification so a user
-    // can't carry verified status onto an address they don't control. api owns the users
-    // collection; auth-service gates login on emailVerified and exposes resendVerification.
+    // Changer l'email invalide la vérification précédente : on force une re-vérification pour
+    // qu'un utilisateur ne puisse pas transférer un statut « vérifié » sur une adresse qu'il ne
+    // contrôle pas. L'api possède la collection users ; l'auth-service conditionne la connexion à
+    // emailVerified et expose resendVerification.
     if (data.email !== undefined && existing && data.email !== existing.email) {
       update.emailVerified = false;
     }
@@ -68,14 +83,14 @@ export const updateUserUseCase = (
     try {
       updated = await userRepository.updateUser(id, update);
     } catch (err) {
-      // Lost the race to the unique email index (or a stale duplicate exists).
+      // Course perdue face à l'index unique sur l'email (ou un doublon obsolète existe déjà).
       if (isDuplicateKeyError(err)) return { kind: "email-conflict" };
       throw err;
     }
     if (!updated) return { kind: "not-found" };
     let user = updated;
 
-    // Mirror to Neo4j if any of the projected attributes changed.
+    // Mise en miroir dans Neo4j si l'un des attributs projetés a changé.
     if (update.firstName !== undefined || update.lastName !== undefined || update.email !== undefined) {
       await syncGraph(`upsertUser(${user.id})`, () =>
         graphRepository.upsertUser({
@@ -87,12 +102,13 @@ export const updateUserUseCase = (
       );
     }
 
-    // A changed address re-resolves the district. If the user still falls within their
-    // current district, nothing changes. Otherwise this is a move: leave the old district
-    // (redistributing points) and join the new one (granting its starting points) when
-    // exactly one contains the new address; 0 (no coverage) or an overlap they can't be
-    // auto-placed into leaves them district-less to re-onboard and pick. A geocoder
-    // failure leaves membership untouched so a transient error can't silently eject them.
+    // Une adresse modifiée re-résout le quartier. Si l'utilisateur reste dans son quartier
+    // actuel, rien ne change. Sinon c'est un déménagement : quitter l'ancien quartier (en
+    // redistribuant les points) et rejoindre le nouveau (en octroyant ses points de départ)
+    // lorsqu'un seul contient la nouvelle adresse ; 0 (aucune couverture) ou un chevauchement
+    // qui interdit un placement automatique le laisse sans quartier, à re-onboarder et choisir.
+    // Un échec du géocodeur laisse l'appartenance intacte, pour qu'une erreur transitoire ne
+    // puisse pas l'éjecter silencieusement.
     if (data.address !== undefined && existing && data.address !== existing.address) {
       let matches: Awaited<ReturnType<typeof districtRepository.findDistrictsContaining>> | undefined;
       try {
@@ -101,14 +117,15 @@ export const updateUserUseCase = (
       } catch (err) {
         logger.error({ err, userId: id }, "update-user: address re-resolution failed — district unchanged");
       }
+      // `matches === undefined` => le géocodage a échoué : on ne touche pas à l'appartenance.
       if (matches !== undefined) {
         let newDistrictId: string | null;
         if (existing.districtId && matches.some((d) => d.id === existing.districtId)) {
-          newDistrictId = existing.districtId; // still covered by the current district — no move
+          newDistrictId = existing.districtId; // toujours couvert par le quartier actuel — pas de déménagement
         } else if (matches.length === 1) {
           newDistrictId = matches[0]!.id;
         } else {
-          newDistrictId = null; // no coverage, or overlap requiring a choice — become district-less
+          newDistrictId = null; // aucune couverture, ou chevauchement nécessitant un choix — devient sans quartier
         }
         if (newDistrictId !== existing.districtId) {
           const deps: MembershipDeps = { userRepository, transactionRepository, districtRepository, graphRepository };

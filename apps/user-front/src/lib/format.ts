@@ -1,16 +1,24 @@
+/**
+ * Helpers de formatage (lib) : prix, dates et couleurs de remplissage.
+ *
+ * S'appuie sur la langue i18next active pour choisir la locale Intl, et sur les
+ * clés de traduction pour les libellés (points, temps relatif).
+ */
 import i18n from "../i18n";
 
-// Map the active i18next language to a BCP-47 locale for Intl formatting.
+// Traduit la langue i18next active en locale BCP-47 pour le formatage Intl.
 const locale = (): string => (i18n.language?.startsWith("en") ? "en-US" : "fr-FR");
 
-// Prices are integer *tokens* in this backend, not euros — label them honestly.
+/** Formate un prix. Les prix sont des *points* entiers côté backend, pas des euros. */
 export const formatPrice = (price: number): string => `${price.toLocaleString(locale())} ${i18n.t("common.points")}`;
 
+/** Formate une date ISO en date longue localisée (ex. « 3 juin 2026 »). */
 export const formatDate = (iso: string): string => {
   const d = new Date(iso);
   return d.toLocaleDateString(locale(), { day: "numeric", month: "long", year: "numeric" });
 };
 
+/** Formate une date ISO en date + heure localisées (jour abrégé, heure:minute). */
 export const formatDateTime = (iso: string): string => {
   const d = new Date(iso);
   return d.toLocaleString(locale(), {
@@ -22,6 +30,10 @@ export const formatDateTime = (iso: string): string => {
   });
 };
 
+/**
+ * Formate un temps relatif (« à l'instant », « il y a 5 min », …). Au-delà de
+ * 30 jours, bascule sur une date absolue via `formatDate`.
+ */
 export const formatRelative = (iso: string): string => {
   const diff = Date.now() - new Date(iso).getTime();
   const mins = Math.round(diff / 60000);
@@ -34,10 +46,15 @@ export const formatRelative = (iso: string): string => {
   return formatDate(iso);
 };
 
-// Deterministic pastel background for listings without a photo, keyed by id.
+// Fond pastel déterministe pour les annonces sans photo, dérivé de l'identifiant.
 const PLACEHOLDER_COLORS = ["#ffe3cf", "#e5eeff", "#e6f7ec", "#f4e6ff", "#fff5d6", "#ffe0e6"];
+/**
+ * Renvoie une couleur de remplissage stable pour une graine donnée : un même
+ * `seed` produit toujours la même couleur (hash polynomial modulo la palette).
+ */
 export const placeholderColor = (seed: string): string => {
   let hash = 0;
+  // Hash polynomial base 31 ; `>>> 0` garde la valeur dans un entier 32 bits non signé.
   for (let i = 0; i < seed.length; i++) hash = (hash * 31 + seed.charCodeAt(i)) >>> 0;
   return PLACEHOLDER_COLORS[hash % PLACEHOLDER_COLORS.length]!;
 };

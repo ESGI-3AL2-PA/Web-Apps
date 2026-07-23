@@ -1,3 +1,12 @@
+/**
+ * Suite de tests de la gestion des clés RS256 (`keys.ts`).
+ *
+ * Vérifie la construction du JWKS et l'init des clés : le `kid` par défaut est le
+ * thumbprint JWK de la clé (donc deux matériels distincts → deux kids distincts, et
+ * même matériel → même kid entre redémarrages), le `kid` peut être épinglé (avec un
+ * simple warning en cas de non-correspondance, jamais d'échec au boot), et la rotation
+ * publie une clé « précédente » vérifiante en plus de la primaire.
+ */
 import { calculateJwkThumbprint, exportJWK, generateKeyPair, exportPKCS8, exportSPKI, importSPKI } from "jose";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { buildJwks, getJWKS, getKeyId, initKeys } from "./keys.js";
@@ -20,7 +29,9 @@ const genPem = async () => {
   return { priv: await exportPKCS8(privateKey), pub: await exportSPKI(publicKey) };
 };
 
+// buildJwks : construction du document JWKS à partir des entrées {jwk, kid}.
 describe("buildJwks", () => {
+  // Chaque entrée doit porter son kid et les métadonnées RS256 / use=sig.
   it("stamps kid + RS256/sig metadata onto each entry", () => {
     const jwks = buildJwks([
       { jwk: { kty: "RSA", n: "a", e: "AQAB" }, kid: "k1" },
@@ -32,9 +43,12 @@ describe("buildJwks", () => {
   });
 });
 
+// initKeys : chargement des clés depuis l'env et dérivation du kid.
 describe("initKeys", () => {
   let saved: Record<string, string | undefined>;
 
+  // Sauvegarde puis efface les variables d'env de clés avant chaque test, restaurées après,
+  // pour isoler chaque cas de l'environnement réel.
   beforeEach(() => {
     saved = Object.fromEntries(ENV_KEYS.map((k) => [k, process.env[k]]));
     for (const k of ENV_KEYS) delete process.env[k];
@@ -47,6 +61,7 @@ describe("initKeys", () => {
     }
   });
 
+  // Sans kid configuré : le kid par défaut est le thumbprint JWK et une seule clé est publiée.
   it("defaults the kid to the key's JWK thumbprint and publishes exactly that key", async () => {
     const active = await genPem();
     process.env.AUTH_PRIVATE_KEY = active.priv;
@@ -59,8 +74,8 @@ describe("initKeys", () => {
     expect(getJWKS().keys[0]!.kid).toBe(getKeyId());
   });
 
-  // The regression that matters: this is what makes "swapped the PEM, forgot to bump
-  // the kid" impossible, which would otherwise 401 every consumer that cached by kid.
+  // L'invariant qui compte : rend impossible le « PEM changé mais kid oublié », qui
+  // renverrait sinon 401 à tout consommateur ayant mis en cache par kid.
   it("gives two distinct keypairs two distinct default kids", async () => {
     const a = await genPem();
     process.env.AUTH_PRIVATE_KEY = a.priv;
@@ -88,8 +103,9 @@ describe("initKeys", () => {
     expect(getKeyId()).toBe(first);
   });
 
-  // Pinning is the escape hatch for a zero-disruption migration, so a mismatch warns
-  // rather than refusing to boot — a boot loop is the outage class this change prevents.
+  // L'épinglage (pinning) est la porte de sortie d'une migration sans interruption : une
+  // divergence émet donc un avertissement plutôt que de refuser de démarrer — une boucle de
+  // démarrage est justement la classe de panne que ce comportement évite.
   it("warns but does not throw when a pinned kid is not the key's thumbprint", async () => {
     const active = await genPem();
     process.env.AUTH_PRIVATE_KEY = active.priv;
@@ -107,8 +123,9 @@ describe("initKeys", () => {
     warn.mockRestore();
   });
 
-  // The migration alias: one key published under both its thumbprint and the legacy
-  // static kid, so tokens minted before the switch still verify while they drain.
+  // L'alias de migration : une même clé publiée à la fois sous son thumbprint et sous
+  // l'ancien kid statique, pour que les tokens émis avant le basculement se vérifient
+  // encore le temps qu'ils s'épuisent.
   it("publishes one key under two kids when aliased to the legacy kid", async () => {
     const active = await genPem();
     process.env.AUTH_PRIVATE_KEY = active.priv;

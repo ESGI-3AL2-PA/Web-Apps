@@ -3,8 +3,13 @@ import type { DistrictAdmin } from "../../entities/district-admin.entity.js";
 import type { IDistrictAdminRepository } from "./district-admin.repository.js";
 import { eq, paginate, where } from "../satan.helpers.js";
 
-/** SATAN QL for the id lookup, the (districtId, userId) existence check, the id
- *  delete and the paginated list (COUNT + FIND). */
+/**
+ * Repository des administrateurs de quartier en implémentation hybride.
+ *
+ * SATAN QL pour la recherche par id, le test d'existence (districtId, userId), la
+ * suppression par id et la liste paginée (COUNT + FIND). La création reste
+ * déléguée à Mongo (champs générés côté serveur).
+ */
 export class SatanDistrictAdminRepository implements IDistrictAdminRepository {
   constructor(
     private readonly mongo: IDistrictAdminRepository,
@@ -36,7 +41,7 @@ export class SatanDistrictAdminRepository implements IDistrictAdminRepository {
     return paginate<DistrictAdmin>(this.satan, "district_admins", clause, { page, limit });
   }
 
-  // --- delegated to Mongo (server-generated fields) ---
+  // --- délégué à Mongo (champs générés côté serveur) ---
   ensureIndexes(): Promise<void> {
     return this.mongo.ensureIndexes();
   }

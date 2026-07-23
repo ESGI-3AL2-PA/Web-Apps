@@ -1,7 +1,14 @@
+/**
+ * Section « comment ça marche » de la landing.
+ *
+ * Présente les étapes d'utilisation du produit sous forme de liste ordonnée
+ * numérotée (01, 02, 03…), une étape par colonne. Textes issus du dictionnaire
+ * i18n `t`.
+ */
 import type { Dict } from "../i18n";
 
-// The three steps are a genuine sequence, so numbered markers carry real
-// meaning here (unlike decorative 01/02/03 elsewhere).
+// Les étapes forment une véritable séquence : la numérotation porte donc un sens
+// réel ici (contrairement aux marqueurs 01/02/03 purement décoratifs ailleurs).
 const HowItWorks = ({ t }: { t: Dict }) => {
   return (
     <section className="border-y border-ink/8 bg-white/50">
@@ -15,6 +22,7 @@ const HowItWorks = ({ t }: { t: Dict }) => {
           {t.how.steps.map((step, i) => (
             <li key={i} className="reveal relative" style={{ animationDelay: `${0.08 * i}s` }}>
               <div className="flex items-baseline gap-3">
+                {/* Numéro d'étape formaté sur deux chiffres (01, 02, 03…). */}
                 <span className="font-mono text-2xl font-bold text-secondary">{String(i + 1).padStart(2, "0")}</span>
                 <span className="h-px flex-1 translate-y-[-4px] bg-ink/12" aria-hidden="true" />
               </div>

@@ -1,12 +1,18 @@
+// Cas d'usage sync : renvoie une page du flux de changements ordonné (pull côté desktop).
 import type { ChangeEntryDto } from "@repo/contracts";
 import type { ISyncChangesRepository } from "../../repositories/Sync/sync-changes.repository.js";
 import { redactServerDoc } from "../../sync/sync-entity-config.js";
 import type { SyncScope } from "../../sync/sync-scope.js";
 
 /**
- * One page of the ordered change feed. `since=0` is a full snapshot thanks to the
- * first-boot seeding (§5.2), so the client has a single pull path and no separate
- * REST bootstrap.
+ * Une page du flux de changements ordonné. `since=0` correspond à un snapshot complet
+ * grâce au seeding au premier démarrage (§5.2) : le client n'a donc qu'un seul chemin
+ * de pull, sans bootstrap REST distinct.
+ *
+ * Chaque entrée passe par `redactServerDoc` pour retirer les champs serveur sensibles
+ * (ex. hash de mot de passe) avant de quitter le serveur. Filtrage par `scope`
+ * (quartier) et exclusion optionnelle de l'instance émettrice (`excludeInstance`,
+ * pour éviter que le client ne se réapplique ses propres écritures).
  */
 export const getChangesUseCase = (changesRepository: ISyncChangesRepository) => {
   return async (params: {

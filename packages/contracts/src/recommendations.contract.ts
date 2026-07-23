@@ -5,10 +5,15 @@ import { auth } from "./auth-meta";
 
 const c = initContract();
 
-// Endpoint(s) du moteur de recommandation. Pour l'instant un seul :
-// suggestions d'events basées sur le graphe social Neo4j (collaborative
-// filtering via les relations INTERESTED_IN_EVENT).
+/**
+ * Contract ts-rest du moteur de recommandation.
+ *
+ * Pour l'instant un seul endpoint : suggestions d'événements basées sur le
+ * graphe social Neo4j (filtrage collaboratif via les relations
+ * INTERESTED_IN_EVENT alimentées par les signaux d'intérêt des utilisateurs).
+ */
 export const recommendationsContract = c.router({
+  // GET /recommendations/events — recommandations d'événements personnalisées (filtrage collaboratif Neo4j).
   getEventRecommendations: {
     method: "GET",
     path: "/recommendations/events",

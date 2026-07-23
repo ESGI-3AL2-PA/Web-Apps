@@ -1,17 +1,20 @@
+// Suite de tests du middleware requireStepUp : vérifie le step-up MFA sur les opérations sensibles
+// (politique `always` ou `whenBodyTouches`), la validation de l'X-Step-Up-Token (audience, sujet,
+// expiration) et le bypass en dev où le step-up n'est jamais requis hors production.
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Request, Response } from "express";
 import type { AppRoute } from "@ts-rest/core";
 import type { AuthPolicy } from "@repo/contracts";
 
-// jose is used both here (jwtVerify) and by auth.middleware at module load
-// (createRemoteJWKSet). Provide both so importing the middleware doesn't blow up,
-// and drive jwtVerify's outcome per test.
+// jose est utilisé ici (jwtVerify) et par auth.middleware au chargement du module (createRemoteJWKSet).
+// On fournit les deux pour que l'import du middleware ne casse pas, et on pilote le résultat de
+// jwtVerify test par test.
 vi.mock("jose", () => ({
   createRemoteJWKSet: vi.fn(() => "jwks"),
   jwtVerify: vi.fn(),
 }));
 
-// auth.middleware's requireAuth pulls the user repo via resolve; never touched here.
+// Le requireAuth d'auth.middleware récupère le repo user via resolve ; jamais sollicité ici.
 vi.mock("../repositories/container.js", () => ({ resolve: vi.fn() }));
 
 import { jwtVerify } from "jose";
@@ -55,6 +58,7 @@ const validPayload = { payload: { sub: "user-1" } } as unknown as Awaited<Return
 describe("requireStepUp", () => {
   const prevEnv = process.env.NODE_ENV;
 
+  // Force NODE_ENV=production pour activer l'application du step-up (no-op hors prod), restauré ensuite.
   beforeEach(() => {
     vi.clearAllMocks();
     process.env.NODE_ENV = "production";
@@ -125,14 +129,14 @@ describe("requireStepUp", () => {
   it("whenBodyTouches: requires step-up only when the body sets a listed field", async () => {
     const policy: AuthPolicy = { stepUp: { whenBodyTouches: ["email", "address", "newPassword"] } };
 
-    // Body touches only a non-sensitive field → no step-up needed.
+    // Le corps ne touche qu'un champ non sensible → pas de step-up requis.
     const next1 = vi.fn();
     const { res: res1, captured: cap1 } = makeRes();
     await requireStepUp(makeReq({ policy, body: { firstName: "Jo" } }), res1, next1);
     expect(next1).toHaveBeenCalledOnce();
     expect(cap1.statusCode).toBeUndefined();
 
-    // Body touches a sensitive field with no token → rejected.
+    // Le corps touche un champ sensible sans token → rejeté.
     const next2 = vi.fn();
     const { res: res2, captured: cap2 } = makeRes();
     await requireStepUp(makeReq({ policy, body: { email: "new@example.com" } }), res2, next2);

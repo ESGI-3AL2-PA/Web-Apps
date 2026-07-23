@@ -7,9 +7,15 @@ import {
   contentTypeForKey,
 } from "../../services/image-storage.service.js";
 
+// Handlers bruts Express pour l'upload et le service d'images d'annonces
+// (stockées via image-storage.service). L'upload prend une data-URL base64 et
+// renvoie une URL publique ; le service streame le binaire.
+
 // ~5 Mo décodés. base64 gonfle d'environ 4/3, donc 5 Mo ≈ 6.7M caractères.
 const MAX_IMAGE_BASE64_LENGTH = 7_000_000;
 
+// Base d'URL publique : préfère API_PUBLIC_URL (sans slash final), sinon reconstruit
+// depuis le protocole et l'hôte de la requête.
 const publicBase = (req: Request): string =>
   process.env.API_PUBLIC_URL?.replace(/\/$/, "") ?? `${req.protocol}://${req.get("host")}`;
 
@@ -44,8 +50,8 @@ export const imageUploadHandler = async (req: Request, res: Response, next: Next
   }
 };
 
-// GET /uploads/images/:key — streams the binary. Auth-gated at the mount (below
-// requireAuth): a valid token is required, but there is no per-listing authorization.
+// GET /uploads/images/:key — streame le binaire. Protégé par auth au montage (sous
+// requireAuth) : un token valide est requis, mais pas d'autorisation par annonce.
 export const imageStreamHandler = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { key } = req.params;
@@ -59,6 +65,7 @@ export const imageStreamHandler = async (req: Request, res: Response, next: Next
       return;
     }
     res.setHeader("Content-Type", contentTypeForKey(key));
+    // La clé est un UUID immuable : cache privé (par utilisateur) d'un an, immutable.
     res.setHeader("Cache-Control", "private, max-age=31536000, immutable");
     stream.on("error", (err) => next(err));
     stream.pipe(res);

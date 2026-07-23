@@ -1,22 +1,25 @@
 /// <reference types="vite/client" />
 
-// Centralized frontend runtime configuration. Service URLs are read from Vite
-// env vars exactly once here, so apps never hardcode or re-derive them. Both
-// frontends import `config` instead of reading `import.meta.env` themselves.
+// Configuration runtime centralisée des frontends. Les URLs des services sont lues
+// depuis les variables d'env Vite une seule fois ici, pour qu'aucune app ne les
+// code en dur ni ne les redérive. Les deux frontends importent `config` au lieu de
+// lire `import.meta.env` eux-mêmes.
 
+/** Ensemble des URLs de base publiques des services de la plateforme. */
 export interface AppConfig {
-  /** Public base URL of the auth-service (login/register/JWKS, refresh). */
+  /** URL de base publique de l'auth-service (login/register/JWKS, refresh). */
   authServiceUrl: string;
-  /** Public base URL of the api. */
+  /** URL de base publique de l'api. */
   apiUrl: string;
-  /** Public base URL of the user-facing app (post-auth redirect target). */
+  /** URL de base publique de l'app utilisateur (cible de redirection post-auth). */
   appUrl: string;
-  /** Public base URL of the admin console (redirect target for superAdmins). */
+  /** URL de base publique de la console d'admin (cible de redirection des superAdmins). */
   adminUrl: string;
-  /** Public base URL of the marketing landing site ("back to landing" target). */
+  /** URL de base publique du site vitrine ("retour à l'accueil"). */
   landingUrl: string;
 }
 
+/** Config résolue : valeur de l'env Vite si présente, sinon repli sur localhost. */
 export const config: AppConfig = {
   authServiceUrl: import.meta.env.VITE_AUTH_SERVICE_URL ?? "http://localhost:3001",
   apiUrl: import.meta.env.VITE_API_URL ?? "http://localhost:3000",

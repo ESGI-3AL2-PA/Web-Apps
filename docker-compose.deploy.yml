@@ -1,18 +1,21 @@
-# Production / deploy stack — runs the app services from the images CD pushed to GHCR
-# (never builds on the host) and fronts everything with a Caddy reverse proxy (automatic HTTPS).
+# Stack de production / déploiement — lance les services applicatifs à partir des
+# images que la CD a poussées sur GHCR (jamais de build sur l'hôte) et place un reverse
+# proxy Caddy devant tout (HTTPS automatique).
 #
-# This is the ONLY production compose: `docker-compose.yml` is dev, this is prod. Images are the
-# artifact — there is no `build:` here; CI builds each app from apps/<app>/Dockerfile and pushes
-# it to ghcr.io/esgi-3al2-pa/web-apps/<app>. The CD deploy job runs it on the VM:
+# C'est le SEUL compose de production : `docker-compose.yml` est le dev, celui-ci le prod.
+# Les images sont l'artefact — pas de `build:` ici ; la CI build chaque app depuis
+# apps/<app>/Dockerfile et la pousse vers ghcr.io/esgi-3al2-pa/web-apps/<app>. Le job de
+# déploiement CD l'exécute sur la VM :
 #
 #   docker compose -f docker-compose.deploy.yml pull
 #   docker compose -f docker-compose.deploy.yml up -d --no-build
 #
-# Every secret AND every environment URL comes from the SOPS-decrypted env (prod.enc.env)
-# via `sops exec-env` — nothing plaintext lives here. Front URLs (VITE_*) are baked into the bundles at
-# CI build time, so they are NOT read here. auth-service needs a STABLE RS256 keypair (ephemeral keys
-# rotate on restart and break JWT verification): generate one with scripts/gen-auth-keys.sh into
-# ./docker/auth/ — it is mounted read-only below.
+# Chaque secret ET chaque URL d'environnement provient de l'env déchiffré par SOPS
+# (prod.enc.env) via `sops exec-env` — rien en clair ici. Les URLs front (VITE_*) sont
+# figées dans les bundles au build CI, donc PAS lues ici. L'auth-service a besoin d'une
+# paire de clés RS256 STABLE (des clés éphémères tournent au redémarrage et cassent la
+# vérification des JWT) : générez-la avec scripts/gen-auth-keys.sh dans ./docker/auth/ —
+# montée en lecture seule plus bas.
 services:
   api:
     image: ghcr.io/esgi-3al2-pa/web-apps/api:latest
@@ -29,9 +32,9 @@ services:
       NEO4J_USER: neo4j
       NEO4J_PASSWORD: ${NEO4J_PASSWORD:?set in the SOPS env}
       CORS_ORIGINS: ${CORS_ORIGINS:?set in the SOPS env}
-      # Behind Caddy: TRUST_PROXY is the number of trusted hops.
+      # Derrière Caddy : TRUST_PROXY est le nombre de sauts de proxy de confiance.
       TRUST_PROXY: ${TRUST_PROXY:-1}
-      # Voice-message + listing-image storage in MinIO (buckets made by minio-createbucket).
+      # Stockage des messages vocaux + images d'annonces dans MinIO (buckets créés par minio-createbucket).
       MESSAGES_MINIO_ENDPOINT: http://minio:9000
       MESSAGES_MINIO_BUCKET: messages
       MESSAGES_MINIO_ACCESS_KEY: ${DOCUMENSO_S3_ACCESS_KEY:?set in the SOPS env}
@@ -40,7 +43,7 @@ services:
       LISTINGS_MINIO_BUCKET: listings
       LISTINGS_MINIO_ACCESS_KEY: ${DOCUMENSO_S3_ACCESS_KEY:?set in the SOPS env}
       LISTINGS_MINIO_SECRET_KEY: ${DOCUMENSO_S3_SECRET_KEY:?set in the SOPS env}
-      # Documenso reached in-network; secrets come from the SOPS env (created once in the UI).
+      # Documenso joignable sur le réseau interne ; secrets issus de l'env SOPS (créés une fois via l'UI).
       DOCUMENSO_URL: http://documenso:3030
       DOCUMENSO_API_TOKEN: ${DOCUMENSO_API_TOKEN:-}
       DOCUMENSO_TEMPLATE_ID: ${DOCUMENSO_TEMPLATE_ID:-}
@@ -48,8 +51,8 @@ services:
       DOCUMENSO_SIGNING_LANGUAGE: ${DOCUMENSO_SIGNING_LANGUAGE:-fr}
       DOCUMENSO_DOWNLOAD_HOSTS: ${DOCUMENSO_DOWNLOAD_HOSTS:-minio:9000}
       CONTRACTS_SIGN_REDIRECT_URL: ${CONTRACTS_SIGN_REDIRECT_URL:?set in the SOPS env}
-    # Wait for the datastores to be READY, not just started — the api connects to
-    # Mongo + Neo4j at boot and fails fast otherwise.
+    # Attendre que les datastores soient PRÊTS, pas seulement démarrés — l'api se
+    # connecte à Mongo + Neo4j au boot et échoue vite sinon.
     depends_on:
       mongodb:
         condition: service_healthy
@@ -75,14 +78,14 @@ services:
   auth-service:
     image: ghcr.io/esgi-3al2-pa/web-apps/auth-service:latest
     restart: always
-    # Stable RS256 keys (read-only). Generate with scripts/gen-auth-keys.sh → ./docker/auth/.
+    # Clés RS256 stables (lecture seule). Générer avec scripts/gen-auth-keys.sh → ./docker/auth/.
     volumes:
       - ./docker/auth:/run/auth-keys:ro
     environment:
       NODE_ENV: production
       AUTH_PORT: 3001
-      # Behind Caddy: TRUST_PROXY is the number of trusted hops, so express-rate-limit
-      # keys on the real client IP instead of the proxy's.
+      # Derrière Caddy : TRUST_PROXY est le nombre de sauts de confiance, pour qu'express-rate-limit
+      # se base sur la vraie IP client et non sur celle du proxy.
       TRUST_PROXY: ${TRUST_PROXY:-1}
       MONGODB_URL: mongodb://${MONGO_ROOT_USERNAME:?set in the SOPS env}:${MONGO_ROOT_PASSWORD:?set in the SOPS env}@mongodb:27017/?replicaSet=rs0
       MONGODB_DB: ${MONGODB_DB:-db}
@@ -94,7 +97,7 @@ services:
       AUTH_PRIVATE_KEY_FILE: /run/auth-keys/private.pem
       AUTH_PUBLIC_KEY_FILE: /run/auth-keys/public.pem
       TOTP_ISSUER: ${TOTP_ISSUER:-Connected-Neighboors}
-      # Email via Resend in prod (no mailpit). Mail is a no-op if RESEND_API_KEY is unset.
+      # Email via Resend en prod (pas de mailpit). L'envoi est neutre si RESEND_API_KEY est absent.
       RESEND_API_KEY: ${RESEND_API_KEY:-}
       FROM_EMAIL: ${FROM_EMAIL:?set in the SOPS env}
       APP_NAME: ${APP_NAME:-Connected-Neighboors}
@@ -104,8 +107,8 @@ services:
       mongo-init:
         condition: service_completed_successfully
 
-  # Fronts serve pre-built static bundles (VITE_* URLs baked in at CI build time). No host ports —
-  # Caddy is the only ingress.
+  # Les fronts servent des bundles statiques pré-buildés (URLs VITE_* figées au build CI).
+  # Aucun port hôte — Caddy est le seul point d'entrée.
   admin-front:
     image: ghcr.io/esgi-3al2-pa/web-apps/admin-front:latest
     restart: always
@@ -124,26 +127,27 @@ services:
     restart: always
 
   # ── Datastores ───────────────────────────────────────────────────────────────
-  # Single-member replica set — required by the api's offline-sync Change-Streams
-  # watcher (db.watch() throws on a standalone mongod) and it unlocks multi-document
-  # transactions. One member + root auth needs no keyfile; adding members later would.
+  # Replica set à un seul membre — requis par le watcher offline-sync de l'api basé
+  # sur les Change Streams (db.watch() échoue sur un mongod standalone) et débloque les
+  # transactions multi-documents. Un membre + auth root n'a pas besoin de keyfile ;
+  # ajouter des membres plus tard en exigerait un.
   mongodb:
     image: mongo:8
     restart: always
-    # A keyFile is mandatory whenever auth AND replication are both enabled — without
-    # it mongod exits with `BadValue: security.keyFile is required when authorization
-    # is enabled with replica sets`. Copied to 0400/mongodb at startup because a
-    # bind-mounted file cannot carry the required mode/ownership.
-    # PROD: MONGO_KEYFILE_PATH must point at a real secret (SOPS-provisioned on the
-    # host) — never the dev keyfile committed at ./docker/mongo-keyfile.
+    # Un keyFile est obligatoire dès que auth ET réplication sont tous deux actifs — sans
+    # lui mongod s'arrête avec `BadValue: security.keyFile is required when authorization
+    # is enabled with replica sets`. Copié en 0400/mongodb au démarrage car un fichier
+    # bind-monté ne peut pas porter le mode/propriétaire requis.
+    # PROD : MONGO_KEYFILE_PATH doit pointer vers un vrai secret (provisionné par SOPS sur
+    # l'hôte) — jamais le keyfile de dev commité dans ./docker/mongo-keyfile.
     command:
       - bash
       - -c
       - |
         install -m 400 -o mongodb -g mongodb /etc/mongo/keyfile /tmp/mongo-keyfile
         exec docker-entrypoint.sh mongod --replSet rs0 --bind_ip_all --keyFile /tmp/mongo-keyfile
-    # No host port: reachable only over the internal compose network. Never expose a
-    # datastore to the host in prod (0.0.0.0 binding = internet-reachable DB).
+    # Aucun port hôte : joignable uniquement via le réseau interne compose. Ne jamais
+    # exposer un datastore à l'hôte en prod (bind 0.0.0.0 = BD joignable depuis Internet).
     volumes:
       - mongodb_data:/data/db
       - ${MONGO_KEYFILE_PATH:?set in the SOPS env — path to the rs0 keyfile}:/etc/mongo/keyfile:ro
@@ -157,8 +161,8 @@ services:
       retries: 5
       start_period: 20s
 
-  # One-shot, idempotent: initiates rs0 on a fresh volume, then exits. Every service
-  # that connects to Mongo waits on it completing.
+  # One-shot idempotent : initialise rs0 sur un volume vierge, puis s'arrête. Chaque
+  # service qui se connecte à Mongo attend son achèvement.
   mongo-init:
     image: mongo:8
     restart: "no"
@@ -183,7 +187,7 @@ services:
   neo4j:
     image: neo4j:5
     restart: always
-    # No host port: reachable only over the internal compose network (see mongodb).
+    # Aucun port hôte : joignable uniquement via le réseau interne compose (voir mongodb).
     volumes:
       - neo4j_data:/data
     environment:
@@ -195,8 +199,8 @@ services:
       retries: 5
       start_period: 30s
 
-  # S3-compatible object storage shared by the core app (voice messages, listing
-  # images) and Documenso.
+  # Stockage objet compatible S3 partagé par l'app principale (messages vocaux, images
+  # d'annonces) et Documenso.
   minio:
     image: minio/minio:RELEASE.2024-01-16T16-07-38Z
     restart: always
@@ -212,7 +216,7 @@ services:
       timeout: 5s
       retries: 5
 
-  # One-shot: create the buckets (documenso PDFs + voice messages + listings), then exit.
+  # One-shot : crée les buckets (PDFs documenso + messages vocaux + annonces), puis s'arrête.
   minio-createbucket:
     image: minio/mc:RELEASE.2024-01-18T07-03-39Z
     depends_on:
@@ -228,7 +232,7 @@ services:
         mc mb --ignore-existing local/listings;
         exit 0;
 
-  # ── Documenso e-signature (self-hosted) — prod values come from the SOPS env ──
+  # ── Signature électronique Documenso (auto-hébergée) — valeurs prod issues de l'env SOPS ──
   documenso-db:
     image: postgres:15
     restart: always
@@ -244,7 +248,8 @@ services:
       timeout: 5s
       retries: 5
 
-  # E-signature UI — no host port; Caddy fronts it with TLS (signing links must be https).
+  # UI de signature électronique — aucun port hôte ; Caddy la fronte en TLS (les liens de
+  # signature doivent être en https).
   documenso:
     image: documenso/documenso:v2.15.0
     restart: always
@@ -283,15 +288,15 @@ services:
       NEXT_PRIVATE_SIGNING_LOCAL_FILE_PATH: /opt/documenso/cert.p12
       NEXT_PRIVATE_SIGNING_PASSPHRASE: ${DOCUMENSO_SIGNING_PASSPHRASE:-}
 
-  # One-shot: seed MongoDB + Neo4j with sample data, then exit. Idempotent; re-runs
-  # safely on every `up`. Reuses the api image.
+  # One-shot : seed MongoDB + Neo4j avec des données d'exemple, puis s'arrête. Idempotent ;
+  # se relance sans risque à chaque `up`. Réutilise l'image api.
   api-seed:
     image: ghcr.io/esgi-3al2-pa/web-apps/api:latest
     restart: "no"
     command: ["node", "apps/api/dist/scripts/seed.js"]
     environment:
       NODE_ENV: production
-      # Picks seed-data/<name>.txt shipped in the image.
+      # Sélectionne seed-data/<name>.txt embarqué dans l'image.
       SEED_SCENARIO: ${SEED_SCENARIO:-demo}
       MONGODB_URL: mongodb://${MONGO_ROOT_USERNAME:?set in the SOPS env}:${MONGO_ROOT_PASSWORD:?set in the SOPS env}@mongodb:27017/?replicaSet=rs0
       MONGODB_DB: ${MONGODB_DB:-db}
@@ -306,7 +311,7 @@ services:
       neo4j:
         condition: service_healthy
 
-  # One-shot: seed/promote the superAdmin account (idempotent, keyed on email).
+  # One-shot : seed/promotion du compte superAdmin (idempotent, clé sur l'email).
   auth-seed:
     image: ghcr.io/esgi-3al2-pa/web-apps/auth-service:latest
     restart: "no"
@@ -322,14 +327,15 @@ services:
         condition: service_healthy
       mongo-init:
         condition: service_completed_successfully
-      # Deliberately NOT ordered after api-seed the way the dev compose is: api-seed
-      # refuses to run here (NODE_ENV=production) and exits 1, so depending on its
-      # success would block the superAdmin from ever being provisioned. If you ever
-      # set SEED_ALLOW_PRODUCTION, run api-seed to completion BEFORE auth-seed by
-      # hand — api-seed drops `users`, which is where the superAdmin lives.
+      # Volontairement PAS ordonné après api-seed comme dans le compose dev : api-seed
+      # refuse de tourner ici (NODE_ENV=production) et sort en 1, donc dépendre de son
+      # succès empêcherait à jamais le provisionnement du superAdmin. Si vous activez un
+      # jour SEED_ALLOW_PRODUCTION, exécutez api-seed jusqu'au bout AVANT auth-seed à la
+      # main — api-seed drop la collection `users`, là où vit le superAdmin.
 
-  # ── TLS-terminating reverse proxy. Routes subdomains to the app containers over the
-  #    compose network; obtains + renews Let's Encrypt certs automatically. ─────────────
+  # ── Reverse proxy qui termine le TLS. Route les sous-domaines vers les conteneurs
+  #    applicatifs via le réseau compose ; obtient + renouvelle les certifs Let's Encrypt
+  #    automatiquement. ─────────────
   caddy:
     image: caddy:2-alpine
     restart: always

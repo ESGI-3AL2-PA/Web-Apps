@@ -1,17 +1,28 @@
 import { z } from "../zod";
 
-// Listing image URLs must be http(s); reject javascript:/data: and other schemes.
+/**
+ * DTO (schémas zod) de l'annonce (listing).
+ *
+ * Une annonce est publiée par un utilisateur dans un quartier, propose un service à un prix
+ * exprimé en points, porte un statut de cycle de vie, des tags et des images. Ce fichier couvre
+ * la réponse, la création/mise à jour et la requête de listing (filtres + tri serveur).
+ */
+
+// Les URLs d'images d'annonce doivent être en http(s) ; rejette javascript:/data: et autres schémas.
 const imageUrl = z
   .string()
   .url()
   .refine((u) => /^https?:\/\//i.test(u), { message: "Image URL must be http(s)" });
 
+// Cycle de vie d'une annonce : active, close, expirée.
 export const ListingStatusSchema = z.enum(["active", "closed", "expired"]);
 export type ListingStatus = z.infer<typeof ListingStatusSchema>;
 
+// Ordres de tri serveur : plus récentes d'abord, ou par prix croissant/décroissant.
 export const ListingSortSchema = z.enum(["recent", "price_asc", "price_desc"]);
 export type ListingSort = z.infer<typeof ListingSortSchema>;
 
+// Forme de réponse d'une annonce renvoyée par l'API.
 export const ListingResponseDtoSchema = z
   .object({
     id: z.string().openapi({ description: "Unique listing identifier" }),
@@ -26,16 +37,18 @@ export const ListingResponseDtoSchema = z
       .optional()
       .openapi({ description: "Tag names attached to this listing", example: ["gardening", "weekend-help"] }),
     images: z.array(z.string()).optional().openapi({ description: "URLs of images attached to this listing" }),
+    // Renseigné côté serveur pour l'utilisateur authentifié : indique s'il a déjà pris cette annonce.
     userHasContract: z
       .boolean()
       .optional()
-      .openapi({ description: "True si le user authentifié a déjà pris ce service" }),
+      .openapi({ description: "Whether the authenticated user has already taken this listing" }),
     createdAt: z.string().datetime().openapi({ description: "Creation timestamp" }),
     expiresAt: z.string().datetime().optional().openapi({ description: "Expiry timestamp" }),
   })
   .openapi({ title: "ListingResponse" });
 export type ListingResponseDto = z.infer<typeof ListingResponseDtoSchema>;
 
+// Corps de création d'une annonce (l'auteur, le quartier et le statut sont dérivés côté serveur).
 export const CreateListingDtoSchema = z
   .object({
     title: z
@@ -59,6 +72,7 @@ export const CreateListingDtoSchema = z
   .openapi({ title: "CreateListing" });
 export type CreateListingDto = z.infer<typeof CreateListingDtoSchema>;
 
+// Corps de mise à jour partielle d'une annonce : tous les champs facultatifs, statut modifiable.
 export const UpdateListingDtoSchema = z
   .object({
     title: z.string().min(1).max(300).optional(),
@@ -72,11 +86,14 @@ export const UpdateListingDtoSchema = z
   .openapi({ title: "UpdateListing" });
 export type UpdateListingDto = z.infer<typeof UpdateListingDtoSchema>;
 
+// Paramètre d'URL : identifiant de l'annonce.
 export const ListingParamsDtoSchema = z.object({ id: z.string() }).openapi({ title: "ListingParams" });
 export type ListingParamsDto = z.infer<typeof ListingParamsDtoSchema>;
 
+// Query string de listing paginé, avec filtres facultatifs (statut, quartier, auteur, tag) et tri.
 export const ListingQueryDtoSchema = z
   .object({
+    // Pagination : page >= 1, 20 par défaut, plafonnée à 100 par page.
     page: z.coerce.number().int().min(1).optional().default(1),
     limit: z.coerce.number().int().min(1).max(100).optional().default(20),
     search: z.string().max(200).optional(),

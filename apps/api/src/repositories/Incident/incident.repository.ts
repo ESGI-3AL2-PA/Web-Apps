@@ -1,5 +1,10 @@
 import type { Incident } from "../../entities/incident.entity.js";
 
+/**
+ * Contrat du repository des signalements (incidents). Implémenté par la version
+ * Mongo et la version SATAN QL ; les cas d'usage ne dépendent que de cette
+ * interface.
+ */
 export interface IIncidentRepository {
   ensureIndexes(): Promise<void>;
 
@@ -33,6 +38,6 @@ export interface IIncidentRepository {
     byCategory: Record<string, number>;
   }>;
 
-  /** Delete every incident reported by a user (account deletion). */
+  /** Supprime tous les signalements créés par un user (suppression de compte). */
   deleteByReporter(reporterId: string): Promise<void>;
 }

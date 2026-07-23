@@ -1,3 +1,5 @@
+// Layout racine de la console admin : barre latérale de navigation, en-tête (sélecteur de quartier,
+// langue, thème), tiroir mobile et zone de contenu des routes enfants (Outlet, lazy-loadées).
 import { Suspense, useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation, useMatches } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -8,15 +10,15 @@ import { useTheme } from "../hooks/useTheme";
 
 interface NavItem {
   to: string;
-  // i18n key under `nav.*`
+  // Clé i18n sous `nav.*`
   label: string;
   icon: string;
-  // Only shown to superAdmin (privilege-escalation surfaces).
+  // Affiché uniquement au superAdmin (surfaces d'escalade de privilèges).
   superAdmin?: boolean;
 }
 
-// `section` and `label` hold i18n keys, resolved at render (this array is module-scoped and can't
-// call the translation hook).
+// `section` et `label` contiennent des clés i18n, résolues au render (ce tableau est au niveau
+// module et ne peut donc pas appeler le hook de traduction).
 const NAV: { section: string; items: NavItem[] }[] = [
   {
     section: "nav.overview",
@@ -60,10 +62,11 @@ export default function AdminLayout() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const isSuperAdmin = user?.role === "superAdmin";
 
-  // Close the mobile drawer whenever the route changes.
+  // Ferme le tiroir mobile à chaque changement de route.
   useEffect(() => setDrawerOpen(false), [location.pathname]);
 
-  // Keep the document title in sync with the active route's handle (an i18n key) and language.
+  // Aligne le titre du document sur le `handle` de la route active (une clé i18n) et la langue.
+  // On parcourt les matches à l'envers pour prendre la route la plus profonde qui définit un titre.
   useEffect(() => {
     const match = [...matches].reverse().find((m) => (m.handle as { title?: string })?.title);
     const titleKey = (match?.handle as { title?: string })?.title;
@@ -139,12 +142,12 @@ export default function AdminLayout() {
       >
         {t("nav.skipToContent")}
       </a>
-      {/* Static sidebar (desktop) */}
+      {/* Barre latérale fixe (desktop) */}
       <aside className="hidden lg:flex w-64 shrink-0 bg-base-100 border-e border-base-content/10 flex-col">
         {sidebar}
       </aside>
 
-      {/* Off-canvas sidebar (mobile) */}
+      {/* Barre latérale en tiroir (mobile) */}
       {drawerOpen && (
         <div className="fixed inset-0 z-40 lg:hidden">
           <div className="absolute inset-0 bg-black/40" onClick={() => setDrawerOpen(false)} />
@@ -165,6 +168,8 @@ export default function AdminLayout() {
               <span className="icon-[tabler--menu-2] size-5" />
             </button>
 
+            {/* superAdmin : sélecteur du quartier à auditer. Admin de quartier : badge du quartier
+                assigné (ou avertissement si aucun). */}
             {isSuperAdmin ? (
               scope.loading ? (
                 <div className="h-8 w-40 rounded bg-base-200 animate-pulse" />
@@ -219,7 +224,7 @@ export default function AdminLayout() {
           </div>
         </header>
         <main id="main" tabIndex={-1} className="flex-1 overflow-y-auto p-4 sm:p-6 outline-none">
-          {/* Suspense boundary for the lazy-loaded route chunks. */}
+          {/* Frontière Suspense pour les chunks de routes chargés en lazy. */}
           <Suspense fallback={<div className="h-32 w-full rounded bg-base-200 animate-pulse" />}>
             <Outlet />
           </Suspense>

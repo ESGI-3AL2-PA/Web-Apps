@@ -1,14 +1,15 @@
 /**
- * Best-effort wrapper for graph sync calls inside use-cases.
+ * Wrapper best-effort pour les appels de synchro graphe dans les cas d'usage.
  *
- * Mongo is the source of truth; Neo4j is a projection. If Neo4j is down or a
- * single sync call fails (transient network, missing node, …) we log and
- * continue so the API request still succeeds. A real-world deployment would
- * route these mutations through an outbox / message queue to guarantee
- * eventual consistency.
+ * Mongo est la source de vérité ; Neo4j n'est qu'une projection. Si Neo4j est
+ * down ou qu'un appel de synchro échoue (réseau transitoire, node manquant…)
+ * on log et on continue pour que la requête API réussisse malgré tout. En
+ * production on ferait transiter ces mutations par un outbox / une file de
+ * messages afin de garantir la cohérence à terme (eventual consistency).
  */
 import { logger } from "../../logger.js";
 
+// `label` sert uniquement à identifier l'appel dans les logs en cas d'échec.
 export const syncGraph = async (label: string, fn: () => Promise<void>): Promise<void> => {
   try {
     await fn();

@@ -1,3 +1,5 @@
+// Suite de tests du garde-fou de date de `CreateEventDtoSchema` : vérifie qu'un événement
+// dont l'`eventDate` est dans le passé est rejeté et qu'une date future est acceptée.
 import { describe, expect, it } from "vitest";
 import { CreateEventDtoSchema } from "@repo/contracts";
 

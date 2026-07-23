@@ -12,9 +12,18 @@ import { broadcastNewNotification } from "../../sockets/io.js";
 
 const s = initServer();
 
+/**
+ * Router ts-rest des notifications.
+ *
+ * Couche router : chaque handler résout ses repositories via `resolve(...)` puis
+ * délègue au cas d'usage correspondant. Le scoping par quartier passe par les
+ * helpers `district-scope`, l'autorisation fine (admin-only, destinataire-only)
+ * est imposée en amont par le middleware contract-metadata.
+ */
 export const notificationsRouter = s.router(notificationsContract, {
   getNotifications: async ({ query, req }) => {
-    // Users only see their own notifications; admins may filter freely within their district.
+    // Un user ne voit que ses propres notifications ; un admin peut filtrer
+    // librement à l'intérieur de son quartier.
     const isAdmin = req.user!.role === "admin";
     const scope = resolveListDistrictScope(req.user!, query.districtId);
     if ("empty" in scope) {
@@ -28,12 +37,13 @@ export const notificationsRouter = s.router(notificationsContract, {
   },
 
   createNotification: async ({ body }) => {
-    // Admin-only authorization is enforced by the contract-metadata middleware.
+    // Restriction admin-only imposée par le middleware contract-metadata.
     const userRepo: IUserRepository = resolve("user");
     const recipient = await userRepo.getUserById(body.recipientId);
     if (!recipient) {
       return { status: 404, body: { message: "Recipient not found" } };
     }
+    // Le quartier de la notification est celui du destinataire, pas un champ libre.
     const notification = await createNotificationUseCase(resolve("notification"))({
       ...body,
       districtId: recipient.districtId,
@@ -44,7 +54,7 @@ export const notificationsRouter = s.router(notificationsContract, {
   },
 
   markNotificationRead: async ({ params: { id } }) => {
-    // Recipient-only authorization (404-on-deny) is enforced by the contract-metadata middleware.
+    // Autorisation destinataire-only (404 en cas de refus) imposée par le middleware contract-metadata.
     const notification = await markNotificationReadUseCase(resolve("notification"))(id);
     if (!notification) {
       return { status: 404, body: { message: "Notification not found" } };
@@ -58,7 +68,7 @@ export const notificationsRouter = s.router(notificationsContract, {
   },
 
   deleteNotification: async ({ params: { id } }) => {
-    // Recipient-only authorization (404-on-deny) is enforced by the contract-metadata middleware.
+    // Autorisation destinataire-only (404 en cas de refus) imposée par le middleware contract-metadata.
     const deleted = await deleteNotificationUseCase(resolve("notification"))({ id });
     if (!deleted) {
       return { status: 404, body: { message: "Notification not found" } };

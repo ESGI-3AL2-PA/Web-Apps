@@ -1,3 +1,11 @@
+/**
+ * Repository (implémentation Mongo) du writer de synchronisation.
+ *
+ * Seul chemin par lequel des données d'origine client atteignent les collections
+ * métier : chaque écriture est passée par l'allowlist de l'entité (`pickWritable`),
+ * appliquée sur la collection cible résolue via `SYNC_ENTITIES`, et estampillée par
+ * `_sync` pour que le watcher taggue la bonne origine sur l'entrée de flux produite.
+ */
 import { randomUUID } from "crypto";
 import type { Db, Document, UpdateFilter } from "mongodb";
 import type { SyncEntity } from "@repo/contracts";
@@ -11,8 +19,8 @@ export class MongoSyncWriterRepository implements ISyncWriterRepository {
     return this.db.collection<Document>(SYNC_ENTITIES[entity].collection);
   }
 
-  // `_sync` is set on a client-origin write and cleared on a server-origin one, so
-  // the watcher tags the resulting feed entry with the right origin either way.
+  // `_sync` est posé sur une écriture d'origine client et effacé sur une écriture d'origine
+  // serveur, pour que le watcher taggue l'entrée de flux résultante avec la bonne origine.
   private stamp(sync: SyncStamp): Pick<UpdateFilter<Document>, "$set" | "$unset"> {
     return sync ? { $set: { _sync: sync } } : { $unset: { _sync: "" } };
   }
@@ -21,12 +29,14 @@ export class MongoSyncWriterRepository implements ISyncWriterRepository {
     return this.collection(entity).findOne({ _id: id as unknown as Document["_id"] });
   }
 
+  /** Recherche par clé métier (ex. `email`), utilisée pour dédupliquer un premier INSERT (§6.1). */
   async findByBusinessKey(entity: SyncEntity, value: unknown): Promise<SyncDoc | null> {
     const key = SYNC_ENTITIES[entity].businessKey;
     if (!key || value === undefined || value === null) return null;
     return this.collection(entity).findOne({ [key]: value });
   }
 
+  /** Insert, ou — avec un `id` explicite — upsert idempotent d'un document allowlisté. */
   async insert(
     entity: SyncEntity,
     data: SyncDoc,
@@ -37,8 +47,8 @@ export class MongoSyncWriterRepository implements ISyncWriterRepository {
     const mongoId = id ?? randomUUID();
     const writable = pickWritable(entity, data);
 
-    // A default that the payload also supplies would collide ($set and $setOnInsert
-    // may not touch the same path), so the client's value wins for those.
+    // Un défaut également fourni par le payload provoquerait une collision ($set et
+    // $setOnInsert ne peuvent pas toucher le même chemin) : la valeur du client l'emporte.
     const defaults = Object.fromEntries(
       Object.entries(SYNC_ENTITIES[entity].defaultsOnInsert).filter(([k]) => !(k in writable)),
     );
@@ -72,6 +82,8 @@ export class MongoSyncWriterRepository implements ISyncWriterRepository {
     return result.deletedCount === 1;
   }
 
+  // Remonte `updatedAt` et efface `_sync` (écriture d'origine serveur) : une résolution
+  // de conflit côté `serveur` se re-propage ainsi vers toutes les instances.
   async touch(entity: SyncEntity, id: string): Promise<{ updatedAt: string } | null> {
     const now = new Date().toISOString();
     const result = await this.collection(entity).updateOne({ _id: id as unknown as Document["_id"] }, {

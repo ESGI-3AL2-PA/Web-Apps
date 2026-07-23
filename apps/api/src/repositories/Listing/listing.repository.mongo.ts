@@ -6,22 +6,29 @@ import type { Listing, ListingStatus } from "../../entities/listing.entity.js";
 import { escapeRegex } from "../escape-regex.js";
 import type { IListingRepository } from "./listing.repository.js";
 
+// Document Mongo = entité Listing + son `_id`.
 type ListingDoc = WithMongoId<Listing>;
 
-// `_id` is always the final tiebreaker so skip/limit pagination is deterministic
-// even when the primary key ties (equal price, or same-millisecond createdAt).
+// `_id` est toujours le critère de départage final pour que la pagination
+// skip/limit reste déterministe même en cas d'égalité de la clé de tri (même
+// prix, ou createdAt à la même milliseconde).
 const SORT_SPECS = {
   recent: { createdAt: -1, _id: 1 },
   price_asc: { price: 1, _id: 1 },
   price_desc: { price: -1, _id: 1 },
 } satisfies Record<ListingSort, Sort>;
 
-/** Map the `sort` query param to a Mongo sort spec; defaults to `recent` for a
- *  stable order even when no sort is passed. */
+/** Traduit le paramètre `sort` en spec de tri Mongo ; par défaut `recent` pour
+ *  un ordre stable même quand aucun tri n'est passé. */
 export function listingSortSpec(sort?: ListingSort): Sort {
   return SORT_SPECS[sort ?? "recent"];
 }
 
+/**
+ * Implémentation Mongo du repository des annonces (collection `listings`).
+ * Recherche regex, filtre par tag insensible à la casse, tri configurable et
+ * pagination.
+ */
 export class MongoListingRepository implements IListingRepository {
   private collection: Collection<ListingDoc>;
 
@@ -30,7 +37,7 @@ export class MongoListingRepository implements IListingRepository {
   }
 
   async ensureIndexes(): Promise<void> {
-    // Backs district-scoped list filtering.
+    // Index qui sert au filtrage des listes par quartier.
     await this.collection.createIndex({ districtId: 1 });
   }
 
@@ -53,6 +60,7 @@ export class MongoListingRepository implements IListingRepository {
 
     const filter: Filter<ListingDoc> = {};
 
+    // Recherche insensible à la casse sur titre + description, saisie échappée.
     if (search) {
       const safe = escapeRegex(search);
       filter.$or = [{ title: { $regex: safe, $options: "i" } }, { description: { $regex: safe, $options: "i" } }];
@@ -112,13 +120,15 @@ export class MongoListingRepository implements IListingRepository {
     return this.collection.countDocuments(filter);
   }
 
+  // Supprime toutes les annonces d'un auteur (suppression de compte).
   async deleteByAuthor(authorId: string): Promise<void> {
     await this.collection.deleteMany({ authorId });
   }
 
+  // Convertit le document Mongo en entité (`_id` → `id`).
   private toListing(doc: ListingDoc): Listing {
     const { _id, ...rest } = doc;
-    // Default `images` for documents created before the field existed.
+    // `images` par défaut pour les documents créés avant l'ajout du champ.
     return { id: _id, ...rest, images: rest.images ?? [] };
   }
 }

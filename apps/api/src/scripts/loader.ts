@@ -1,24 +1,26 @@
 /**
- * Parser for the NDJSON seed scenario files under the repo-root `seed-data/*.txt`.
+ * Parser des fichiers de scénario seed au format NDJSON, situés à la racine du repo
+ * sous `seed-data/*.txt`.
  *
- * Line grammar, evaluated top to bottom:
- *   - blank / whitespace-only  → ignored
- *   - `#…`                     → comment, ignored
- *   - `@collection <name>`     → subsequent documents go to that Mongo collection
- *   - `@graph <target>`        → subsequent documents go to a Neo4j-only dataset
- *   - anything else            → one JSON document appended to the active target
+ * Grammaire ligne à ligne, évaluée de haut en bas :
+ *   - vide / uniquement des espaces  → ignoré
+ *   - `#…`                           → commentaire, ignoré
+ *   - `@collection <name>`           → les documents suivants vont dans cette collection Mongo
+ *   - `@graph <target>`              → les documents suivants vont dans un dataset Neo4j uniquement
+ *   - autre                          → un document JSON ajouté à la cible active
  *
- * Values that can only be known at run time are written as whole-string tokens
- * (`{{now}}`, `{{now-7d}}`, `{{passwordHash}}`) and resolved against a
- * `TokenContext` built by the caller.
+ * Les valeurs connues seulement à l'exécution sont écrites sous forme de tokens
+ * occupant toute la chaîne (`{{now}}`, `{{now-7d}}`, `{{passwordHash}}`) et résolues
+ * contre un `TokenContext` construit par l'appelant.
  */
 
 import { readFile } from "node:fs/promises";
 
 /**
- * The allow-list *and* the insertion order. The ordering encodes the referential
- * dependencies (districts before users before listings/events/…), so documents are
- * always inserted in this sequence regardless of how the file groups its directives.
+ * À la fois la liste blanche *et* l'ordre d'insertion. L'ordre encode les
+ * dépendances référentielles (quartiers avant users avant annonces/événements/…),
+ * si bien que les documents sont toujours insérés dans cette séquence quelle que
+ * soit la manière dont le fichier groupe ses directives.
  */
 export const MONGO_COLLECTIONS = [
   "districts",
@@ -39,16 +41,17 @@ export const MONGO_COLLECTIONS = [
 export type MongoCollectionName = (typeof MONGO_COLLECTIONS)[number];
 
 /**
- * The offline-sync feed: the change log, the watcher's cursor + one-shot `seeded`
- * flag, and the sequence counter keeping change indices monotonic. The seed drops
- * these together with the data they mirror — clearing the log while keeping the
- * counter would leave clients that already saw seq N silently missing the backfill.
+ * Le flux de synchronisation offline : le journal des changements, le curseur du
+ * watcher + son drapeau one-shot `seeded`, et le compteur de séquence qui garde les
+ * indices de changement monotones. Le seed supprime ces collections en même temps
+ * que les données qu'elles reflètent — vider le journal en conservant le compteur
+ * laisserait les clients ayant déjà vu la séquence N silencieusement privés du backfill.
  */
 export const SYNC_COLLECTIONS = ["sync_changes", "sync_state", "counters"] as const;
 
 /**
- * Everything the seed script drops before reinserting. Deliberately excludes
- * `refresh_tokens`, `contracts`, `authorization_codes` and the migration state.
+ * Tout ce que le script de seed supprime avant de réinsérer. Exclut délibérément
+ * `refresh_tokens`, `contracts`, `authorization_codes` et l'état des migrations.
  */
 export const DROPPED_COLLECTIONS = [...MONGO_COLLECTIONS, ...SYNC_COLLECTIONS] as const;
 
@@ -71,7 +74,7 @@ export interface SeedDocument extends Record<string, unknown> {
 }
 
 export interface SeedDataset {
-  /** Keyed by collection name, ordered by `MONGO_COLLECTIONS`. */
+  /** Indexé par nom de collection, ordonné selon `MONGO_COLLECTIONS`. */
   collections: Map<MongoCollectionName, SeedDocument[]>;
   graph: {
     interests: InterestRow[];
@@ -81,12 +84,13 @@ export interface SeedDataset {
 }
 
 export interface TokenContext {
-  /** Captured once per run so every `{{now}}` in a file resolves identically. */
+  /** Capturé une fois par exécution pour que tous les `{{now}}` d'un fichier se résolvent à l'identique. */
   now: Date;
-  /** argon2 hash shared by the seeded demo users. */
+  /** Hash argon2 partagé par les users de démo injectés. */
   passwordHash: string;
 }
 
+/** Erreur de parsing localisée (fichier + numéro de ligne) pour un diagnostic précis. */
 export class SeedParseError extends Error {
   constructor(
     readonly file: string,
@@ -98,12 +102,13 @@ export class SeedParseError extends Error {
   }
 }
 
-// ─── Token resolution ─────────────────────────────────────────────────────────
+// ─── Résolution des tokens ────────────────────────────────────────────────────
 
-// Whole-string match only: a value is substituted iff the entire string is a
-// token. No intra-string interpolation, so copy that happens to contain braces
-// is never touched.
+// Correspondance sur la chaîne entière uniquement : une valeur n'est substituée
+// que si toute la chaîne est un token. Pas d'interpolation intra-chaîne, donc un
+// texte contenant des accolades n'est jamais touché.
 const TOKEN_RE = /^\{\{(.+)\}\}$/;
+// `now` seul, ou avec un décalage signé : now±N{s|m|h|d} (ex. now-7d, now+2h).
 const NOW_RE = /^now(?:([+-])(\d+)([smhd]))?$/;
 
 const UNIT_MS: Record<string, number> = {
@@ -124,11 +129,13 @@ export const resolveToken = (token: string, ctx: TokenContext): string => {
     return new Date(ctx.now.getTime() + offset).toISOString();
   }
 
-  // Passing an unknown token through would write the literal `{{nwo}}` into the
-  // document and only surface much later, in the UI.
+  // Laisser passer un token inconnu écrirait le littéral `{{nwo}}` dans le document
+  // et ne se manifesterait que bien plus tard, dans l'UI. On échoue tôt.
   throw new Error(`unknown token "{{${token}}}" (expected {{passwordHash}} or {{now±Nd}})`);
 };
 
+// Parcourt récursivement une valeur JSON (chaîne / tableau / objet) et substitue
+// chaque token qui occupe une chaîne entière.
 const resolveTokens = <T>(value: T, ctx: TokenContext): T => {
   if (typeof value === "string") {
     const match = TOKEN_RE.exec(value);
@@ -143,6 +150,7 @@ const resolveTokens = <T>(value: T, ctx: TokenContext): T => {
 
 // ─── Parsing ──────────────────────────────────────────────────────────────────
 
+// Cible active vers laquelle les documents qui suivent une directive sont dirigés.
 type Target = { kind: "collection"; name: MongoCollectionName } | { kind: "graph"; name: GraphTarget };
 
 const isMongoCollection = (name: string): name is MongoCollectionName =>
@@ -150,6 +158,8 @@ const isMongoCollection = (name: string): name is MongoCollectionName =>
 
 const isGraphTarget = (name: string): name is GraphTarget => (GRAPH_TARGETS as readonly string[]).includes(name);
 
+// Parse une ligne `@verbe nom` en cible typée, en validant le nom contre la liste
+// blanche correspondante (collection Mongo ou target graphe).
 const parseDirective = (line: string, file: string, lineNo: number): Target => {
   const match = /^@(\w+)\s+(\S+)$/.exec(line);
   if (!match) {
@@ -192,7 +202,11 @@ const asEventTagRow = (doc: Record<string, unknown>, file: string, lineNo: numbe
   return { eventId, tags: tags as string[] };
 };
 
-/** Pure and synchronous — the argon2 hash is awaited by the caller into `ctx`. */
+/**
+ * Parse le texte NDJSON complet en un `SeedDataset` prêt à insérer. Pure et
+ * synchrone — le hash argon2 est déjà résolu dans `ctx` par l'appelant. Valide au
+ * passage : JSON par ligne, `_id` non vide, unicité des `_id`, forme des lignes graphe.
+ */
 export const parseSeedData = (text: string, ctx: TokenContext, file: string): SeedDataset => {
   const collections = new Map<MongoCollectionName, SeedDocument[]>();
   const interests: InterestRow[] = [];
@@ -240,8 +254,8 @@ export const parseSeedData = (text: string, ctx: TokenContext, file: string): Se
       continue;
     }
 
-    // Idempotency is keyed on `_id` (delete-then-insert), so a document without
-    // one would be re-inserted on every run.
+    // L'idempotence repose sur `_id` (suppression puis insertion) : un document
+    // sans _id serait réinséré à chaque exécution.
     if (typeof doc._id !== "string" || doc._id === "") {
       throw new SeedParseError(file, lineNo, "document is missing a non-empty string _id");
     }
@@ -256,7 +270,8 @@ export const parseSeedData = (text: string, ctx: TokenContext, file: string): Se
     else collections.set(target.name, [doc as SeedDocument]);
   }
 
-  // Rebuild in MONGO_COLLECTIONS order so callers can iterate the map directly.
+  // Reconstruit dans l'ordre de MONGO_COLLECTIONS pour que l'appelant puisse
+  // itérer la map directement (respect des dépendances référentielles).
   const ordered = new Map<MongoCollectionName, SeedDocument[]>();
   for (const name of MONGO_COLLECTIONS) {
     const docs = collections.get(name);
@@ -270,6 +285,7 @@ export const parseSeedData = (text: string, ctx: TokenContext, file: string): Se
   };
 };
 
+/** Lit un fichier seed depuis le disque et le parse en `SeedDataset`. */
 export const loadSeedFile = async (filePath: string, ctx: TokenContext): Promise<SeedDataset> => {
   const text = await readFile(filePath, "utf8");
   return parseSeedData(text, ctx, filePath);

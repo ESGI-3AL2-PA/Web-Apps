@@ -10,8 +10,16 @@ import type { IConversationRepository } from "../../repositories/Conversation/co
 import type { INotificationRepository } from "../../repositories/Notification/notification.repository.js";
 import type { IGraphRepository } from "../../repositories/Graph/graph.repository.js";
 
-// Generous per-collection cap: an export must be complete, not paginated. A single
-// user realistically stays well under this across every collection.
+/**
+ * Cas d'usage d'export des données personnelles d'un utilisateur (couche use-case, domaine
+ * users). Répond aux obligations RGPD d'accès (art. 15) et de portabilité (art. 20) : il
+ * agrège dans un seul document JSON portable toutes les catégories de données que la
+ * plateforme détient sur un utilisateur, en interrogeant tous les repositories concernés
+ * plus l'historique de sessions détenu par l'auth-service.
+ */
+
+// Plafond généreux par collection : un export doit être complet, pas paginé. Un utilisateur
+// unique reste réalistement bien en dessous de cette limite sur chaque collection.
 const EXPORT_LIMIT = 10_000;
 
 export interface ExportUserDataDeps {
@@ -26,28 +34,31 @@ export interface ExportUserDataDeps {
   notificationRepository: INotificationRepository;
   graphRepository: IGraphRepository;
   /**
-   * Cross-service: pull the user's refresh-token session history (IP / User-Agent /
-   * timestamps) from auth-service, which owns all auth data. Best-effort — must
-   * resolve to `[]` (never throw) if auth-service is unreachable, so the rest of
-   * the export still succeeds.
+   * Inter-service : récupère l'historique des sessions (refresh tokens : IP / User-Agent /
+   * horodatages) auprès de l'auth-service, qui détient toutes les données d'authentification.
+   * Best-effort — doit se résoudre à `[]` (ne jamais throw) si l'auth-service est injoignable,
+   * afin que le reste de l'export réussisse quand même.
    */
   fetchSessions: (userId: string) => Promise<unknown[]>;
 }
 
 /**
- * GDPR Art. 15 (access) + Art. 20 (portability): gather EVERY category of personal
- * data the platform holds for one user into a single portable JSON document. The
- * route scopes this to the caller's own id; the use-case just aggregates.
+ * RGPD art. 15 (accès) + art. 20 (portabilité) : rassemble TOUTES les catégories de données
+ * personnelles que la plateforme détient sur un utilisateur dans un unique document JSON
+ * portable. Le routeur restreint l'appel à l'id du demandeur lui-même ; le cas d'usage se
+ * contente d'agréger.
  *
- * Returns `null` if the user does not exist (router maps to 404). Each source is
- * fetched defensively — one degraded collection yields an empty section rather than
- * failing the whole export.
+ * Renvoie `null` si l'utilisateur n'existe pas (le routeur mappe ça sur un 404). Chaque source
+ * est interrogée de façon défensive — une collection en échec produit une section vide plutôt
+ * que de faire échouer l'export entier.
  */
 export const exportUserDataUseCase = (deps: ExportUserDataDeps) => {
   return async ({ id }: { id: string }): Promise<UserDataExportResponseDto | null> => {
     const user = await deps.userRepository.getUserById(id);
     if (!user) return null;
 
+    // Toutes les sections sont récupérées en parallèle ; chaque `.catch(() => [])` (ou `null`
+    // pour le graphe) isole une source défaillante sans compromettre les autres.
     const [
       listings,
       contractsAsProvider,
@@ -101,9 +112,10 @@ export const exportUserDataUseCase = (deps: ExportUserDataDeps) => {
       deps.fetchSessions(id).catch(() => []),
     ]);
 
-    // Messages live per-conversation. Pull each thread the user is in — they already
-    // have participant read access to all of it, so the full thread (their own text +
-    // media URLs and the correspondence they received) is their personal data.
+    // Les messages sont stockés par conversation. On récupère chaque fil auquel l'utilisateur
+    // participe — il a déjà, en tant que participant, un accès en lecture à l'intégralité du
+    // fil : le fil complet (ses propres textes + URLs de médias et la correspondance reçue)
+    // constitue donc ses données personnelles.
     const messages = (
       await Promise.all(
         conversations.map((conversation) =>
@@ -115,7 +127,7 @@ export const exportUserDataUseCase = (deps: ExportUserDataDeps) => {
       )
     ).flat();
 
-    // Never export secrets, even in a self-scoped dump.
+    // Ne jamais exporter de secrets, même dans un export limité à soi-même.
     const { passwordHash: _passwordHash, totpSecret: _totpSecret, ...userSafe } = user;
 
     return {

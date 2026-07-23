@@ -1,11 +1,17 @@
+// Composant : carte de gestion de la double authentification (TOTP) d'un admin.
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { confirmTotp, disableTotp, enrollTotp, StepUpRequiredError } from "../api-service/totp";
 import { useStepUp } from "./step-up-context";
 
-// TOTP enrollment for admins: enable = enroll → show secret/otpauth → confirm a 6-digit
-// code; disable = re-enter the password (plus a step-up code in production). Mirrors the
-// user-front TwoFactorCard; the auth endpoints live on the auth-service (totp service).
+/**
+ * Gestion de l'enrôlement TOTP pour les admins :
+ *  - activer = enroll → affiche secret + URL otpauth → confirme un code à 6 chiffres ;
+ *  - désactiver = ressaisit le mot de passe (plus un code step-up en production).
+ * Miroir du TwoFactorCard de user-front ; les endpoints d'auth vivent sur l'auth-service (service totp).
+ * @param token  Fournit un access token frais (peut renvoyer null si indisponible).
+ * @param initialEnabled  État TOTP initial du compte (activé ou non).
+ */
 export function TwoFactorCard({
   token,
   initialEnabled,
@@ -23,6 +29,7 @@ export function TwoFactorCard({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Enveloppe commune : récupère un token frais, gère busy/error autour de l'appel fourni.
   const withTok = async (fn: (tok: string) => Promise<void>) => {
     setBusy(true);
     setError(null);
@@ -37,11 +44,13 @@ export function TwoFactorCard({
     }
   };
 
+  // Démarre l'enrôlement : récupère le secret + l'URL otpauth à présenter/scanner.
   const beginEnroll = () =>
     withTok(async (tok) => {
       const r = await enrollTotp(tok);
       setEnroll({ secret: r.secret, url: r.otpauth_url });
     });
+  // Confirme l'enrôlement avec le code à 6 chiffres saisi et bascule l'état sur activé.
   const confirm = () =>
     withTok(async (tok) => {
       await confirmTotp(tok, code);
@@ -49,12 +58,13 @@ export function TwoFactorCard({
       setEnroll(null);
       setCode("");
     });
+  // Désactive le TOTP après vérification du mot de passe (et d'un code step-up en prod).
   const disable = () =>
     withTok(async (tok) => {
       try {
         await disableTotp(tok, password);
       } catch (e) {
-        // Production requires a fresh code on top of the password — prompt and retry once.
+        // En prod, un code frais est exigé en plus du mot de passe : on demande le step-up et on rejoue une fois.
         if (e instanceof StepUpRequiredError) {
           const stepUpToken = await requestStepUp();
           await disableTotp(tok, password, stepUpToken);

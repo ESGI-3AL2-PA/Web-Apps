@@ -1,9 +1,12 @@
+// Handler d'erreur de validation de requête ts-rest partagé : transforme un échec de
+// validation de contrat (une ZodError par segment) en une réponse 400 propre { message },
+// sans divulguer au client la forme interne de l'erreur Zod.
 import { type Request, type Response, type NextFunction } from "express";
 import { type ZodError } from "zod";
 
-// ts-rest raises a RequestValidationError carrying up to four per-segment ZodErrors when an
-// incoming request fails its contract schema. Typed structurally so this package needn't
-// depend on @ts-rest/express — the real class is assignable to this shape.
+// ts-rest lève une RequestValidationError portant jusqu'à quatre ZodError (une par segment)
+// lorsqu'une requête entrante échoue à son schéma de contrat. Typée structurellement pour que
+// ce package n'ait pas à dépendre de @ts-rest/express — la vraie classe est assignable à cette forme.
 interface RequestValidationErrorLike {
   pathParams: ZodError | null;
   headers: ZodError | null;
@@ -11,9 +14,9 @@ interface RequestValidationErrorLike {
   body: ZodError | null;
 }
 
-// Turn a ts-rest validation failure into one human-readable sentence. Custom refinements
-// ("Password must contain a symbol") already read as full sentences; generic zod messages
-// ("Required", "Invalid email") are prefixed with the offending field for context.
+// Transforme un échec de validation ts-rest en une phrase lisible. Les refinements personnalisés
+// (« Password must contain a symbol ») se lisent déjà comme des phrases complètes ; les messages
+// zod génériques (« Required », « Invalid email ») sont préfixés du champ fautif pour le contexte.
 export function validationMessage(err: RequestValidationErrorLike): string {
   const zerr = err.body ?? err.query ?? err.pathParams ?? err.headers;
   const issue = zerr?.issues[0];
@@ -22,10 +25,11 @@ export function validationMessage(err: RequestValidationErrorLike): string {
   return field && issue.code !== "custom" ? `${field}: ${issue.message}` : issue.message;
 }
 
-// ts-rest's default request-validation response echoes the raw ZodError
-// (`{ name: "ZodError", issues: [{ code, path, message }] }`), which leaks the internal
-// error shape to clients and has no top-level `message` for a plain fetch to surface — so a
-// hand-rolled form falls back to a generic "failed" string. Replace it with a clean 400.
+// La réponse de validation par défaut de ts-rest renvoie la ZodError brute
+// (`{ name: "ZodError", issues: [{ code, path, message }] }`), ce qui divulgue la forme interne
+// de l'erreur au client et n'expose aucun `message` de premier niveau qu'un simple fetch pourrait
+// afficher — un formulaire fait main retombe alors sur une chaîne « failed » générique. On la
+// remplace par un 400 propre.
 export const requestValidationErrorHandler = (
   err: RequestValidationErrorLike,
   _req: Request,

@@ -1,338 +1,353 @@
-# Product Roadmap
+# Feuille de route produit
 
-> Derived from a full audit of the codebase (working tree, branch `etienne`) cross-referenced against `documentation/`, `README.md`, `TODO.md`, and `ToDefine.md`. Effort is relative (S ≈ <1 day, M ≈ a few days, L ≈ a week+ for the group). Every claim below is tied to a file/endpoint so it can be verified.
+> ⚠️ **Avertissement — instantané de planification, non tenu à jour.**
+> Ce document est un **instantané à un instant T** (audit réalisé sur la branche `etienne`), à visée de planification. Il **ne reflète pas nécessairement l'état actuel du code** : il décrit encore comme « non construits » des pans entiers du produit qui tournent aujourd'hui en production. Pour l'analyse de l'état courant faisant foi, se référer à **`documentation/synthese-projet.md`**, qui est le document autoritatif. Les mentions `> ⚠️ Déjà livré (voir le code).` ci-dessous signalent quelques cas manifestes où la feuille de route est en retard sur le code ; elles ne constituent **pas** une réconciliation exhaustive.
 
----
-
-## 1. Current state (verified)
-
-### 1.1 What exists and works
-
-| Area                                          | State                                                                                                                                                                                                                                                         | Evidence                                                                              |
-| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
-| **auth-service** (`apps/auth-service`, :3001) | **Complete** and matches `documentation/auth-service.md`. RS256/JWKS, argon2, refresh rotation (sha256-hashed, httpOnly cookie scoped `/auth`), email verification, password reset, TOTP/MFA enroll·confirm·disable, self-hosted `/login` + `/register` HTML. | `routes/auth/auth.router.ts`, `use-cases/*`, `keys.ts`, `index.ts:73-80`              |
-| **api** (`apps/api`, :3000)                   | **CRUD-complete** across 12 domains, ~70 endpoints. ts-rest contract-first, clean layering (route → use-case → repository), DI container. Scalar API docs live.                                                                                               | `routes/**`, `use-cases/**`, `index.ts:115-130` (`/health`, `/openapi.json`, `/docs`) |
-| **JWT resource-server auth**                  | `requireAuth` / `requireRole` verify access tokens via `createRemoteJWKSet`.                                                                                                                                                                                  | `apps/api/src/middleware/auth.middleware.ts`                                          |
-| **Shared contracts**                          | `packages/contracts` is the real source of truth (ts-rest + zod), consumed by api.                                                                                                                                                                            | `packages/contracts/src/*.contract.ts`                                                |
-| **Shared auth hooks**                         | `AuthProvider`, `useAuth`, `ProtectedRoute`, proactive refresh + 401 retry interceptor.                                                                                                                                                                       | `packages/hooks/*`, `apps/user-front/src/api-service/api.ts`                          |
-
-### 1.2 Documented vision vs. reality — the differentiators are **not** built
-
-| Documented feature                                                                                | Doc                                           | Status                | Evidence                                                                                                                                                                                                                                                                          |
-| ------------------------------------------------------------------------------------------------- | --------------------------------------------- | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Recommendation feed** (Neo4j graph, tag/social/recency scoring, view & reply interest tracking) | `recommendation-algorithm.md`, `MCD/neo4j.md` | ❌ **0%**             | Neo4j container provisioned (`docker-compose.yml`) but **no driver dependency, no code** — only a comment in `use-cases/events/attend-event.use-case.ts`. `GET /listings/feed` and `POST /listings/:id/view` are documented but **absent** from `listings.contract.ts`.           |
-| **Documenso e-signature**                                                                         | `documenso-integration.md`                    | ⚠️ **cosmetic stub**  | `contract.entity.ts` has `documensoDocumentId` / `signatureStatus` (enum), but `sign-contract.use-case.ts` just persists whatever the client sends — **no Documenso client, no document generation, no webhook, no `react-pdf`, no Documents page**. Signatures are unverifiable. |
-| **District boundary editor** (Leaflet/geoman admin map)                                           | `district-boundary-editor.md`                 | ❌ **0% UI**          | Districts CRUD API + GeoJSON exist; admin app is empty, no `leaflet` dependency.                                                                                                                                                                                                  |
-| **Address → district inference / autocomplete** (geocoding, point-in-polygon)                     | `ToDefine.md`                                 | ⚠️ **partial**        | `apps/api/src/services/address.service.ts` exists; geo-inference loop not wired end-to-end.                                                                                                                                                                                       |
-| **SATAN QL** (custom Mongo query language, Python PLY, `@repo/satan`)                             | `satan-ql.md`, `architecture.md`              | ❌ **does not exist** | No `packages/satan` / `packages/SATAN`.                                                                                                                                                                                                                                           |
-| **sync-gateway** (H2↔Mongo bridge for a Java app)                                                 | `sync-gateway.md`                             | ❌ **does not exist** | No `apps/sync-gateway`; no Java app in repo. Doc is unfinished (Deduplication ends in `????`, port "TBD").                                                                                                                                                                        |
-
-### 1.3 Frontend product surface (user-front)
-
-Only **1 of ~70 endpoints** is wired (`getAllAnnonces`). The core loop is **not completable in the UI.**
-
-| Route / page            | File                              | State                                                                                                                                    |
-| ----------------------- | --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| `/` Dashboard → Points  | `pages/dashboard/Points.tsx`      | **Hardcoded fake data** ("42 points / Donnée 8 / reçu 5 / Echangé 12") — not wired to `GET /users/:id/balance`.                          |
-| `/service/annonces`     | `pages/service/Annonces.tsx`      | **Read-only list** (the one real integration). No detail, no create.                                                                     |
-| `/service/mes-annonces` | `pages/service/AnnoncesUser.tsx`  | Stub `<div>`.                                                                                                                            |
-| `/service/mes-contrats` | `pages/service/Contrat.tsx`       | Stub `<div>`.                                                                                                                            |
-| `/evenement`            | `pages/Evenement.tsx`             | Stub `<div>`.                                                                                                                            |
-| `/messagerie`           | `pages/Messagerie.tsx`            | Stub `<div>`.                                                                                                                            |
-| `/documents`, `/votes`  | (none)                            | **Dead nav links** in `component/Header.tsx` — no routes.                                                                                |
-| Login / Register        | `pages/auth/{Login,Register}.tsx` | **Orphaned** — import `@repo/ui` forms but are **not in the router**. Auth actually happens via redirect to auth-service's hosted pages. |
-| **admin-front** (:4000) | `apps/admin-front/src/`           | **Empty shell** — `main.tsx` + `style.css` only (28 LOC). No admin features exist.                                                       |
-
-### 1.4 Product-level issues found in audit
-
-| #   | Severity   | Issue                                                                                                                                                                                                                   | Location                                        |
-| --- | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
-| A1  | **High**   | **No authorization/ownership enforcement model** — use-cases take ids but ownership checks are inconsistent; IDOR risk (act on another user's resource). Listed unresolved in `ToDefine.md`.                            | `apps/api/src/use-cases/**`, `routes/**`        |
-| A2  | **High**   | **Signatures are forgeable** — `sign-contract` trusts client-supplied `signatureStatus`/`documensoDocumentId`.                                                                                                          | `use-cases/contracts/sign-contract.use-case.ts` |
-| A3  | **High**   | **No sensitive-data privacy / GDPR story** — `users` stores `address`/`phone`/`email` with no documented access control or export/delete rights.                                                                        | `MCD/mongo.md`, `ToDefine.md`                   |
-| A4  | **Medium** | **No rate limiting** anywhere, incl. auth endpoints (login, forgot-password, TOTP) → brute-force / enumeration exposure.                                                                                                | `apps/auth-service`, `ToDefine.md`              |
-| A5  | **Medium** | **Fake data shown as real** (Points card) → misleading demo.                                                                                                                                                            | `pages/dashboard/Points.tsx`                    |
-| A6  | **Medium** | **Dead nav + orphaned auth pages** → broken UX and maintenance traps.                                                                                                                                                   | `component/Header.tsx`, `pages/auth/*`          |
-| A7  | **Low**    | **Doc drift** — `architecture.md` references `docker-compose.prod.yml` and `packages/SATAN` (neither exists); `README.md` is stock Turborepo boilerplate omitting auth-service/contracts; `sync-gateway.md` unfinished. | `documentation/*`, `README.md`                  |
-| A8  | **Low**    | **Near-zero tests** — `playwright_testbook` is a documented stub with no runnable specs, pending stack-provisioned E2E (see `playwright_testbook/README.md`).                                                           | `playwright_testbook/`                          |
-| A9  | **Info**   | **Large uncommitted WIP** on `etienne` (67 files, +606/−343), broadly threading auth through routes/use-cases. Reconcile/commit before building on top.                                                                 | working tree                                    |
+> Issu d'un audit complet du code (arbre de travail, branche `etienne`) recoupé avec `documentation/`, `README.md`, `TODO.md` et `ToDefine.md`. L'effort est relatif (S ≈ < 1 jour, M ≈ quelques jours, L ≈ une semaine ou plus pour le groupe). Chaque affirmation ci-dessous est rattachée à un fichier/endpoint pour pouvoir être vérifiée.
 
 ---
 
-## 2. Guiding strategy
+## 1. État actuel (vérifié)
 
-**Build the core exchange loop end-to-end with _simple_ versions of the two hard features first, then upgrade them to the documented versions.**
+### 1.1 Ce qui existe et fonctionne
 
-- The simple feed (district filter + recency) and simple contract (in-app mutual accept) are demoable for a fraction of the effort of Neo4j scoring and Documenso.
-- They generate the data the fancy versions need: view/reply events for the recommendation graph, real contracts for Documenso. Building Neo4j scoring against an empty graph, or Documenso before contracts are reachable in the UI, is wasted effort.
-- **One complete vertical slice beats twelve half-slices** for a credible demo.
+| Domaine                                       | État                                                                                                                                                                                                                                                                                                                | Preuve                                                                                |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| **auth-service** (`apps/auth-service`, :3001) | **Complet** et conforme à `documentation/auth-service.md`. RS256/JWKS, argon2, rotation des refresh (hachés en sha256, cookie httpOnly limité à `/auth`), vérification d'email, réinitialisation de mot de passe, enrôlement·confirmation·désactivation TOTP/MFA, pages HTML `/login` + `/register` auto-hébergées. | `routes/auth/auth.router.ts`, `use-cases/*`, `keys.ts`, `index.ts:73-80`              |
+| **api** (`apps/api`, :3000)                   | **CRUD complet** sur 12 domaines, ~70 endpoints. Contract-first ts-rest, découpage en couches propre (route → cas d'usage → repository), conteneur DI. Documentation d'API Scalar en ligne.                                                                                                                         | `routes/**`, `use-cases/**`, `index.ts:115-130` (`/health`, `/openapi.json`, `/docs`) |
+| **Auth resource-server JWT**                  | `requireAuth` / `requireRole` vérifient les access token via `createRemoteJWKSet`.                                                                                                                                                                                                                                  | `apps/api/src/middleware/auth.middleware.ts`                                          |
+| **Contrats partagés**                         | `packages/contracts` est la véritable source de vérité (ts-rest + zod), consommée par l'api.                                                                                                                                                                                                                        | `packages/contracts/src/*.contract.ts`                                                |
+| **Hooks d'auth partagés**                     | `AuthProvider`, `useAuth`, `ProtectedRoute`, refresh proactif + intercepteur de rejeu sur 401.                                                                                                                                                                                                                      | `packages/hooks/*`, `apps/user-front/src/api-service/api.ts`                          |
 
-The work splits into **two parallel tracks** a group should staff separately:
+### 1.2 Vision documentée vs. réalité — les différenciateurs ne sont **pas** construits
 
-- **Track A — Product** (Phases 0–4, §3–§7): the user-facing application.
-- **Track B — Graded platform components** (§8): **SATAN QL** and **sync-gateway**. These are _grading requirements_, not product choices — they are mandatory, carry their own marks, and **must not be left to the end**. They are largely independent of the product loop (different skill sets: Python parser, sync service) so they proceed in parallel with Track A. _(The **Java app** is an existing deliverable in a separate repository — out of scope here; sync-gateway must conform to the contract that app already expects.)_
+| Fonctionnalité documentée                                                                            | Doc                                           | Statut                 | Preuve                                                                                                                                                                                                                                                                                                                |
+| ---------------------------------------------------------------------------------------------------- | --------------------------------------------- | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Fil de recommandations** (graphe Neo4j, scoring tag/social/récence, suivi d'intérêt vue & réponse) | `recommendation-algorithm.md`, `MCD/neo4j.md` | ❌ **0 %**             | Conteneur Neo4j provisionné (`docker-compose.yml`) mais **aucune dépendance driver, aucun code** — seulement un commentaire dans `use-cases/events/attend-event.use-case.ts`. `GET /listings/feed` et `POST /listings/:id/view` sont documentés mais **absents** de `listings.contract.ts`.                           |
+| **Signature électronique Documenso**                                                                 | `documenso-integration.md`                    | ⚠️ **stub cosmétique** | `contract.entity.ts` porte `documensoDocumentId` / `signatureStatus` (enum), mais `sign-contract.use-case.ts` persiste simplement ce que le client envoie — **pas de client Documenso, pas de génération de document, pas de webhook, pas de `react-pdf`, pas de page Documents**. Les signatures sont invérifiables. |
+| **Éditeur de limites de quartier** (carte admin Leaflet/geoman)                                      | `district-boundary-editor.md`                 | ❌ **0 % UI**          | API CRUD des quartiers + GeoJSON existent ; l'app admin est vide, aucune dépendance `leaflet`.                                                                                                                                                                                                                        |
+| **Inférence adresse → quartier / autocomplétion** (géocodage, point-in-polygon)                      | `ToDefine.md`                                 | ⚠️ **partiel**         | `apps/api/src/services/address.service.ts` existe ; la boucle d'inférence géo n'est pas câblée de bout en bout.                                                                                                                                                                                                       |
+| **SATAN QL** (langage de requête Mongo custom, Python PLY, `@repo/satan`)                            | `satan-ql.md`, `architecture.md`              | ❌ **n'existe pas**    | Ni `packages/satan` ni `packages/SATAN`.                                                                                                                                                                                                                                                                              |
+| **sync-gateway** (pont H2↔Mongo pour une app Java)                                                   | `sync-gateway.md`                             | ❌ **n'existe pas**    | Pas d'`apps/sync-gateway` ; pas d'app Java dans le repo. La doc est inachevée (la Déduplication se termine par `????`, port « TBD »).                                                                                                                                                                                 |
 
-Dependency order:
+> ⚠️ Déjà livré (voir le code). La ligne « Fil de recommandations » est en retard sur le code : `neo4j-driver` est désormais une dépendance de `apps/api`, et les cas d'usage `use-cases/graph/rebuild-graph.use-case.ts` et `use-cases/recommendations/get-event-recommendations.use-case.ts` existent (projection Mongo→graphe + recommandations d'événements).
 
-- **Track A:** Phase 0 (foundations) → Phase 1 (loop) → Phase 2 (feed) ∥ Phase 3 (trust+admin) → Phase 4 (governance). Phases 2 and 3 parallelize once Phase 1 lands.
-- **Track B:** B1 (SATAN) is independent and can start immediately. B2 (sync-gateway) must first close its open spec (B2-0) **against the existing Java app's actual outbox/poll behaviour** — the contract is fixed by that app, not by us.
-- **Shared prerequisite:** sync-gateway reuses the Mongo entities and the auth-service from Track A's existing code — no Track-A phase blocks Track B, but Track B should agree on the synced-collection set with whoever owns the entities.
+> ⚠️ Déjà livré (voir le code). La ligne « sync-gateway » est en retard sur le code : la logique de synchronisation est livrée **dans `apps/api`** (`use-cases/sync/{ingest,get-changes,get-conflicts,resolve-conflict}.use-case.ts`, avec tests), plus `packages/contracts/src/sync.contract.ts` et `sync.dto.ts` — même si ce n'est pas un `apps/sync-gateway` séparé comme la doc l'imaginait.
 
----
+### 1.3 Surface produit frontend (user-front)
 
-## 2A. District & role model (v2 — feature change)
+Seul **1 endpoint sur ~70** est câblé (`getAllAnnonces`). La boucle cœur **n'est pas complétable dans l'UI.**
 
-_Supersedes the single-district assumptions in `district-boundary-editor.md`, `MCD/mongo.md`, and `auth-service.md`._
+| Route / page            | Fichier                           | État                                                                                                                                                                               |
+| ----------------------- | --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/` Dashboard → Points  | `pages/dashboard/Points.tsx`      | **Données factices en dur** (« 42 points / Donnée 8 / reçu 5 / Echangé 12 ») — non câblé à `GET /users/:id/balance`.                                                               |
+| `/service/annonces`     | `pages/service/Annonces.tsx`      | **Liste en lecture seule** (la seule vraie intégration). Pas de détail, pas de création.                                                                                           |
+| `/service/mes-annonces` | `pages/service/AnnoncesUser.tsx`  | Stub `<div>`.                                                                                                                                                                      |
+| `/service/mes-contrats` | `pages/service/Contrat.tsx`       | Stub `<div>`.                                                                                                                                                                      |
+| `/evenement`            | `pages/Evenement.tsx`             | Stub `<div>`.                                                                                                                                                                      |
+| `/messagerie`           | `pages/Messagerie.tsx`            | Stub `<div>`.                                                                                                                                                                      |
+| `/documents`, `/votes`  | (aucun)                           | **Liens de nav morts** dans `component/Header.tsx` — aucune route.                                                                                                                 |
+| Login / Register        | `pages/auth/{Login,Register}.tsx` | **Orphelins** — importent les formulaires `@repo/ui` mais ne sont **pas dans le routeur**. L'auth passe en réalité par une redirection vers les pages hébergées de l'auth-service. |
+| **admin-front** (:4000) | `apps/admin-front/src/`           | **Coquille vide** — `main.tsx` + `style.css` seulement (28 LOC). Aucune fonctionnalité admin n'existe.                                                                             |
 
-**Rules**
+### 1.4 Problèmes produit relevés à l'audit
 
-- Districts **may overlap**. A user's geocoded address can fall inside several district polygons → an **eligible set**.
-- A user has **one active district at a time**, chosen from the eligible set, switchable later. All resource scoping (feed, listings, events, votes, incidents) uses the **active** district.
-- If the eligible set is **empty**, the user may **create a district by drawing its polygon** (same editor as admins) and is **promoted to admin** of it.
-- **Roles:** `user` (member) · `admin` (governs exactly **one** district; a district may have **several** admins) · `superAdmin` (company employee; read/manage **all** districts). _(`service` is **not** a user role — it's an internal short-lived machine-token claim used auth-service→api for the register flow.)_
-- **Admin authority is independent of active-district choice** — admin of X stays admin of X even after switching active district to Y.
-
-**Data model changes**
-
-- `users`: drop single `districtId`; add `activeDistrictId` (mutable, drives scoping) and `location` (geocoded `{lng,lat}`). The eligible set is **derived** via point-in-polygon (cache only if perf demands).
-- District-admin is a **relationship** (`districtId ↔ userId`) — a `districtAdmins` collection or `admins: [userId]` on the district; **one district per admin** enforced on write, **many admins per district** allowed.
-- `districts`: name **no longer unique** (overlap + many districts); keep the geospatial index on the boundary.
-
-**JWT claims** (decision: claims in token)
-
-- Access token carries `role` and `adminDistrictId: string | null` (single — one district per admin); `superAdmin` is global.
-- auth-service reads the admin relationship at login/refresh to mint the claim (read-only extension of its current `users` access).
-- **Staleness:** promotion/demotion lands on next refresh (≤15 min). **Force a token refresh immediately after self-service creation/promotion** so the admin UI unlocks at once. Active-district _scoping_ stays server-side (api reads `activeDistrictId`), so switching is instant and needs no refresh.
-
-**Docs to revise:** `district-boundary-editor.md` (overlap, plural inference, name not unique, user-initiated creation), `MCD/mongo.md` (user fields + admin relation), `auth-service.md` (new claim + admin read), `ToDefine.md` (geocoding & authorization now decided).
-
----
-
-## 3. Phase 0 — Foundations _(blocks everything)_
-
-_Goal: the app is safe for a second user, geo-scoping works, no misleading/broken surface._
-
-**P0-1 — Authorization model (district-scoped)** · **L** · fixes A1 · see §2A
-
-- Implement the role model from §2A — enum `user | admin | superAdmin` (plus the internal `service` machine claim).
-- Enforce ownership **and district scoping** in every mutating use-case: a caller may modify a resource only if they own it, are `admin` of that resource's district, or are `superAdmin`. List/read scopes to the caller's **active district** unless `superAdmin`.
-- Authority comes from the JWT (`role`, `adminDistrictId`); add a district-aware guard (`requireDistrictAdmin(resourceDistrictId)`) alongside `requireRole`.
-- Lock the `role:"service"` JWT path (register→`POST /users`) to the auth-service only.
-- Files: `middleware/auth.middleware.ts`, `apps/api/src/use-cases/**`, `routes/**`, auth-service token-issuing.
-- **Done when:** an admin of district X gets `403` acting on district Y; a member gets `403` on others' resources; `superAdmin` passes; covered by a Playwright spec.
-
-**P0-2 — Geocoding + district eligibility** · **M** · unblocks all geo-scoping · see §2A
-
-- Geocode `users.address` → `location {lng,lat}` (cartes.gouv.fr geocoder); finish `apps/api/src/services/address.service.ts`.
-- Point-in-polygon (turf `booleanPointInPolygon`) over all district boundaries → eligible set; persist `activeDistrictId`; endpoints to list eligible districts and switch the active one.
-- **Migration:** existing users have an `address` string + single `districtId` → geocode to `location`, set `activeDistrictId` from the old `districtId`.
-- **Done when:** a new user's eligible set is computed from their address, they have an `activeDistrictId`, and scoping queries use it.
-
-**P0-3 — Frontend hygiene** · **S** · fixes A5, A6
-
-- Wire `Points.tsx` to `GET /users/:id/balance` + `GET /users/:id/transactions`.
-- Remove dead nav (`/documents`, `/votes`) from `Header.tsx` (or stub real routes).
-- Delete orphaned `pages/auth/{Login,Register}.tsx` (redirect-to-auth-service already works) — or commit to in-app auth and wire them; do not keep both.
-- **Done when:** no route 404s from nav; no hardcoded balances.
-
-**P0-4 — Reconcile WIP + repo hygiene** · **S** · fixes A9, A7
-
-- Review/commit the uncommitted `etienne` diff; rebase onto a clean `feat/*` branch.
-- Fix `architecture.md` dangling refs; rewrite `README.md` to describe the real product + apps (incl. auth-service).
-- **Done when:** `git status` clean, docs reference only things that exist.
+| #   | Sévérité    | Problème                                                                                                                                                                                                                                           | Emplacement                                     |
+| --- | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
+| A1  | **Élevée**  | **Aucun modèle d'autorisation / d'appartenance appliqué** — les cas d'usage prennent des ids mais les contrôles d'appartenance sont incohérents ; risque IDOR (agir sur la ressource d'un autre utilisateur). Listé non résolu dans `ToDefine.md`. | `apps/api/src/use-cases/**`, `routes/**`        |
+| A2  | **Élevée**  | **Signatures falsifiables** — `sign-contract` fait confiance au `signatureStatus`/`documensoDocumentId` fourni par le client.                                                                                                                      | `use-cases/contracts/sign-contract.use-case.ts` |
+| A3  | **Élevée**  | **Aucune stratégie de confidentialité / RGPD** — `users` stocke `address`/`phone`/`email` sans contrôle d'accès ni droits d'export/suppression documentés.                                                                                         | `MCD/mongo.md`, `ToDefine.md`                   |
+| A4  | **Moyenne** | **Aucun rate limiting** nulle part, y compris sur les endpoints d'auth (login, forgot-password, TOTP) → exposition brute-force / énumération.                                                                                                      | `apps/auth-service`, `ToDefine.md`              |
+| A5  | **Moyenne** | **Données factices présentées comme réelles** (carte Points) → démo trompeuse.                                                                                                                                                                     | `pages/dashboard/Points.tsx`                    |
+| A6  | **Moyenne** | **Nav morte + pages d'auth orphelines** → UX cassée et pièges de maintenance.                                                                                                                                                                      | `component/Header.tsx`, `pages/auth/*`          |
+| A7  | **Faible**  | **Dérive doc** — `architecture.md` référence `docker-compose.prod.yml` et `packages/SATAN` (aucun n'existe) ; `README.md` est du boilerplate Turborepo standard omettant auth-service/contracts ; `sync-gateway.md` inachevé.                      | `documentation/*`, `README.md`                  |
+| A8  | **Faible**  | **Tests quasi nuls** — `playwright_testbook` est un stub documenté sans specs exécutables, en attente d'un E2E provisionné par la stack (voir `playwright_testbook/README.md`).                                                                    | `playwright_testbook/`                          |
+| A9  | **Info**    | **Gros WIP non commité** sur `etienne` (67 fichiers, +606/−343), câblant largement l'auth à travers routes/use-cases. À réconcilier/committer avant de construire par-dessus.                                                                      | arbre de travail                                |
 
 ---
 
-## 4. Phase 1 — Core exchange loop (the demo) _(one complete vertical slice)_
+## 2. Stratégie directrice
 
-_Goal: a user can post a service, be discovered, message, contract, and transfer points — end to end in the UI._
+**Construire la boucle d'échange cœur de bout en bout avec des versions _simples_ des deux fonctionnalités difficiles d'abord, puis les faire évoluer vers les versions documentées.**
 
-**P1-0 — District onboarding & switching** · **M** · see §2A
+- Le fil simple (filtre par quartier + récence) et le contrat simple (acceptation mutuelle in-app) sont démontrables pour une fraction de l'effort du scoring Neo4j et de Documenso.
+- Ils génèrent les données dont les versions avancées ont besoin : événements vue/réponse pour le graphe de recommandation, vrais contrats pour Documenso. Construire le scoring Neo4j sur un graphe vide, ou Documenso avant que les contrats ne soient atteignables dans l'UI, est un effort gaspillé.
+- **Une tranche verticale complète vaut mieux que douze demi-tranches** pour une démo crédible.
 
-- After login, if `activeDistrictId` is unset, show the eligible districts (from P0-2) and let the user pick one; persist the choice.
-- District switcher in the header that re-scopes the app to the chosen active district.
-- **Empty eligible set →** user draws a polygon (Leaflet/geoman, the shared editor extracted in P3-2) to create a district; on save they're promoted to admin and the client **forces a token refresh** to load the `adminDistrictId` claim.
-- **Done when:** a user with no eligible district can create one and immediately sees admin tools; a multi-eligible user can pick and later switch.
+Le travail se scinde en **deux pistes parallèles** qu'un groupe devrait staffer séparément :
 
-**P1-1 — Listings UI (full CRUD)** · **L**
+- **Piste A — Produit** (Phases 0–4, §3–§7) : l'application côté utilisateur.
+- **Piste B — Composants plateforme notés** (§8) : **SATAN QL** et **sync-gateway**. Ce sont des _exigences de notation_, pas des choix produit — elles sont obligatoires, portent leurs propres points et **ne doivent pas être laissées pour la fin**. Elles sont largement indépendantes de la boucle produit (compétences différentes : parseur Python, service de sync) donc elles avancent en parallèle de la Piste A. _(L'**app Java** est un livrable existant dans un dépôt séparé — hors périmètre ici ; sync-gateway doit se conformer au contrat que cette app attend déjà.)_
 
-- List/feed V1: `GET /listings` filtered by the user's **active** district + ordered by recency, paginated.
-- Detail page: `GET /listings/:id`.
-- Create/edit/delete (fill `AnnoncesUser.tsx` "Mes annonces"): `POST/PATCH/DELETE /listings`.
-- Replace the ad-hoc `getAllAnnonces` with a typed ts-rest client consuming `@repo/contracts` (kills `type/annonce.ts` drift).
-- **Done when:** a user can publish a listing and another user in the same district sees it.
+Ordre des dépendances :
 
-**P1-2 — Messaging UI** · **M**
-
-- "Contact" on a listing → `POST /conversations` → thread (`GET/POST /conversations/:id/messages`, `PATCH /messages/:id/read`).
-- Fill `Messagerie.tsx`.
-- **Done when:** two users exchange messages from a listing with read receipts.
-
-**P1-3 — Contracts V1 + points transfer** · **L** · supersedes A2 later
-
-- Create contract from a listing: `POST /contracts` (provider/beneficiary/price from listing).
-- **In-app mutual accept** (defer Documenso): both parties accept → contract completes.
-- On completion, move points: `POST /transactions` debiting beneficiary / crediting provider; enforce non-negative balance atomically.
-- Fill `Contrat.tsx` "Mes contrats".
-- **Done when:** completing a contract transfers points and both balances reflect it; double-completion is rejected.
-
-**P1-4 — Events + Votes UI (read+participate)** · **M** _(optional within Phase 1; promotes "community" angle)_
-
-- Events: list/detail/register/attend (`/events`, `/events/:id/register`, `/attend`) — fill `Evenement.tsx`.
-- Votes: list/detail/respond/results (`/votes`, `/votes/:id/responses`, `/results`) — add the `/votes` route the nav already points at.
+- **Piste A :** Phase 0 (fondations) → Phase 1 (boucle) → Phase 2 (fil) ∥ Phase 3 (confiance+admin) → Phase 4 (gouvernance). Les phases 2 et 3 se parallélisent une fois la Phase 1 posée.
+- **Piste B :** B1 (SATAN) est indépendante et peut démarrer immédiatement. B2 (sync-gateway) doit d'abord clore sa spec ouverte (B2-0) **contre le comportement réel outbox/poll de l'app Java existante** — le contrat est fixé par cette app, pas par nous.
+- **Prérequis partagé :** sync-gateway réutilise les entités Mongo et l'auth-service du code existant de la Piste A — aucune phase de la Piste A ne bloque la Piste B, mais la Piste B devrait s'accorder sur l'ensemble des collections synchronisées avec celui qui possède les entités.
 
 ---
 
-## 5. Phase 2 — Recommendation feed (headline differentiator)
+## 2A. Modèle quartier & rôles (v2 — changement de fonctionnalité)
 
-_Goal: the documented graph-ranked feed, now that Phase 1 produces real signals._ Implements `recommendation-algorithm.md` + `MCD/neo4j.md`.
+_Remplace les hypothèses mono-quartier de `district-boundary-editor.md`, `MCD/mongo.md` et `auth-service.md`._
 
-**P2-1 — Neo4j integration** · **M**
+**Règles**
 
-- Add the driver; projection layer mirroring Mongo writes into nodes/relationships (`User`, `Listing`, `Tag`, `District`; `LIVES_IN`, `PUBLISHED`, `TAGGED`, `KNOWS`).
-- New repository + DI registration following the existing pattern.
+- Les quartiers **peuvent se chevaucher**. L'adresse géocodée d'un utilisateur peut tomber dans plusieurs polygones de quartier → un **ensemble éligible**.
+- Un utilisateur a **un quartier actif à la fois**, choisi dans l'ensemble éligible, changeable plus tard. Tout le scoping des ressources (fil, annonces, événements, votes, signalements) utilise le quartier **actif**.
+- Si l'ensemble éligible est **vide**, l'utilisateur peut **créer un quartier en dessinant son polygone** (même éditeur que les admins) et est **promu admin** de celui-ci.
+- **Rôles :** `user` (membre) · `admin` (gouverne exactement **un** quartier ; un quartier peut avoir **plusieurs** admins) · `superAdmin` (employé de l'entreprise ; lecture/gestion de **tous** les quartiers). _(`service` n'est **pas** un rôle utilisateur — c'est une claim de token machine interne, éphémère, utilisée par auth-service→api pour le flux d'inscription.)_
+- **L'autorité admin est indépendante du choix de quartier actif** — l'admin de X reste admin de X même après avoir basculé son quartier actif sur Y.
 
-**P2-2 — Interest tracking (fire-and-forget)** · **S**
+**Changements de modèle de données**
 
-- `POST /listings/:id/view` (small delta) and the reply path (large delta) upsert `(:User)-[:INTERESTED_IN {score, updatedAt}]->(:Tag)` per the doc's per-event decay model. Must not block responses.
+- `users` : supprimer le `districtId` unique ; ajouter `activeDistrictId` (mutable, pilote le scoping) et `location` (géocodé `{lng,lat}`). L'ensemble éligible est **dérivé** par point-in-polygon (ne cacher que si la perf l'exige).
+- L'admin-de-quartier est une **relation** (`districtId ↔ userId`) — une collection `districtAdmins` ou `admins: [userId]` sur le quartier ; **un quartier par admin** appliqué à l'écriture, **plusieurs admins par quartier** autorisés.
+- `districts` : nom **plus unique** (chevauchement + nombreux quartiers) ; garder l'index géospatial sur la limite.
 
-**P2-3 — Ranked feed** · **M**
+> ⚠️ Déjà livré (voir le code). La relation admin-de-quartier est livrée : `apps/api/src/use-cases/district-admins/` (create/delete/get/list, avec tests). La branche courante `feat/district-and-user-point-grants` poursuit sur cette lancée.
 
-- `GET /listings/feed`: **active-district** hard-filter, then composite score **tag 50% / social 30% / recency 20%**, paginated. Replaces the Phase-1 recency feed.
-- **Done when:** a user's feed reorders measurably after viewing/replying to listings with given tags; new users fall back to recency (doc edge cases).
+**Claims JWT** (décision : claims dans le token)
 
----
+- L'access token porte `role` et `adminDistrictId: string | null` (unique — un quartier par admin) ; `superAdmin` est global.
+- L'auth-service lit la relation admin au login/refresh pour forger la claim (extension en lecture seule de son accès `users` actuel).
+- **Fraîcheur :** promotion/rétrogradation prend effet au refresh suivant (≤15 min). **Forcer un refresh de token immédiatement après une création/promotion en self-service** pour que l'UI admin se débloque aussitôt. Le _scoping_ du quartier actif reste côté serveur (l'api lit `activeDistrictId`), donc le changement est instantané et ne nécessite aucun refresh.
 
-## 6. Phase 3 — Trust + operability _(parallelizable with Phase 2)_
-
-**P3-1 — Documenso integration** · **L** · fixes A2 · implements `documenso-integration.md`
-
-- API-side Documenso client (document creation from template, signer assignment), persist PDF URL + per-signer signing URLs + status; **webhook handler** (verify signature; map `completed`→complete, `declined`→disputed).
-- Replace P1-3 mutual-accept with real signing; trigger points transfer on `document.completed`.
-- Front: Documents list + detail/signing page (`react-pdf` preview → redirect to signing URL).
-- **Done when:** a contract is signed via Documenso and the webhook (not the client) drives status + points transfer.
-
-**P3-2 — Admin app (district-bound) + superAdmin** · **L** · see §2A
-
-- Bootstrap `admin-front` (currently empty) with auth + district-aware guards: an `admin` sees only their `adminDistrictId`; a `superAdmin` sees all districts.
-- **District boundary editor** (`district-boundary-editor.md`): Leaflet + react-leaflet + leaflet-geoman, draw/edit/save GeoJSON polygons; server-side validation (Polygon only, closed ring, ≥3 points; **overlap allowed, name not unique** per §2A). **Extract the editor into `packages/ui`** so the user-front creation flow (P1-0) reuses it.
-- Scoped operations — incident moderation + stats (`/incidents`, `/incidents/stats`), contract disputes, vote management — all filtered to the admin's district; `superAdmin` is cross-district.
-- `superAdmin` provisioning: seeded employees (not self-service).
-- **Done when:** a district admin manages only their district, a `superAdmin` manages all, and the boundary editor is the same component used by user-front.
+**Docs à réviser :** `district-boundary-editor.md` (chevauchement, inférence plurielle, nom non unique, création à l'initiative de l'utilisateur), `MCD/mongo.md` (champs user + relation admin), `auth-service.md` (nouvelle claim + lecture admin), `ToDefine.md` (géocodage & autorisation désormais décidés).
 
 ---
 
-## 7. Phase 4 — Governance & hardening _(before any real users)_
+## 3. Phase 0 — Fondations _(bloque tout)_
 
-**P4-1 — Privacy & GDPR** · **M** · fixes A3
+_Objectif : l'app est sûre pour un second utilisateur, le géo-scoping fonctionne, aucune surface trompeuse/cassée._
 
-- Per-field visibility controls for sensitive user data (who can see address/phone/email — `ToDefine.md`).
-- GDPR rights: data access/export, modification, deletion, objection; privacy policy. Ensure deletion cascades (listings, messages, transactions, refresh tokens).
+**P0-1 — Modèle d'autorisation (scopé par quartier)** · **L** · corrige A1 · voir §2A
 
-**P4-2 — Abuse hardening** · **S–M** · fixes A4
+- Implémenter le modèle de rôles de §2A — enum `user | admin | superAdmin` (plus la claim machine interne `service`).
+- Appliquer l'appartenance **et le scoping par quartier** dans chaque cas d'usage mutant : un appelant ne peut modifier une ressource que s'il la possède, est `admin` du quartier de cette ressource, ou est `superAdmin`. Les listes/lectures se scopent au quartier **actif** de l'appelant sauf pour `superAdmin`.
+- L'autorité vient du JWT (`role`, `adminDistrictId`) ; ajouter un garde conscient du quartier (`requireDistrictAdmin(resourceDistrictId)`) aux côtés de `requireRole`.
+- Verrouiller le chemin JWT `role:"service"` (inscription→`POST /users`) au seul auth-service.
+- Fichiers : `middleware/auth.middleware.ts`, `apps/api/src/use-cases/**`, `routes/**`, émission de token auth-service.
+- **Terminé quand :** un admin du quartier X reçoit `403` en agissant sur le quartier Y ; un membre reçoit `403` sur les ressources d'autrui ; `superAdmin` passe ; couvert par une spec Playwright.
 
-- Rate limiting (login, forgot-password, TOTP, register first), request body size limits, account-enumeration-safe responses.
+**P0-2 — Géocodage + éligibilité quartier** · **M** · débloque tout le géo-scoping · voir §2A
 
-**P4-3 — Delivery & quality** · **M** · fixes A8
+- Géocoder `users.address` → `location {lng,lat}` (géocodeur cartes.gouv.fr) ; finir `apps/api/src/services/address.service.ts`.
+- Point-in-polygon (turf `booleanPointInPolygon`) sur toutes les limites de quartier → ensemble éligible ; persister `activeDistrictId` ; endpoints pour lister les quartiers éligibles et changer le quartier actif.
+- **Migration :** les utilisateurs existants ont une chaîne `address` + un `districtId` unique → géocoder vers `location`, définir `activeDistrictId` depuis l'ancien `districtId`.
+- **Terminé quand :** l'ensemble éligible d'un nouvel utilisateur est calculé depuis son adresse, il a un `activeDistrictId`, et les requêtes de scoping l'utilisent.
 
-- CI/CD (GitHub Actions: lint, build, Playwright); build out `playwright_testbook` (currently a documented stub pending stack-provisioned E2E) to cover the Phase 1 loop and authz (P0-1).
-- Logging/observability; structured error responses (no internal leakage).
+**P0-3 — Hygiène frontend** · **S** · corrige A5, A6
 
-**P4-4 — Prod deploy** · **S** · from `TODO.md`
+- Câbler `Points.tsx` à `GET /users/:id/balance` + `GET /users/:id/transactions`.
+- Retirer la nav morte (`/documents`, `/votes`) de `Header.tsx` (ou stubber de vraies routes).
+- Supprimer les `pages/auth/{Login,Register}.tsx` orphelines (la redirection vers l'auth-service fonctionne déjà) — ou s'engager sur l'auth in-app et les câbler ; ne pas garder les deux.
+- **Terminé quand :** aucune route ne renvoie 404 depuis la nav ; aucun solde en dur.
 
-- Set prod env: `AUTH_PRIVATE_KEY`/`AUTH_PUBLIC_KEY` (else tokens die each restart), `RESEND_API_KEY`/`FROM_EMAIL` (else emails only `console.log`), `NODE_ENV=production` (secure cookies), `CORS_ORIGINS`, `AUTH_JWKS_URL`, `AUTH_PUBLIC_URL`.
-- Run the one-shot `users` migration (`emailVerified`/`totpSecret`/`totpEnabled`) from `TODO.md`, else existing accounts lock out.
-- ~~Author the prod compose~~ — done: `docker-compose.deploy.yml` (GHCR images + Caddy TLS) driven by the `cd.yml` pipeline.
+**P0-4 — Réconcilier le WIP + hygiène du repo** · **S** · corrige A9, A7
+
+- Relire/committer le diff non commité de `etienne` ; rebaser sur une branche `feat/*` propre.
+- Corriger les refs pendantes de `architecture.md` ; réécrire `README.md` pour décrire le vrai produit + les apps (dont auth-service).
+- **Terminé quand :** `git status` propre, les docs ne référencent que ce qui existe.
 
 ---
 
-## 8. Track B — Graded platform components _(mandatory, parallel to Track A)_
+## 4. Phase 1 — Boucle d'échange cœur (la démo) _(une tranche verticale complète)_
 
-_Both are grading requirements. Neither exists in code today. Staff this track separately from the product work and start it early — it does not depend on the product loop._ Specs: `satan-ql.md`, `sync-gateway.md`.
+_Objectif : un utilisateur peut publier un service, être découvert, échanger des messages, contractualiser et transférer des points — de bout en bout dans l'UI._
+
+**P1-0 — Onboarding & changement de quartier** · **M** · voir §2A
+
+- Après le login, si `activeDistrictId` n'est pas défini, montrer les quartiers éligibles (issus de P0-2) et laisser l'utilisateur en choisir un ; persister le choix.
+- Sélecteur de quartier dans le header qui re-scope l'app sur le quartier actif choisi.
+- **Ensemble éligible vide →** l'utilisateur dessine un polygone (Leaflet/geoman, l'éditeur partagé extrait en P3-2) pour créer un quartier ; à l'enregistrement il est promu admin et le client **force un refresh de token** pour charger la claim `adminDistrictId`.
+- **Terminé quand :** un utilisateur sans quartier éligible peut en créer un et voit immédiatement les outils admin ; un utilisateur multi-éligible peut choisir puis changer plus tard.
+
+**P1-1 — UI annonces (CRUD complet)** · **L**
+
+- Liste/fil V1 : `GET /listings` filtré par le quartier **actif** de l'utilisateur + ordonné par récence, paginé.
+- Page détail : `GET /listings/:id`.
+- Création/édition/suppression (remplir `AnnoncesUser.tsx` « Mes annonces ») : `POST/PATCH/DELETE /listings`.
+- Remplacer le `getAllAnnonces` ad-hoc par un client ts-rest typé consommant `@repo/contracts` (élimine la dérive de `type/annonce.ts`).
+- **Terminé quand :** un utilisateur peut publier une annonce et un autre utilisateur du même quartier la voit.
+
+**P1-2 — UI messagerie** · **M**
+
+- « Contact » sur une annonce → `POST /conversations` → fil (`GET/POST /conversations/:id/messages`, `PATCH /messages/:id/read`).
+- Remplir `Messagerie.tsx`.
+- **Terminé quand :** deux utilisateurs échangent des messages depuis une annonce avec accusés de lecture.
+
+**P1-3 — Contrats V1 + transfert de points** · **L** · remplacera A2 plus tard
+
+- Créer un contrat depuis une annonce : `POST /contracts` (prestataire/bénéficiaire/prix issus de l'annonce).
+- **Acceptation mutuelle in-app** (reporter Documenso) : les deux parties acceptent → le contrat se conclut.
+- À la conclusion, déplacer les points : `POST /transactions` débitant le bénéficiaire / créditant le prestataire ; garantir un solde non négatif de façon atomique.
+- Remplir `Contrat.tsx` « Mes contrats ».
+- **Terminé quand :** conclure un contrat transfère les points et les deux soldes le reflètent ; la double-conclusion est rejetée.
+
+**P1-4 — UI événements + votes (lecture+participation)** · **M** _(optionnel dans la Phase 1 ; renforce l'angle « communauté »)_
+
+- Événements : liste/détail/inscription/participation (`/events`, `/events/:id/register`, `/attend`) — remplir `Evenement.tsx`.
+- Votes : liste/détail/répondre/résultats (`/votes`, `/votes/:id/responses`, `/results`) — ajouter la route `/votes` que la nav pointe déjà.
+
+---
+
+## 5. Phase 2 — Fil de recommandations (différenciateur phare)
+
+_Objectif : le fil classé par graphe documenté, maintenant que la Phase 1 produit de vrais signaux._ Implémente `recommendation-algorithm.md` + `MCD/neo4j.md`.
+
+**P2-1 — Intégration Neo4j** · **M**
+
+- Ajouter le driver ; couche de projection mirroir des écritures Mongo vers nœuds/relations (`User`, `Listing`, `Tag`, `District` ; `LIVES_IN`, `PUBLISHED`, `TAGGED`, `KNOWS`).
+- Nouveau repository + enregistrement DI suivant le pattern existant.
+
+> ⚠️ Déjà livré (voir le code). Le driver `neo4j-driver` est présent dans `apps/api` et la projection Mongo→graphe existe : `use-cases/graph/rebuild-graph.use-case.ts`. Le fil classé de bout en bout (P2-3) et le suivi d'intérêt (P2-2) restent à vérifier, mais l'intégration Neo4j n'est plus à « 0 % ».
+
+**P2-2 — Suivi d'intérêt (fire-and-forget)** · **S**
+
+- `POST /listings/:id/view` (petit delta) et le chemin de réponse (grand delta) upsertent `(:User)-[:INTERESTED_IN {score, updatedAt}]->(:Tag)` selon le modèle de décroissance par événement de la doc. Ne doit pas bloquer les réponses.
+
+**P2-3 — Fil classé** · **M**
+
+- `GET /listings/feed` : filtre dur sur le **quartier actif**, puis score composite **tag 50 % / social 30 % / récence 20 %**, paginé. Remplace le fil par récence de la Phase 1.
+- **Terminé quand :** le fil d'un utilisateur se réordonne mesurablement après avoir vu/répondu à des annonces portant certains tags ; les nouveaux utilisateurs retombent sur la récence (cas limites de la doc).
+
+---
+
+## 6. Phase 3 — Confiance + exploitabilité _(parallélisable avec la Phase 2)_
+
+**P3-1 — Intégration Documenso** · **L** · corrige A2 · implémente `documenso-integration.md`
+
+- Client Documenso côté API (création de document depuis template, assignation des signataires), persister l'URL du PDF + les URLs de signature par signataire + le statut ; **handler de webhook** (vérifier la signature ; mapper `completed`→conclu, `declined`→litige).
+- Remplacer l'acceptation mutuelle de P1-3 par une vraie signature ; déclencher le transfert de points sur `document.completed`.
+- Front : liste Documents + page détail/signature (aperçu `react-pdf` → redirection vers l'URL de signature).
+- **Terminé quand :** un contrat est signé via Documenso et le webhook (pas le client) pilote le statut + le transfert de points.
+
+**P3-2 — App admin (liée au quartier) + superAdmin** · **L** · voir §2A
+
+- Bootstrapper `admin-front` (actuellement vide) avec auth + gardes conscients du quartier : un `admin` ne voit que son `adminDistrictId` ; un `superAdmin` voit tous les quartiers.
+- **Éditeur de limites de quartier** (`district-boundary-editor.md`) : Leaflet + react-leaflet + leaflet-geoman, dessiner/éditer/enregistrer des polygones GeoJSON ; validation côté serveur (Polygon uniquement, anneau fermé, ≥3 points ; **chevauchement autorisé, nom non unique** selon §2A). **Extraire l'éditeur dans `packages/ui`** pour que le flux de création du user-front (P1-0) le réutilise.
+- Opérations scopées — modération de signalements + stats (`/incidents`, `/incidents/stats`), litiges de contrats, gestion des votes — toutes filtrées au quartier de l'admin ; `superAdmin` est trans-quartier.
+- Provisionnement `superAdmin` : employés seedés (pas de self-service).
+- **Terminé quand :** un admin de quartier ne gère que son quartier, un `superAdmin` gère tous, et l'éditeur de limites est le même composant utilisé par le user-front.
+
+---
+
+## 7. Phase 4 — Gouvernance & durcissement _(avant tout utilisateur réel)_
+
+**P4-1 — Confidentialité & RGPD** · **M** · corrige A3
+
+- Contrôles de visibilité par champ pour les données sensibles de l'utilisateur (qui peut voir address/phone/email — `ToDefine.md`).
+- Droits RGPD : accès/export, modification, suppression, opposition ; politique de confidentialité. Garantir que la suppression cascade (annonces, messages, transactions, refresh token).
+
+**P4-2 — Durcissement anti-abus** · **S–M** · corrige A4
+
+- Rate limiting (login, forgot-password, TOTP, register d'abord), limites de taille de corps de requête, réponses résistantes à l'énumération de comptes.
+
+**P4-3 — Livraison & qualité** · **M** · corrige A8
+
+- CI/CD (GitHub Actions : lint, build, Playwright) ; étoffer `playwright_testbook` (actuellement un stub documenté en attente d'E2E provisionné par la stack) pour couvrir la boucle de la Phase 1 et l'authz (P0-1).
+- Logging/observabilité ; réponses d'erreur structurées (aucune fuite interne).
+
+**P4-4 — Déploiement prod** · **S** · issu de `TODO.md`
+
+- Définir l'env prod : `AUTH_PRIVATE_KEY`/`AUTH_PUBLIC_KEY` (sinon les tokens meurent à chaque redémarrage), `RESEND_API_KEY`/`FROM_EMAIL` (sinon les emails ne font que `console.log`), `NODE_ENV=production` (cookies sécurisés), `CORS_ORIGINS`, `AUTH_JWKS_URL`, `AUTH_PUBLIC_URL`.
+- Lancer la migration `users` one-shot (`emailVerified`/`totpSecret`/`totpEnabled`) de `TODO.md`, sinon les comptes existants se verrouillent.
+- ~~Rédiger le compose prod~~ — fait : `docker-compose.deploy.yml` (images GHCR + Caddy TLS) piloté par le pipeline `cd.yml`.
+
+---
+
+## 8. Piste B — Composants plateforme notés _(obligatoires, parallèles à la Piste A)_
+
+_Les deux sont des exigences de notation. Ni l'une ni l'autre n'existe dans le code aujourd'hui. Staffer cette piste séparément du travail produit et la démarrer tôt — elle ne dépend pas de la boucle produit._ Specs : `satan-ql.md`, `sync-gateway.md`.
 
 ### B1 — SATAN QL (`@repo/satan`)
 
-_Goal: a SQL-like DSL compiled to MongoDB at runtime, parsed by a long-lived Python (PLY) process, consumed by the api through the existing repository → use-case → route layering._
+_Objectif : un DSL type-SQL compilé vers MongoDB à l'exécution, parsé par un processus Python (PLY) longue durée, consommé par l'api à travers le découpage existant repository → cas d'usage → route._
 
-**B1-1 — Python parser package** · **L**
+**B1-1 — Package parseur Python** · **L**
 
-- `packages/satan/python/`: PLY `lexer.py` → `parser.py` (grammar → AST) → `translator.py` (AST → Mongo query dict), driven by `worker.py`.
-- Support the documented grammar: `FIND <collection> WHERE <expr> [SELECT ...] [ORDER BY ... ASC|DESC] [SKIP n] [LIMIT n]`; operators `=`, comparison (`>= <= > <`), `LIKE` (with `*` wildcards → regex), `IN (...)`, `EXISTS`, `AND`/`OR`/`NOT`, parentheses, nested field paths (`profile.address.city`).
-- Protocol: read newline-delimited JSON on stdin (`{id, query}`), write `{id, ok, result|error}` on stdout. Terminate when stdin closes.
-- **Done when:** every example in `satan-ql.md` parses to the correct Mongo filter/projection/sort.
+- `packages/satan/python/` : PLY `lexer.py` → `parser.py` (grammaire → AST) → `translator.py` (AST → dict de requête Mongo), piloté par `worker.py`.
+- Supporter la grammaire documentée : `FIND <collection> WHERE <expr> [SELECT ...] [ORDER BY ... ASC|DESC] [SKIP n] [LIMIT n]` ; opérateurs `=`, comparaison (`>= <= > <`), `LIKE` (avec wildcards `*` → regex), `IN (...)`, `EXISTS`, `AND`/`OR`/`NOT`, parenthèses, chemins de champs imbriqués (`profile.address.city`).
+- Protocole : lire du JSON délimité par retour ligne sur stdin (`{id, query}`), écrire `{id, ok, result|error}` sur stdout. Terminer quand stdin se ferme.
+- **Terminé quand :** chaque exemple de `satan-ql.md` parse vers le filtre/projection/tri Mongo correct.
 
-**B1-2 — Node client (`SatanClient`)** · **M**
+**B1-2 — Client Node (`SatanClient`)** · **M**
 
-- `createSatanClient()` spawns the Python worker **once**, keeps it alive, correlates requests/responses by `id`, auto-restarts on crash, shuts down on api exit.
+- `createSatanClient()` lance le worker Python **une fois**, le garde vivant, corrèle requêtes/réponses par `id`, redémarre automatiquement au crash, s'éteint à la sortie de l'api.
 
-**B1-3 — api integration + safety** · **M**
+**B1-3 — Intégration api + sécurité** · **M**
 
-- Wire through a repository + use-case + route (e.g. an admin/search query path) so SATAN is exercised end-to-end via DI.
-- **Injection safety is mandatory:** allowlist queryable collections and fields; reject Mongo operator injection; never interpolate raw user strings into the translated query. Treat SATAN input as untrusted.
-- **Done when:** an api endpoint answers a SATAN query against real data, and an injection attempt is rejected.
+- Câbler à travers un repository + cas d'usage + route (ex. un chemin de requête admin/recherche) pour que SATAN soit exercé de bout en bout via DI.
+- **La sécurité anti-injection est obligatoire :** allowlister les collections et champs interrogeables ; rejeter l'injection d'opérateurs Mongo ; ne jamais interpoler de chaîne utilisateur brute dans la requête traduite. Traiter l'entrée SATAN comme non fiable.
+- **Terminé quand :** un endpoint api répond à une requête SATAN sur des données réelles, et une tentative d'injection est rejetée.
 
 ### B2 — sync-gateway (`apps/sync-gateway`)
 
-_Goal: the bidirectional H2 ↔ MongoDB bridge the existing Java app talks to._ The Java app is fixed (separate repo), so the contract below is **discovered from that app, not invented here.**
+_Objectif : le pont bidirectionnel H2 ↔ MongoDB auquel l'app Java existante parle._ L'app Java est figée (dépôt séparé), donc le contrat ci-dessous est **découvert depuis cette app, pas inventé ici.**
 
-**B2-0 — Close the spec** · **S** _(blocks B2-1+)_
+> ⚠️ Déjà livré (voir le code). La logique de synchronisation existe, livrée **dans `apps/api`** (`use-cases/sync/{ingest,get-changes,get-conflicts,resolve-conflict}.use-case.ts` + `packages/contracts/src/sync.contract.ts`), et non comme `apps/sync-gateway` séparé. Les sous-tâches B2-1..B2-3 ci-dessous décrivent une architecture qui a en pratique divergé — à recouper avec le code réel.
 
-- Resolve the unfinished **Deduplication** section (`sync-gateway.md` ends in `????`): confirm the business-key unique index per entity and the INSERT-retry-with-null-`mongoId` adoption flow **against what the Java app actually sends**.
-- Assign the **port** (TBD in doc; taken: api 3000, admin 4000, user 5000, auth 3001, neo4j 7474) and register in `docker-compose*.yml` + `turbo.json`.
-- Confirm the synced-collection set and payload shapes match the Java app's outbox.
+**B2-0 — Clore la spec** · **S** _(bloque B2-1+)_
+
+- Résoudre la section **Déduplication** inachevée (`sync-gateway.md` se termine par `????`) : confirmer l'index unique par clé métier par entité et le flux d'adoption INSERT-retry-avec-`mongoId`-null **contre ce que l'app Java envoie réellement**.
+- Assigner le **port** (TBD dans la doc ; pris : api 3000, admin 4000, user 5000, auth 3001, neo4j 7474) et l'enregistrer dans `docker-compose*.yml` + `turbo.json`.
+- Confirmer que l'ensemble des collections synchronisées et les formes de payload correspondent à l'outbox de l'app Java.
 
 **B2-1 — `POST /ingest`** · **M**
 
-- Batch outbox events → Mongo: `INSERT` (generate ObjectId, insert with `_id = mongoId`, return `{id, mongoId}`), `UPDATE` (full `$set` by `_id`), `DELETE` (by `_id`); tag writes `origin:"sync"`; skip+log unknown entities; enforce ~5 MB body limit; idempotent INSERT-retry per B2-0.
+- Événements outbox par lot → Mongo : `INSERT` (générer ObjectId, insérer avec `_id = mongoId`, retourner `{id, mongoId}`), `UPDATE` (`$set` complet par `_id`), `DELETE` (par `_id`) ; taguer les écritures `origin:"sync"` ; sauter+logger les entités inconnues ; imposer une limite de corps de ~5 Mo ; INSERT-retry idempotent selon B2-0.
 
-**B2-2 — Change Streams watcher** · **M**
+**B2-2 — Watcher Change Streams** · **M**
 
-- Watch Mongo; skip `origin == "sync"`; append to `sync_changes` with an **atomically incremented `index`** (counters collection via `findOneAndUpdate`).
+- Surveiller Mongo ; sauter `origin == "sync"` ; ajouter à `sync_changes` avec un `index` **incrémenté atomiquement** (collection de compteurs via `findOneAndUpdate`).
 
 **B2-3 — `GET /changes?since=&limit=`** · **S**
 
-- Cursor pagination over `sync_changes` (`since` default 0, `limit` default 100).
-- **Done when:** an entity created in the Java app round-trips into Mongo and is visible in the api/user-front, and an api-side write surfaces via `/changes` and lands in the Java app's H2.
+- Pagination par curseur sur `sync_changes` (`since` défaut 0, `limit` défaut 100).
+- **Terminé quand :** une entité créée dans l'app Java fait l'aller-retour vers Mongo et est visible dans l'api/user-front, et une écriture côté api ressort via `/changes` et atterrit dans le H2 de l'app Java.
 
-### Deferred within scope
+### Reporté dans le périmètre
 
-- **`RECOMMENDED` / event recommendations** (Neo4j `RECOMMENDED` edge): defer to post-Phase-2 — the listing feed is the higher-value first recommendation surface.
-
----
-
-## 9. Open questions (answers change the plan)
-
-1. **sync-gateway contract (B2-0)** — the Java app (separate repo) is the fixed counterparty. Before building, read that app's outbox/poll code to confirm the synced-collection set, payload shapes, and the dedup behaviour the doc leaves as `????`. Also pick the gateway port.
-2. **SATAN integration surface (B1-3)** — which api query path(s) run through SATAN? Pick at least one real one (e.g. admin user/listing search) so it's demonstrably wired, not a toy.
-3. **Auth UI direction** — keep auth-service hosted pages (current working path) or move login/register in-app? Decides P0-3.
-4. **Real money/legal weight on contracts?** If signatures must be legally binding, P3-1 (Documenso) is non-negotiable and moves earlier; if "points are a game", P1-3 mutual-accept may suffice for v1.
+- **Recommandations `RECOMMENDED` / d'événements** (arête Neo4j `RECOMMENDED`) : reporter en post-Phase-2 — le fil d'annonces est la première surface de recommandation à plus forte valeur.
 
 ---
 
-## Appendix A — Endpoint inventory (implemented)
+## 9. Questions ouvertes (les réponses changent le plan)
 
-`auth` (12): login · login/mfa · refresh · logout · csrf · userinfo · register · verify · resend-verification · forgot-password · reset-password · totp/{enroll,confirm,disable}
-`users` (5 + 2): CRUD · `/users/:id/transactions` · `/users/:id/balance`
-`districts` (5): CRUD · `listings` (5): CRUD · `tags` (5): CRUD · `notifications` (5): list/create/read/read-all/delete
-`contracts` (6): list · get · create · sign · dispute · delete
-`events` (8): CRUD · register · unregister · attend
-`votes` (7): CRUD · responses · results
-`incidents` (6): CRUD · stats
-`conversations`/messages (8): conversations CRUD-ish · messages list/send/read · media
-`transactions` (2): list · create
+1. **Contrat sync-gateway (B2-0)** — l'app Java (dépôt séparé) est la contrepartie figée. Avant de construire, lire le code outbox/poll de cette app pour confirmer l'ensemble des collections synchronisées, les formes de payload et le comportement de dédup que la doc laisse en `????`. Choisir aussi le port de la gateway.
+2. **Surface d'intégration SATAN (B1-3)** — quel(s) chemin(s) de requête api passent par SATAN ? En choisir au moins un réel (ex. recherche admin user/annonce) pour qu'il soit démontrablement câblé, pas un jouet.
+3. **Direction de l'UI d'auth** — garder les pages hébergées de l'auth-service (chemin actuel qui fonctionne) ou passer login/register en in-app ? Décide P0-3.
+4. **Poids monétaire/légal réel sur les contrats ?** Si les signatures doivent être juridiquement contraignantes, P3-1 (Documenso) est non négociable et avance plus tôt ; si « les points sont un jeu », l'acceptation mutuelle de P1-3 peut suffire pour la v1.
 
-**Documented but missing:** `GET /listings/feed`, `POST /listings/:id/view` (Phase 2); Documenso webhook (Phase 3).
+---
 
-## Appendix B — Effort summary
+## Annexe A — Inventaire des endpoints (implémentés)
 
-| Track / Phase | Theme                                                 | Size |
-| ------------- | ----------------------------------------------------- | ---- |
-| A · 0         | Foundations (authz, districts, hygiene)               | M    |
-| A · 1         | Core loop (listings, messaging, contracts+points)     | L    |
-| A · 2         | Recommendation feed (Neo4j)                           | M–L  |
-| A · 3         | Trust + admin (Documenso, admin app)                  | L    |
-| A · 4         | Governance & hardening (GDPR, rate limit, CI, deploy) | M    |
-| B · 1         | SATAN QL (Python PLY parser + Node client + api wire) | L    |
-| B · 2         | sync-gateway (ingest + Change Streams + changes)      | M    |
+`auth` (12) : login · login/mfa · refresh · logout · csrf · userinfo · register · verify · resend-verification · forgot-password · reset-password · totp/{enroll,confirm,disable}
+`users` (5 + 2) : CRUD · `/users/:id/transactions` · `/users/:id/balance`
+`districts` (5) : CRUD · `listings` (5) : CRUD · `tags` (5) : CRUD · `notifications` (5) : list/create/read/read-all/delete
+`contracts` (6) : list · get · create · sign · dispute · delete
+`events` (8) : CRUD · register · unregister · attend
+`votes` (7) : CRUD · responses · results
+`incidents` (6) : CRUD · stats
+`conversations`/messages (8) : conversations CRUD-ish · messages list/send/read · media
+`transactions` (2) : list · create
 
-_Tracks A and B run in parallel; B is graded and must not be back-loaded._
+**Documentés mais manquants :** `GET /listings/feed`, `POST /listings/:id/view` (Phase 2) ; webhook Documenso (Phase 3).
+
+## Annexe B — Récapitulatif d'effort
+
+| Piste / Phase | Thème                                                          | Taille |
+| ------------- | -------------------------------------------------------------- | ------ |
+| A · 0         | Fondations (authz, quartiers, hygiène)                         | M      |
+| A · 1         | Boucle cœur (annonces, messagerie, contrats+points)            | L      |
+| A · 2         | Fil de recommandations (Neo4j)                                 | M–L    |
+| A · 3         | Confiance + admin (Documenso, app admin)                       | L      |
+| A · 4         | Gouvernance & durcissement (RGPD, rate limit, CI, déploiement) | M      |
+| B · 1         | SATAN QL (parseur Python PLY + client Node + câblage api)      | L      |
+| B · 2         | sync-gateway (ingest + Change Streams + changes)               | M      |
+
+_Les pistes A et B tournent en parallèle ; B est notée et ne doit pas être reléguée à la fin._
+</content>
+</invoke>

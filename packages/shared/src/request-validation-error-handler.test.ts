@@ -1,3 +1,7 @@
+// Suite de tests du handler de validation de requête ts-rest : `validationMessage` (message
+// personnalisé rendu tel quel, message zod générique préfixé du champ, priorité body > query,
+// repli générique) et `requestValidationErrorHandler` (réponse 400 { message } propre, sans jamais
+// divulguer la forme de la ZodError).
 import { describe, it, expect, vi } from "vitest";
 import { z } from "zod";
 import { validationMessage, requestValidationErrorHandler } from "./request-validation-error-handler.js";

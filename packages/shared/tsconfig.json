@@ -1,7 +1,9 @@
 {
+  // Config TypeScript de base du package partagé, héritée de la config repo.
   "extends": "@repo/typescript-config/base.json",
   "include": ["src"],
   "compilerOptions": {
+    // NodeNext : résolution ESM native (imports en `.js`, "type": "module").
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "rootDir": "./src",

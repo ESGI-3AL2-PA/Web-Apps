@@ -1,5 +1,8 @@
 name: Claude Code
 
+# Assistant Claude sur demande. Se declenche quand "@claude" est mentionne dans un commentaire
+# d'issue/PR, une revue de PR, ou le corps/titre d'une issue (voir la garde `if` du job). Sans
+# prompt explicite, Claude execute les instructions du commentaire qui l'a mentionne.
 on:
   issue_comment:
     types: [created]
@@ -23,7 +26,7 @@ jobs:
       pull-requests: read
       issues: read
       id-token: write
-      actions: read # Required for Claude to read CI results on PRs
+      actions: read # Necessaire pour que Claude lise les resultats de CI sur les PR
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -36,15 +39,15 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
 
-          # This is an optional setting that allows Claude to read CI results on PRs
+          # Reglage optionnel qui autorise Claude a lire les resultats de CI sur les PR
           additional_permissions: |
             actions: read
 
-          # Optional: Give a custom prompt to Claude. If this is not specified, Claude will perform the instructions specified in the comment that tagged it.
+          # Optionnel : fournir un prompt personnalise a Claude. S'il n'est pas defini, Claude execute
+          # les instructions du commentaire qui l'a mentionne.
           # prompt: 'Update the pull request description to include a summary of changes.'
 
-          # Optional: Add claude_args to customize behavior and configuration
-          # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
-          # or https://code.claude.com/docs/en/cli-reference for available options
+          # Optionnel : ajouter claude_args pour ajuster le comportement et la configuration.
+          # Voir https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
+          # ou https://code.claude.com/docs/en/cli-reference pour les options disponibles.
           # claude_args: '--allowed-tools Bash(gh pr *)'
-

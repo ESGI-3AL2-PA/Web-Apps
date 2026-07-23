@@ -1,9 +1,10 @@
-// Shared server infrastructure for the api + auth-service backends. Both were
-// scaffolded from one template with no shared package, so cross-cutting infra got
-// copy-pasted; this is the single source of truth for it.
+// Infrastructure serveur partagée par les backends api + auth-service. Les deux
+// ont été générés depuis un même template sans package commun ; l'infra
+// transverse s'est donc retrouvée copiée-collée. Ce module en est la source unique.
 //
-// NOTE: `./load-env` is intentionally NOT re-exported here — import it for its side
-// effect FIRST (`import "@repo/shared/load-env"`) before any env-reading module.
+// NOTE : `./load-env` n'est volontairement PAS ré-exporté ici — il faut l'importer
+// pour son effet de bord EN PREMIER (`import "@repo/shared/load-env"`), avant tout
+// module qui lit l'environnement.
 
 export { logger, createLogger } from "./logger.js";
 export { createMongoConnector, type MongoConnector } from "./mongo-connector.js";

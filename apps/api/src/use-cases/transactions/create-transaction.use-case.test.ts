@@ -1,3 +1,7 @@
+// Suite de tests du cas d'usage de création de transaction : vérifie uniquement les
+// règles d'AUTORISATION (périmètre quartier, droits de mint/burn selon le rôle),
+// pas la mécanique de mouvement de solde elle-même.
+
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { CreateTransactionDto } from "@repo/contracts";
 import type { User } from "../../entities/user.entity.js";
@@ -5,18 +9,21 @@ import type { IUserRepository } from "../../repositories/User/user.repository.js
 import type { ITransactionRepository } from "../../repositories/Transaction/transaction.repository.js";
 import { createTransactionUseCase, type TransactionActor } from "./create-transaction.use-case.js";
 
-// Run the money code without a real Mongo session: just execute the callback.
+// Exécute le code monétaire sans vraie session Mongo : on se contente d'invoquer le callback.
 vi.mock("../../repositories/tx.js", () => ({
   runInTransaction: (fn: (session?: unknown) => unknown) => fn(undefined),
 }));
 
+// Utilisateur factice avec un solde volontairement énorme pour ne jamais buter sur le débit.
 const makeUser = (id: string, districtId: string): User => ({ id, districtId, balance: 1_000_000 }) as unknown as User;
 
+// Repository utilisateur bouchonné : résolution par id depuis un dictionnaire en mémoire.
 const makeUserRepo = (users: Record<string, User>): IUserRepository =>
   ({
     getUserById: vi.fn(async (id: string) => users[id] ?? null),
   }) as unknown as IUserRepository;
 
+// Repository de transactions bouchonné : débit/crédit toujours réussis, écritures synthétisées.
 const makeTxRepo = (): ITransactionRepository =>
   ({
     tryDebit: vi.fn(async () => true),
@@ -36,6 +43,7 @@ const run = (
 describe("createTransactionUseCase authorization", () => {
   beforeEach(() => vi.clearAllMocks());
 
+  // (a) Un administrateur de quartier ne peut pas toucher un utilisateur hors de son quartier.
   it("(a) district admin CANNOT move points to/from a user outside their district", async () => {
     const users = {
       alice: makeUser("alice", "district-1"),
@@ -58,6 +66,7 @@ describe("createTransactionUseCase authorization", () => {
     expect(txRepo.adjustBalance).not.toHaveBeenCalled();
   });
 
+  // (a') En revanche, il peut déplacer des points entre deux membres de son propre quartier.
   it("(a') district admin CAN move points between two users in their own district", async () => {
     const users = {
       alice: makeUser("alice", "district-1"),
@@ -77,6 +86,7 @@ describe("createTransactionUseCase authorization", () => {
     expect(result.kind).toBe("ok");
   });
 
+  // (b) Un administrateur de quartier ne peut pas créer de points (mint) : sans `fromUserId`, refus.
   it("(b) district admin CANNOT mint (omitted fromUserId is rejected)", async () => {
     const users = { carol: makeUser("carol", "district-1") };
     const txRepo = makeTxRepo();
@@ -95,6 +105,7 @@ describe("createTransactionUseCase authorization", () => {
     expect(txRepo.adjustBalance).not.toHaveBeenCalled();
   });
 
+  // (c) Un superAdmin peut créer des points : l'absence de `fromUserId` est honorée (mint).
   it("(c) superAdmin CAN mint (omitted fromUserId is honored)", async () => {
     const users = { carol: makeUser("carol", "district-1") };
     const txRepo = makeTxRepo();
@@ -110,17 +121,18 @@ describe("createTransactionUseCase authorization", () => {
     );
 
     expect(result.kind).toBe("ok");
-    expect(txRepo.tryDebit).not.toHaveBeenCalled(); // no source: pure credit / mint
+    expect(txRepo.tryDebit).not.toHaveBeenCalled(); // pas de source : crédit pur / création
     expect(txRepo.adjustBalance).toHaveBeenCalledWith("carol", 100, undefined);
   });
 
+  // (d) Un non-admin est forcé à sa propre identité comme source : un `fromUserId` falsifié est ignoré.
   it("(d) non-admin is forced to their own sub as the source (spoofed fromUserId ignored)", async () => {
     const users = {
       "user-self": makeUser("user-self", "district-1"),
       victim: makeUser("victim", "district-9"),
     };
     const txRepo = makeTxRepo();
-    // Malicious body tries to drain `victim`; the use-case must debit the caller instead.
+    // Corps malveillant tentant de vider `victim` ; le cas d'usage doit débiter l'appelant à la place.
     const result = await run(
       txRepo,
       makeUserRepo(users),

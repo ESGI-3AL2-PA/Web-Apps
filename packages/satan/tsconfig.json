@@ -1,9 +1,13 @@
 {
+  // Config TS du package @repo/satan (client Node du worker Python).
   "extends": "@repo/typescript-config/base.json",
+  // Ne compile que src/ — smoke.mts est volontairement exclu du build livré.
   "include": ["src"],
   "compilerOptions": {
+    // NodeNext : résolution ESM/CJS alignée sur Node (nécessaire pour ce package "type": "module").
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
+    // Types Node uniquement (child_process, crypto, events, path).
     "types": ["node"],
     "rootDir": "./src",
     "outDir": "./dist"

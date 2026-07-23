@@ -1,17 +1,18 @@
-/* Connected NeighBours — shared FlyonUI theme.
-   Single source of truth for the three fronts (landing, user-front, admin-front).
-   Sourced from apps/landing (the marketing site). Each app's style.css imports this
-   with a relative path; landing keeps only its signature graph/reveal extras. */
+/* Connected NeighBours — thème FlyonUI partagé.
+   Source unique de vérité pour les trois fronts (landing, user-front, admin-front).
+   Provient de apps/landing (le site marketing). Le style.css de chaque app l'importe
+   par un chemin relatif ; seul landing conserve ses extras signature (graphe / reveal). */
 
 @import "tailwindcss/preflight";
 @tailwind utilities;
 @import "tailwindcss";
 @plugin "flyonui";
-@plugin "@iconify/tailwind4"; /* enables icon-[tabler--*] utilities (dynamic, from @iconify-json/tabler) */
+@plugin "@iconify/tailwind4"; /* active les utilitaires icon-[tabler--*] (dynamiques, depuis @iconify-json/tabler) */
 
+/* @theme : tokens Tailwind fixes (fonts + couleurs de fond signature landing). */
 @theme {
-  --color-blc: #f8f7f2; /* cream canvas (landing signature) */
-  --color-ink: #1c1b2e; /* light-mode ink; flipped in dark below */
+  --color-blc: #f8f7f2; /* canvas crème (signature landing) */
+  --color-ink: #1c1b2e; /* encre en mode clair ; inversée en mode sombre plus bas */
   --color-canvas: #f8f7f2;
 
   --font-display: "Bricolage Grotesque", ui-sans-serif, system-ui, sans-serif;
@@ -19,7 +20,9 @@
   --font-mono: "Space Mono", ui-monospace, monospace;
 }
 
-/* FlyonUI/DaisyUI semantic theme — the single source of truth for brand colours. */
+/* Thème sémantique FlyonUI/DaisyUI — la source unique de vérité pour les couleurs de marque.
+   Le mode sombre est piloté par l'attribut [data-theme] sur <html> ; les tokens base-* s'inversent
+   automatiquement selon la variante sélectionnée. */
 [data-theme="light"] {
   --color-primary: #6366f1;
   --color-secondary: #f59e0b;
@@ -32,7 +35,7 @@
   --color-secondary: #fbbf24;
   --color-accent: #22d3ee;
   --color-base-100: #0f172a;
-  /* Flip the fixed tokens so body text/canvas follow the theme. */
+  /* On inverse les tokens fixes pour que le texte du body / le canvas suivent le thème. */
   --color-ink: #e5e7eb;
   --color-canvas: #0f172a;
 }
@@ -44,8 +47,8 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Respect users who ask the OS to minimise motion (WCAG 2.3.3): neutralise
-   transitions, animations (animate-pulse skeletons) and smooth scrolling. */
+/* Respecte les utilisateurs qui demandent à l'OS de réduire les animations (WCAG 2.3.3) :
+   neutralise transitions, animations (squelettes animate-pulse) et défilement fluide. */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

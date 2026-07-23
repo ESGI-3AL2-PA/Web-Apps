@@ -1,23 +1,25 @@
 """
-SATAN QL — Executor
+SATAN QL — Exécuteur
 
-Runs a translated op dict (see translator.py) against a live MongoDB via pymongo
-and returns a JSON-serialisable result. This is where the query actually hits
-the database — the Node side never touches Mongo, it only drives the worker.
+Exécute une opération traduite (dict, cf. translator.py) contre une base
+MongoDB vivante via pymongo et renvoie un résultat sérialisable en JSON. C'est
+ici que la requête touche réellement la base — le côté Node ne parle jamais à
+Mongo, il ne fait que piloter ce worker.
 """
 
 import os
 from typing import Any, Dict
 
-# Server-side cap on read ops so a pathological/expensive filter (e.g. a heavy
-# `$regex` scan) can't pin mongod or block the single worker indefinitely — Mongo
-# aborts the op past this budget and we return an error. Reads only: find/count
-# accept maxTimeMS; the id-keyed writes are cheap. 0 disables it.
+# Plafond côté serveur sur les opérations de lecture : un filtre pathologique /
+# coûteux (ex. un gros scan `$regex`) ne doit pas monopoliser mongod ni bloquer
+# indéfiniment l'unique worker — au-delà de ce budget Mongo avorte l'opération et
+# on renvoie une erreur. Lectures seulement : find/count acceptent maxTimeMS ; les
+# écritures indexées par id sont peu coûteuses. 0 désactive le plafond.
 _MAX_TIME_MS = int(os.environ.get("SATAN_MAX_TIME_MS", "5000"))
 
 
 def _map_id(doc: dict) -> dict:
-    """Rename Mongo's `_id` to the domain `id` (matches the api repositories)."""
+    """Renomme le `_id` de Mongo en `id` métier (aligné sur les repositories de l'api)."""
     if "_id" in doc:
         doc = dict(doc)
         doc["id"] = doc.pop("_id")
@@ -25,7 +27,7 @@ def _map_id(doc: dict) -> dict:
 
 
 def execute(db, op: Dict[str, Any]) -> Any:
-    """Dispatch a translated op against `db` (a pymongo Database)."""
+    """Aiguille une opération traduite vers `db` (une Database pymongo)."""
     kind = op["op"]
     collection = db[op["collection"]]
 

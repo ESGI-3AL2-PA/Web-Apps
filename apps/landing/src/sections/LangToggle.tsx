@@ -1,16 +1,29 @@
+/**
+ * Sélecteur de langue FR/EN de la landing page.
+ */
 import type { Lang } from "../i18n";
 
+/**
+ * Props du composant {@link LangToggle}.
+ */
 interface LangToggleProps {
+  /** Langue actuellement active. */
   lang: Lang;
+  /** Appelé avec la nouvelle langue lorsqu'un bouton est cliqué. */
   onChange: (lang: Lang) => void;
 }
 
+// Langues proposées, dans l'ordre d'affichage du sélecteur.
 const options: { value: Lang; label: string }[] = [
   { value: "fr", label: "FR" },
   { value: "en", label: "EN" },
 ];
 
-// Segmented FR/EN switch — mirrors the language control already in the app header.
+/**
+ * Bouton segmenté FR/EN — reprend le contrôle de langue déjà présent dans
+ * l'en-tête de l'application. Le bouton actif porte `aria-pressed` pour
+ * l'accessibilité.
+ */
 const LangToggle = ({ lang, onChange }: LangToggleProps) => {
   return (
     <div

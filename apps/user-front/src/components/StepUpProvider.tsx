@@ -6,11 +6,17 @@ import { setStepUpHandler } from "../api-service/api";
 import { useFocusTrap } from "../lib/useFocusTrap";
 import { StepUpContext } from "./step-up-context";
 
-// Fresh-TOTP re-confirmation for sensitive operations. Exposes an imperative
-// `requestStepUp()` that opens a 6-digit code modal and resolves to a step-up token.
-// Also registered as the api interceptor's handler, so any sensitive api call that gets
-// 401 { code: "step_up_required" } transparently prompts and retries. Only fires in
-// production — in dev the backend never demands step-up, so the modal never appears.
+/**
+ * Composant React (provider) : re-confirmation par TOTP frais pour les opérations
+ * sensibles.
+ *
+ * Expose un `requestStepUp()` impératif qui ouvre une modale de saisie de code à
+ * 6 chiffres et résout vers un step-up token. S'enregistre aussi comme handler de
+ * l'intercepteur api : tout appel sensible qui reçoit un 401 `{ code: "step_up_required" }`
+ * déclenche la modale et rejoue la requête de façon transparente. Ne se manifeste
+ * qu'en production — en dev, le backend n'exige jamais de step-up, donc la modale
+ * n'apparaît pas.
+ */
 export function StepUpProvider({ children }: { children: ReactNode }) {
   const { t } = useTranslation();
   const { getAccessToken, refresh } = useAuth();
@@ -21,6 +27,8 @@ export function StepUpProvider({ children }: { children: ReactNode }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Ouvre la modale et renvoie une promesse ; on stocke resolve/reject dans un ref
+  // pour les déclencher plus tard depuis submit/cancel.
   const requestStepUp = useCallback(
     () =>
       new Promise<string>((resolve, reject) => {
@@ -33,8 +41,8 @@ export function StepUpProvider({ children }: { children: ReactNode }) {
     [],
   );
 
-  // The api interceptor lives outside React; hand it a callback that swallows a cancel
-  // into null so a rejected prompt just lets the original 401 propagate.
+  // L'intercepteur api vit hors de React ; on lui passe un callback qui convertit une
+  // annulation en null, afin qu'un refus laisse simplement le 401 d'origine se propager.
   useEffect(() => {
     setStepUpHandler(() => requestStepUp().catch(() => null));
     return () => setStepUpHandler(null);
@@ -50,6 +58,8 @@ export function StepUpProvider({ children }: { children: ReactNode }) {
     close();
   }, [close]);
 
+  // Valide le code : récupère un access token frais (refresh si besoin), échange
+  // token + code contre un step-up token, puis résout la promesse en attente.
   const submit = useCallback(async () => {
     if (code.length !== 6) return;
     setBusy(true);
@@ -67,7 +77,7 @@ export function StepUpProvider({ children }: { children: ReactNode }) {
     }
   }, [code, getAccessToken, refresh, t, close]);
 
-  // Escape cancels.
+  // Échap annule la saisie.
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -114,6 +124,7 @@ export function StepUpProvider({ children }: { children: ReactNode }) {
                 maxLength={6}
                 className="input mt-1 w-40 tracking-[0.3em]"
                 value={code}
+                // Ne garde que les chiffres pour un code TOTP à 6 chiffres.
                 onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") submit();

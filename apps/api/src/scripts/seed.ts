@@ -1,24 +1,27 @@
 /**
- * Seed script — populates MongoDB and Neo4j from an NDJSON scenario file under
- * the repo-root `seed-data/` directory. See that directory for the format.
+ * Script de seed — peuple MongoDB et Neo4j à partir d'un fichier de scénario NDJSON
+ * situé dans le répertoire `seed-data/` à la racine du dépôt. Voir ce répertoire pour
+ * le format attendu.
  *
- * Usage:
- *   npm run seed                    # from apps/api — uses seed-data/demo.txt
- *   npm run seed -- minimal         # uses seed-data/minimal.txt
- *   npm run seed -- ./scratch.txt   # any path, resolved against the cwd
+ * Usage :
+ *   npm run seed                    # depuis apps/api — utilise seed-data/demo.txt
+ *   npm run seed -- minimal         # utilise seed-data/minimal.txt
+ *   npm run seed -- ./scratch.txt   # chemin quelconque, résolu par rapport au cwd
  *   SEED_SCENARIO=minimal npm run seed
  *
- * DESTRUCTIVE. Every run drops the seeded collections outright — not just the rows
- * it owns — plus the offline-sync trio, then wipes and re-projects the Neo4j graph.
- * Anything you created by hand in those collections is gone. What it does NOT touch:
- * `refresh_tokens`, `contracts`, `authorization_codes`, and the migration state.
+ * DESTRUCTEUR. Chaque exécution supprime purement et simplement les collections seedées
+ * — pas seulement les lignes qu'il possède — plus le trio de l'offline-sync, puis efface
+ * et re-projette le graphe Neo4j. Tout ce que vous avez créé à la main dans ces
+ * collections est perdu. Ce qu'il ne touche PAS : `refresh_tokens`, `contracts`,
+ * `authorization_codes` et l'état des migrations.
  *
- * Two consequences worth knowing:
- *   - `users` is dropped, and the superAdmin lives there but is created by
- *     auth-service's `seed-superadmin`. Compose runs `auth-seed` after this script
- *     for that reason; run them in the same order by hand.
- *   - the sync feed is only rebuilt when the api boots (`sync_state.seeded` guards
- *     it), so restart the api afterwards or desktop clients pull an empty feed.
+ * Deux conséquences à connaître :
+ *   - `users` est droppée, or le superAdmin y vit mais est créé par le `seed-superadmin`
+ *     de l'auth-service. Compose lance `auth-seed` après ce script pour cette raison ;
+ *     à la main, exécutez-les dans le même ordre.
+ *   - le flux de sync n'est reconstruit qu'au boot de l'api (`sync_state.seeded` le
+ *     protège), donc redémarrez l'api ensuite sinon les clients desktop récupèrent un
+ *     flux vide.
  */
 
 import argon2 from "argon2";
@@ -33,10 +36,10 @@ import type { SeedDataset, SeedDocument } from "./loader.js";
 
 const seedPassword = process.env.SEED_PASSWORD ?? "Password123!";
 
-// Scenario files live at the repo root (`/seed-data/`). `src/scripts/` and
-// `dist/scripts/` sit at the same depth under `apps/api/`, so four hops up resolves
-// identically under tsx and under node — and, unlike process.cwd(), it does not care
-// that compose runs from /app while `npm run seed` runs from apps/api.
+// Les fichiers de scénario vivent à la racine du dépôt (`/seed-data/`). `src/scripts/`
+// et `dist/scripts/` sont à la même profondeur sous `apps/api/`, donc remonter de quatre
+// crans résout à l'identique sous tsx et sous node — et, contrairement à process.cwd(),
+// peu importe que compose tourne depuis /app tandis que `npm run seed` tourne depuis apps/api.
 const SEED_DATA_DIR = new URL("../../../../seed-data/", import.meta.url);
 
 const resolveScenarioPath = (arg: string): URL => {
@@ -58,20 +61,22 @@ const describeAvailableScenarios = async (): Promise<string> => {
 
 // ─── Mongo ────────────────────────────────────────────────────────────────────
 
-// The offline-sync feed is three coupled collections: the change log, the watcher's
-// cursor + one-shot `seeded` flag, and the sequence counter that keeps change indices
-// monotonic. Dropping any subset of them corrupts desktop sync — clear the change log
-// but keep the counter and clients that already saw seq N never receive the backfill,
-// silently. So they are only ever dropped together, alongside the data they mirror.
-// (SYNC_COLLECTIONS / DROPPED_COLLECTIONS live in ./loader.js — importing
-// this module would run main(), so the drop list has to be testable from elsewhere.)
+// Le flux de l'offline-sync tient en trois collections couplées : le journal des
+// changements, le curseur du watcher + son drapeau `seeded` à usage unique, et le
+// compteur de séquence qui garde les indices de changement monotones. Dropper un
+// sous-ensemble d'entre elles corrompt la sync desktop — videz le journal mais gardez
+// le compteur, et les clients ayant déjà vu la séquence N ne reçoivent jamais le
+// backfill, silencieusement. On ne les droppe donc que toutes ensemble, avec les
+// données qu'elles reflètent. (SYNC_COLLECTIONS / DROPPED_COLLECTIONS vivent dans
+// ./loader.js — importer ce module lancerait main(), la liste des drops doit donc
+// être testable depuis ailleurs.)
 
 const dropCollection = async (db: Db, name: string): Promise<boolean> => {
   try {
     await db.collection(name).drop();
     return true;
   } catch (err) {
-    // 26 = NamespaceNotFound: nothing to drop on a fresh database.
+    // 26 = NamespaceNotFound : rien à dropper sur une base neuve.
     if ((err as { code?: number }).code === 26) return false;
     throw err;
   }
@@ -84,27 +89,27 @@ const resetDatabases = async (db: Db, graph: Neo4jGraphRepository): Promise<void
   }
   console.log(`  ✓ dropped ${dropped.length} collection(s): ${dropped.join(", ") || "(none existed)"}`);
 
-  // The graph is a projection of Mongo, so a full wipe is safe and is the only way to
-  // clear nodes from a previously-seeded scenario — the upserts below are all MERGE
-  // and never remove anything.
+  // Le graphe est une projection de Mongo : un effacement complet est sûr et c'est le
+  // seul moyen de retirer les nœuds d'un scénario seedé précédemment — les upserts
+  // ci-dessous sont tous des MERGE et ne suppriment jamais rien.
   await graph.reset();
   console.log("  ✓ wiped the Neo4j graph");
 };
 
 const seedCollection = async (db: Db, collectionName: string, documents: SeedDocument[]) => {
   if (documents.length === 0) return;
-  // The collection was just dropped, so this is a plain insert.
+  // La collection vient d'être droppée, c'est donc un simple insert.
   await db.collection(collectionName).insertMany(documents as never);
   console.log(`  ✓ ${collectionName}: ${documents.length} document(s)`);
 };
 
-// ─── Neo4j graph projection ─────────────────────────────────────────────────
-// Mirrors the same seed dataset into Neo4j: nodes (User, District, Tag, Listing,
-// Event, Vote, Incident) and all the relationships described in
-// documentation/MCD/neo4j.md. Idempotent thanks to MERGE.
+// ─── Projection du graphe Neo4j ─────────────────────────────────────────────
+// Reflète le même dataset de seed dans Neo4j : nœuds (User, District, Tag, Listing,
+// Event, Vote, Incident) et toutes les relations décrites dans
+// documentation/MCD/neo4j.md. Idempotent grâce à MERGE.
 
-// Loaded documents are untyped JSON. These narrow views keep the casts at the top
-// rather than scattered across every repository call below.
+// Les documents chargés sont du JSON non typé. Ces vues restreintes concentrent les
+// casts en tête plutôt que de les disperser sur chaque appel de repository ci-dessous.
 type DistrictRow = { _id: string; name: string };
 type UserRow = {
   _id: string;
@@ -144,7 +149,7 @@ const seedGraph = async (graph: Neo4jGraphRepository, data: SeedDataset): Promis
   const voteResponses = rows<VoteResponseRow>(data, "vote_responses");
   const incidents = rows<IncidentRow>(data, "incidents");
 
-  // ── Nodes ───────────────────────────────────────────────────────────────
+  // ── Nœuds ───────────────────────────────────────────────────────────────
   for (const d of districts) {
     await graph.upsertDistrict({ id: d._id, name: d.name });
   }
@@ -172,14 +177,14 @@ const seedGraph = async (graph: Neo4jGraphRepository, data: SeedDataset): Promis
     await graph.upsertIncident({ id: i._id, category: i.category, status: i.status });
   }
 
-  // ── Residence ──────────────────────────────────────────────────────────
+  // ── Résidence ──────────────────────────────────────────────────────────
   for (const u of users) {
     if (u.districtId) {
       await graph.linkUserLivesIn(u._id, u.districtId, u.createdAt, u.address);
     }
   }
 
-  // ── Listings ───────────────────────────────────────────────────────────
+  // ── Annonces ───────────────────────────────────────────────────────────
   for (const l of listings) {
     await graph.linkUserPublishedListing(l.authorId, l._id);
     for (const tag of l.tags ?? []) {
@@ -187,7 +192,7 @@ const seedGraph = async (graph: Neo4jGraphRepository, data: SeedDataset): Promis
     }
   }
 
-  // ── Events ─────────────────────────────────────────────────────────────
+  // ── Événements ─────────────────────────────────────────────────────────
   for (const e of events) {
     await graph.linkUserCreatedEvent(e.creatorId, e._id);
     await graph.linkDistrictContainsEvent(e.districtId, e._id);
@@ -196,8 +201,8 @@ const seedGraph = async (graph: Neo4jGraphRepository, data: SeedDataset): Promis
     }
   }
 
-  // ── Event tags + interest signals (both Neo4j-only; see the @graph blocks
-  //    in the scenario file for why they exist).
+  // ── Tags d'événements + signaux d'intérêt (les deux exclusivement Neo4j ;
+  //    voir les blocs @graph du fichier de scénario pour leur raison d'être).
   for (const { eventId, tags: tagNames } of data.graph.eventTags) {
     for (const tagName of tagNames) {
       await graph.linkEventTagged(eventId, tagName);
@@ -210,7 +215,7 @@ const seedGraph = async (graph: Neo4jGraphRepository, data: SeedDataset): Promis
     await graph.setUserInterestedInEvent(sig.userId, sig.eventId, sig.score);
   }
 
-  // ── Votes ──────────────────────────────────────────────────────────────
+  // ── Votes / sondages ───────────────────────────────────────────────────
   for (const v of votes) {
     for (const districtId of v.districtIds ?? []) {
       await graph.linkDistrictConcernsVote(districtId, v._id);
@@ -220,7 +225,7 @@ const seedGraph = async (graph: Neo4jGraphRepository, data: SeedDataset): Promis
     await graph.linkUserVoted(r.userId, r.voteId, r.chosenOption, r.votedAt);
   }
 
-  // ── Incidents ──────────────────────────────────────────────────────────
+  // ── Signalements ───────────────────────────────────────────────────────
   for (const i of incidents) {
     await graph.linkUserReportedIncident(i.reporterId, i._id);
     await graph.linkDistrictContainsIncident(i.districtId, i._id);
@@ -228,10 +233,11 @@ const seedGraph = async (graph: Neo4jGraphRepository, data: SeedDataset): Promis
 };
 
 const main = async () => {
-  // Guard: this DROPS the seeded collections and the sync feed, then repopulates them
-  // with fake accounts (including an admin). Against a production database that is
-  // total data loss, not a refresh — SEED_ALLOW_PRODUCTION is the only thing standing
-  // between a stray NODE_ENV and an empty prod. Set it only to wipe on purpose.
+  // Garde-fou : ceci DROPPE les collections seedées et le flux de sync, puis les
+  // repeuple avec des comptes fictifs (y compris un admin). Sur une base de production
+  // c'est une perte totale de données, pas un rafraîchissement — SEED_ALLOW_PRODUCTION
+  // est la seule chose entre un NODE_ENV égaré et une prod vidée. Ne le définir que
+  // pour effacer volontairement.
   if (process.env.NODE_ENV === "production" && process.env.SEED_ALLOW_PRODUCTION !== "true") {
     console.error("❌  Refusing to seed with NODE_ENV=production (set SEED_ALLOW_PRODUCTION=true to override).");
     console.error("    This script drops collections; on a real database that is unrecoverable without a backup.");
@@ -267,8 +273,8 @@ const main = async () => {
     const graph = new Neo4jGraphRepository(driver);
 
     // ── Reset ────────────────────────────────────────────────────────────
-    // Both stores go first, so a failure part-way leaves everything empty rather
-    // than half-old/half-new.
+    // Les deux stores sont réinitialisés d'abord, ainsi un échec en cours de route
+    // laisse tout vide plutôt que moitié-ancien/moitié-nouveau.
     console.log("\n🧹  Reset");
     await resetDatabases(db, graph);
 
@@ -295,9 +301,9 @@ const main = async () => {
     if (driver) {
       await closeNeo4j().catch(() => undefined);
     }
-    // Mongo client is a singleton inside mongodb.connector; the process will
-    // exit which closes the socket. Keeping this simple to mirror the previous
-    // shutdown behaviour.
+    // Le client Mongo est un singleton dans mongodb.connector ; le processus va sortir,
+    // ce qui ferme le socket. On garde ça simple pour reproduire le comportement
+    // d'arrêt précédent.
     process.exit(process.exitCode ?? 0);
   }
 };

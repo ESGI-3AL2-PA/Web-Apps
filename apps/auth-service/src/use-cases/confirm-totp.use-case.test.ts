@@ -1,9 +1,17 @@
+/**
+ * Suite de tests du cas d'usage confirm-totp.
+ *
+ * Vérifie la confirmation d'enrôlement TOTP : un code valide et non consommé active le
+ * TOTP (persisté avec le MÊME secret, enabled=true), tandis que l'utilisateur inconnu,
+ * l'absence de secret en attente, un code invalide et un code rejoué sont tous refusés
+ * sans activer le TOTP.
+ */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { IUserReaderRepository, UserRecord } from "../repositories/User/user-reader.repository.js";
 import { confirmTotpUseCase } from "./confirm-totp.use-case.js";
 
-// Stub the otplib wrapper: a "valid" code resolves to a known step, an invalid
-// one to null — no real HOTP computation.
+// Stub le wrapper otplib : un code « valide » résout vers un step connu, un invalide
+// vers null — pas de vrai calcul HOTP.
 vi.mock("../services/totp.js", () => ({
   verifyTotpStep: vi.fn(),
 }));
@@ -48,6 +56,7 @@ describe("confirmTotpUseCase", () => {
     verifyTotpStepMock.mockReturnValue(12345);
   });
 
+  // Un code valide et non consommé bascule l'enrôlement vers « activé ».
   it("a valid, unused code flips the enrollment to enabled", async () => {
     const userReader = makeUserReader(makeUser());
     const confirm = confirmTotpUseCase(userReader as unknown as IUserReaderRepository);
@@ -56,10 +65,11 @@ describe("confirmTotpUseCase", () => {
 
     expect(result).toBe("ok");
     expect(userReader.consumeTotpStep).toHaveBeenCalledWith("user-1", 12345);
-    // Persisted with the SAME secret but enabled=true.
+    // Persisté avec le MÊME secret mais enabled=true.
     expect(userReader.setTotpSecret).toHaveBeenCalledWith("user-1", "SECRET", true);
   });
 
+  // Utilisateur inconnu : retourne user-not-found, ne persiste rien.
   it("returns user-not-found for an unknown user", async () => {
     const userReader = makeUserReader(null);
     const confirm = confirmTotpUseCase(userReader as unknown as IUserReaderRepository);
@@ -70,6 +80,7 @@ describe("confirmTotpUseCase", () => {
     expect(userReader.setTotpSecret).not.toHaveBeenCalled();
   });
 
+  // Aucun secret en attente à confirmer : retourne no-enrollment (verifyTotpStep non appelé).
   it("returns no-enrollment when there is no pending secret to confirm", async () => {
     const userReader = makeUserReader(makeUser({ totpSecret: null }));
     const confirm = confirmTotpUseCase(userReader as unknown as IUserReaderRepository);
@@ -80,6 +91,7 @@ describe("confirmTotpUseCase", () => {
     expect(verifyTotpStepMock).not.toHaveBeenCalled();
   });
 
+  // Un code invalide n'active pas le TOTP (ni consommation de step, ni persistance).
   it("an invalid code does not enable TOTP", async () => {
     verifyTotpStepMock.mockReturnValue(null);
     const userReader = makeUserReader(makeUser());
@@ -92,6 +104,7 @@ describe("confirmTotpUseCase", () => {
     expect(userReader.setTotpSecret).not.toHaveBeenCalled();
   });
 
+  // Un code de confirmation rejoué (step déjà consommé) n'active pas le TOTP.
   it("a replayed confirmation code (step already consumed) does not enable TOTP", async () => {
     const userReader = makeUserReader(makeUser());
     userReader.consumeTotpStep.mockResolvedValue(false);

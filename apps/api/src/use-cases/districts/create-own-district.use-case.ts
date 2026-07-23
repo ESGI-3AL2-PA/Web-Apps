@@ -10,6 +10,15 @@ import { logger } from "../../logger.js";
 import { createDistrictUseCase } from "./create-district.use-case.js";
 import { createDistrictAdminUseCase } from "../district-admins/create-district-admin.use-case.js";
 
+/**
+ * Cas d'usage : auto-création d'un quartier par un utilisateur (onboarding self-service).
+ * Couche use-case (apps/api). Un simple utilisateur sans quartier géocode son adresse, obtient
+ * un quartier avec une frontière provisoire autour de ce point, et devient administrateur de ce
+ * quartier (avec adhésion et points de départ crédités). Orchestre createDistrictUseCase et
+ * createDistrictAdminUseCase.
+ */
+
+/** Dépendances (repositories) injectées dans le cas d'usage. */
 export interface CreateOwnDistrictDeps {
   userRepository: IUserRepository;
   districtRepository: IDistrictRepository;
@@ -18,17 +27,23 @@ export interface CreateOwnDistrictDeps {
   districtAdminRepository: IDistrictAdminRepository;
 }
 
-// Starting points a self-created district seeds for its founder (and every future
-// member who joins it). See createDistrictAdminUseCase, which grants them on join.
+// Points de départ qu'un quartier auto-créé attribue à son fondateur (et à chaque futur membre
+// qui le rejoint). Voir createDistrictAdminUseCase, qui les crédite à l'adhésion.
 const FOUNDER_STARTING_POINTS = 100;
 
+/**
+ * Résultat de l'auto-création.
+ * - `ok` : quartier créé.
+ * - `forbidden` : l'appelant a déjà un quartier ou n'est pas un simple utilisateur.
+ * - `geocode-failed` : l'adresse n'a pas pu être géocodée.
+ */
 export type CreateOwnDistrictResult =
   | { kind: "ok"; district: District }
-  | { kind: "forbidden" } // caller already has a district, or isn't a plain user
+  | { kind: "forbidden" } // l'appelant a déjà un quartier, ou n'est pas un simple utilisateur
   | { kind: "geocode-failed" };
 
-// A small closed-ring square (~half*111km per degree) centred on the point — the placeholder
-// boundary a self-created district starts with, which the new admin then redraws.
+// Petit carré en anneau fermé (~half*111km par degré) centré sur le point : la frontière
+// provisoire d'un quartier auto-créé, que le nouvel administrateur redessinera ensuite.
 const boxAroundPoint = (point: GeoJson, half = 0.001): GeoJsonInput => {
   const [lng, lat] = point.coordinates as [number, number];
   return {
@@ -46,17 +61,17 @@ const boxAroundPoint = (point: GeoJson, half = 0.001): GeoJsonInput => {
 };
 
 /**
- * Self-service onboarding for a district-less user: geocode their address, spin up an active
- * district seeded with a placeholder box around that point + a temp name, and promote them to
- * admin of it (reusing createDistrictAdminUseCase, which links district_admins, sets role
- * user→admin, AND — since the founder is district-less — joins them to the district, setting
- * their districtId and granting its starting points). The client then redirects them into the
- * admin app to refine the district.
+ * Onboarding self-service d'un utilisateur sans quartier : géocode son adresse, crée un quartier
+ * actif initialisé avec une box provisoire autour de ce point + un nom temporaire, et le promeut
+ * administrateur de ce quartier (en réutilisant createDistrictAdminUseCase, qui rattache dans
+ * district_admins, passe le rôle user→admin ET — le fondateur étant sans quartier — le fait
+ * adhérer au quartier, renseigne son districtId et lui crédite les points de départ). Le client
+ * le redirige ensuite vers l'app admin pour affiner le quartier.
  */
 export const createOwnDistrictUseCase = (deps: CreateOwnDistrictDeps) => {
   return async (userId: string): Promise<CreateOwnDistrictResult> => {
     const user = await deps.userRepository.getUserById(userId);
-    // Only a plain, district-less user may bootstrap a district for themselves.
+    // Seul un simple utilisateur sans quartier peut s'amorcer un quartier à lui-même.
     if (!user || user.role !== "user" || user.districtId) return { kind: "forbidden" };
 
     let point: GeoJson;
@@ -66,6 +81,7 @@ export const createOwnDistrictUseCase = (deps: CreateOwnDistrictDeps) => {
       logger.error({ err, userId }, "create-own-district: geocoding the address failed");
       return { kind: "geocode-failed" };
     }
+    // Garde-fou : coordonnées absentes ou incomplètes => échec de géocodage.
     if (!Array.isArray(point?.coordinates) || point.coordinates.length < 2) return { kind: "geocode-failed" };
 
     const created = await createDistrictUseCase(
@@ -77,11 +93,11 @@ export const createOwnDistrictUseCase = (deps: CreateOwnDistrictDeps) => {
       geoJson: boxAroundPoint(point),
       startingPoints: FOUNDER_STARTING_POINTS,
     });
-    // Unreachable: a brand-new district has no members, so the polygon guard can't trip.
+    // Inatteignable : un quartier tout neuf n'a aucun membre, la garde du polygone ne peut donc pas se déclencher.
     if (created.kind !== "ok") return { kind: "geocode-failed" };
 
-    // Link district_admins, promote user→admin, and (founder is district-less) join
-    // them to the district — setting districtId and granting its starting points.
+    // Rattache dans district_admins, promeut user→admin et (le fondateur étant sans quartier) le fait
+    // adhérer au quartier — renseigne districtId et crédite les points de départ.
     await createDistrictAdminUseCase(deps.districtAdminRepository, {
       userRepository: deps.userRepository,
       transactionRepository: deps.transactionRepository,

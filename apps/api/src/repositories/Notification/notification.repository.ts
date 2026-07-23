@@ -1,5 +1,9 @@
 import type { Notification } from "../../entities/notification.entity.js";
 
+/**
+ * Contrat du repository des notifications. Implémenté par les versions Mongo et
+ * SATAN QL ; les cas d'usage ne dépendent que de cette interface.
+ */
 export interface INotificationRepository {
   ensureIndexes(): Promise<void>;
 
@@ -27,6 +31,6 @@ export interface INotificationRepository {
 
   deleteNotification(id: string): Promise<boolean>;
 
-  /** Delete every notification addressed to a user (account deletion). */
+  /** Supprime toutes les notifications adressées à un user (suppression de compte). */
   deleteByRecipient(userId: string): Promise<void>;
 }

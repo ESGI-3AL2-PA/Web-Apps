@@ -2,26 +2,35 @@ import type { ClientSession } from "mongodb";
 import { getMongoClient } from "./mongodb.connector.js";
 import { logger } from "../logger.js";
 
-// Cached capability probe: null = unknown, true = replica set (transactions work),
-// false = standalone (transactions unsupported, fall back to sequential writes).
+/**
+ * Wrapper de transaction Mongo tolérant à la topologie du serveur.
+ *
+ * Sonde mise en cache de la capacité du serveur : null = inconnu, true = replica set
+ * (les transactions fonctionnent), false = serveur standalone (transactions non
+ * supportées, on retombe sur des écritures séquentielles).
+ */
 let txSupported: boolean | null = null;
 
+// Reconnaît l'erreur remontée par le serveur quand on ouvre une transaction sur un
+// serveur standalone (non-replica-set) — on la détecte par le message pour basculer.
 const isNoTransactionSupportError = (err: unknown): boolean => {
   const msg = err instanceof Error ? err.message : String(err);
   return /only allowed on a replica set|Transactions are not supported|replica set member or mongos/i.test(msg);
 };
 
 /**
- * Run `fn` inside a Mongo multi-document transaction when the server supports it
- * (a replica set); on a standalone server it detects the missing support once and
- * falls back to running `fn` with no session (sequential writes). The same money
- * code therefore works in single-node dev and in a replica-set deployment — atomic
- * where possible, best-effort otherwise (callers keep their fallback logging).
+ * Exécute `fn` dans une transaction Mongo multi-documents quand le serveur le
+ * supporte (replica set) ; sur un serveur standalone, détecte l'absence de support
+ * une seule fois puis retombe sur l'exécution de `fn` sans session (écritures
+ * séquentielles). Le même code monétaire fonctionne donc en dev mono-nœud et en
+ * déploiement replica set — atomique quand c'est possible, best-effort sinon (les
+ * appelants conservent leur logging de repli).
  *
- * The capability error is raised by the server on the first write attempt, before
- * anything is committed, so falling back and re-running `fn(undefined)` is safe.
+ * L'erreur de capacité est levée par le serveur à la première tentative d'écriture,
+ * avant tout commit, donc retomber et ré-exécuter `fn(undefined)` est sans risque.
  */
 export const runInTransaction = async <T>(fn: (session?: ClientSession) => Promise<T>): Promise<T> => {
+  // Support déjà écarté lors d'un appel précédent : on court-circuite directement.
   if (txSupported === false) return fn(undefined);
 
   const session = getMongoClient().startSession();
@@ -33,6 +42,7 @@ export const runInTransaction = async <T>(fn: (session?: ClientSession) => Promi
     txSupported = true;
     return result!;
   } catch (err) {
+    // Première rencontre de l'incapacité : on mémorise le repli pour les prochains appels.
     if (txSupported === null && isNoTransactionSupportError(err)) {
       txSupported = false;
       logger.warn("Mongo transactions unavailable (standalone server) — using sequential writes");

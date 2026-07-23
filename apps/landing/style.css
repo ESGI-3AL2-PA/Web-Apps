@@ -1,14 +1,19 @@
+/* Feuille de style de la landing page.
+   Importe le thème de marque partagé, puis définit les animations spécifiques
+   à la landing : le graphe de quartier signature et les apparitions au
+   défilement. Tout est neutralisé sous `prefers-reduced-motion`. */
 @import "../../packages/theme/theme.css";
 
 html {
   scroll-behavior: smooth;
 }
 
-/* ---- Signature: the district graph ------------------------------------ */
-/* A stylised map of neighbours (nodes) linked by exchanges (edges). Tokens
-   travel along the edges. This is the one memorable element; keep the rest
-   quiet. */
+/* ---- Signature : le graphe de quartier -------------------------------- */
+/* Carte stylisée de voisins (nœuds) reliés par des échanges (arêtes). Des
+   points circulent le long des arêtes. C'est le seul élément marquant ; le
+   reste doit rester discret. */
 
+/* Arête en pointillés dont le décalage défile pour simuler un flux. */
 .graph-edge {
   stroke-dasharray: 4 6;
   animation: edge-flow 2.4s linear infinite;
@@ -18,6 +23,8 @@ html {
   animation: token-travel 3.2s ease-in-out infinite;
 }
 
+/* Nœud qui pulse doucement ; `transform-box: fill-box` cale l'origine de la
+   mise à l'échelle sur le nœud lui-même et non sur le repère du SVG. */
 .graph-node {
   transform-box: fill-box;
   transform-origin: center;
@@ -57,7 +64,8 @@ html {
   }
 }
 
-/* ---- Load / scroll reveal --------------------------------------------- */
+/* ---- Apparition au chargement / défilement ---------------------------- */
+/* Fond invisible et légèrement décalé vers le bas, puis remonté à sa place. */
 .reveal {
   opacity: 0;
   transform: translateY(16px);
@@ -71,12 +79,14 @@ html {
   }
 }
 
-/* Grain/paper hairline for section dividers */
+/* Filet fin dégradé servant de séparateur de sections. */
 .rule {
   height: 1px;
   background: linear-gradient(to right, transparent, rgba(28, 27, 46, 0.14), transparent);
 }
 
+/* Respect de la préférence système : coupe le défilement fluide et toutes les
+   animations décoratives, en laissant les éléments dans leur état final. */
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;

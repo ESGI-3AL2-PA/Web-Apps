@@ -10,7 +10,12 @@ import { getTheme, setTheme, type Theme } from "../lib/theme";
 import { useDialog } from "../components/dialog-context";
 import { useStepUp } from "../components/step-up-context";
 
-// Best-effort, presentation-only parse of the stored user-agent string.
+// Page « Paramètres » du compte utilisateur (couche page React de user-front) :
+// apparence (thème), réinitialisation de mot de passe, double authentification (TOTP),
+// sessions actives, export RGPD des données et suppression de compte.
+
+// Parse best-effort et purement cosmétique de la chaîne user-agent stockée
+// (sert seulement à afficher un libellé « Navigateur · OS » lisible).
 function describeDevice(ua: string | null, fallback: string): string {
   if (!ua) return fallback;
   const browser = /Firefox\//.test(ua)
@@ -36,6 +41,7 @@ function describeDevice(ua: string | null, fallback: string): string {
   return os ? `${browser} · ${os}` : browser;
 }
 
+// Section de réglage encadrée : titre, description optionnelle et contenu.
 function Card({ title, description, children }: { title: string; description?: string; children: React.ReactNode }) {
   return (
     <section className="card border border-base-content/10 bg-base-100 p-5">
@@ -46,9 +52,14 @@ function Card({ title, description, children }: { title: string; description?: s
   );
 }
 
-// 2FA (TOTP) enrollment: enable = enroll → show the secret/otpauth URI to add to an
-// authenticator → confirm a 6-digit code; disable = re-enter the password. The auth
-// endpoints live on the auth-service (totp.service).
+/**
+ * Carte de double authentification (TOTP). Activation = enrôlement -> affichage du
+ * secret / de l'URI otpauth à ajouter dans une app d'authentification -> confirmation
+ * d'un code à 6 chiffres. Désactivation = ressaisie du mot de passe. Les endpoints
+ * vivent sur l'auth-service (totp.service).
+ * @param token renvoie un access token frais (ou null si indisponible).
+ * @param initialEnabled état 2FA initial du compte.
+ */
 function TwoFactorCard({ token, initialEnabled }: { token: () => Promise<string | null>; initialEnabled: boolean }) {
   const { t } = useTranslation();
   const { requestStepUp } = useStepUp();
@@ -60,6 +71,7 @@ function TwoFactorCard({ token, initialEnabled }: { token: () => Promise<string 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Wrapper commun : récupère un token, exécute `fn`, gère busy/erreur.
   const withTok = async (fn: (tok: string) => Promise<void>) => {
     setBusy(true);
     setError(null);
@@ -91,7 +103,8 @@ function TwoFactorCard({ token, initialEnabled }: { token: () => Promise<string 
       try {
         await disableTotp(tok, password);
       } catch (e) {
-        // Production requires a fresh code on top of the password — prompt and retry once.
+        // En production, un code TOTP frais est exigé en plus du mot de passe :
+        // on demande un step-up puis on réessaie une seule fois.
         if (e instanceof StepUpRequiredError) {
           const stepUpToken = await requestStepUp();
           await disableTotp(tok, password, stepUpToken);
@@ -183,6 +196,10 @@ function TwoFactorCard({ token, initialEnabled }: { token: () => Promise<string 
   );
 }
 
+/**
+ * Page principale des paramètres du compte. Agrège les cartes de réglage et pilote
+ * les actions sensibles (révocation de sessions, export RGPD, suppression de compte).
+ */
 export default function Settings() {
   const { t } = useTranslation();
   const { user, logout, getAccessToken, refresh } = useAuth();
@@ -199,6 +216,7 @@ export default function Settings() {
     setThemeState(next);
   };
 
+  // Access token courant, sinon on tente un refresh silencieux.
   const token = useCallback(
     async (): Promise<string | null> => getAccessToken() ?? (await refresh()),
     [getAccessToken, refresh],
@@ -221,6 +239,7 @@ export default function Settings() {
     loadSessions();
   }, [loadSessions]);
 
+  // Envoie un mail de réinitialisation de mot de passe après confirmation.
   const onResetPassword = async () => {
     if (!user) return;
     const ok = await confirm({
@@ -243,7 +262,8 @@ export default function Settings() {
     try {
       const tok = await token();
       if (tok) await revokeSession(tok, session.id);
-      // Revoking the current session ends this login — log out and bounce.
+      // Révoquer la session courante met fin à cette connexion : on déconnecte
+      // puis on redirige vers l'accueil.
       if (session.current) {
         await logout();
         window.location.href = "/";
@@ -258,6 +278,7 @@ export default function Settings() {
     }
   };
 
+  // Révoque toutes les sessions sauf la session courante.
   const onRevokeOthers = async () => {
     setBusy("revoke-others");
     try {
@@ -272,6 +293,8 @@ export default function Settings() {
     }
   };
 
+  // Export RGPD : récupère les données du compte et déclenche un téléchargement
+  // JSON local via un blob object-URL (aucune écriture serveur).
   const onExport = async () => {
     if (!user) return;
     setBusy("export");
@@ -291,6 +314,7 @@ export default function Settings() {
     }
   };
 
+  // Suppression définitive du compte (confirmation à ton « danger »), puis déconnexion.
   const onDelete = async () => {
     if (!user) return;
     const ok = await confirm({
@@ -316,7 +340,7 @@ export default function Settings() {
     <div className="mx-auto max-w-2xl space-y-6">
       <h1 className="text-2xl font-extrabold text-base-content">{t("settings.title")}</h1>
 
-      {/* Appearance */}
+      {/* Apparence (thème clair/sombre) */}
       <Card title={t("settings.appearance.title")} description={t("settings.appearance.desc")}>
         <div className="inline-flex overflow-hidden rounded-lg border border-base-content/20">
           {(["light", "dark"] as const).map((mode) => (
@@ -336,7 +360,7 @@ export default function Settings() {
         </div>
       </Card>
 
-      {/* Password */}
+      {/* Mot de passe */}
       <Card title={t("settings.password.title")} description={t("settings.password.desc")}>
         {pwSent ? (
           <p className="text-sm font-medium text-success">{t("settings.password.sent")}</p>
@@ -347,10 +371,10 @@ export default function Settings() {
         )}
       </Card>
 
-      {/* Two-factor authentication */}
+      {/* Double authentification (TOTP) */}
       <TwoFactorCard token={token} initialEnabled={!!user?.totpEnabled} />
 
-      {/* Active sessions */}
+      {/* Sessions actives */}
       <Card title={t("settings.sessions.title")} description={t("settings.sessions.desc")}>
         {loadingSessions ? (
           <p className="text-sm text-base-content/60">{t("common.loading")}</p>
@@ -396,14 +420,14 @@ export default function Settings() {
         )}
       </Card>
 
-      {/* GDPR data export */}
+      {/* Export RGPD des données */}
       <Card title={t("settings.data.title")} description={t("settings.data.desc")}>
         <button onClick={onExport} disabled={busy === "export"} className="btn btn-soft">
           {t("settings.data.action")}
         </button>
       </Card>
 
-      {/* Danger zone */}
+      {/* Zone dangereuse (suppression de compte) */}
       <section className="rounded-box border border-error/30 bg-error/10 p-5">
         <h2 className="text-lg font-bold text-error">{t("settings.danger.title")}</h2>
         <p className="mt-1 text-sm text-error">{t("settings.danger.desc")}</p>

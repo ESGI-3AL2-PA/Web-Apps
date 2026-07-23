@@ -7,6 +7,16 @@ import type { IUserRepository } from "../../repositories/User/user.repository.js
 import type { ITransactionRepository } from "../../repositories/Transaction/transaction.repository.js";
 import type { IDocumensoService } from "../../services/documenso.service.js";
 
+/**
+ * Cas d'usage : création d'un contrat entre un prestataire et un bénéficiaire à
+ * partir d'une annonce, avec mise sous séquestre (escrow) du prix côté bénéficiaire
+ * et génération du document de signature Documenso.
+ *
+ * Ce fichier expose la factory du cas d'usage ainsi que les erreurs métier typées
+ * levées lorsqu'une invariante de réservation ou d'argent n'est pas respectée.
+ */
+
+/** Levée quand l'annonce référencée n'existe pas (→ 404). */
 export class ListingNotFoundError extends Error {
   constructor() {
     super("Listing not found");
@@ -14,6 +24,7 @@ export class ListingNotFoundError extends Error {
   }
 }
 
+/** Levée quand l'annonce n'est plus active — on ne réserve pas une annonce close (→ 409). */
 export class ListingNotActiveError extends Error {
   constructor() {
     super("This listing is no longer active");
@@ -21,6 +32,7 @@ export class ListingNotActiveError extends Error {
   }
 }
 
+/** Levée quand prestataire et bénéficiaire sont le même utilisateur — un contrat lie deux personnes distinctes. */
 export class SamePartyError extends Error {
   constructor() {
     super("Provider and beneficiary must be different users");
@@ -28,6 +40,7 @@ export class SamePartyError extends Error {
   }
 }
 
+/** Levée quand le providerId fourni ne correspond pas à l'auteur de l'annonce. */
 export class NotListingProviderError extends Error {
   constructor() {
     super("You are not a party to this listing's contract");
@@ -35,6 +48,7 @@ export class NotListingProviderError extends Error {
   }
 }
 
+/** Levée quand l'un des deux comptes (prestataire ou bénéficiaire) est introuvable. */
 export class ContractPartyNotFoundError extends Error {
   constructor(message: string) {
     super(message);
@@ -42,6 +56,7 @@ export class ContractPartyNotFoundError extends Error {
   }
 }
 
+/** Levée quand le solde du bénéficiaire ne couvre pas le prix à mettre sous séquestre (→ 402/409). */
 export class InsufficientFundsError extends Error {
   constructor() {
     super("Insufficient balance to escrow the contract price");
@@ -49,6 +64,7 @@ export class InsufficientFundsError extends Error {
   }
 }
 
+/** Levée quand un contrat actif existe déjà pour la même annonce et les mêmes parties (→ 409). */
 export class DuplicateContractError extends Error {
   constructor() {
     super("An active contract already exists for this listing and parties");
@@ -56,15 +72,23 @@ export class DuplicateContractError extends Error {
   }
 }
 
-// A MongoServerError with code 11000 is a unique-index violation — here, the partial
-// unique index on (listingId, providerId, beneficiaryId) for pending contracts.
+// Une MongoServerError avec le code 11000 est une violation d'index unique — ici,
+// l'index unique partiel sur (listingId, providerId, beneficiaryId) pour les contrats
+// en attente.
 const isDuplicateKeyError = (err: unknown): boolean =>
   typeof err === "object" && err !== null && (err as { code?: number }).code === 11000;
 
-// The caller is the beneficiary (payer). Their tokens are escrowed up front — held
-// until the contract completes (released to the provider) or is rejected/deleted
-// (refunded). Generating the Documenso document and persisting the contract happen
-// after the hold; if either fails the hold is rolled back.
+/**
+ * Fabrique le cas d'usage de création de contrat.
+ *
+ * L'appelant est le bénéficiaire (le payeur). Ses points sont mis sous séquestre en
+ * amont — bloqués jusqu'à ce que le contrat se termine (versés au prestataire) ou soit
+ * rejeté/supprimé (remboursés). La génération du document Documenso et la persistance
+ * du contrat se font APRÈS le blocage ; si l'une ou l'autre échoue, le blocage est annulé.
+ *
+ * @returns Un handler prenant le DTO de création enrichi du beneficiaryId et d'une
+ *   redirectUrl optionnelle, et renvoyant le contrat persisté.
+ */
 export const createContractUseCase = (
   contractRepository: IContractRepository,
   listingRepository: IListingRepository,
@@ -73,17 +97,17 @@ export const createContractUseCase = (
   transactionRepository: ITransactionRepository,
 ) => {
   return async (data: CreateContractDto & { beneficiaryId: string; redirectUrl?: string }): Promise<Contract> => {
-    // Load the referenced listing and enforce the booking invariants here (not in the
-    // router) so they're covered by these tests alongside the money rules. districtId
-    // and price are derived server-side from the listing, never from the client — the
-    // escrowed amount always matches the advertised price.
+    // Charge l'annonce référencée et applique les invariants de réservation ici (pas
+    // dans le router) pour qu'ils soient couverts par ces tests aux côtés des règles
+    // d'argent. districtId et price sont dérivés côté serveur depuis l'annonce, jamais
+    // du client — le montant mis sous séquestre correspond toujours au prix affiché.
     const listing = await listingRepository.getListingById(data.listingId);
     if (!listing) throw new ListingNotFoundError();
     if (listing.status !== "active") throw new ListingNotActiveError();
-    // A contract binds two distinct people.
+    // Un contrat lie deux personnes distinctes.
     if (data.beneficiaryId === data.providerId) throw new SamePartyError();
-    // Listings are offers: the author is the provider being booked, the caller is the
-    // beneficiary. Guard against a mismatched providerId in the body.
+    // Les annonces sont des offres : l'auteur est le prestataire réservé, l'appelant est
+    // le bénéficiaire. On se prémunit d'un providerId incohérent dans le corps de requête.
     if (listing.authorId !== data.providerId) throw new NotListingProviderError();
 
     const { districtId, price } = listing;
@@ -95,8 +119,8 @@ export const createContractUseCase = (
     if (!provider) throw new ContractPartyNotFoundError("Provider not found");
     if (!beneficiary) throw new ContractPartyNotFoundError("Beneficiary not found");
 
-    // Reject an accidental double-submit before touching money — a second identical
-    // contract would escrow the price again against the same booking.
+    // Rejette un double-envoi accidentel avant de toucher à l'argent — un second contrat
+    // identique remettrait le prix sous séquestre pour la même réservation.
     const existing = await contractRepository.findActiveContract({
       listingId: data.listingId,
       providerId: data.providerId,
@@ -104,15 +128,16 @@ export const createContractUseCase = (
     });
     if (existing) throw new DuplicateContractError();
 
-    // Escrow the price from the beneficiary before doing any external work.
+    // Met le prix sous séquestre côté bénéficiaire avant tout travail externe.
     if (price > 0) {
       const held = await transactionRepository.tryDebit(data.beneficiaryId, price);
       if (!held) throw new InsufficientFundsError();
     }
 
-    // Everything from the hold up to a persisted contract must roll the hold back on
-    // failure (nothing durable exists yet). Once the contract row exists the hold is
-    // correctly captured, so a later ledger hiccup must NOT refund a live contract.
+    // Tout ce qui va du blocage jusqu'à un contrat persisté doit annuler le blocage en
+    // cas d'échec (rien de durable n'existe encore). Une fois la ligne de contrat créée,
+    // le blocage est correctement capté : un raté ultérieur du journal (ledger) ne doit
+    // donc PAS rembourser un contrat vivant.
     let contract: Contract;
     try {
       const document = await documenso.generateContractDocument({
@@ -136,8 +161,9 @@ export const createContractUseCase = (
         disputeReason: null,
       });
     } catch (err) {
-      // Roll the escrow hold back — no contract was persisted. Best-effort so a failed
-      // refund can't mask the original error (the more useful one to surface).
+      // Annule le blocage du séquestre — aucun contrat n'a été persisté. En best-effort
+      // pour qu'un remboursement raté ne masque pas l'erreur d'origine (la plus utile à
+      // remonter).
       if (price > 0) {
         await transactionRepository
           .adjustBalance(data.beneficiaryId, price)
@@ -148,15 +174,16 @@ export const createContractUseCase = (
             ),
           );
       }
-      // A concurrent identical create won the unique-index race (both passed the
-      // findActiveContract check above) — surface it as a 409, not a 500.
+      // Une création concurrente identique a gagné la course sur l'index unique (les deux
+      // ont passé le contrôle findActiveContract ci-dessus) — on la remonte en 409, pas en 500.
       if (isDuplicateKeyError(err)) throw new DuplicateContractError();
       throw err;
     }
 
-    // Record the escrow-hold ledger entry now that the contract exists to reference
-    // it. The money is already correctly held and the contract is live, so a ledger
-    // write failure here must not roll anything back — log it for reconciliation.
+    // Enregistre l'écriture de journal (ledger) du blocage de séquestre maintenant que le
+    // contrat existe pour la référencer. L'argent est déjà correctement bloqué et le
+    // contrat est vivant : un échec d'écriture ici ne doit rien annuler — on le journalise
+    // pour rapprochement (réconciliation) ultérieur.
     if (price > 0) {
       await transactionRepository
         .createTransactions([
@@ -164,8 +191,9 @@ export const createContractUseCase = (
             userId: data.beneficiaryId,
             districtId,
             type: "transfer_out",
-            // Signed = effect on this row's own balance: an escrow hold debits the
-            // payer, so it's negative (matching create-transaction's transfer_out).
+            // Signe = effet sur le solde propre de cette ligne : un blocage de séquestre
+            // débite le payeur, le montant est donc négatif (cohérent avec le transfer_out
+            // de create-transaction).
             amount: -price,
             refId: contract.id,
             refType: "contract",

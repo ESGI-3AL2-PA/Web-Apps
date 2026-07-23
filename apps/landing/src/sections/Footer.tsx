@@ -1,7 +1,19 @@
+/**
+ * Pied de page de la landing page.
+ *
+ * Affiche le logo, le nom du produit, l'accroche, la mention de périmètre et la
+ * ligne de copyright — tous les textes venant du dictionnaire i18n `t`.
+ */
 import type { Dict } from "../i18n";
 
+// Logo servi depuis le dossier public statique (racine du site).
 const logo = "/Logo-connectedNeighbours.png";
 
+/**
+ * Rend le pied de page.
+ *
+ * @param t - dictionnaire i18n de la langue active (accroche, périmètre, droits).
+ */
 const Footer = ({ t }: { t: Dict }) => {
   return (
     <footer className="border-t border-ink/10">

@@ -1,3 +1,6 @@
+// Page d'accueil de la console admin : agrège en cartes cliquables les compteurs clés
+// (utilisateurs, annonces, signalements) et deux répartitions de signalements (par statut,
+// par catégorie), le tout borné au quartier actif si un scope est sélectionné.
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -7,6 +10,7 @@ import { listUsers } from "../../api-service/users";
 import { listListings } from "../../api-service/listings";
 import { useDistrictScope } from "../../app/DistrictScopeProvider";
 
+/** Descripteur d'une carte de statistique du tableau de bord (libellé, valeur, icône, lien, teinte). */
 interface StatCard {
   label: string;
   value: number | string;
@@ -24,6 +28,9 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Recharge les trois sources à chaque changement de quartier. Le drapeau `cancelled` ignore
+  // la réponse d'une requête obsolète si le scope change avant qu'elle n'arrive.
+  // Users/listings sont interrogés avec limit:1 : seul `total` (le compteur) nous intéresse.
   useEffect(() => {
     let cancelled = false;
     const scoped = districtId ?? undefined;
@@ -120,6 +127,7 @@ export default function Dashboard() {
   );
 }
 
+/** Encadré listant une série de paires (libellé, valeur) — répartition par statut ou catégorie. */
 function StatsBlock({ title, entries }: { title: string; entries: [string, number][] }) {
   const { t } = useTranslation();
   return (

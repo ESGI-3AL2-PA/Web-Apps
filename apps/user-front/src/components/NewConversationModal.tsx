@@ -6,6 +6,14 @@ import type { UserPublic } from "../api-service/users.service";
 import { useFocusTrap } from "../lib/useFocusTrap";
 import UserAutocomplete from "./UserAutocomplete";
 
+/**
+ * Modale de création d'une conversation. On ajoute un ou plusieurs destinataires via
+ * l'autocomplétion d'utilisateurs ; au-delà d'un destinataire la conversation devient un
+ * groupe (type "group") avec un nom optionnel, sinon c'est un échange direct.
+ *
+ * @param onClose - ferme la modale.
+ * @param onCreated - reçoit l'id de la conversation créée.
+ */
 export default function NewConversationModal({
   onClose,
   onCreated,
@@ -22,8 +30,9 @@ export default function NewConversationModal({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const isGroup = targets.length > 1;
+  const isGroup = targets.length > 1; // groupe dès qu'il y a plus d'un destinataire
 
+  // Ajoute un destinataire : refuse soi-même et ignore les doublons.
   const addTarget = (u: UserPublic | null) => {
     if (!u) return;
     if (u.id === user?.id) {
@@ -33,12 +42,13 @@ export default function NewConversationModal({
     if (targets.some((x) => x.id === u.id)) return;
     setTargets((prev) => [...prev, u]);
     setError(null);
-    // Remount the autocomplete to clear its internal query/dropdown state.
+    // Remonte l'autocomplétion (change sa key) pour vider sa saisie/liste déroulante internes.
     setPickerKey((k) => k + 1);
   };
 
   const removeTarget = (id: string) => setTargets((prev) => prev.filter((x) => x.id !== id));
 
+  // Crée la conversation : participants = utilisateur courant + destinataires choisis.
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     if (!user?.id) return;

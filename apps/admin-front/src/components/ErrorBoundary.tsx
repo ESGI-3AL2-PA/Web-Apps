@@ -1,3 +1,6 @@
+// Composant : garde-fou React de dernier recours pour toute l'admin-front.
+// Capture les exceptions levées pendant le rendu de l'arbre enfant et affiche
+// un écran de secours récupérable plutôt qu'une page blanche.
 import { Component, type ErrorInfo, type ReactNode } from "react";
 import i18n from "../i18n";
 
@@ -5,14 +8,19 @@ interface State {
   error: Error | null;
 }
 
-// Last-resort boundary: a render throw shows a recoverable screen instead of a white page.
+/**
+ * Error boundary de dernier recours : une exception au rendu affiche un écran
+ * récupérable (message + bouton de rechargement) au lieu d'une page blanche.
+ */
 export class ErrorBoundary extends Component<{ children: ReactNode }, State> {
   state: State = { error: null };
 
+  // Bascule l'état vers l'écran de secours dès qu'un enfant lève au rendu.
   static getDerivedStateFromError(error: Error): State {
     return { error };
   }
 
+  // Effet de bord : journalise l'erreur + la pile de composants (non affiché à l'utilisateur).
   componentDidCatch(error: Error, info: ErrorInfo) {
     console.error("Admin UI crashed:", error, info);
   }

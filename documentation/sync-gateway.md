@@ -1,129 +1,123 @@
-# Offline Sync (H2 ↔ MongoDB) — merged into `apps/api`
+# Synchronisation hors-ligne (H2 ↔ MongoDB) — intégrée à `apps/api`
 
-> ## Status: implemented on `feat/offline-sync`, verified end-to-end
+> ## État : implémentée dans `apps/api`
 >
-> Server (`apps/api`) and client (`Client-Java`) are both implemented on branch `feat/offline-sync` in
-> their respective repos, and the §12 flow has been exercised against a live single-member replica set:
-> seeding, district-scoped snapshot + redaction, ack token consistency, echo-skip, conflict quarantine,
-> the three rejection reasons, and resolve→re-emit all pass.
+> Le serveur (`apps/api`) porte l'ensemble de la fonctionnalité : les routes `/sync/*`, le watcher basé
+> sur les Change Streams, le seed du flux au premier démarrage et le magasin de conflits. Le client
+> associé est l'app desktop JavaFX `admin-desktop` (dépôt séparé), qui pousse et rejoue les changements.
 >
-> This is the **source-of-truth design** for the offline-sync feature that bridges the companion JavaFX
-> app's embedded **H2** database and the platform's **MongoDB**. It supersedes the earlier
-> "sync-gateway" proposal (a standalone Node service). **There is no separate `sync-gateway` service** —
-> its endpoints, the Change-Streams watcher, and the conflict store are **folded into `apps/api`**.
+> C'est le **document de conception faisant référence** pour la fonctionnalité de synchronisation
+> hors-ligne, qui fait le pont entre la base **H2** embarquée de l'app desktop et le **MongoDB** de la
+> plateforme. Elle remplace l'ancienne proposition « sync-gateway » (un service Node autonome). **Il n'y a
+> pas de service `sync-gateway` distinct** — ses endpoints, le watcher Change Streams et le magasin de
+> conflits sont **repliés dans `apps/api`**.
 >
-> The filename is kept as `sync-gateway.md` to preserve inbound links (ROADMAP, getting-started); the
-> "gateway" is now a set of routes inside the api.
+> Le nom de fichier reste `sync-gateway.md` pour préserver les liens entrants (ROADMAP, getting-started) ;
+> la « gateway » est désormais un ensemble de routes internes à l'api.
 >
-> **Not to be confused with** the live Mongo → Neo4j projection in
-> `apps/api/src/repositories/Graph/graph.sync.ts` (a one-way graph mirror). This feature is a
-> bidirectional bridge to the desktop app's H2 database.
+> **À ne pas confondre** avec la projection live Mongo → Neo4j de
+> `apps/api/src/repositories/Graph/graph.sync.ts` (un miroir de graphe unidirectionnel). Cette
+> fonctionnalité-ci est un pont **bidirectionnel** vers la base H2 de l'app desktop.
 
 ---
 
-## 1. Why this changed (merge rationale)
+## 1. Pourquoi ce choix (justification de l'intégration)
 
-Two stale feature branches held the original implementation:
+Le serveur est **intégré à `apps/api`** plutôt que déployé comme service autonome, parce que :
 
-- **Server** — a standalone `sync-gateway` service on branch `feat/sync-gateway`, built **296 commits
-  behind `origin/main`**. It predates `@repo/shared` (the `server-kit → shared` extraction, the
-  single-source user schema, the dedup'd `_id↔id` mapper), district-gating, TOTP fields, and the GDPR
-  PII-redaction work. Its own connector / shutdown / env-loader / DI container are now **obsolete**.
-- **Client** — branch `feat/sync-gateway-flow`, **48 commits behind `origin/main`**. Upstream since
-  gained everything the client rewrite needs (offline-first session + re-login, `ApiException`,
-  district-integrated incidents, `BaseController`).
-
-Neither branch is rebased. The feature is **re-applied fresh onto current `origin/main`**, and the
-server side is **merged into `apps/api`** because:
-
-- The api already owns the `users` / `incidents` collections and their schema (`@repo/shared`
-  `userDocumentSchema`, `apps/api/src/entities/incident.entity.ts`). A separate writer with its own
-  copy of those rules is a standing drift risk — folding in lets sync **source its write-model from
-  `@repo/shared`** (single source of truth).
-- The api already has JWT auth (`requireAuth` + the declarative `authorize` middleware), a DI
-  container, graceful shutdown, and a shared Mongo client — everything the gateway re-implemented.
-- One process, one deploy, one auth model.
+- L'api possède déjà les collections `users` / `incidents` et leur schéma (`@repo/shared`
+  `userDocumentSchema`, `apps/api/src/entities/incident.entity.ts`). Un writer séparé, avec sa propre
+  copie de ces règles, serait un risque de dérive permanent — l'intégration permet à la sync de
+  **dériver son modèle d'écriture de `@repo/shared`** (source unique de vérité).
+- L'api dispose déjà de l'auth JWT (`requireAuth` + le middleware déclaratif `authorize`), d'un
+  container DI, d'un arrêt gracieux et d'un client Mongo partagé — tout ce que la gateway
+  réimplémentait.
+- Un seul process, un seul déploiement, un seul modèle d'auth.
 
 ---
 
-## 2. Topology & data flow
+## 2. Topologie & flux de données
 
 ```
                           apps/api  (Express + ts-rest, :3000)
- JavaFX instance A ─┐        │
- JavaFX instance B ─┼─POST /sync/ingest─▶ ingest use-case ──▶ users / incidents (Mongo, _id = UUID)
- JavaFX instance N ─┘        │                                      │  (writes stamped _sync)
-        ▲                    │                                      ▼
-        │                    │                             Change-Streams watcher
-        └── GET /sync/changes ◀┴── sync_changes (append-only, monotonic `index`) ◀── appends every change
-            ?since=<cursor>                                                          (api-origin + sync-origin)
+ instance JavaFX A ─┐        │
+ instance JavaFX B ─┼─POST /sync/ingest─▶ cas d'usage ingest ──▶ users / incidents (Mongo, _id = UUID)
+ instance JavaFX N ─┘        │                                       │  (écritures estampillées _sync)
+        ▲                    │                                       ▼
+        │                    │                              watcher Change Streams
+        └── GET /sync/changes ◀┴── sync_changes (append-only, `index` monotone) ◀── ajoute chaque changement
+            ?since=<cursor>                                                          (origine api + origine sync)
 
- JavaFX instance X ── GET /sync/conflicts?mine · POST /sync/conflicts/:id/resolve ──▶ conflicts use-cases ──▶ sync_conflicts
+ instance JavaFX X ── GET /sync/conflicts?mine · POST /sync/conflicts/:id/resolve ──▶ cas d'usage conflicts ──▶ sync_conflicts
 ```
 
-Each JavaFX instance always initiates:
+Chaque instance JavaFX est toujours à l'initiative :
 
-1. Drains its local **keyed pending-changes** table and **pushes** (`POST /sync/ingest`).
-2. **Polls** `GET /sync/changes?since=<cursor>` and applies Mongo-originated changes to H2.
-3. Resolves the conflicts **its own** pushes raised, in the desktop UI (§6.5).
+1. Elle vide sa table locale **`pending_changes` (une ligne par enregistrement)** et **pousse**
+   (`POST /sync/ingest`).
+2. Elle **interroge** `GET /sync/changes?since=<cursor>` et applique à H2 les changements d'origine Mongo.
+3. Elle résout, dans l'UI desktop, les conflits que **ses propres** push ont levés (§6.5).
 
-A background **Change-Streams watcher** inside the api observes the synced collections and appends every
-change to `sync_changes` — the ordered feed the clients poll. Conflicts are quarantined in
-`sync_conflicts` and **resolved by the operator in the desktop app** — there is no conflict surface in
-admin-front (§6).
+Un **watcher Change Streams** en arrière-plan dans l'api observe les collections synchronisées et ajoute
+chaque changement à `sync_changes` — le flux ordonné que les clients interrogent. Les conflits sont mis
+en quarantaine dans `sync_conflicts` et **résolus par l'opérateur dans l'app desktop** — il n'y a pas de
+surface de conflit dans l'admin-front (§6).
 
 ---
 
-## 3. Auth model
+## 3. Modèle d'authentification
 
-`/sync/ingest`, `/sync/changes`, and `/sync/conflicts*` are **authenticated api routes** — gated by the api's existing
-`requireAuth` (RS256 JWT verified against the auth-service JWKS) + the declarative `authorize`
-middleware driven by each route's `metadata.auth({...})`. There is **no shared secret** (the old gateway
-used one); the desktop app sends its **operator's real user JWT**.
+`/sync/ingest`, `/sync/changes` et `/sync/conflicts*` sont des **routes api authentifiées** — protégées
+par le `requireAuth` existant de l'api (JWT RS256 vérifié contre le JWKS de l'auth-service) + le
+middleware déclaratif `authorize` piloté par le `metadata.auth({...})` de chaque route. Il n'y a **pas de
+secret partagé** (l'ancienne gateway en utilisait un) ; l'app desktop envoie le **vrai JWT utilisateur de
+son opérateur**.
 
-| Routes                          | Policy                                                                                                                 |
-| ------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| `/sync/ingest`, `/sync/changes` | `auth({ audience: "api", roles: ["admin","superAdmin"] })` + **district scoping** (§5.5) — see Decision D1             |
-| `/sync/conflicts*`              | `auth({ audience: "api", roles: ["admin","superAdmin"] })` — consumed only by the desktop app (no admin-front surface) |
+| Routes                          | Politique                                                                                                                         |
+| ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `/sync/ingest`, `/sync/changes` | `auth({ audience: "api", roles: ["admin","superAdmin"] })` + **scoping par quartier** (§5.5) — voir Décision D1                   |
+| `/sync/conflicts*`              | `auth({ audience: "api", roles: ["admin","superAdmin"] })` — consommées uniquement par l'app desktop (aucune surface admin-front) |
 
-### Client token lifecycle (browser-SSO reality)
+### Cycle de vie du token côté client (réalité SSO navigateur)
 
-`origin/main`'s client authenticates via `auth/SsoAuthService` — an RFC-8252 browser loopback login that
-places an RS256 **access token in memory**; the opaque **refresh token is an HttpOnly cookie held by the
-browser** on the auth-service origin. **The Java process never sees the refresh token**, so there is no
-in-process silent refresh. Consequences the client design must handle (see §9):
+Le client `admin-desktop` s'authentifie via un login loopback navigateur (RFC-8252, autorisation +
+PKCE S256) qui place un **access token RS256 en mémoire** ; le **refresh token opaque est un cookie
+HttpOnly détenu par le navigateur** sur l'origine de l'auth-service. **Le process Java ne voit jamais le
+refresh token**, il n'y a donc pas de refresh silencieux in-process. Conséquences que la conception
+client doit gérer (voir §9) :
 
-- `SsoAuthService.getAccessToken()` throws `TokenUnavailableException` when the in-memory token is expired.
-- A sync cycle that hits this (or gets a `401`) transitions to `SyncStatus.AUTH_REQUIRED`, which drives a
-  browser re-login; the scheduler keeps ticking and resumes once a fresh token is in memory.
+- Le fournisseur de token lève une erreur d'indisponibilité quand le token en mémoire est expiré.
+- Un cycle de sync qui rencontre ce cas (ou reçoit un `401`) passe à l'état `AUTH_REQUIRED`, ce qui
+  déclenche une re-connexion navigateur ; l'ordonnanceur continue de tourner et reprend dès qu'un token
+  frais est en mémoire.
 
-> ### Decision D2 — unattended auth _(provisional: accept interactive re-login — CONFIRM)_
+> ### Décision D2 — auth non surveillée _(provisoire : accepter la re-connexion interactive)_
 >
-> With browser-cookie refresh, an unattended box stalls at `AUTH_REQUIRED` when the browser's refresh
-> cookie lapses, until an operator completes a browser login. **Default: accept this** (attended operator
-> box; zero new auth surface). **Alternative:** add an in-process email+password `POST /auth/login` +
-> `POST /auth/refresh` (CookieJar + CSRF double-submit) to `SsoAuthService` for true headless operation —
-> a new credential surface to secure. Out of scope for the first cut unless confirmed.
+> Avec un refresh par cookie navigateur, un poste non surveillé se fige à `AUTH_REQUIRED` quand le cookie
+> de refresh du navigateur expire, jusqu'à ce qu'un opérateur complète une connexion navigateur.
+> **Défaut : accepter ce comportement** (poste opérateur surveillé ; aucune nouvelle surface d'auth).
+> **Alternative :** ajouter un flux email+mot de passe in-process (`POST /auth/login` +
+> `POST /auth/refresh`) pour un vrai fonctionnement headless — une nouvelle surface de credentials à
+> sécuriser. Hors périmètre du premier jet sauf confirmation.
 
 ---
 
-## 4. Wire API
+## 4. API réseau
 
-Contracts live in `packages/contracts` (`sync.contract.ts`, `conflicts.contract.ts`; DTOs in
-`src/DTO/sync.dto.ts`, `src/DTO/conflict.dto.ts`). All shapes are zod, `import { z } from "../zod"`.
+Les contrats vivent dans `packages/contracts` (`sync.contract.ts`, `conflicts.contract.ts` ; DTO dans
+`src/DTO/sync.dto.ts`, `src/DTO/conflict.dto.ts`). Toutes les formes sont zod.
 
-> **All sync routes are namespaced under `/sync`** — `POST /sync/ingest`, `GET /sync/changes`,
-> `GET /sync/conflicts`, `POST /sync/conflicts/:id/resolve`. The api hosts many resources, so root-level
-> `/changes` and `/conflicts` are too generic to claim. Section headings below omit the prefix for
-> brevity; the client must use the full path. (An earlier draft specified the unprefixed paths, and the
-> two sides were built against different ones — every desktop sync call 404'd until it was caught in the
-> live end-to-end run.)
+> **Toutes les routes de sync sont préfixées par `/sync`** — `POST /sync/ingest`, `GET /sync/changes`,
+> `GET /sync/conflicts`, `GET /sync/conflicts/:id`, `POST /sync/conflicts/:id/resolve`. L'api héberge de
+> nombreuses ressources : les chemins racines `/changes` et `/conflicts` sont trop génériques. Les titres
+> de section ci-dessous omettent le préfixe par concision ; le client doit utiliser le chemin complet.
 
 ### 4.1 `POST /sync/ingest`
 
-Applies a batch of local events (max **100**). The client sends `X-Sync-Instance: <install-uuid>`.
+Applique un lot d'événements locaux (max **100**, `INGEST_BATCH_MAX`). Le client envoie l'en-tête
+`X-Sync-Instance: <install-uuid>` (obligatoire, `SyncInstanceHeaderSchema`).
 
-**Request** — `IngestBatchDto` (`IngestEventDto[]`):
+**Requête** — `IngestBatchDto` (`IngestEventDto[]`) :
 
 ```json
 [
@@ -147,11 +141,12 @@ Applies a batch of local events (max **100**). The client sends `X-Sync-Instance
 ]
 ```
 
-`IngestEventDto`: `id:int` (the client's stable per-record correlation id), `entity`, `operation`
-(`INSERT|UPDATE|DELETE`), `mongoId:string|null`, `data:Record<string,unknown>|null` (null for DELETE),
-`occurredAt:datetime`, `baseUpdatedAt?:datetime` (optimistic-concurrency token for UPDATE/DELETE).
+`IngestEventDto` : `id:int` (l'identifiant de corrélation stable, par enregistrement, côté client),
+`entity` (`user|incident|district`), `operation` (`INSERT|UPDATE|DELETE`), `mongoId:string|null`,
+`data:Record<string,unknown>|null` (null pour DELETE), `occurredAt:datetime`, `baseUpdatedAt?:datetime`
+(token de concurrence optimiste pour UPDATE/DELETE).
 
-**Response** — `IngestResultDto`:
+**Réponse** — `IngestResultDto` :
 
 ```json
 {
@@ -164,294 +159,335 @@ Applies a batch of local events (max **100**). The client sends `X-Sync-Instance
 }
 ```
 
-`rejected[]` carries events the server refused outright. Reasons: `out-of-district` (§5.5),
-`read-only-entity` (a `district` push, §5.3), and `unprocessable` (structurally impossible — e.g. an
-UPDATE/DELETE with `mongoId: null`, which has no server target). These are not conflicts: the client must
-**drop the pending row** and surface the failure rather than retry, since retrying can never succeed.
+`rejected[]` porte les événements que le serveur a refusés d'emblée. Motifs (`IngestRejectionReason`) :
+`out-of-district` (§5.5), `read-only-entity` (un push `district`, §5.3) et `unprocessable`
+(structurellement impossible — ex. un UPDATE/DELETE avec `mongoId: null`, sans cible serveur, ou tout
+événement qui n'a emprunté aucun chemin d'écriture). Ce ne sont **pas** des conflits : le client doit
+**abandonner la ligne en attente** et remonter l'échec plutôt que de réessayer, un réessai ne pouvant
+jamais aboutir.
 
-> **Total-accounting invariant.** Every event id in the request appears in **exactly one** of `applied`,
-> `conflicts`, or `rejected` — never zero, never two. The client keys its pending-row lifecycle off this
-> (applied → clear + advance token; conflict → keep; rejected → drop). An event silently missing from all
-> three would strand its pending row forever, retried every cycle. Server-side, any event that falls
-> through the normal paths must still be emitted as `rejected` with `unprocessable`.
+> **Invariant de comptabilité totale.** Chaque `id` d'événement de la requête apparaît dans **exactement
+> un** des tableaux `applied`, `conflicts` ou `rejected` — jamais zéro, jamais deux. Le client pilote le
+> cycle de vie de ses lignes en attente là-dessus (applied → purge + avance du token ; conflict →
+> conserve ; rejected → abandonne). Un événement silencieusement absent des trois laisserait sa ligne
+> orpheline pour toujours, réessayée à chaque cycle. Côté serveur, tout événement qui échapperait aux
+> chemins normaux est tout de même émis en `rejected` avec `unprocessable` (logué en `error`).
 
-> **Key change from the old spec:** the ack **returns the post-write `updatedAt` per applied event**
-> (`updatedAt` is `null` for an applied DELETE). This lets the client advance its optimistic-concurrency
-> token (`base_updated_at`) **synchronously from the ack**, instead of having to wait to observe its own
-> write echo back through the change feed. The returned `updatedAt` **must be the exact persisted value**
-> (not a re-read) so it equals what the watcher later publishes to other instances.
+> **Point clé du protocole :** l'ack **renvoie l'`updatedAt` post-écriture par événement appliqué**
+> (`updatedAt` vaut `null` pour un DELETE appliqué). Le client peut ainsi avancer son token de concurrence
+> optimiste (`base_updated_at`) **de façon synchrone depuis l'ack**, sans attendre de voir sa propre
+> écriture revenir en écho par le flux de changements. L'`updatedAt` renvoyé **est la valeur exacte
+> persistée** (pas une relecture), de sorte qu'il coïncide avec ce que le watcher publiera plus tard aux
+> autres instances.
 
-Per-event processing is defined in §6 (conflict model).
+Le traitement par événement est défini au §6 (modèle de conflit).
 
-### 4.2 `GET /sync/changes?since=<cursor>&limit=<n>&excludeInstance=<id>`
+### 4.2 `GET /sync/changes?since=<cursor>&limit=<n>`
 
-Returns Mongo-originated changes for the client to apply to H2.
+Renvoie les changements d'origine Mongo que le client doit appliquer à H2. L'en-tête `X-Sync-Instance`
+est requis ; le router s'en sert pour renseigner l'`excludeInstance` (echo-skip) — le client **n'a pas** à
+le passer en query.
 
-| Param             | Type | Default | Notes                                                                                          |
-| ----------------- | ---- | ------- | ---------------------------------------------------------------------------------------------- |
-| `since`           | int  | `0`     | Last `index` the caller processed. `since=0` is a full snapshot (see §5.2).                    |
-| `limit`           | int  | `100`   | Max 500.                                                                                       |
-| `excludeInstance` | str  | —       | Skip entries this instance originated (echo-skip). The router fills it from `X-Sync-Instance`. |
+| Param             | Type | Défaut | Notes                                                                                                    |
+| ----------------- | ---- | ------ | -------------------------------------------------------------------------------------------------------- |
+| `since`           | int  | `0`    | Dernier `index` traité. `since=0` est un snapshot complet (voir §5.2).                                   |
+| `limit`           | int  | `100`  | Max 500 (`CHANGES_LIMIT_MAX`).                                                                           |
+| `excludeInstance` | str  | —      | Ignore les entrées émises par cette instance (echo-skip). Le router le remplit depuis `X-Sync-Instance`. |
 
-**Response** — `ChangeEntryDto[]`, `index`-ascending:
+**Réponse** — `ChangeEntryDto[]`, par `index` croissant :
 
 ```json
 [ { "index": 152, "entity": "user", "operation": "UPDATE", "mongoId": "0f8c…",
-    "data": { "…redacted server doc…" }, "occurredAt": "…" } ]
+    "data": { "…doc serveur expurgé…" }, "occurredAt": "…" } ]
 ```
 
-`data` is `null` for DELETE and **redacted** of server-only fields (§5.3).
+`data` vaut `null` pour un DELETE et est **expurgé** des champs réservés au serveur (§5.3), avec `_id`
+remappé en `id`.
 
-### 4.3 `/sync/conflicts*` — consumed only by the desktop app
+### 4.3 `/sync/conflicts*` — consommées uniquement par l'app desktop
 
-The conflict UI lives in the JavaFX app (§6.5); there is no admin-front surface. The operator sends the
-same JWT + `X-Sync-Instance` they use for sync.
+L'UI de conflit vit dans l'app JavaFX (§6.5) ; il n'y a pas de surface admin-front. L'opérateur envoie le
+même JWT + `X-Sync-Instance` que pour la sync.
 
-- **`GET /sync/conflicts`** — query `{ status=pending, entity?, mine=true, limit=100 (max 200) }` → `ConflictDto[]`.
-  With `mine=true` (default) the server returns only conflicts whose `originInstanceId` matches the
-  caller's `X-Sync-Instance` — i.e. the conflicts **this operator's own pushes raised**. `mine=false` is
-  allowed only for `superAdmin` (full view; see §6.5 orphan note).
-- **`GET /sync/conflicts/:id`** → `ConflictDto` or `404`.
-- **`POST /sync/conflicts/:id/resolve`** — body `{ resolution, data? }` where `resolution` is `local`,
-  `server`, or `merged` (`data` required when `merged`) → `{ id, status:"resolved", resolution }`, or
-  `400` / `404`.
+- **`GET /sync/conflicts`** — query `{ status=pending, entity?, mine=true, limit=100 (max 200) }` →
+  `ConflictDto[]`. Avec `mine=true` (défaut) le serveur ne renvoie que les conflits dont
+  l'`originInstanceId` correspond au `X-Sync-Instance` de l'appelant — ceux que **les propres push de cet
+  opérateur** ont levés. `mine=false` n'est autorisé qu'au `superAdmin` (vue globale) : sinon le serveur
+  renvoie `403` (voir §6.5, note sur les conflits orphelins).
+- **`GET /sync/conflicts/:id`** → `ConflictDto` ou `404`.
+- **`POST /sync/conflicts/:id/resolve`** — corps `{ resolution, data? }` où `resolution` vaut `local`,
+  `server` ou `merged` (`data` requis quand `merged`, via un `refine` du DTO) →
+  `{ id, status:"resolved", resolution }`, sinon `400` (déjà résolu / `data` manquant) ou `404`.
 
-`ConflictDto`: `id, entity, mongoId, type` (`update` or `duplicate`)`, originInstanceId, localData,
-serverData, baseUpdatedAt?, status` (`pending` or `resolved`)`, detectedAt, resolvedAt?, resolvedBy?,
-resolution?`. Server-only fields are redacted from `serverData`.
+`ConflictDto` : `id, entity, mongoId, type` (`update` ou `duplicate`)`, originInstanceId, localData,
+serverData, baseUpdatedAt?, status` (`pending` ou `resolved`)`, detectedAt, resolvedAt?, resolvedBy?,
+resolution?`. Les champs réservés au serveur sont expurgés de `serverData`.
 
 ---
 
-## 5. Server internals
+## 5. Internes serveur
 
 ### 5.1 Collections
 
-| Collection           | Purpose                                                                                                                                                                                 |
-| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `users`, `incidents` | The real domain collections (owned by the api). Sync writes go here, allowlisted (§5.3).                                                                                                |
-| `sync_changes`       | Append-only outbound feed. Fields: `_id` (uuid), `index` (int, unique), `entity`, `operation`, `mongoId`, `data` (or null), `occurredAt`, `origin` (`api`/`sync`), `originInstanceId?`. |
-| `sync_state`         | Watcher resume token (`_id:"watcher"`) + the one-shot `seeded` flag.                                                                                                                    |
-| `sync_conflicts`     | Quarantined conflicts (§6); each carries `originInstanceId` (the instance whose push raised it) for the desktop `mine` filter.                                                          |
-| `counters`           | `{ _id:"sync_changes", seq:int }` — atomic `$inc` hands out the monotonic feed `index`.                                                                                                 |
+| Collection           | Rôle                                                                                                                                                                                                                       |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `users`, `incidents` | Les vraies collections métier (possédées par l'api). Les écritures de sync y vont, filtrées par allowlist (§5.3).                                                                                                          |
+| `sync_changes`       | Flux sortant append-only. Champs : `_id` (uuid), `index` (int, unique), `entity`, `operation`, `mongoId`, `data` (ou null), `occurredAt`, `origin` (`api`/`sync`), `originInstanceId?`, `districtId?` (dénormalisé, §5.5). |
+| `sync_state`         | Document `watcher` unique : resume token des Change Streams + le drapeau one-shot `seeded` (`seededAt`).                                                                                                                   |
+| `sync_conflicts`     | Conflits en quarantaine (§6) ; chacun porte `originInstanceId` (l'instance dont le push l'a levé) pour le filtre `mine` du desktop.                                                                                        |
+| `counters`           | `{ _id:"sync_changes", seq:int }` — un `$inc` atomique distribue l'`index` monotone du flux.                                                                                                                               |
 
-The feed `index` is a strictly-increasing integer from an atomic single-doc `$inc` (atomic in Mongo
-without a transaction). Readers use `index > since` ascending, so a crash-gap between `next()` and the
-`sync_changes` insert is harmless (never blocks).
+L'`index` du flux est un entier strictement croissant issu d'un `$inc` atomique sur un document unique
+(atomique dans Mongo sans transaction). Les lecteurs utilisent `index > since` par ordre croissant : un
+trou de crash entre `next()` et l'insertion dans `sync_changes` est sans conséquence (ne bloque jamais).
+Index posés sur `sync_changes` : `{ index }` unique, `{ index, districtId }` (parcours filtré par
+quartier), `{ mongoId, index:-1 }` (héritage de quartier pour un DELETE, §5.5).
 
-### 5.2 First-boot feed seeding (single pull path)
+### 5.2 Seeding du flux au premier démarrage (chemin de pull unique)
 
-On first boot, `seedExistingDocs(db)` (idempotent, guarded by the `sync_state.seeded` flag) streams every
-existing doc of **each synced collection** (`users`, `incidents`, `districts`) and appends a synthetic
-`INSERT` (`origin:"api"`, redacted `data`) to `sync_changes`. This makes **`GET /sync/changes?since=0` a
-complete snapshot**, so the client has **one pull path** and no longer needs a separate REST bootstrap.
-The same `counter` backs both the seed and live stream, so indices stay monotonic.
+Au premier démarrage, `seedExistingDocs(db, syncChanges, syncState)` (idempotent, gardé par le drapeau
+`sync_state.seeded`) parcourt tout document existant de **chaque collection synchronisée** (`users`,
+`incidents`, `districts`) et ajoute à `sync_changes` un `INSERT` synthétique (`origin:"api"`, `data`
+expurgée). `GET /sync/changes?since=0` devient ainsi **un snapshot complet**, et le client a **un seul
+chemin de pull** — plus de bootstrap REST distinct. Le même `counter` sous-tend seed et flux live, les
+indices restent donc monotones de part et d'autre. Tout le seed partage un unique `occurredAt`.
 
-### 5.3 Write-model sourced from `@repo/shared` (no duplicated entity-map)
+### 5.3 Modèle d'écriture dérivé de `@repo/shared` (pas de carte d'entités dupliquée)
 
-`apps/api/src/sync/sync-entity-config.ts` **derives** the sync rules from the canonical schemas rather
-than re-declaring them:
+`apps/api/src/sync/sync-entity-config.ts` **dérive** les règles de sync des schémas canoniques au lieu de
+les redéclarer :
 
-- **`writableFields`** = schema keys **minus** a `SERVER_OWNED` set, derived via `.keyof()`/`.shape` so
-  new shared fields flow through automatically:
+- **`writableFields`** = clés du schéma **moins** un ensemble `SERVER_OWNED`, calculé via `.shape` pour
+  qu'un nouveau champ partagé se propage automatiquement :
   - `user` → `email, firstName, lastName, phone, address, districtId`
   - `incident` → `reporterId, districtId, category, description, photoUrl, status, history, assignedTo`
-- **`defaultsOnInsert`** (server-authoritative fields H2 never supplies):
+- **`defaultsOnInsert`** (champs faisant autorité côté serveur, jamais fournis par H2, appliqués à
+  l'INSERT seulement — en `$setOnInsert`, et seulement si le payload ne les fournit pas déjà) :
   - `user` → `passwordHash:"!sync-imported-no-login"`, `role:"user"`, `balance:0`, `banned:false`,
-    `emailVerified:false`, `totpSecret:null`, `totpEnabled:false` — a user first seen from H2 has a
-    **non-usable password** (login disabled until provisioned via auth-service).
+    `emailVerified:false`, `totpSecret:null`, `totpEnabled:false` — un utilisateur vu pour la première
+    fois depuis H2 a un **mot de passe inutilisable** (connexion désactivée tant qu'il n'est pas
+    provisionné via l'auth-service).
   - `incident` → `status:"open"`, `history:[]`.
-- **`REDACTED_FIELDS`** = `passwordHash, totpSecret, lastTotpStep` — stripped from any `data` that leaves
-  the server (change feed + conflict payloads), together with the internal `_sync` field. Honors the GDPR
-  PII posture.
+- **`REDACTED_FIELDS`** = `passwordHash, totpSecret, lastTotpStep, _sync` — retirés de toute `data` qui
+  quitte le serveur (flux de changements + payloads de conflit). `redactServerDoc` remappe aussi `_id` →
+  `id` au passage. Respecte la posture GDPR sur la PII.
 
-Every H2-originated write passes `pickWritable` (the allowlist), so server-only fields
-(`role`, `balance`, `banned`, `passwordHash`, `totpSecret`, …) **can never be set from an untrusted H2
-snapshot**.
+Toute écriture d'origine H2 passe par `pickWritable` (l'allowlist), de sorte que les champs réservés au
+serveur (`role`, `balance`, `banned`, `passwordHash`, `totpSecret`, `lang`, …) **ne peuvent jamais être
+positionnés depuis un snapshot H2 non fiable**.
 
-**One-way (read-only) entities.** `district` (collection `districts`) is a synced entity but flows
-**server → client only**: districts are created/managed on the web (#145) and the desktop merely reads
-them (dropdown + readable names). Its config carries `ingestAllowed: false`, so the watcher observes
-`districts` and the feed/seed carry district changes, but the **ingest use-case rejects any `district`
-event** (logged + skipped, never written). No `writableFields`/`defaultsOnInsert` write path applies.
+**Entités en lecture seule (unidirectionnelles).** `district` (collection `districts`) est une entité
+synchronisée mais **serveur → client uniquement** : les quartiers sont créés/gérés sur le web et le
+desktop se contente de les lire (liste déroulante + noms lisibles). Sa config porte `ingestAllowed:
+false` : le watcher observe `districts`, le flux/seed transportent les changements de quartier, mais le
+cas d'usage d'ingestion **rejette tout événement `district`** (`rejected` avec `read-only-entity`, logué
 
-### 5.4 Provenance stamp (`_sync`)
+- ignoré, jamais écrit). `writableFields` est vide et aucun `defaultsOnInsert` ne s'applique.
 
-Every sync-originated write stamps `_sync: { origin:"sync", occurredAt, instanceId }` on the doc. The
-watcher reads it to tag `sync_changes` entries with `origin` + `originInstanceId` (which powers
-`excludeInstance`). `_sync` is **modeled explicitly** as an optional internal field on the shared
-user/incident document schemas (kept out of the entity/DTO schemas) and **stripped on read** by the
-mappers / `redactServerDoc`, so it never leaks into API responses or the graph projection.
+### 5.4 Estampille de provenance (`_sync`)
 
-### 5.5 District scoping (D1)
+Toute écriture d'origine sync estampille `_sync: { origin:"sync", occurredAt, instanceId }` sur le
+document (type `SyncProvenance` de `@repo/shared`). Le watcher le lit pour taguer les entrées
+`sync_changes` avec `origin` + `originInstanceId` (ce qui alimente `excludeInstance`). `_sync` est
+**modélisé explicitement** comme champ interne optionnel sur les schémas partagés user/incident
+(`syncProvenanceSchema.optional()`, hors des schémas de DTO) et **retiré à la lecture** par les mappers /
+`redactServerDoc`, de sorte qu'il ne fuite jamais dans les réponses API ni dans la projection graphe.
 
-The sync surface must not be broader than the interactive routes it shadows (see D1 / PR #151). Both
-directions are scoped by the **caller's district**; `superAdmin` bypasses (sees/writes everything).
+### 5.5 Scoping par quartier (D1)
 
-**Resolving the caller's district.** Reuse the existing helpers in
-`apps/api/src/middleware/district-scope.ts` (`resolveCallerListDistrict`, `callerCanReadDistrict`) rather
-than re-deriving — same source of truth as the incident/listing/tag/event/vote routes.
+La surface de sync ne doit pas être plus large que les routes interactives qu'elle reflète (voir D1 /
+PR #151). Les deux directions sont limitées au **quartier de l'appelant** ; `superAdmin` (et le rôle
+`service`) passent sans contrainte (voient/écrivent tout).
 
-**`sync_changes` carries a denormalized `districtId`.** The feed filter cannot read it out of `data`,
-because a DELETE entry has `data: null`. So `append()` denormalizes `districtId` onto the change document
-itself:
+**Résolution du scope de l'appelant.** Une couche dédiée, `apps/api/src/sync/sync-scope.ts`, expose
+`resolveSyncScope(user, userRepo)`. Elle réutilise `resolveCallerListDistrict` (le même helper que les
+routes de liste incident/annonce/vote — même source de vérité) mais le réduit à un résultat à trois cas,
+`SyncScope`, sur lequel les cas d'usage branchent sans connaître les rôles :
 
-- `user` / `incident` → the doc's `districtId`.
-- **DELETE** → the full document is unavailable on a delete change event, so inherit the `districtId`
-  from the most recent prior `sync_changes` entry for the same `mongoId` (the append-only log always has
-  one, because the record must have been created/updated through the feed first). If none is found, the
-  entry is recorded with `districtId: null` and is visible **only** to `superAdmin` (fail-closed).
-- `district` → the district's own `_id`.
+- `{ all: true }` → appelant non contraint (`superAdmin` / `service`).
+- `{ districtId }` → administrateur de quartier, borné à ce quartier.
+- `{ empty: true }` → appelant sans quartier rattaché : ne voit que les données de référence `district`
+  et ne peut rien écrire (fail-closed).
 
-Index `sync_changes` on `{ index, districtId }` to back the scoped scan.
+Le router résout le scope à chaque appel (`ingest` comme `getChanges`) et le passe au cas d'usage.
 
-**`GET /sync/changes`** adds `districtId ∈ {caller's district}` (plus `null`-district entries only for
-`superAdmin`) to the `index > since` filter. Districts themselves are **reference data**: all `district`
-entries are sent to every caller regardless of scope, because the client needs names for rendering and
-they carry no PII (`name`, `geoJson`, `startingPoints`) — flagged deliberately, tighten later if desired.
+**`sync_changes` porte un `districtId` dénormalisé.** Le filtre du flux ne peut pas le lire dans `data`,
+car une entrée DELETE a `data: null`. `append()` dénormalise donc `districtId` sur le document de
+changement lui-même (`resolveDistrictId`) :
 
-**`POST /sync/ingest`** authz-checks every event before applying: the payload's `districtId` (or, for an
-UPDATE/DELETE, the **server** doc's current `districtId`) must match the caller's district. A mismatch is
-**rejected**, not quarantined — it is an authorization failure, not a data conflict, so it must never
-appear in the conflict queue. Report it in a `rejected[]` array on `IngestResultDto` (alongside
-`applied[]` / `conflicts[]`) so the client can surface and drop the row rather than retry forever.
+- `user` / `incident` → le `districtId` du document.
+- **DELETE** → le document complet est indisponible sur un événement de suppression, donc on hérite du
+  `districtId` de l'entrée `sync_changes` la plus récente pour le même `mongoId` (le log append-only en a
+  toujours une, l'enregistrement ayant forcément été créé/modifié par le flux auparavant). Si aucune
+  n'est trouvée, l'entrée est enregistrée avec `districtId: null` et n'est visible **que** par un scope
+  non contraint (fail-closed).
+- `district` → l'`_id` propre du quartier.
 
-**Consequences.** The H2 client holds only its district's users + incidents, so locally-computed
-statistics (§9.5) are district statistics — matching what that admin sees in the web app. `mine=true` on
-`/conflicts` still filters by `originInstanceId`; district scoping applies on top.
+**`GET /sync/changes`** applique, en plus du filtre `index > since`, un filtre par scope
+(`sync-changes.repository.mongo.ts` → `list`) :
 
----
+- scope `{ districtId }` → `$or: [{ entity: "district" }, { districtId }]` — les quartiers étant des
+  **données de référence** (nom, `geoJson`, `startingPoints` ; pas de PII), toutes les entrées `district`
+  partent vers tout appelant, quel que soit son quartier, pour que le client affiche des noms lisibles
+  hors-ligne. Les entrées d'autres quartiers (et les entrées `districtId: null`) ne sont **pas** visibles.
+- scope `{ empty }` → seules les entrées `entity: "district"` sont visibles.
+- scope `{ all }` → aucun filtre de quartier ajouté (voit tout, y compris `districtId: null`).
 
-## 6. Conflict model
+**`POST /sync/ingest`** vérifie l'autorisation de chaque événement avant de l'appliquer via
+`scopeAllowsDistrict(scope, targetDistrict)`. Le `districtId` visé provient du **doc serveur** pour un
+UPDATE/DELETE (et du payload pour un INSERT) : un client ne peut donc pas faire passer en fraude un
+enregistrement d'un autre quartier en réétiquetant son payload. Un écart est **rejeté**, pas mis en
+quarantaine — c'est un échec d'autorisation, pas un conflit de données, il ne doit donc jamais apparaître
+dans la file de conflits. Il est reporté dans `rejected[]` (motif `out-of-district`) pour que le client
+remonte et abandonne la ligne au lieu de boucler.
 
-### 6.1 Deduplication on first INSERT (business key)
-
-On an INSERT with `mongoId = null`, the server looks up an existing doc by the entity's **business key**
-before inserting:
-
-- **`user`** → key = `email` (backed by a unique index; an E11000 race funnels to the same path). A
-  match is **not** duplicated — it is raised as a `duplicate` **conflict** linking the H2 row to the
-  existing `_id`, and that `_id` is returned so the two rows converge.
-- **`incident`** → **no natural business key**; cross-side dedup is out of scope (two independent reports
-  can legitimately coexist). Always inserts.
-
-An INSERT retry carrying a known `mongoId` is an idempotent upsert by `_id`.
-
-### 6.2 Optimistic concurrency on UPDATE / DELETE (`baseUpdatedAt`)
-
-The client sends the `updatedAt` it last synced as `baseUpdatedAt`. If the current server doc's
-`updatedAt` differs, the server changed underneath the client → the event is **quarantined** in
-`sync_conflicts` (nothing silently overwritten). The conflict records the raising instance
-(`originInstanceId`, from `X-Sync-Instance`) so the operator who caused it can find it (§6.5). The event
-is still **acked** with a `conflictId` (so `/ingest` reports it via `conflicts[]`), but — unlike an
-applied event — the client **keeps** the pending row (§6.5). Special cases: UPDATE of a remotely-deleted
-doc → recreate (last-write-wins, nothing to conflict against); DELETE-vs-edit → quarantine the delete
-intent. A record with a **pending** conflict **holds** further ingests (refreshes the captured local
-snapshot, no new conflict row).
-
-### 6.3 Resolution
-
-The operator resolves via `POST /sync/conflicts/:id/resolve` (from the desktop UI, §6.5):
-
-- `local` → apply the client's captured snapshot (allowlisted upsert).
-- `server` → keep the server doc; `touch` it to re-propagate to all instances.
-- `merged` → apply the operator-supplied `data` (required — the field-level merge from the UI).
-
-Resolution records `resolvedBy` (`req.user.sub`), `resolvedAt`, `resolution`, and marks the conflict
-resolved. The resulting write flows back out through the watcher → `sync_changes` → all instances.
-
-> **Resolution writes clear `_sync` (they are not stamped with an instance id).** All three paths
-> (`local`, `server`/`touch`, `merged`) persist the doc with `_sync` cleared, so the change is published
-> as `origin:"api"` with no `originInstanceId`. This is required: if a resolution carried the raising
-> instance's id, `excludeInstance` (§7) would hide the resolved state from **exactly the instance that
-> needs it** to reconcile and clear its pending row (§6.5). Clearing it makes the resolution visible to
-> every instance including the originator.
-> **Claim before applying.** Double-resolution is guarded by an atomic `markResolved` flip, and that flip
-> **must happen before the write**, not after. If the resolution is applied first and the conflict claimed
-> second, a concurrent second resolve overwrites the first operator's decision and _then_ reports
-> `already-resolved` — silently losing the winning decision. Claiming first makes the flip the guard: the
-> loser fails the claim and never touches data. First resolve wins.
-
-### 6.4 Reference table
-
-| Direction  | Operation                     | Behaviour                                                                                                                                                                                           |
-| ---------- | ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| H2 → Mongo | INSERT (mongoId null)         | dedup by business key → insert **or** `duplicate` conflict; returns `mongoId` + `updatedAt`                                                                                                         |
-| H2 → Mongo | INSERT retry (mongoId set)    | idempotent upsert by `_id`                                                                                                                                                                          |
-| H2 → Mongo | UPDATE (base matches)         | allowlisted `$set` by `_id`; returns new `updatedAt`                                                                                                                                                |
-| H2 → Mongo | UPDATE (base stale)           | **quarantine** (`update` conflict); acked, not applied                                                                                                                                              |
-| H2 → Mongo | UPDATE (doc missing)          | recreate (last-write-wins)                                                                                                                                                                          |
-| H2 → Mongo | UPDATE/DELETE, `mongoId` null | **rejected** `unprocessable` — no server target. Must NOT fall through to INSERT: that would create a duplicate record rather than update one. The client's §9.1 collapse means it shouldn't occur. |
-| H2 → Mongo | DELETE (base matches)         | delete by `_id`                                                                                                                                                                                     |
-| H2 → Mongo | DELETE (base stale)           | **quarantine** (delete-vs-edit); acked, not applied                                                                                                                                                 |
-| Mongo → H2 | INSERT/UPDATE                 | client upserts by `mongo_id`; sets `base_updated_at` from `data.updatedAt`                                                                                                                          |
-| Mongo → H2 | DELETE                        | client deletes by `mongo_id`; ignore if absent                                                                                                                                                      |
-
-### 6.5 Desktop conflict UI (the only resolution surface)
-
-Conflicts are surfaced and resolved **inside the JavaFX app** — there is no admin-front screen. Port the
-reference branch's `ConflictController` + `conflicts.fxml` + `ConflictService` (field-level merge) onto
-`origin/main` and point them at the api.
-
-- **Discovery.** When `push()` gets a `conflicts[]` entry back, the client marks that record and raises a
-  badge/panel. The panel loads `GET /sync/conflicts?mine=true` — the operator sees **the conflicts their own
-  instance raised**, with `localData` (what they edited offline) beside the redacted `serverData`.
-- **Resolve.** The operator picks `local` / `server` / `merged` (the merge editor produces `data`) →
-  `POST /sync/conflicts/:id/resolve`.
-- **Pending-row lifecycle.** The client keeps the `pending_changes` row while the conflict is unresolved
-  (so the local edit is never lost and the badge persists). After resolution, the resolved server state
-  arrives on the next `GET /sync/changes` pull; the client applies it (upsert by `mongo_id`, refresh
-  `base_updated_at`) and **clears the pending row** for that record. No re-push of the stale local edit.
-- **Orphaned conflicts.** Because resolution is desktop-only and scoped to the raising instance, a
-  conflict raised by an instance that never comes back online is **never resolved** — the server value
-  simply stands, and it blocks only that one record's offline edit (never other records or other
-  instances). `superAdmin` can use `GET /sync/conflicts?mine=false` from a desktop app as the escape hatch.
-  Note: this is the trade-off of dropping the admin-front surface.
+**Conséquences.** Le client H2 ne détient que les utilisateurs + signalements de son quartier ; les
+statistiques calculées localement (§9.5) sont donc des statistiques de quartier — cohérentes avec ce que
+cet administrateur voit dans l'app web. `mine=true` sur `/conflicts` filtre toujours par
+`originInstanceId` ; le scoping par quartier s'applique par-dessus.
 
 ---
 
-## 7. Change-Streams watcher
+## 6. Modèle de conflit
 
-`apps/api/src/watcher/change-stream.watcher.ts` runs a single `db.watch(SYNCED_COLLECTIONS,
-{ fullDocument:"updateLookup", resumeAfter })`. One ordered stream ⇒ `sync_changes` indices stay
-monotonic. Per event it maps the op type (`insert|replace`→INSERT, `update`→UPDATE, `delete`→DELETE),
-reads `_sync.origin/instanceId` off the full document, and appends a redacted entry to `sync_changes`.
-The resume token is persisted to `sync_state` after each processed event; on `ChangeStreamHistoryLost` it
-reopens without a token and logs the gap loudly.
+### 6.1 Dédoublonnage au premier INSERT (clé métier)
 
-**Lifecycle** — started inside the api's existing boot block after `initContainer` and after
-`httpServer.listen` (mirrors the Socket.IO precedent); `await seedExistingDocs(db)` runs first, then
-`startWatcher(db)`. `stopWatcher()` is added to the graceful-shutdown `cleanup`.
+Sur un INSERT avec `mongoId = null`, le serveur cherche un document existant par la **clé métier** de
+l'entité (`businessKey`) avant d'insérer :
 
-**Requires a replica set** (§10) — `db.watch()` throws on a standalone mongod.
+- **`user`** → clé = `email` (adossée à un index unique ; une course E11000 est aiguillée vers le même
+  chemin). Une correspondance n'est **pas** dupliquée — elle lève un **conflit** `duplicate` reliant la
+  ligne H2 à l'`_id` existant, `_id` renvoyé pour que les deux lignes convergent.
+- **`incident`** → **pas de clé métier naturelle** ; le dédoublonnage inter-côtés est hors périmètre
+  (deux signalements indépendants peuvent légitimement coexister). Insertion systématique.
 
-### Echo-skip & why the ack matters
+Un INSERT réessayé portant un `mongoId` connu est un upsert idempotent par `_id`.
 
-The watcher records **every** change, including sync-origin ones. A polling instance skips its **own**
-writes via `excludeInstance` (`originInstanceId: { $ne }`). Because the client already learned its new
-`updatedAt` from the `/ingest` ack (§4.1), it never needs to see its own echo — so skipping it also
-prevents a just-pushed local edit from being clobbered by a stale echo, and avoids a redundant re-apply.
-The client still advances its cursor to the max `index` it receives.
+### 6.2 Concurrence optimiste sur UPDATE / DELETE (`baseUpdatedAt`)
+
+Le client envoie comme `baseUpdatedAt` l'`updatedAt` qu'il a synchronisé en dernier. Si l'`updatedAt`
+courant du doc serveur diffère, c'est que le serveur a changé sous le client → l'événement est mis en
+**quarantaine** dans `sync_conflicts` (rien n'est écrasé silencieusement). Le conflit enregistre
+l'instance à l'origine (`originInstanceId`, depuis `X-Sync-Instance`) pour que l'opérateur qui l'a causé
+puisse le retrouver (§6.5). L'événement est tout de même **acké** avec un `conflictId` (l'`/ingest` le
+reporte donc dans `conflicts[]`), mais — contrairement à un événement appliqué — le client **conserve** sa
+ligne en attente (§6.5). Cas particuliers : UPDATE d'un doc supprimé à distance → recréé
+(last-write-wins, rien contre quoi entrer en conflit) ; DELETE-vs-édition → l'intention de suppression est
+mise en quarantaine. Un enregistrement porteur d'un conflit **pending** **met en attente** les ingestions
+suivantes (le snapshot local capté est rafraîchi via `refreshLocalData`, aucune nouvelle ligne de
+conflit).
+
+### 6.3 Résolution
+
+L'opérateur résout via `POST /sync/conflicts/:id/resolve` (depuis l'UI desktop, §6.5) :
+
+- `local` → applique le snapshot capté du client (upsert allowlisté).
+- `server` → garde le doc serveur ; le `touch` pour le re-propager à toutes les instances.
+- `merged` → applique la `data` fournie par l'opérateur (requise — la fusion champ à champ de l'UI).
+
+La résolution enregistre `resolvedBy` (`req.user.sub`), `resolvedAt`, `resolution`, et marque le conflit
+résolu. L'écriture résultante ressort par le watcher → `sync_changes` → toutes les instances.
+
+> **Les écritures de résolution effacent `_sync` (elles ne portent pas d'instanceId).** Les trois chemins
+> (`local`, `server`/`touch`, `merged`) persistent le doc avec `_sync` effacé (`sync = null` → `$unset`),
+> la modification étant donc publiée en `origin:"api"` sans `originInstanceId`. C'est nécessaire : si une
+> résolution portait l'id de l'instance à l'origine, `excludeInstance` (§7) masquerait l'état résolu à
+> **exactement l'instance qui en a besoin** pour se réconcilier et vider sa ligne en attente (§6.5).
+> L'effacer rend la résolution visible de **toutes** les instances, y compris l'émettrice.
+>
+> **Revendiquer avant d'appliquer.** La double résolution est gardée par un basculement atomique
+> `markResolved`, et ce basculement **doit précéder l'écriture**, pas la suivre. Si la résolution était
+> appliquée d'abord et le conflit revendiqué ensuite, une seconde résolution concurrente écraserait la
+> décision du premier opérateur _puis_ signalerait `already-resolved` — perdant silencieusement la
+> décision gagnante. Revendiquer d'abord fait du basculement le garde : le perdant échoue la revendication
+> (`markResolved` gardé sur `status:"pending"` ne matche rien) et ne touche jamais aux données. Le premier
+> à résoudre gagne.
+
+### 6.4 Table de référence
+
+| Direction  | Opération                       | Comportement                                                                                                                                                                           |
+| ---------- | ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| H2 → Mongo | INSERT (`mongoId` null)         | dédoublonnage par clé métier → insert **ou** conflit `duplicate` ; renvoie `mongoId` + `updatedAt`                                                                                     |
+| H2 → Mongo | INSERT réessayé (`mongoId` set) | upsert idempotent par `_id`                                                                                                                                                            |
+| H2 → Mongo | UPDATE (base concordante)       | `$set` allowlisté par `_id` ; renvoie le nouvel `updatedAt`                                                                                                                            |
+| H2 → Mongo | UPDATE (base périmée)           | **quarantaine** (conflit `update`) ; acké, non appliqué                                                                                                                                |
+| H2 → Mongo | UPDATE (doc absent)             | recréé (last-write-wins)                                                                                                                                                               |
+| H2 → Mongo | UPDATE/DELETE, `mongoId` null   | **rejeté** `unprocessable` — pas de cible serveur. Ne DOIT PAS retomber sur un INSERT : cela créerait un doublon au lieu de mettre à jour. Le collapse client (§9.1) l'évite en amont. |
+| H2 → Mongo | DELETE (base concordante)       | suppression par `_id`                                                                                                                                                                  |
+| H2 → Mongo | DELETE (base périmée)           | **quarantaine** (suppression-vs-édition) ; acké, non appliqué                                                                                                                          |
+| H2 → Mongo | DELETE (doc déjà absent)        | acké idempotent (`updatedAt: null`), rien à supprimer                                                                                                                                  |
+| Mongo → H2 | INSERT/UPDATE                   | le client upsert par `mongo_id` ; pose `base_updated_at` depuis `data.updatedAt`                                                                                                       |
+| Mongo → H2 | DELETE                          | le client supprime par `mongo_id` ; ignore si absent                                                                                                                                   |
+
+### 6.5 UI de conflit desktop (seule surface de résolution)
+
+Les conflits sont exposés et résolus **dans l'app JavaFX** — il n'y a pas d'écran admin-front.
+
+- **Découverte.** Quand `push()` reçoit une entrée `conflicts[]`, le client marque l'enregistrement et
+  lève un badge/panneau. Le panneau charge `GET /sync/conflicts?mine=true` — l'opérateur voit **les
+  conflits que sa propre instance a levés**, avec `localData` (ce qu'il a édité hors-ligne) à côté de la
+  `serverData` expurgée.
+- **Résolution.** L'opérateur choisit `local` / `server` / `merged` (l'éditeur de fusion produit `data`)
+  → `POST /sync/conflicts/:id/resolve`.
+- **Cycle de vie de la ligne en attente.** Le client conserve la ligne `pending_changes` tant que le
+  conflit n'est pas résolu (l'édition locale n'est jamais perdue et le badge persiste). Après résolution,
+  l'état serveur résolu arrive au prochain `GET /sync/changes` ; le client l'applique (upsert par
+  `mongo_id`, rafraîchit `base_updated_at`) et **vide la ligne en attente** de cet enregistrement. Pas de
+  re-push de l'édition locale périmée.
+- **Conflits orphelins.** Comme la résolution est desktop-only et scopée à l'instance à l'origine, un
+  conflit levé par une instance qui ne revient jamais en ligne n'est **jamais résolu** — la valeur serveur
+  reste simplement en place, et cela ne bloque que l'édition hors-ligne de ce seul enregistrement (jamais
+  d'autres enregistrements ni d'autres instances). Un `superAdmin` peut utiliser
+  `GET /sync/conflicts?mine=false` depuis une app desktop comme porte de sortie. C'est le compromis de
+  l'abandon de la surface admin-front.
 
 ---
 
-## 8. ID strategy
+## 7. Watcher Change Streams
 
-- **MongoDB**: `users` / `incidents` use a **string UUID `_id`** (`randomUUID()`) — matching the api's
-  existing convention (`@repo/shared` `toEntity`/`toDoc` map `_id ↔ id`). **Not** ObjectId.
-- **H2**: every synced table carries `mongo_id VARCHAR(36) UNIQUE`, `NULL` until the server assigns it and
-  the ack returns it.
+`apps/api/src/watcher/change-stream.watcher.ts` fait tourner un unique
+`db.watch(SYNCED_COLLECTIONS, { fullDocument:"updateLookup", resumeAfter })` (filtre serveur
+`$match: { "ns.coll": { $in: SYNCED_COLLECTIONS } }`). Un seul flux ordonné ⇒ les indices `sync_changes`
+restent monotones. Par événement il mappe le type d'op (`insert|replace`→INSERT, `update`→UPDATE,
+`delete`→DELETE), lit `_sync.origin/instanceId` sur le document complet, et ajoute une entrée expurgée à
+`sync_changes`. Le resume token est persisté dans `sync_state` après chaque événement traité ; sur
+`ChangeStreamHistoryLost` (code 286) il rouvre sans token (après avoir effacé le token) et journalise le
+trou en `error`. Une erreur transitoire rouvre après un délai (`REOPEN_DELAY_MS`, 5 s) ; un arrêt
+volontaire (`stopWatcher`) empêche toute réouverture.
+
+**Cycle de vie** — démarré dans le bloc de boot de l'api après `initContainer` et après
+`httpServer.listen` : `seedExistingDocs(db, …)` s'exécute d'abord, puis `startWatcher(db, …)` (les deux
+enchaînés, best-effort : une erreur — Mongo standalone, replica set absent — est loguée et le reste de
+l'api continue de servir, seul le flux de sync du desktop se fige). `stopWatcher()` est ajouté au
+`cleanup` de l'arrêt gracieux.
+
+**Nécessite un replica set** (§10) — `db.watch()` lève sur un mongod standalone.
+
+### Echo-skip & pourquoi l'ack compte
+
+Le watcher enregistre **chaque** changement, y compris ceux d'origine sync. Une instance en polling ignore
+ses **propres** écritures via `excludeInstance` (`originInstanceId: { $ne }`). Comme le client a déjà
+appris son nouvel `updatedAt` par l'ack de l'`/ingest` (§4.1), il n'a jamais besoin de voir son propre
+écho — l'ignorer empêche aussi qu'un écho périmé n'écrase une édition locale tout juste poussée, et évite
+une ré-application redondante. Le client avance quand même son curseur au `index` max qu'il reçoit.
 
 ---
 
-## 9. Client design (JavaFX, onto `origin/main`)
+## 8. Stratégie d'identifiants
 
-**Reuses** (not reinvented): `auth/SsoAuthService`, `config/SessionConfig`, `repository/ApiException`,
-`SyncStatus.AUTH_REQUIRED`, `AppContext::supplyAccessToken`, `MainApp` login wiring, `DatabaseManager`.
+- **MongoDB** : `users` / `incidents` utilisent un **`_id` string UUID** (`randomUUID()`) — conforme à la
+  convention de l'api (`@repo/shared` `toEntity`/`toDoc` mappent `_id ↔ id`). **Pas** un ObjectId.
+- **H2** : chaque table synchronisée porte `mongo_id VARCHAR(36) UNIQUE`, `NULL` jusqu'à ce que le serveur
+  l'assigne et que l'ack le renvoie.
 
-### 9.1 Keyed pending-changes table (replaces append-OUTBOX + `compact()`)
+---
 
-One row **per dirty record** — the table _is_ the compacted state, so the old client-side `compact()`
-pass is deleted.
+## 9. Conception client (JavaFX)
+
+### 9.1 Table `pending_changes` à clé (remplace l'OUTBOX append-only + `compact()`)
+
+Une ligne **par enregistrement modifié** — la table _est_ l'état compacté, l'ancienne passe `compact()`
+côté client est donc supprimée.
 
 ```sql
 CREATE TABLE pending_changes (
@@ -460,98 +496,99 @@ CREATE TABLE pending_changes (
   record_id       VARCHAR(36)  NOT NULL,
   operation       VARCHAR(8)   NOT NULL,      -- INSERT | UPDATE | DELETE
   mongo_id        VARCHAR(36),
-  payload         CLOB,                       -- JSON snapshot; NULL for DELETE
+  payload         CLOB,                       -- snapshot JSON ; NULL pour DELETE
   base_updated_at VARCHAR(40),
   occurred_at     TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT uq_pending UNIQUE (entity, record_id)
 );
 ```
 
-Plus migrations on the synced tables: `mongo_id VARCHAR(36) UNIQUE`, `base_updated_at VARCHAR(40)` (the
-existing `synced` boolean stays for local bookkeeping).
+Plus les migrations sur les tables synchronisées : `mongo_id VARCHAR(36) UNIQUE`, `base_updated_at
+VARCHAR(40)` (le booléen `synced` existant reste pour la comptabilité locale).
 
-`PendingChangesRepository`:
+`PendingChangesRepository` :
 
 - `upsert(entity, recordId, op, mongoId, payload, baseUpdatedAt)` → `MERGE … KEY(entity, record_id)`,
-  bumping `occurred_at`. Inline collapse (the only surviving bit of `compact()`): an existing unsynced
-  `INSERT` + a new `UPDATE` stays `INSERT` with the new payload; an `INSERT` + `DELETE` while still
-  unsynced deletes the row (created-then-deleted-offline cancels).
-- `findBatch(limit)` → `ORDER BY occurred_at, id` (already one row per record).
-- `setRecordMongoId(entity, recordId, mongoId)` → writes `mongo_id` (+`synced=TRUE`) to the entity row and the pending row.
-- `advanceBaseAndClear(entity, recordId, mongoId, updatedAt, sentOccurredAt)` → set the entity's
-  `base_updated_at`, then `DELETE FROM pending_changes WHERE … AND occurred_at <= sentOccurredAt` (the
-  guard leaves a row re-dirtied mid-flight intact).
+  bump de `occurred_at`. Collapse inline (le seul reliquat de `compact()`) : un `INSERT` non synchronisé +
+  un nouvel `UPDATE` reste `INSERT` avec le nouveau payload ; un `INSERT` + `DELETE` encore non
+  synchronisé supprime la ligne (créé-puis-supprimé hors-ligne s'annule).
+- `findBatch(limit)` → `ORDER BY occurred_at, id` (déjà une ligne par enregistrement).
+- `setRecordMongoId(entity, recordId, mongoId)` → écrit `mongo_id` (+`synced=TRUE`) sur la ligne
+  d'entité et la ligne en attente.
+- `advanceBaseAndClear(entity, recordId, mongoId, updatedAt, sentOccurredAt)` → pose le `base_updated_at`
+  de l'entité, puis `DELETE FROM pending_changes WHERE … AND occurred_at <= sentOccurredAt` (la garde
+  préserve une ligne re-salie en cours de vol).
 
-Local UI writes in `UserRepository` / `IncidentRepository` call `pending.upsert(...)`.
+Les écritures UI locales dans `UserRepository` / `IncidentRepository` appellent `pending.upsert(...)`.
 
-### 9.2 `SyncService` rewrite
+### 9.2 Réécriture de `SyncService`
 
-- **Scheduler:** single-thread `ScheduledExecutorService` (`scheduleWithFixedDelay(cycle, 0, 30s)`;
-  `stop()` → `shutdownNow()`) + `AtomicBoolean running` guarded by `compareAndSet(false, true)` — closes
-  the old `Timer`/`volatile boolean` check-then-set window where `syncNow()` and a tick could both run.
-  `syncNow()` → `executor.execute(cycle)` (no raw `Thread`).
-- **push():** `findBatch(100)` → `POST /sync/ingest` (no compaction). Per applied event: `setRecordMongoId`
-  (if new) + `advanceBaseAndClear(...)` — advances `base_updated_at` **from the ack**. Per conflict:
-  leave the pending row and surface to the conflict UI.
-- **pull():** `GET /sync/changes?since=cursor&limit=200` with `X-Sync-Instance`; dispatch by `entity` —
-  `user`/`incident` upsert into their tables, `district` upserts into the H2 `districts` table
-  (server→client only; the client never pushes districts). Set `base_updated_at` from `data.updatedAt`;
-  advance the cursor. No bootstrap (`since=0` is the snapshot).
-- **Auth handling:** `catch TokenUnavailableException → AUTH_REQUIRED`; `catch ApiException` where
-  `getStatusCode()==401 → AUTH_REQUIRED` (else `ERROR`). An `AUTH_REQUIRED` listener triggers
-  `loginViaBrowser()`; the scheduler keeps ticking and resumes on the next cycle.
+- **Ordonnanceur :** `ScheduledExecutorService` mono-thread (`scheduleWithFixedDelay(cycle, 0, 30s)` ;
+  `stop()` → `shutdownNow()`) + `AtomicBoolean running` gardé par `compareAndSet(false, true)` — ferme la
+  fenêtre check-then-set de l'ancien `Timer`/`volatile boolean` où `syncNow()` et un tick pouvaient
+  tourner ensemble. `syncNow()` → `executor.execute(cycle)` (pas de `Thread` brut).
+- **push() :** `findBatch(100)` → `POST /sync/ingest` (sans compaction). Par événement appliqué :
+  `setRecordMongoId` (si nouveau) + `advanceBaseAndClear(...)` — avance `base_updated_at` **depuis
+  l'ack**. Par conflit : conserver la ligne en attente et remonter à l'UI de conflit.
+- **pull() :** `GET /sync/changes?since=cursor&limit=200` avec `X-Sync-Instance` ; dispatch par `entity` —
+  `user`/`incident` upsert dans leurs tables, `district` upsert dans la table H2 `districts`
+  (serveur→client uniquement ; le client ne pousse jamais de quartiers). Pose `base_updated_at` depuis
+  `data.updatedAt` ; avance le curseur. Pas de bootstrap (`since=0` est le snapshot).
+- **Gestion de l'auth :** `catch` indisponibilité du token → `AUTH_REQUIRED` ; `catch` erreur api où le
+  code est `401` → `AUTH_REQUIRED` (sinon `ERROR`). Un listener `AUTH_REQUIRED` déclenche la connexion
+  navigateur ; l'ordonnanceur continue de tourner et reprend au cycle suivant.
 
-### 9.3 HTTP client, config, DTOs
+### 9.3 Client HTTP, config, DTO
 
-- `repository/SyncApiClient` (targets the **api** on `ApiConfig` :3000; SSO bearer on **all** calls; sends
-  `X-Sync-Instance`; throws `ApiException` on non-2xx).
-- `config/SyncConfig` trimmed to `instanceId` (a persisted per-install UUID) + `cursor` — drops
-  `baseUrl` / `sharedSecret` / `bootstrapped`.
-- `sync/*` DTOs: `IngestEvent`, `IngestResult` (`applied[]` + `conflicts[]`), `ChangeEntry`, `Conflict`,
-  `ResolveConflictRequest`.
+- Client HTTP ciblant l'**api** (:3000) ; bearer SSO sur **tous** les appels ; envoie `X-Sync-Instance` ;
+  lève sur non-2xx.
+- Config trimée à `instanceId` (UUID persistant par installation) + `cursor` — supprime `baseUrl` /
+  `sharedSecret` / `bootstrapped`.
+- DTO `sync/*` : `IngestEvent`, `IngestResult` (`applied[]` + `conflicts[]` + `rejected[]`),
+  `ChangeEntry`, `Conflict`, `ResolveConflictRequest`.
 
-### 9.4 Conflict UI (desktop-only resolution)
+### 9.4 UI de conflit (résolution desktop-only)
 
-Port the reference branch's `service/ConflictService`, `controller/ConflictController`, and
-`fxml/conflicts.fxml` (field-level merge) onto `origin/main`, wired to `SyncApiClient`:
+`ConflictService` / `ConflictController` / `conflicts.fxml` (fusion champ à champ), câblés au client HTTP :
 
 - `ConflictService` → `GET /sync/conflicts?mine=true`, `POST /sync/conflicts/:id/resolve`.
-- `SyncService` surfaces a badge/count when `push()` returns `conflicts[]`; opening the panel loads the
-  operator's own pending conflicts (§6.5).
-- On resolve, do **not** clear the pending row directly — let the next `pull()` bring the resolved server
-  state down and clear it (§6.5 pending-row lifecycle), so there is a single code path that reconciles H2.
+- `SyncService` lève un badge/compteur quand `push()` renvoie `conflicts[]` ; l'ouverture du panneau
+  charge les conflits propres à l'opérateur (§6.5).
+- À la résolution, **ne pas** vider la ligne en attente directement — laisser le prochain `pull()`
+  ramener l'état serveur résolu et la vider (§6.5), pour un unique chemin de réconciliation de H2.
 
-This is the **only** conflict surface — no admin-front screen is built.
+C'est la **seule** surface de conflit — aucun écran admin-front n'est construit.
 
-### 9.5 Districts & statistics (derived from synced data)
+### 9.5 Quartiers & statistiques (dérivés des données synchronisées)
 
-- **Districts** are a one-way synced entity (§5.3): `applyDistrictChange` upserts them into the H2
-  `districts` table by `mongo_id`, and `DistrictRepository` gains `saveFromSync`/`updateFromSync`/
-  `deleteFromSync`/`findByMongoId`. The incident-form district dropdown and readable-name lookup read from
-  **local H2**, not a live `/districts` fetch — so they work offline.
-- **Statistics** are **computed locally**. Because all incidents (+users) now sync into H2, the dashboard
-  stat cards / `StatisticsController` derive their values from the local tables rather than a server
-  aggregation call. This is offline-first and always consistent with what the operator sees; the old
-  direct-api stats fetch is dropped.
+- **Quartiers** : entité synchronisée unidirectionnelle (§5.3). Le client les upsert dans sa table H2
+  `districts` par `mongo_id`. La liste déroulante du formulaire de signalement et la résolution de nom
+  lisible lisent depuis **H2 local**, pas un `/districts` live — elles fonctionnent donc hors-ligne.
+- **Statistiques** : **calculées localement**. Tous les signalements (+utilisateurs) synchronisant dans
+  H2, les cartes de stats du tableau de bord dérivent leurs valeurs des tables locales plutôt que d'une
+  agrégation serveur. Offline-first et toujours cohérent avec ce que voit l'opérateur ; l'ancien fetch de
+  stats direct-api est abandonné.
 
-Change Streams **require** a replica set; dev Mongo is currently a standalone `mongo:8`. In both
-`docker-compose.yml` and `docker-compose.deploy.yml`:
+---
 
-- `mongodb`: `command: ["--replSet","rs0","--bind_ip_all"]`.
-- Add an idempotent one-shot `mongo-init` sidecar (`restart:"no"`): if `rs.status().ok` then exit, else
-  `rs.initiate({ _id:"rs0", members:[{ _id:0, host:"mongodb:27017" }] })`.
-- Append `?replicaSet=rs0` to every **in-container** `MONGODB_URL` (api, auth-service, seeds; deploy keeps
-  its SOPS-provided creds).
-- Make dependents wait on `mongo-init` (`service_completed_successfully`).
+## 10. Déploiement (replica set)
 
-**A keyFile is mandatory** whenever authorization and replication are both enabled — including a
-single-member set. Without it mongod refuses to start:
-`BadValue: security.keyFile is required when authorization is enabled with replica sets`. (An earlier
-draft of this document claimed a single-member RS with root auth needed no keyfile; that is wrong, and it
-crash-looped the dev Mongo the first time the stack was actually brought up.)
+Les Change Streams **exigent** un replica set ; le Mongo de dev est par défaut un `mongo:8` standalone.
+Dans `docker-compose.yml` comme `docker-compose.deploy.yml` :
 
-The keyfile is bind-mounted and copied to `0400`/`mongodb` at container start, because a git-tracked
-bind-mounted file cannot carry the required mode/ownership:
+- `mongodb` : `command: ["--replSet","rs0","--bind_ip_all"]`.
+- Ajouter un sidecar one-shot idempotent `mongo-init` (`restart:"no"`) : si `rs.status().ok` alors sortir,
+  sinon `rs.initiate({ _id:"rs0", members:[{ _id:0, host:"mongodb:27017" }] })`.
+- Ajouter `?replicaSet=rs0` à chaque `MONGODB_URL` **in-container** (api, auth-service, seeds ; le deploy
+  garde ses credentials fournis par SOPS).
+- Faire attendre les dépendants sur `mongo-init` (`service_completed_successfully`).
+
+**Un keyFile est obligatoire** dès que l'autorisation et la réplication sont toutes deux activées — y
+compris pour un set à membre unique. Sans lui mongod refuse de démarrer :
+`BadValue: security.keyFile is required when authorization is enabled with replica sets`.
+
+Le keyfile est bind-monté puis copié en `0400`/`mongodb` au démarrage du conteneur, car un fichier
+bind-monté suivi par git ne peut pas porter le mode/propriétaire requis :
 
 ```yaml
 command:
@@ -562,67 +599,86 @@ command:
     exec docker-entrypoint.sh mongod --replSet rs0 --bind_ip_all --keyFile /tmp/mongo-keyfile
 ```
 
-Dev uses the committed `./docker/mongo-keyfile` (local-only material, same trust level as the `root:root`
-credentials already in the compose file). **Prod must supply its own** via `MONGO_KEYFILE_PATH` from the
-SOPS env — never the committed dev keyfile. The replica set also unlocks the api's multi-document
-transactions.
+Le dev utilise le `./docker/mongo-keyfile` commité (matériel local, même niveau de confiance que les
+credentials `root:root` déjà présents dans le compose). **La prod doit fournir le sien** via
+`MONGO_KEYFILE_PATH` depuis l'env SOPS — jamais le keyfile de dev commité. Le replica set débloque aussi
+les transactions multi-documents de l'api.
 
 ---
 
-## 11. Decisions & known follow-ups
+## 11. Décisions & suites connues
 
-> ### Decision D1 — feed scope: **DISTRICT-SCOPED** (resolved)
+> ### Décision D1 — portée du flux : **PAR QUARTIER** (résolue)
 >
-> `/changes` and `/ingest` are scoped to the caller's district for non-`superAdmin` callers; `superAdmin`
-> sees everything. See §5.5 for the mechanics.
+> `/changes` et `/ingest` sont limités au quartier de l'appelant pour les appelants non-`superAdmin` ;
+> `superAdmin` voit tout. Voir §5.5 pour la mécanique.
 >
-> **Why:** PR #151 (_"scope incidents to their reporter and close the surrounding IDOR class"_) forces
-> `reporterId = req.user.sub` for non-admins on the incident list + stats routes and adds
-> `resolveCallerListDistrict` / `callerCanReadDistrict` so a resident can neither pass an arbitrary
-> `districtId` nor omit it for an unfiltered global list. The api's posture is now explicitly **no caller
-> gets an unscoped global list**. A global sync feed handing every user + incident to any `admin` would
-> reopen exactly that class through a different door — a district admin would replicate every district.
-> District scoping keeps the sync surface consistent with the interactive routes it shadows.
+> **Pourquoi :** la PR #151 (_« scoper les signalements à leur auteur et fermer la classe d'IDOR
+> environnante »_) force `reporterId = req.user.sub` pour les non-admins sur les routes de liste + stats
+> des signalements, et ajoute `resolveCallerListDistrict` / `callerCanReadDistrict` pour qu'un résident ne
+> puisse ni passer un `districtId` arbitraire ni l'omettre pour une liste globale. La posture de l'api est
+> désormais explicitement **aucun appelant n'obtient de liste globale non scopée**. Un flux de sync global
+> livrant tout utilisateur + signalement à n'importe quel `admin` rouvrirait exactement cette classe par
+> une autre porte — un admin de quartier répliquerait tous les quartiers. Le scoping par quartier maintient
+> la surface de sync cohérente avec les routes interactives qu'elle reflète.
 
-> ### Decision D2 — unattended auth — see §3 _(provisional: accept interactive browser re-login)_
+> ### Décision D2 — auth non surveillée — voir §3 _(provisoire : accepter la re-connexion navigateur)_
 
-**Deferred (not in the first cut):**
+**Implémenté depuis la conception initiale :**
 
-- **Feed retention** — `sync_changes` is append-only and grows unbounded. Follow-up: TTL / snapshot
-  compaction + a floor cursor with "client fell below the floor → re-bootstrap."
-- **Sync side-effects** — the sync writer writes Mongo directly, bypassing the api's incident use-cases,
-  so the **Neo4j graph projection** (`syncGraph`) and socket emits do **not** fire for sync-applied
-  writes. Recommendation: fire the graph projection after a successful apply (else recommendations drift);
-  drive live-UI socket refresh off the **watcher** (single choke point), not the writer. Both flaggable.
-- **`_sync` schema modeling** — add it as an optional internal field on the shared doc schemas (§5.4);
-  confirm no `.strict()` on the write path rejects it.
+- **Projection graphe des écritures de sync.** Le writer de sync écrit Mongo directement, court-circuitant
+  les cas d'usage incident/user qui maintiennent normalement la projection Neo4j. `projectSyncWrite`
+  (`apps/api/src/sync/graph-projection.ts`) est désormais appelé après chaque événement appliqué à
+  l'ingestion **et** après chaque résolution de conflit, en best-effort via `syncGraph` (loggé, Mongo
+  restant la source de vérité) — les recommandations ne dérivent donc plus. Les quartiers ne sont jamais
+  projetés par la sync.
+- **Modélisation de `_sync`.** Ajouté comme champ interne optionnel sur les schémas partagés
+  (`syncProvenanceSchema.optional()` sur `userDocumentSchema` et `IncidentSchema`, §5.4).
 
----
+**Différé (pas dans le premier jet) :**
 
-## 12. Verification (for the implementation phase)
-
-1. `docker compose up -d mongodb mongo-init`; `mongosh --eval "rs.status().ok"` → `1`.
-2. Bring up api + auth-service; logs: `initContainer → seedExistingDocs(N) → startWatcher (stream open) →
-listen`; `/readyz` → 200.
-3. Admin JWT → `GET /sync/changes?since=0&limit=500` = full users+incidents snapshot with
-   `passwordHash` / `totpSecret` / `lastTotpStep` / `_sync` **absent** (redaction).
-4. `POST /sync/ingest` INSERT (`X-Sync-Instance: it-1`) → `applied:[{ …, operation:"INSERT", updatedAt }]`;
-   Mongo doc has `_sync.origin:"sync"`, `instanceId:"it-1"`.
-5. Echo-skip: `GET /sync/changes` **with** `X-Sync-Instance: it-1` omits the insert; a different instance sees it.
-6. Conflict: UPDATE with a stale `baseUpdatedAt` → `conflicts[…]`, no write; `GET /sync/conflicts` shows it; a
-   second stale ingest for that record is **held** (no new conflict; `localData` refreshed).
-7. Resolve `server` / `local` / `merged` → 200; the watcher re-emits; another instance sees it.
-8. Driven client: log in (admin), edit offline → one `pending_changes` row per record; reconnect → push,
-   ack advances `base_updated_at`, row cleared; a 2nd instance sees it via `/changes`; force token expiry
-   → `AUTH_REQUIRED` → re-login → resume; two rapid `syncNow()` → `compareAndSet` blocks the concurrent cycle.
-9. `apps/api` typecheck/tests + client `SyncServiceTest`.
+- **Rétention du flux** — `sync_changes` est append-only et croît sans borne. Suite : TTL / compaction par
+  snapshot + un curseur plancher avec « client passé sous le plancher → re-bootstrap ».
+- **Rafraîchissement live de l'UI (socket).** Les émissions Socket.IO ne se déclenchent toujours **pas**
+  pour les écritures d'origine sync. Recommandation : piloter le refresh UI live depuis le **watcher**
+  (point d'étranglement unique), pas depuis le writer. Flaggable.
 
 ---
 
-## 13. Reference implementations (read-only, stale branches)
+## 12. Vérification
 
-- Server logic — `Web-Apps-sync-gateway` @ `feat/sync-gateway`, `apps/sync-gateway/**`. Its
-  `mongodb.connector.ts` / `shutdown.ts` / `load-env.ts` / `container.ts` are **obsolete** — use the api's
-  `@repo/shared` infra instead.
-- Client logic — `Client-Java` @ `feat/sync-gateway-flow` (`SyncService`, `OutboxRepository`,
+1. `docker compose up -d mongodb mongo-init` ; `mongosh --eval "rs.status().ok"` → `1`.
+2. Monter api + auth-service ; logs : `initContainer → listen → seedExistingDocs(N) → startWatcher (flux
+ouvert)` ; `/readyz` → 200.
+3. JWT admin → `GET /sync/changes?since=0&limit=500` = snapshot complet users+incidents(+districts) avec
+   `passwordHash` / `totpSecret` / `lastTotpStep` / `_sync` **absents** (expurgation) et `_id` remappé en
+   `id`.
+4. `POST /sync/ingest` INSERT (`X-Sync-Instance: it-1`) → `applied:[{ …, operation:"INSERT", updatedAt }]` ;
+   le doc Mongo porte `_sync.origin:"sync"`, `instanceId:"it-1"`.
+5. Echo-skip : `GET /sync/changes` **avec** `X-Sync-Instance: it-1` omet l'insert ; une autre instance le
+   voit.
+6. Conflit : UPDATE avec un `baseUpdatedAt` périmé → `conflicts[…]`, aucune écriture ;
+   `GET /sync/conflicts` le montre ; une seconde ingestion périmée pour cet enregistrement est **mise en
+   attente** (pas de nouveau conflit ; `localData` rafraîchi).
+7. Résoudre `server` / `local` / `merged` → 200 ; le watcher ré-émet ; une autre instance le voit.
+8. Scoping : un `admin` de quartier A ne voit pas dans `/changes` les signalements du quartier B ; un push
+   étiqueté quartier B est `rejected` avec `out-of-district`. Les entrées `district` sont visibles quel que
+   soit le scope.
+9. `rejected` : un push `district` → `read-only-entity` ; un UPDATE/DELETE `mongoId:null` →
+   `unprocessable`.
+10. Client piloté : login (admin), édition hors-ligne → une ligne `pending_changes` par enregistrement ;
+    reconnexion → push, l'ack avance `base_updated_at`, la ligne est vidée ; une 2e instance le voit via
+    `/changes` ; forcer l'expiration du token → `AUTH_REQUIRED` → re-login → reprise ; deux `syncNow()`
+    rapprochés → `compareAndSet` bloque le cycle concurrent.
+11. Typecheck/tests `apps/api` (dont `ingest.use-case.test.ts`, `resolve-conflict.use-case.test.ts`) +
+    tests client.
+
+---
+
+## 13. Implémentations de référence (lecture seule, branches historiques)
+
+- Logique serveur — ancien service `sync-gateway` (`apps/sync-gateway/**`). Son
+  `mongodb.connector.ts` / `shutdown.ts` / `load-env.ts` / `container.ts` sont **obsolètes** — l'infra
+  `@repo/shared` de l'api les remplace.
+- Logique client — `Client-Java` @ `feat/sync-gateway-flow` (`SyncService`, `OutboxRepository`,
   `SyncGatewayClient`, `sync/*`).

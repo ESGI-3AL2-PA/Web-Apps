@@ -6,10 +6,13 @@ import { createMyDistrict, resolveMyDistrict } from "../api-service/users.servic
 
 type Candidate = { id: string; name: string };
 
-// Access-denied wall shown to a district-less regular user (see DistrictGuard). Offers to
-// re-resolve their district ("check again"), pick one when several overlap their address,
-// or create their own district (which promotes them to its admin and sends them to the
-// admin app). District *editing* happens there, not here.
+/**
+ * Mur d'accès refusé montré à un utilisateur régulier sans quartier (voir
+ * DistrictGuard). Propose de re-résoudre son quartier (« vérifier à nouveau »),
+ * d'en choisir un quand plusieurs recouvrent son adresse, ou de créer son propre
+ * quartier (ce qui le promeut administrateur de quartier et le redirige vers
+ * l'app admin). L'*édition* du quartier se fait là-bas, pas ici.
+ */
 export default function NoDistrict() {
   const { t } = useTranslation();
   const { refresh } = useAuth();
@@ -25,7 +28,8 @@ export default function NoDistrict() {
       try {
         const res = await resolveMyDistrict(districtId);
         if (res.resolved) {
-          // Re-hydrate the auth user so DistrictGuard sees the new districtId and lets us in.
+          // Ré-hydrate l'utilisateur authentifié pour que DistrictGuard voie le
+          // nouveau districtId et nous laisse entrer.
           await refresh();
           return;
         }
@@ -44,8 +48,9 @@ export default function NoDistrict() {
     void resolve();
   }, [resolve]);
 
-  // Create a district over the caller's address and become its admin, then hand off to the
-  // admin app (which refreshes the token → role:admin + adminDistrictId) to refine it.
+  // Crée un quartier sur l'adresse de l'appelant et en devient l'administrateur,
+  // puis passe la main à l'app admin (qui rafraîchit le token → role:admin +
+  // adminDistrictId) pour l'affiner.
   const createOwn = async () => {
     setCreating(true);
     setError(null);

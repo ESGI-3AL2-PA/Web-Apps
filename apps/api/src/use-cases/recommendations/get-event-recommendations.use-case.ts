@@ -1,9 +1,17 @@
+// Cas d'usage : recommandations d'événements pour un utilisateur.
+// Combine le graphe Neo4j (classement par affinité) et Mongo (documents complets).
 import type { Event } from "../../entities/event.entity.js";
 import type { IEventRepository } from "../../repositories/Event/event.repository.js";
 import type { IGraphRepository } from "../../repositories/Graph/graph.repository.js";
 
+// Fenêtre pendant laquelle un événement passé est encore considéré « en cours ».
 const FOUR_HOURS_MS = 4 * 60 * 60 * 1000;
 
+/**
+ * Recalcule le statut d'un événement à partir de sa date, comme get-events.use-case,
+ * pour que les recommandations affichent un statut cohérent avec le reste de l'app.
+ * Un événement « cancelled » (annulé) le reste ; une date invalide retombe sur le statut stocké.
+ */
 // Même logique que dans get-events.use-case : on recalcule le statut à partir
 // de eventDate pour que les recommandations affichent un statut cohérent.
 const computeStatus = (eventDate: string, storedStatus: string): Event["status"] => {
@@ -16,6 +24,14 @@ const computeStatus = (eventDate: string, storedStatus: string): Event["status"]
   return "completed";
 };
 
+/**
+ * Factory du cas d'usage de recommandation d'événements.
+ * Pipeline : (1) Neo4j renvoie des IDs classés par affinité, (2) fetch groupé Mongo,
+ * (3) re-tri dans l'ordre Neo4j + recalcul du statut + filtrage des événements
+ * passés/annulés. Renvoie au plus `limit` événements « upcoming » ou « ongoing ».
+ * @param graph repository graphe (Neo4j) pour le classement par affinité
+ * @param eventRepo repository Mongo des événements
+ */
 export const getEventRecommendationsUseCase = (graph: IGraphRepository, eventRepo: IEventRepository) => {
   return async (userId: string, limit = 10): Promise<Event[]> => {
     // 1. Demande à Neo4j la liste ordonnée d'IDs d'events pertinents.

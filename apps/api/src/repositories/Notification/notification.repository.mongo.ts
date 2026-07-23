@@ -4,8 +4,14 @@ import { toEntity, type WithMongoId } from "@repo/shared";
 import type { Notification, NotificationType } from "../../entities/notification.entity.js";
 import type { INotificationRepository } from "./notification.repository.js";
 
+// Document Mongo = entité Notification + son `_id`.
 type NotificationDoc = WithMongoId<Notification>;
 
+/**
+ * Implémentation Mongo du repository des notifications (collection
+ * `notifications`). Liste triée du plus récent au plus ancien, marquage lu
+ * unitaire ou en masse.
+ */
 export class MongoNotificationRepository implements INotificationRepository {
   private collection: Collection<NotificationDoc>;
 
@@ -14,7 +20,7 @@ export class MongoNotificationRepository implements INotificationRepository {
   }
 
   async ensureIndexes(): Promise<void> {
-    // Backs district-scoped (admin) list filtering.
+    // Index qui sert au filtrage des listes par quartier (côté admin).
     await this.collection.createIndex({ districtId: 1 });
   }
 
@@ -73,6 +79,8 @@ export class MongoNotificationRepository implements INotificationRepository {
     return result ? toEntity<Notification>(result) : null;
   }
 
+  // Marque comme lues toutes les notifications non lues d'un destinataire ;
+  // renvoie le nombre effectivement modifié.
   async markAllRead(recipientId: string): Promise<number> {
     const result = await this.collection.updateMany({ recipientId, read: false }, { $set: { read: true } });
     return result.modifiedCount;
@@ -83,6 +91,7 @@ export class MongoNotificationRepository implements INotificationRepository {
     return result.deletedCount === 1;
   }
 
+  // Supprime toutes les notifications adressées à un user (suppression de compte).
   async deleteByRecipient(userId: string): Promise<void> {
     await this.collection.deleteMany({ recipientId: userId });
   }

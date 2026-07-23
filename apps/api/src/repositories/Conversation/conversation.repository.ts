@@ -1,5 +1,13 @@
 import type { Conversation, Message } from "../../entities/conversation.entity.js";
 
+/**
+ * Interface du repository de messagerie (couche persistance).
+ *
+ * Gère deux collections liées : les conversations (directes 1:1 ou scopées à un
+ * quartier) et leurs messages (texte / audio / image). L'horodatage
+ * `lastMessageAt` de la conversation est maintenu à jour à chaque nouveau message
+ * pour trier les conversations les plus récentes en tête.
+ */
 export interface IConversationRepository {
   ensureIndexes(): Promise<void>;
 
@@ -12,8 +20,9 @@ export interface IConversationRepository {
 
   getConversationById(id: string): Promise<Conversation | null>;
 
-  /** Find the existing 1:1 conversation between exactly this pair of participants,
-   *  regardless of order. Used to dedupe direct conversations on create. */
+  /** Trouve la conversation 1:1 existante entre exactement cette paire de
+   *  participants, indépendamment de l'ordre. Sert à dédupliquer les conversations
+   *  directes à la création. */
   findDirectConversation(participantIds: string[]): Promise<Conversation | null>;
 
   createConversation(data: Omit<Conversation, "id" | "createdAt" | "lastMessageAt">): Promise<Conversation>;
@@ -38,10 +47,9 @@ export interface IConversationRepository {
 
   deleteMessage(id: string): Promise<void>;
 
-  /** Delete every message sent by a user (account deletion). Returns the ids of the
-   *  deleted audio messages so the caller can remove their media files. */
-  // Deletes all of the user's messages and returns the ids of those whose media object
-  // must also be removed from storage, split by kind (audio vs image live in different
-  // buckets and use different delete calls).
+  /** Supprime tous les messages envoyés par un utilisateur (suppression de compte)
+   *  et renvoie les ids de ceux dont l'objet média doit aussi être retiré du
+   *  stockage, ventilés par type : audio et image vivent dans des buckets
+   *  différents et passent par des appels de suppression distincts. */
   deleteUserMessages(userId: string): Promise<{ audioIds: string[]; imageIds: string[] }>;
 }

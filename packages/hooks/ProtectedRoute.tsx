@@ -1,15 +1,20 @@
+// Garde de route pour les fronts React : bloque le rendu des enfants tant que
+// l'authentification n'est pas résolue, redirige les visiteurs non connectés vers la page
+// de login de l'auth-service, et applique un contrôle de rôle optionnel (403 ou redirection).
 import { useEffect, type ReactNode } from "react";
 import { useAuth } from "./useAuth";
 
 interface ProtectedRouteProps {
   children: ReactNode;
+  /** Rôles autorisés. Absent → simple exigence d'être authentifié, sans filtrage de rôle. */
   roles?: string[];
-  /** When set, a role that fails the `roles` check is redirected here instead of seeing the 403 page. */
+  /** Si défini, un rôle qui échoue au contrôle `roles` est redirigé ici au lieu de voir la page 403. */
   forbiddenRedirect?: string;
 }
 
-// Framework-neutral inline styles: this component is shared across fronts that don't share a CSS
-// framework, so it can't rely on Tailwind/flyonui classes being present.
+// Styles inline neutres (indépendants de tout framework CSS) : ce composant est partagé entre
+// des fronts qui ne partagent pas de framework CSS, il ne peut donc pas supposer la présence
+// des classes Tailwind/flyonui.
 const center: React.CSSProperties = {
   minHeight: "100vh",
   display: "flex",
@@ -21,6 +26,8 @@ const center: React.CSSProperties = {
   fontFamily: "system-ui, sans-serif",
 };
 
+// Indicateur de chargement autonome : keyframes de rotation injectées inline pour rester
+// affichable sans feuille de style externe.
 function Spinner() {
   return (
     <div style={center} role="status" aria-label="Loading">
@@ -39,15 +46,25 @@ function Spinner() {
   );
 }
 
+/**
+ * Enveloppe une sous-arborescence protégée.
+ *
+ * - Pendant la résolution de l'auth (`isLoading`), affiche un spinner.
+ * - Non authentifié → redirige vers `${authServiceUrl}/login`, avec l'URL courante en
+ *   `redirect_uri` pour revenir après connexion.
+ * - Si `roles` est fourni et que le rôle de l'utilisateur n'y figure pas : redirige vers
+ *   `forbiddenRedirect` si présent, sinon rend une page 403 avec bouton de déconnexion.
+ */
 export function ProtectedRoute({ children, roles, forbiddenRedirect }: ProtectedRouteProps) {
   const { isAuthenticated, isLoading, user, authServiceUrl, logout } = useAuth();
 
+  // Conditions dérivées, calculées uniquement une fois l'auth résolue (!isLoading).
   const needsLogin = !isLoading && !isAuthenticated;
   const redirectForbidden =
     !isLoading && isAuthenticated && !!roles && !!user && !roles.includes(user.role) && !!forbiddenRedirect;
 
-  // Navigate in an effect, not the render body: assigning window.location.href while
-  // rendering is a side effect (and double-fires under StrictMode).
+  // On navigue dans un effet, pas dans le corps du rendu : affecter window.location.href
+  // pendant le rendu est un effet de bord (et se déclenche deux fois sous StrictMode).
   useEffect(() => {
     if (needsLogin) {
       window.location.href = `${authServiceUrl}/login?redirect_uri=${encodeURIComponent(window.location.href)}`;
@@ -69,9 +86,11 @@ export function ProtectedRoute({ children, roles, forbiddenRedirect }: Protected
   }
 
   if (roles) {
-    // Authenticated but identity not yet resolved — wait rather than flash content.
+    // Authentifié mais identité pas encore chargée — on attend plutôt que de laisser
+    // clignoter le contenu protégé.
     if (!user) return <Spinner />;
     if (!roles.includes(user.role)) {
+      // Rôle interdit : un spinner le temps que l'effet ci-dessus effectue la redirection.
       if (forbiddenRedirect) {
         return <Spinner />;
       }

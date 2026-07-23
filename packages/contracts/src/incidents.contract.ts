@@ -18,7 +18,17 @@ import { auth } from "./auth-meta";
 
 const c = initContract();
 
+/**
+ * Contract ts-rest des signalements (incidents).
+ *
+ * Un signalement est rapporté par un résident et rattaché à un quartier.
+ * La visibilité d'un signalement isolé est restreinte : un résident ne voit
+ * que ses propres signalements, un administrateur de quartier voit ceux de son
+ * quartier (404-sur-refus pour ne pas divulguer l'existence d'un signalement
+ * voisin). Les modifications suivent la même portée (créateur ou admin).
+ */
 export const incidentsContract = c.router({
+  // GET /incidents — liste paginée des signalements. Tout utilisateur authentifié.
   getIncidents: {
     method: "GET",
     path: "/incidents",
@@ -30,6 +40,7 @@ export const incidentsContract = c.router({
     metadata: auth({ audience: "api" }),
   },
 
+  // GET /incidents/stats — statistiques agrégées des signalements (limitées au quartier pour les admins).
   getIncidentStats: {
     method: "GET",
     path: "/incidents/stats",
@@ -50,9 +61,10 @@ export const incidentsContract = c.router({
       404: NotFoundErrorSchema,
     },
     summary: "Get a single incident by ID (reporter or district admin only)",
-    // A resident sees only what they reported: `inDistrict` keys off adminDistrictId, which is
-    // null for a plain user, so the district grant applies to admins alone. 404-on-deny so a
-    // neighbour's report does not leak its existence.
+    // GET /incidents/:id — un signalement par son id. Rapporteur ou admin du quartier.
+    // Un résident ne voit que ce qu'il a rapporté : `inDistrict` se base sur adminDistrictId,
+    // null pour un utilisateur ordinaire, donc l'accès par quartier ne vaut que pour les admins.
+    // 404-sur-refus pour qu'un signalement voisin ne divulgue pas son existence.
     metadata: auth({
       audience: "api",
       scope: {
@@ -65,6 +77,7 @@ export const incidentsContract = c.router({
     }),
   },
 
+  // POST /incidents — rapporte un nouveau signalement. Tout utilisateur authentifié.
   createIncident: {
     method: "POST",
     path: "/incidents",
@@ -76,6 +89,7 @@ export const incidentsContract = c.router({
     metadata: auth({ audience: "api" }),
   },
 
+  // PATCH /incidents/:id — mise à jour partielle. Rapporteur (ownerField) ou admin du quartier.
   updateIncident: {
     method: "PATCH",
     path: "/incidents/:id",
@@ -99,6 +113,7 @@ export const incidentsContract = c.router({
     }),
   },
 
+  // DELETE /incidents/:id — supprime un signalement. Rapporteur ou admin du quartier.
   deleteIncident: {
     method: "DELETE",
     path: "/incidents/:id",

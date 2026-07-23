@@ -31,7 +31,7 @@ from translator import translate  # noqa: E402
 
 
 def _json_default(o):
-    """Best-effort JSON fallback (this app stores string ids + ISO dates)."""
+    """Repli de sérialisation JSON au mieux (cette app stocke des ids en chaîne + dates ISO)."""
     if isinstance(o, ObjectId):
         return str(o)
     if isinstance(o, (datetime, date)):
@@ -42,7 +42,7 @@ def _json_default(o):
 def _connect_db():
     url = os.environ.get("MONGODB_URL", "mongodb://root:root@localhost:27017")
     name = os.environ.get("MONGODB_DB", "db")
-    # Fail fast if Mongo is unreachable rather than hanging the request 30s.
+    # Échoue vite si Mongo est injoignable, plutôt que de bloquer la requête 30s.
     return MongoClient(url, serverSelectionTimeoutMS=5000)[name]
 
 

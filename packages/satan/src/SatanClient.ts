@@ -1,16 +1,17 @@
 /**
- * SatanClient — thin Node ↔ worker.py bridge.
+ * SatanClient — fin pont Node ↔ worker.py.
  *
- * The Python worker parses, translates AND runs the query against MongoDB and
- * returns the result; this client only spawns/keeps that process alive and
- * relays queries. It does NOT touch Mongo — it never imports the driver. Point
- * the worker at a database with `mongoUrl` / `mongoDb` (forwarded as env vars).
+ * Le worker Python parse, traduit ET exécute la requête contre MongoDB puis
+ * renvoie le résultat ; ce client se contente de lancer/maintenir ce process en
+ * vie et de relayer les requêtes. Il ne touche JAMAIS Mongo — il n'importe jamais
+ * le driver. On pointe le worker vers une base via `mongoUrl` / `mongoDb`
+ * (transmis comme variables d'env).
  *
- * Lifecycle:
- *   - The first `query()` spawns ONE persistent Python process.
- *   - `query(ql)` writes a JSON line to stdin and resolves the worker's result.
- *   - If the process dies, pending requests reject and the worker restarts
- *     automatically (unless `autoRestart: false` or `close()` ran).
+ * Cycle de vie :
+ *   - Le premier `query()` lance UN process Python persistant.
+ *   - `query(ql)` écrit une ligne JSON sur stdin et résout le résultat du worker.
+ *   - Si le process meurt, les requêtes en attente sont rejetées et le worker
+ *     redémarre automatiquement (sauf `autoRestart: false` ou après `close()`).
  */
 
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
@@ -26,40 +27,42 @@ interface PendingRequest {
   timer?: ReturnType<typeof setTimeout>;
 }
 
+/** Options de configuration du SatanClient. */
 export interface SatanClientOptions {
-  /** Mongo connection string the worker runs queries against (forwarded to the
-   *  subprocess as MONGODB_URL). Omit to let the worker use its own env/default. */
+  /** Chaîne de connexion Mongo contre laquelle le worker exécute les requêtes
+   *  (transmise au subprocess via MONGODB_URL). Omise, le worker utilise son
+   *  propre env/défaut. */
   mongoUrl?: string;
-  /** Mongo database name (forwarded as MONGODB_DB). */
+  /** Nom de la base Mongo (transmis via MONGODB_DB). */
   mongoDb?: string;
-  /** Python binary to use (default: "python3"). */
+  /** Binaire Python à utiliser (défaut : "python3"). */
   pythonBin?: string;
-  /** Absolute path to worker.py (default: ../python/worker.py relative to dist/). */
+  /** Chemin absolu de worker.py (défaut : ../python/worker.py relatif à dist/). */
   workerPath?: string;
-  /** cwd of the child process. */
+  /** cwd du process enfant. */
   cwd?: string;
-  /** env of the child process (defaults to inheriting process.env). */
+  /** env du process enfant (par défaut, hérite de process.env). */
   env?: NodeJS.ProcessEnv;
-  /** Restart the worker automatically if it crashes (default: true). */
+  /** Redémarre automatiquement le worker en cas de crash (défaut : true). */
   autoRestart?: boolean;
   /**
-   * Per-query backstop timeout in ms (default: 8000; 0 disables). The worker
-   * runs one query at a time, so a single stuck query would block the whole
-   * queue — on timeout the pending query rejects and the worker is force-recycled
-   * (a fresh one starts when autoRestart is on). Keep it above the worker's
-   * server-side `SATAN_MAX_TIME_MS` so the DB budget normally trips first with a
-   * clean error and no recycle.
+   * Timeout de sécurité par requête en ms (défaut : 8000 ; 0 désactive). Le worker
+   * n'exécute qu'une requête à la fois : une requête bloquée figerait toute la
+   * file — au timeout la requête en attente est rejetée et le worker est recyclé
+   * de force (un neuf démarre si autoRestart est actif). À garder au-dessus du
+   * `SATAN_MAX_TIME_MS` côté serveur du worker, pour que le budget DB déclenche
+   * normalement en premier, avec une erreur propre et sans recyclage.
    */
   queryTimeoutMs?: number;
-  /** Informational callback fired on each crash, BEFORE the restart. */
+  /** Callback informatif déclenché à chaque crash, AVANT le redémarrage. */
   onCrash?: (code: number | null, signal: NodeJS.Signals | null) => void;
 }
 
 /**
- * Emits:
- *   - "stderr" (string)       : raw stderr line from the worker
- *   - "error"  (Error)        : broken protocol (invalid JSON, etc.)
- *   - "exit"   (code, signal) : worker terminated
+ * Émet :
+ *   - "stderr" (string)       : ligne stderr brute du worker
+ *   - "error"  (Error)        : protocole rompu (JSON invalide, etc.)
+ *   - "exit"   (code, signal) : worker terminé
  */
 export class SatanClient extends EventEmitter {
   private proc: ChildProcessWithoutNullStreams | null = null;
@@ -79,15 +82,15 @@ export class SatanClient extends EventEmitter {
     super();
     this.pythonBin = opts.pythonBin ?? "python3";
     this.queryTimeoutMs = opts.queryTimeoutMs ?? 8000;
-    // Default assumes the shipped layout:
-    //   packages/satan/dist/SatanClient.js   (this file, after build)
+    // Le défaut suppose la disposition livrée :
+    //   packages/satan/dist/SatanClient.js   (ce fichier, après build)
     //   packages/satan/python/worker.py
     this.workerPath = opts.workerPath ?? path.resolve(__dirname, "..", "python", "worker.py");
     this.cwd = opts.cwd;
     this.autoRestart = opts.autoRestart ?? true;
     this.onCrash = opts.onCrash;
 
-    // Forward the Mongo target to the worker via env (strings only — no driver).
+    // Transmet la cible Mongo au worker via l'env (chaînes seulement — pas de driver).
     if (opts.mongoUrl || opts.mongoDb || opts.env) {
       this.childEnv = {
         ...(opts.env ?? process.env),
@@ -97,7 +100,7 @@ export class SatanClient extends EventEmitter {
     }
   }
 
-  /** Starts the worker if it isn't already running. Idempotent. */
+  /** Démarre le worker s'il ne tourne pas déjà. Idempotent. */
   start(): void {
     if (this.proc || this.closed) return;
 
@@ -115,7 +118,7 @@ export class SatanClient extends EventEmitter {
     proc.stderr.on("data", (chunk: string) => this.emit("stderr", chunk));
 
     proc.on("exit", (code, signal) => {
-      // Every pending request is doomed.
+      // Toute requête en attente est condamnée.
       const err = new SatanQueryError(`SATAN worker exited (code=${code}, signal=${signal})`);
       for (const [, p] of this.pending) {
         if (p.timer) clearTimeout(p.timer);
@@ -135,11 +138,11 @@ export class SatanClient extends EventEmitter {
   }
 
   /**
-   * Runs a SATAN QL query through the worker and resolves its result:
-   * `FIND` → the matching documents (with `_id` renamed to `id`), `INSERT` →
+   * Exécute une requête SATAN QL via le worker et résout son résultat :
+   * `FIND` → les documents correspondants (`_id` renommé en `id`), `INSERT` →
    * `{ insertedId }`, `UPDATE` → `{ matchedCount, modifiedCount }`, `DELETE` →
    * `{ deletedCount }`.
-   * @throws SatanQueryError if the worker rejects the query.
+   * @throws SatanQueryError si le worker rejette la requête.
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   query(ql: string): Promise<any> {
@@ -157,8 +160,9 @@ export class SatanClient extends EventEmitter {
           ? setTimeout(() => {
               if (!this.pending.delete(id)) return;
               reject(new SatanQueryError(`SATAN query timed out after ${this.queryTimeoutMs}ms`));
-              // The worker runs one query at a time, so it's stuck on this one —
-              // force-recycle it (SIGKILL) so queued queries don't hang behind it.
+              // Le worker n'exécute qu'une requête à la fois : il est bloqué sur
+              // celle-ci — on le recycle de force (SIGKILL) pour que les requêtes
+              // en file ne restent pas coincées derrière.
               this.recycleWorker();
             }, this.queryTimeoutMs)
           : undefined;
@@ -172,13 +176,13 @@ export class SatanClient extends EventEmitter {
     });
   }
 
-  /** SIGKILL the current worker; the `exit` handler rejects any still-pending
-   *  queries and autoRestart (when enabled) starts a fresh one. */
+  /** SIGKILL le worker courant ; le handler `exit` rejette les requêtes encore
+   *  en attente et autoRestart (si activé) en démarre un neuf. */
   private recycleWorker(): void {
     this.proc?.kill("SIGKILL");
   }
 
-  /** Cleanly shuts the worker down. Any later query rejects. */
+  /** Arrête proprement le worker. Toute requête ultérieure est rejetée. */
   async close(): Promise<void> {
     this.closed = true;
     this.autoRestart = false;
@@ -191,8 +195,11 @@ export class SatanClient extends EventEmitter {
   }
 
   // -------------------------------------------------------------------------
-  // Internal
+  // Interne
   // -------------------------------------------------------------------------
+  // Accumule le flux stdout et découpe les réponses ndjson ligne par ligne :
+  // chaque ligne complète est parsée en JSON puis appariée à sa requête en attente
+  // via l'id, résolvant/rejetant la Promise correspondante.
   private onStdout(chunk: string): void {
     this.buffer += chunk;
     let nl: number;
@@ -210,7 +217,7 @@ export class SatanClient extends EventEmitter {
       }
 
       const pending = this.pending.get(resp.id);
-      if (!pending) continue; // orphan response (e.g. a timed-out query), ignored
+      if (!pending) continue; // réponse orpheline (ex. requête déjà en timeout), ignorée
       this.pending.delete(resp.id);
       if (pending.timer) clearTimeout(pending.timer);
 
@@ -223,7 +230,7 @@ export class SatanClient extends EventEmitter {
   }
 }
 
-/** Syntactic sugar for `new SatanClient(opts)`. */
+/** Sucre syntaxique pour `new SatanClient(opts)`. */
 export function createSatanClient(opts?: SatanClientOptions): SatanClient {
   return new SatanClient(opts);
 }

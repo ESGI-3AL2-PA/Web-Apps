@@ -3,25 +3,30 @@ import { useAuth } from "@repo/hooks";
 import type { DistrictResponseDto } from "@repo/contracts";
 import { getDistrict, listDistricts } from "../api-service/districts";
 
-// The whole admin console is scoped to one active district. A regular `admin` is locked to the
-// district they administer (`user.adminDistrictId`); a `superAdmin` picks one from all districts
-// via the top-bar selector (always exactly one selected). This is the front-end half — the api
-// enforces the same scoping server-side (see apps/api/src/middleware/district-scope.ts).
+// Contexte React : « scope quartier » actif de la console admin.
+//
+// Toute la console est cadrée sur un quartier actif. Un `admin` standard est verrouillé sur le
+// quartier qu'il administre (`user.adminDistrictId`) ; un `superAdmin` en choisit un parmi tous
+// les quartiers via le sélecteur de la barre supérieure (toujours exactement un sélectionné).
+// Ceci est la moitié front — l'api applique le même cadrage côté serveur
+// (voir apps/api/src/middleware/district-scope.ts).
 
 const STORAGE_KEY = "adminDistrictScope";
 
+/** Valeur exposée par le contexte de scope quartier. */
 interface DistrictScope {
-  districtId: string | null; // active district (drives scoped list pages)
-  districtName: string | null; // for the top-bar label
-  districts: DistrictResponseDto[]; // superAdmin: all districts; admin: empty
-  canSwitch: boolean; // superAdmin with ≥1 district
-  setDistrictId: (id: string) => void; // superAdmin only
-  reload: (selectId?: string) => Promise<void>; // superAdmin: re-fetch list (after create), optionally select one
+  districtId: string | null; // quartier actif (pilote les pages de liste cadrées)
+  districtName: string | null; // libellé pour la barre supérieure
+  districts: DistrictResponseDto[]; // superAdmin : tous les quartiers ; admin : vide
+  canSwitch: boolean; // superAdmin avec ≥1 quartier
+  setDistrictId: (id: string) => void; // superAdmin uniquement
+  reload: (selectId?: string) => Promise<void>; // superAdmin : re-fetch la liste (après création), sélectionne éventuellement un quartier
   loading: boolean;
 }
 
 const DistrictScopeContext = createContext<DistrictScope | null>(null);
 
+/** Provider à monter haut dans l'arbre (sous ProtectedRoute) : fournit le scope quartier à toute la console. */
 export function DistrictScopeProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const isSuperAdmin = user?.role === "superAdmin";
@@ -30,7 +35,7 @@ export function DistrictScopeProvider({ children }: { children: ReactNode }) {
   const [districtId, setDistrictIdState] = useState<string | null>(null);
   const [adminDistrictName, setAdminDistrictName] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  // Avoid clobbering a user's freshly-picked district if the initial fetch resolves late.
+  // Évite d'écraser le quartier fraîchement choisi par l'utilisateur si le fetch initial se résout en retard.
   const pickedRef = useRef(false);
 
   const setDistrictId = useCallback((id: string) => {
@@ -39,12 +44,12 @@ export function DistrictScopeProvider({ children }: { children: ReactNode }) {
     try {
       localStorage.setItem(STORAGE_KEY, id);
     } catch {
-      // ignore storage failures (private mode, quota) — scope just won't persist
+      // On ignore les échecs de stockage (mode privé, quota) — le scope ne sera simplement pas persisté.
     }
   }, []);
 
-  // superAdmin: load all districts, then select `selectId` (e.g. a freshly-created one), or
-  // the persisted one (if still present) / the first on initial load.
+  // superAdmin : charge tous les quartiers, puis sélectionne `selectId` (ex. un quartier tout juste créé),
+  // sinon celui persisté (s'il existe encore) / le premier au chargement initial.
   const reload = useCallback(
     async (selectId?: string) => {
       if (!isSuperAdmin) return;
@@ -79,7 +84,7 @@ export function DistrictScopeProvider({ children }: { children: ReactNode }) {
     void reload();
   }, [reload]);
 
-  // admin: locked to their own district; fetch its name for the label.
+  // admin : verrouillé sur son propre quartier ; on récupère son nom pour le libellé.
   useEffect(() => {
     if (isSuperAdmin || !user) return;
     const bound = user.adminDistrictId ?? null;
@@ -120,7 +125,8 @@ export function DistrictScopeProvider({ children }: { children: ReactNode }) {
   return <DistrictScopeContext.Provider value={value}>{children}</DistrictScopeContext.Provider>;
 }
 
-// eslint-disable-next-line react-refresh/only-export-components -- provider + its hook colocated
+/** Hook d'accès au scope quartier. Lève une erreur si utilisé hors d'un DistrictScopeProvider. */
+// eslint-disable-next-line react-refresh/only-export-components -- provider + son hook colocalisés
 export function useDistrictScope(): DistrictScope {
   const ctx = useContext(DistrictScopeContext);
   if (!ctx) throw new Error("useDistrictScope must be used within a DistrictScopeProvider");

@@ -6,15 +6,16 @@ import type {
 } from "@repo/contracts";
 import api from "./api";
 
+// Service API du solde et de l'historique de points d'un utilisateur.
 type PaginatedTransactions = PaginatedResponseDto<typeof TransactionResponseDtoSchema>;
 
-// GET /users/:id/balance — current points balance (self or admin).
+/** GET /users/:id/balance — solde de points courant (soi-même ou administrateur). */
 export async function getUserBalance(userId: string): Promise<UserBalanceResponseDto> {
   const res = await api.get<UserBalanceResponseDto>(`/users/${userId}/balance`);
   return res.data;
 }
 
-// GET /users/:id/transactions — points history (self or admin).
+/** GET /users/:id/transactions — historique paginé des mouvements de points (soi-même ou administrateur). */
 export async function getUserTransactions(
   userId: string,
   filters: TransactionQueryInput = {},

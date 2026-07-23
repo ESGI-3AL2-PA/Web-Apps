@@ -1,3 +1,17 @@
+/**
+ * Router ts-rest de l'auth-service : implémente `authContract`.
+ *
+ * Couche router — chaque handler résout ses dépendances via `resolve(...)`, appelle
+ * le cas d'usage correspondant et traduit son résultat en réponse HTTP typée.
+ *
+ * Couvre tout le cycle de vie de la session : login (avec MFA / enrôlement TOTP forcé),
+ * refresh et logout (protégés par un CSRF double-submit), l'inscription et la
+ * vérification d'e-mail, la réinitialisation de mot de passe, la gestion des sessions
+ * actives, l'enrôlement/désactivation TOTP et le step-up.
+ *
+ * Le refresh token voyage dans un cookie httpOnly scellé au chemin /auth ; le token
+ * CSRF l'accompagne dans un cookie jumeau lisible par le SPA.
+ */
 import { createHash, randomBytes, timingSafeEqual } from "crypto";
 import { initServer } from "@ts-rest/express";
 import { jwtVerify } from "jose";
@@ -34,39 +48,43 @@ const COOKIE_OPTIONS = {
   httpOnly: true,
   secure: process.env.NODE_ENV === "production",
   sameSite: "lax" as const,
-  maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+  maxAge: 7 * 24 * 60 * 60 * 1000, // 7 jours
   path: "/auth",
 };
 
-// Double-submit pair: the cookie is sent automatically by the browser; the SPA
-// fetches the token via GET /auth/csrf and echoes it in X-CSRF-Token. Shares the
-// refresh cookie's attributes (same path/sameSite/httpOnly) so they travel
-// together — kept as a spread so the two can't drift.
+// Paire double-submit : le cookie est renvoyé automatiquement par le navigateur ; le
+// SPA récupère le token via GET /auth/csrf et le réémet dans X-CSRF-Token. Reprend les
+// attributs du cookie de refresh (même path/sameSite/httpOnly) pour qu'ils voyagent
+// ensemble — conservés en spread pour qu'ils ne puissent pas diverger.
 const CSRF_COOKIE_OPTIONS = { ...COOKIE_OPTIONS };
 
 const generateCsrf = () => randomBytes(32).toString("hex");
 
-// Session origin captured on login and stored on the refresh token.
+// Origine de la session capturée au login et stockée sur le refresh token.
 const sessionContext = (req: Request) => ({
   userAgent: typeof req.headers["user-agent"] === "string" ? req.headers["user-agent"].slice(0, 400) : null,
   ip: req.ip ?? null,
 });
 
-// sha256 of the caller's own refresh cookie (travels on /auth paths), used to
-// flag / exempt the session making the request. Null when no cookie is present.
+// sha256 du propre cookie de refresh de l'appelant (présent sur les chemins /auth),
+// utilisé pour marquer / exempter la session à l'origine de la requête. Null en
+// l'absence de cookie.
 const currentSessionHash = (req: Request): string | null => {
   const raw = req.cookies?.[REFRESH_COOKIE];
   return typeof raw === "string" ? createHash("sha256").update(raw).digest("hex") : null;
 };
 
+// Compare cookie et en-tête à temps constant (timingSafeEqual) pour éviter une fuite
+// d'information par timing. Exige des longueurs identiques, sinon timingSafeEqual jette.
 const csrfValid = (cookieToken: unknown, headerToken: unknown): boolean => {
   if (typeof cookieToken !== "string" || typeof headerToken !== "string") return false;
   if (cookieToken.length === 0 || cookieToken.length !== headerToken.length) return false;
   return timingSafeEqual(Buffer.from(cookieToken), Buffer.from(headerToken));
 };
 
-// Verifies a Bearer access token on requests where the auth-service itself is the resource
-// (the TOTP enrollment endpoints). Accepts only tokens issued for the api audience.
+// Vérifie un access token Bearer sur les requêtes où l'auth-service est lui-même la
+// ressource (les endpoints d'enrôlement TOTP). N'accepte que les tokens émis pour
+// l'audience « api ». Retourne le `sub` (id utilisateur) ou null si invalide.
 const verifyBearer = async (req: Request): Promise<string | null> => {
   const header = req.headers.authorization;
   if (!header?.startsWith("Bearer ")) return null;
@@ -82,8 +100,9 @@ const verifyBearer = async (req: Request): Promise<string | null> => {
   }
 };
 
-// Validates the X-Step-Up-Token minted by /auth/step-up for the same user. Only enforced
-// in production — dev leaves sensitive auth-service ops (disable TOTP) friction-free.
+// Valide le X-Step-Up-Token émis par /auth/step-up pour le même utilisateur. Appliqué
+// uniquement en production — en dev, les opérations sensibles de l'auth-service
+// (désactivation TOTP) restent sans friction.
 const STEP_UP_HEADER = "x-step-up-token";
 const hasValidStepUp = async (req: Request, userId: string): Promise<boolean> => {
   if (process.env.NODE_ENV !== "production") return true;
@@ -105,6 +124,9 @@ const hasValidStepUp = async (req: Request, userId: string): Promise<boolean> =>
 const s = initServer();
 
 export const authRouter = s.router(authContract, {
+  // POST /auth/login — vérifie identifiants + statut du compte, puis pose les cookies.
+  // Peut court-circuiter en 202 quand une étape supplémentaire est requise :
+  // mfa-required (code TOTP attendu) ou enrollment-required (enrôlement TOTP forcé).
   login: async ({ body, req, res }) => {
     const result = await loginUseCase(
       resolve("userReader"),
@@ -147,18 +169,23 @@ export const authRouter = s.router(authContract, {
     };
   },
 
+  // POST /auth/login/enroll/start — démarre l'enrôlement TOTP forcé pendant le login
+  // (jeton d'enrôlement court obtenu du 202 enrollment-required). Renvoie l'URL otpauth
+  // et le secret à afficher/scanner.
   loginEnrollStart: async ({ body }) => {
     const result = await loginEnrollStartUseCase(resolve("userReader"))(body.enroll_token);
     if (result.kind === "invalid-token") {
       return { status: 401 as const, body: { message: "Invalid or expired enrollment session" } };
     }
     if (result.kind === "already-enabled") {
-      // Already enrolled: the ceremony no longer applies — sign in normally.
+      // Déjà enrôlé : la cérémonie ne s'applique plus — se reconnecter normalement.
       return { status: 401 as const, body: { message: "TOTP already enabled — sign in again" } };
     }
     return { status: 200 as const, body: { otpauth_url: result.otpauthUrl, secret: result.secret } };
   },
 
+  // POST /auth/login/enroll/confirm — confirme le premier code TOTP et termine le login :
+  // active le TOTP puis pose cookies + access token comme un login réussi.
   loginEnrollConfirm: async ({ body, req, res }) => {
     const result = await loginEnrollConfirmUseCase(
       resolve("userReader"),
@@ -180,6 +207,8 @@ export const authRouter = s.router(authContract, {
     };
   },
 
+  // POST /auth/login/mfa — deuxième étape d'un login MFA : échange le mfa_token + code
+  // TOTP contre une session complète (cookies + access token).
   loginMfa: async ({ body, req, res }) => {
     const result = await loginMfaUseCase(resolve("userReader"), resolve("refreshToken"), resolve("districtAdmin"))(
       body.mfa_token,
@@ -198,6 +227,9 @@ export const authRouter = s.router(authContract, {
     };
   },
 
+  // POST /auth/refresh — fait tourner le refresh token et émet un nouvel access token.
+  // Protégé par le CSRF double-submit ; à l'échec de validation du refresh token les
+  // deux cookies sont effacés. Le refresh token est renouvelé (rotation) à chaque appel.
   refresh: async ({ req, res }) => {
     const cookieCsrf = req.cookies?.[CSRF_COOKIE];
     const headerCsrf = req.headers[CSRF_HEADER];
@@ -229,6 +261,8 @@ export const authRouter = s.router(authContract, {
     return { status: 200 as const, body: { access_token: result.accessToken, csrf_token: newCsrf } };
   },
 
+  // POST /auth/logout — révoque le refresh token courant côté serveur et efface les
+  // cookies. Protégé par CSRF. Idempotent : réussit même sans cookie de refresh.
   logout: async ({ req, res }) => {
     const cookieCsrf = req.cookies?.[CSRF_COOKIE];
     const headerCsrf = req.headers[CSRF_HEADER];
@@ -247,6 +281,9 @@ export const authRouter = s.router(authContract, {
     return { status: 200 as const, body: { success: true } };
   },
 
+  // POST /auth/register — crée le compte (via l'api, cf. flux d'inscription) et envoie
+  // l'e-mail de vérification. La langue de l'e-mail suit l'en-tête Accept-Language.
+  // Répond 202 sans révéler si l'e-mail existe déjà, sauf collision explicite (409).
   register: async ({ body, req }) => {
     const result = await registerUseCase(resolve("userReader"), resolve("authToken"))(
       body,
@@ -263,6 +300,8 @@ export const authRouter = s.router(authContract, {
     };
   },
 
+  // GET /auth/verify-email?token=… — consomme le jeton de vérification et marque
+  // l'e-mail comme vérifié. Distingue lien expiré / utilisateur introuvable / invalide.
   verifyEmail: async ({ query }) => {
     const result = await verifyEmailUseCase(resolve("authToken"), resolve("userReader"))(query.token);
     if (result === "ok") {
@@ -277,6 +316,8 @@ export const authRouter = s.router(authContract, {
     return { status: 400 as const, body: { message: "Invalid verification link" } };
   },
 
+  // POST /auth/resend-verification — renvoie un lien de vérification. Réponse toujours
+  // 200 et neutre (ne divulgue pas si l'e-mail est enregistré / déjà vérifié).
   resendVerification: async ({ body }) => {
     await resendVerificationUseCase(resolve("userReader"), resolve("authToken"))(body.email);
     return {
@@ -285,6 +326,8 @@ export const authRouter = s.router(authContract, {
     };
   },
 
+  // POST /auth/forgot-password — envoie un lien de réinitialisation. Réponse toujours
+  // 200 et neutre pour ne pas révéler l'existence du compte (énumération d'e-mails).
   forgotPassword: async ({ body }) => {
     await forgotPasswordUseCase(resolve("userReader"), resolve("authToken"))(body.email);
     return {
@@ -293,6 +336,8 @@ export const authRouter = s.router(authContract, {
     };
   },
 
+  // POST /auth/reset-password — définit un nouveau mot de passe à partir du jeton de
+  // réinitialisation et révoque toutes les sessions existantes de l'utilisateur.
   resetPassword: async ({ body }) => {
     const result = await resetPasswordUseCase(
       resolve("authToken"),
@@ -311,6 +356,8 @@ export const authRouter = s.router(authContract, {
     return { status: 400 as const, body: { message: "Invalid reset link" } };
   },
 
+  // GET /auth/userinfo — renvoie le profil de l'utilisateur porté par l'access token
+  // Bearer (endpoint de type OIDC userinfo).
   userinfo: async ({ req }) => {
     const authHeader = req.headers.authorization;
     if (!authHeader?.startsWith("Bearer ")) {
@@ -330,11 +377,15 @@ export const authRouter = s.router(authContract, {
     }
   },
 
+  // GET /auth/csrf — renvoie au SPA la valeur du cookie CSRF courant pour qu'il la
+  // réémette dans l'en-tête X-CSRF-Token (mécanisme double-submit).
   csrf: async ({ req }) => {
     const token = req.cookies?.[CSRF_COOKIE];
     return { status: 200 as const, body: { csrf_token: typeof token === "string" ? token : "" } };
   },
 
+  // GET /auth/sessions — liste les sessions (refresh tokens actifs) de l'utilisateur ;
+  // marque celle à l'origine de la requête via son hash. Protégé par access token Bearer.
   sessions: async ({ req }) => {
     const userId = await verifyBearer(req);
     if (!userId) {
@@ -344,6 +395,8 @@ export const authRouter = s.router(authContract, {
     return { status: 200 as const, body: sessions };
   },
 
+  // DELETE /auth/sessions/:id — révoque une session précise de l'utilisateur (déconnexion
+  // à distance d'un autre appareil). 404 si la session n'appartient pas à l'appelant.
   revokeSession: async ({ req, params }) => {
     const userId = await verifyBearer(req);
     if (!userId) {
@@ -356,6 +409,8 @@ export const authRouter = s.router(authContract, {
     return { status: 200 as const, body: { message: "Session revoked" } };
   },
 
+  // POST /auth/sessions/revoke-others — révoque toutes les sessions SAUF celle de
+  // l'appelant (identifiée par son hash), pour un « déconnecter partout ailleurs ».
   revokeOtherSessions: async ({ req }) => {
     const userId = await verifyBearer(req);
     if (!userId) {
@@ -365,6 +420,9 @@ export const authRouter = s.router(authContract, {
     return { status: 200 as const, body: { message: "Other sessions revoked" } };
   },
 
+  // POST /auth/totp/enroll — démarre l'enrôlement TOTP volontaire pour un utilisateur
+  // déjà connecté. Renvoie l'URL otpauth + le secret ; le TOTP reste inactif jusqu'à
+  // /auth/totp/confirm. 409 si le TOTP est déjà activé.
   totpEnroll: async ({ req }) => {
     const userId = await verifyBearer(req);
     if (!userId) {
@@ -380,6 +438,8 @@ export const authRouter = s.router(authContract, {
     return { status: 200 as const, body: { otpauth_url: result.otpauthUrl, secret: result.secret } };
   },
 
+  // POST /auth/totp/confirm — confirme le premier code TOTP et active le TOTP sur le
+  // compte. no-enrollment si aucun secret en attente n'a été généré au préalable.
   totpConfirm: async ({ req, body }) => {
     const userId = await verifyBearer(req);
     if (!userId) {
@@ -398,13 +458,16 @@ export const authRouter = s.router(authContract, {
     return { status: 401 as const, body: { message: "User not found" } };
   },
 
+  // POST /auth/totp/disable — désactive le TOTP. Exige à la fois le mot de passe et,
+  // en production, un step-up récent (voir ci-dessous).
   totpDisable: async ({ req, body }) => {
     const userId = await verifyBearer(req);
     if (!userId) {
       return { status: 401 as const, body: { message: "Missing or invalid access token" } };
     }
-    // Disabling MFA is the highest-value downgrade: require a fresh code (step-up) in
-    // production on top of the password, so a stolen access token alone can't remove it.
+    // Désactiver la MFA est le downgrade de sécurité le plus sensible : en production on
+    // exige un code frais (step-up) EN PLUS du mot de passe, pour qu'un access token volé
+    // seul ne suffise pas à la retirer.
     if (!(await hasValidStepUp(req, userId))) {
       return { status: 401 as const, body: { message: "Step-up verification required", code: "step_up_required" } };
     }
@@ -415,6 +478,8 @@ export const authRouter = s.router(authContract, {
     return { status: 401 as const, body: { message: "Wrong password or user not found" } };
   },
 
+  // POST /auth/step-up — ré-authentification forte : échange un code TOTP frais contre
+  // un step-up token de courte durée, requis pour les opérations les plus sensibles.
   stepUp: async ({ req, body }) => {
     const userId = await verifyBearer(req);
     if (!userId) {

@@ -1,10 +1,11 @@
+// Seed : jeu de tags par défaut, injecté à la création d'un quartier.
 import type { Tag } from "../../entities/tag.entity.js";
 
 /**
- * Base set of tags every district should have available on creation.
- * Seeded idempotently by `name` — editing this list only adds missing tags,
- * it does not update or remove existing ones. `name` is the stable key;
- * `label`/`description` carry the per-language display text (fr/en).
+ * Jeu de tags de base que chaque quartier doit avoir disponible à sa création.
+ * Seedé de façon idempotente par `name` — modifier cette liste ne fait qu'ajouter les
+ * tags manquants, sans mettre à jour ni supprimer les existants. `name` est la clé
+ * stable ; `label`/`description` portent le texte affiché par langue (fr/en).
  */
 export const DEFAULT_TAGS: Array<Omit<Tag, "id" | "districtId">> = [
   {

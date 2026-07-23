@@ -1,7 +1,10 @@
 {
+  // Config TypeScript de l'admin-front : hérite du preset partagé pour les apps Vite
+  // (bundler resolution, DOM libs, strict) et n'y ajoute que le JSX React.
   "extends": "@repo/typescript-config/vite.json",
   "include": ["src"],
   "compilerOptions": {
+    // Transform JSX automatique de React 17+ (pas besoin d'importer React dans chaque fichier).
     "jsx": "react-jsx"
   }
 }

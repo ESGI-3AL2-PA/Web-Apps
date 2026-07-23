@@ -1,4 +1,6 @@
 {
+  // Config TypeScript de l'app api : reprend le preset Node partagé et fixe la racine
+  // des sources (`src`) et la cible de compilation (`dist`).
   "extends": "@repo/typescript-config/node.json",
   "include": ["src"],
   "compilerOptions": {

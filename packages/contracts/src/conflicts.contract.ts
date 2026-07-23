@@ -16,9 +16,13 @@ import { auth } from "./auth-meta";
 
 const c = initContract();
 
-// Sync conflicts are surfaced and resolved exclusively in the JavaFX desktop app
-// (sync-gateway.md §6.5) — there is no admin-front surface.
+// Contrat ts-rest des conflits de synchronisation (api). Toutes les routes exigent
+// audience "api" + rôle admin ou superAdmin. Les conflits de sync sont affichés et
+// résolus exclusivement dans l'app desktop JavaFX (sync-gateway.md §6.5) — il n'y a
+// pas de surface dans l'admin-front.
 export const conflictsContract = c.router({
+  // GET /sync/conflicts — admin/superAdmin. Liste les conflits de sync (ceux de sa
+  // propre instance par défaut, via l'en-tête X-Sync-Instance).
   getConflicts: {
     method: "GET",
     path: "/sync/conflicts",
@@ -32,6 +36,7 @@ export const conflictsContract = c.router({
     metadata: auth({ audience: "api", roles: ["admin", "superAdmin"] }),
   },
 
+  // GET /sync/conflicts/:id — admin/superAdmin. Récupère un conflit de sync unique.
   getConflictById: {
     method: "GET",
     path: "/sync/conflicts/:id",
@@ -44,6 +49,8 @@ export const conflictsContract = c.router({
     metadata: auth({ audience: "api", roles: ["admin", "superAdmin"] }),
   },
 
+  // POST /sync/conflicts/:id/resolve — admin/superAdmin. Résout un conflit en
+  // choisissant la version locale, serveur ou fusionnée.
   resolveConflict: {
     method: "POST",
     path: "/sync/conflicts/:id/resolve",

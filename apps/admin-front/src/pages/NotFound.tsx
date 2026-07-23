@@ -1,3 +1,4 @@
+// Page 404 : affichée pour toute route inconnue, avec un lien de retour au tableau de bord.
 import { Link } from "react-router-dom";
 
 export default function NotFound() {

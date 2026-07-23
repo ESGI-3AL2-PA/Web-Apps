@@ -1,3 +1,11 @@
+/**
+ * Repository (implémentation Mongo) du grand livre de points.
+ *
+ * Tient deux collections : `transactions` (lignes du grand livre, immuables) et le
+ * champ `balance` des `users`. Expose le listage paginé/filtré des transactions et
+ * les mutations de solde (crédit/débit atomique) qui peuvent participer à une
+ * transaction Mongo via une `ClientSession` optionnelle.
+ */
 import { randomUUID } from "crypto";
 import type { ClientSession, Collection, Db, Filter } from "mongodb";
 import { toEntity, type WithMongoId } from "@repo/shared";
@@ -17,10 +25,11 @@ export class MongoTransactionRepository implements ITransactionRepository {
   }
 
   async ensureIndexes(): Promise<void> {
-    // Backs district-scoped (admin) list filtering.
+    // Soutient le filtrage du listage par quartier (côté admin).
     await this.transactions.createIndex({ districtId: 1 });
   }
 
+  /** Listage paginé des transactions (plus récentes d'abord), filtrable par utilisateur, quartier, type et refType. */
   async getTransactions(params: {
     userId?: string;
     districtId?: string;
@@ -55,6 +64,7 @@ export class MongoTransactionRepository implements ITransactionRepository {
     return { data: docs.map((d) => toEntity<Transaction>(d)), total, page, limit };
   }
 
+  /** Insère un lot de lignes de grand livre (horodatées au même instant), éventuellement dans une session. */
   async createTransactions(
     entries: Omit<Transaction, "id" | "createdAt">[],
     session?: ClientSession,
@@ -70,6 +80,7 @@ export class MongoTransactionRepository implements ITransactionRepository {
     return docs.map((d) => toEntity<Transaction>(d));
   }
 
+  /** Applique un delta (positif ou négatif) au solde et renvoie le nouveau solde, ou null si l'utilisateur est absent. */
   async adjustBalance(userId: string, delta: number, session?: ClientSession): Promise<number | null> {
     const result = await this.users.findOneAndUpdate(
       { _id: userId },
@@ -79,9 +90,10 @@ export class MongoTransactionRepository implements ITransactionRepository {
     return result ? (result.balance ?? 0) : null;
   }
 
+  /** Débit conditionnel atomique : ne débite que si le solde couvre le montant. Renvoie false sinon. */
   async tryDebit(userId: string, amount: number, session?: ClientSession): Promise<boolean> {
-    // The {$gte} guard and the {$inc} run as a single atomic document update,
-    // so two concurrent debits can't both pass the balance check.
+    // La garde {$gte} et le {$inc} s'exécutent comme une seule mise à jour atomique du
+    // document, donc deux débits concurrents ne peuvent pas passer tous deux le contrôle de solde.
     const result = await this.users.findOneAndUpdate(
       { _id: userId, balance: { $gte: amount } },
       { $inc: { balance: -amount } },
@@ -96,8 +108,9 @@ export class MongoTransactionRepository implements ITransactionRepository {
     return user.balance ?? 0;
   }
 
+  /** Pseudonymisation RGPD : conserve les écritures mais rompt le lien avec l'identité. */
   async pseudonymiseUser(userId: string): Promise<void> {
-    // Keep the ledger rows (accounting retention) but sever the identity link.
+    // Garde les lignes du grand livre (rétention comptable) mais coupe le lien d'identité.
     await this.transactions.updateMany({ userId }, { $set: { userId: "[deleted]" } });
   }
 }

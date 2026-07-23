@@ -1,29 +1,38 @@
 import type { RefreshToken } from "../../entities/refresh-token.entity.js";
 
+/**
+ * Repository des refresh tokens (une ligne = une session). Tokens stockés hachés en sha256.
+ * Chaque rotation crée une nouvelle ligne rattachée à une même famille de session
+ * (sessionId) ; la révocation et la détection de réutilisation s'appuient sur cette famille.
+ * Les lignes conservent l'historique IP / User-Agent, d'où les opérations dédiées au RGPD.
+ */
 export interface IRefreshTokenRepository {
   create(data: Omit<RefreshToken, "id">): Promise<RefreshToken>;
   findActiveByTokenHash(tokenHash: string): Promise<RefreshToken | null>;
-  // Atomically claim (revoke) an active token, returning its pre-image. Null if it
-  // wasn't active — closes the rotation race so only one concurrent refresh wins.
+  // Réclame (révoque) atomiquement un token actif et retourne sa pré-image. Null s'il
+  // n'était pas actif — clôt la course de rotation pour qu'un seul refresh concurrent gagne.
   claimByTokenHash(tokenHash: string): Promise<RefreshToken | null>;
-  // Lookup regardless of revoked status — used to detect reuse of a rotated token.
+  // Recherche indépendamment du statut de révocation — sert à détecter la réutilisation
+  // d'un token déjà tourné (signal de compromission).
   findByTokenHash(tokenHash: string): Promise<RefreshToken | null>;
-  // Active (non-revoked, non-expired) sessions for the "active sessions" view.
+  // Sessions actives (non révoquées, non expirées) pour la vue « sessions actives ».
   findActiveByUserId(userId: string): Promise<RefreshToken[]>;
-  // Every (not-yet-TTL-purged) session row for a user, active or revoked — the
-  // retained IP/User-Agent/timestamp history for the GDPR data export.
+  // Toutes les lignes de session d'un utilisateur pas encore purgées par le TTL, actives ou
+  // révoquées — l'historique IP / User-Agent / horodatages conservé pour l'export RGPD.
   listAllForUser(userId: string): Promise<RefreshToken[]>;
   revokeByTokenHash(tokenHash: string): Promise<boolean>;
-  // Revoke one session by id, scoped to its owner. Returns false if not found/not theirs.
+  // Révoque une session par id, restreinte à son propriétaire. false si introuvable / pas la sienne.
   revokeById(id: string, userId: string): Promise<boolean>;
-  // Revoke a whole session family (all rotations of one login). `userId` scopes it
-  // to the caller when the call is user-initiated; omit for internal reuse-detection.
+  // Révoque une famille de session entière (toutes les rotations d'un même login). `userId`
+  // la restreint à l'appelant quand l'action est initiée par l'utilisateur ; à omettre pour
+  // la détection interne de réutilisation.
   revokeBySessionId(sessionId: string, userId?: string): Promise<boolean>;
   revokeAllForUser(userId: string): Promise<void>;
-  // Hard-delete every session row for a user (GDPR erasure) — unlike revokeAllForUser
-  // this removes the rows outright, purging the retained IP/User-Agent history.
+  // Supprime physiquement toutes les lignes de session d'un utilisateur (effacement RGPD) —
+  // contrairement à revokeAllForUser, retire les documents et purge l'historique IP/User-Agent.
   deleteAllForUser(userId: string): Promise<void>;
-  // One-time GDPR storage-limitation backfill: set expiresAtDate (createdAt + 7d) on
-  // legacy rows missing it so the TTL index reaps them. Idempotent; returns rows touched.
+  // Backfill RGPD ponctuel (limitation de conservation) : pose expiresAtDate (createdAt + 7j)
+  // sur les anciennes lignes qui en manquent pour que l'index TTL les récupère. Idempotent ;
+  // retourne le nombre de lignes modifiées.
   backfillMissingExpiresAtDate(): Promise<number>;
 }

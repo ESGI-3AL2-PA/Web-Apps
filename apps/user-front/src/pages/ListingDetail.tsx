@@ -12,6 +12,12 @@ import AuthedImage from "../components/AuthedImage";
 import { useDialog } from "../components/dialog-context";
 import { useTags } from "../app/tags-context";
 
+/**
+ * Page de détail d'une annonce : galerie d'images, encart vendeur, prix,
+ * description et tags. Selon le rôle de l'utilisateur, propose de prendre le
+ * service (création de contrat + signature), de contacter le vendeur, ou de
+ * gérer sa propre annonce. L'id de l'annonce vient de l'URL.
+ */
 export default function ListingDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -53,7 +59,7 @@ export default function ListingDetail() {
     if (!listing || !user) return;
     setContacting(true);
     try {
-      // Reuse an existing direct conversation with this seller if there is one.
+      // Réutilise une conversation directe existante avec ce vendeur s'il y en a une.
       const mine = await getConversations({ participantId: user.id });
       const existing = mine.find(
         (c) => c.type === "direct" && c.participants.includes(listing.authorId) && c.participants.includes(user.id),
@@ -68,8 +74,9 @@ export default function ListingDetail() {
     }
   };
 
-  // Take the service → creates a contract (escrow + Documenso e-signature) and
-  // opens the caller's signing page. The escrowed price is derived server-side.
+  // Prendre le service → crée un contrat (séquestre + signature électronique
+  // Documenso) et ouvre la page de signature de l'appelant. Le prix mis sous
+  // séquestre est calculé côté serveur.
   const takeService = async () => {
     if (!listing || !user) return;
     const ok = await confirm({
@@ -86,8 +93,8 @@ export default function ListingDetail() {
       navigate("/mes-contrats");
     } catch (e) {
       const status = (e as { response?: { status?: number } })?.response?.status;
-      // 400 = not enough points; 5xx = the e-signature service is down (don't blame the
-      // listing's state); anything else = the listing is gone/already taken.
+      // 400 = pas assez de points ; 5xx = service de signature indisponible (ne
+      // pas incriminer l'état de l'annonce) ; autre = annonce disparue ou déjà prise.
       const message =
         status === 400
           ? t("detail.insufficientFunds")
@@ -115,7 +122,7 @@ export default function ListingDetail() {
       </Link>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_340px]">
-        {/* Gallery */}
+        {/* Galerie */}
         <div className="overflow-hidden rounded-xl border border-base-content/10 bg-base-100">
           <div className="aspect-video w-full bg-base-200">
             {images.length > 0 ? (
@@ -146,7 +153,7 @@ export default function ListingDetail() {
           )}
         </div>
 
-        {/* Sidebar */}
+        {/* Panneau latéral */}
         <aside className="space-y-4">
           <div className="rounded-xl border border-base-content/10 bg-base-100 p-5">
             <h1 className="text-xl font-bold text-base-content">{listing.title}</h1>

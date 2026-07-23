@@ -1,3 +1,6 @@
+// Cas d'usage — étape « token » du flux SSO OAuth du client desktop admin. Échange
+// le code d'autorisation à usage unique (émis par desktop-authorize) contre un access
+// token, en vérifiant PKCE et en re-jouant le contrôle de rôle au moment de l'échange.
 import { createHash, timingSafeEqual } from "crypto";
 import type { IAuthorizationCodeRepository } from "../repositories/AuthorizationCode/authorization-code.repository.js";
 import type { IUserReaderRepository } from "../repositories/User/user-reader.repository.js";
@@ -5,7 +8,7 @@ import type { IDistrictAdminReaderRepository } from "../repositories/DistrictAdm
 import { ADMIN_SSO_ROLES } from "../sso/client-registry.js";
 import { lookupAdminDistrictId, signAccessToken } from "./issue-tokens.js";
 
-/** Mirrors the access-token lifetime in issue-tokens.ts. */
+/** Reflète la durée de vie de l'access token dans issue-tokens.ts. */
 const ACCESS_TOKEN_TTL_SECONDS = 15 * 60;
 
 export type TokenOutcome =
@@ -28,13 +31,14 @@ const constantTimeEquals = (a: string, b: string): boolean => {
 };
 
 /**
- * Redeems a one-shot authorization code for an access token.
+ * Échange un code d'autorisation à usage unique contre un access token.
  *
- * The token is the ordinary first-party token from `signAccessToken` — same issuer,
- * same `aud: "api"`, same claims. A desktop-specific audience was considered and
- * rejected: the api must keep accepting "api" for admin-front regardless, so a
- * separate audience would be a label rather than a boundary, and it would break the
- * client's own /auth/userinfo call, which pins `audience: "api"`.
+ * Le token renvoyé est le token first-party ordinaire produit par `signAccessToken` —
+ * même émetteur, même `aud: "api"`, mêmes claims. Une audience spécifique au client
+ * desktop a été envisagée puis écartée : l'api doit de toute façon continuer d'accepter
+ * "api" pour l'admin-front, donc une audience distincte serait une étiquette plutôt
+ * qu'une frontière de sécurité, et casserait l'appel /auth/userinfo du client lui-même,
+ * qui épingle `audience: "api"`.
  */
 export const desktopTokenUseCase = (
   authorizationCodeRepo: IAuthorizationCodeRepository,
@@ -44,33 +48,35 @@ export const desktopTokenUseCase = (
   return async (input: TokenInput): Promise<TokenOutcome> => {
     const codeHash = createHash("sha256").update(input.code).digest("hex");
 
-    // Atomic single-use claim, first: a replayed code finds nothing and dies here,
-    // before any of the checks below can leak whether it was otherwise well-formed.
+    // Revendication atomique à usage unique, en premier : un code rejoué ne trouve rien
+    // et échoue ici, avant que les contrôles ci-dessous ne puissent révéler s'il était
+    // par ailleurs bien formé.
     const stored = await authorizationCodeRepo.claimByCodeHash(codeHash);
     if (!stored) return { status: "invalid_grant" };
 
     if (new Date(stored.expiresAt) < new Date()) return { status: "invalid_grant" };
 
-    // Bound to the client and the exact redirect_uri it was minted for. Byte
-    // comparison against the stored string — never re-parse, since a URL that
-    // re-serialises differently would compare unequal for no security reason.
+    // Lié au client et à l'exact redirect_uri pour lequel le code a été émis. Comparaison
+    // octet par octet avec la chaîne stockée — ne jamais ré-analyser l'URL, car une URL
+    // qui se re-sérialise différemment comparerait inégale sans aucune raison de sécurité.
     if (stored.clientId !== input.clientId) return { status: "invalid_grant" };
     if (stored.redirectUri !== input.redirectUri) return { status: "invalid_grant" };
 
-    // PKCE: proves this exchange comes from the process that started the flow.
-    // For a public client on a shared machine it is the only such proof.
+    // PKCE : prouve que cet échange provient bien du processus qui a initié le flux.
+    // Pour un client public sur une machine partagée, c'est la seule preuve de ce genre.
     const challenge = createHash("sha256").update(input.codeVerifier).digest("base64url");
     if (!constantTimeEquals(challenge, stored.codeChallenge)) return { status: "invalid_grant" };
 
-    // Re-read the user and re-run the whole gate. Authorize and token are separate
-    // requests up to a minute apart; a demotion or ban in between must not be
-    // papered over by a code that was valid when it was issued.
+    // Relit l'utilisateur et rejoue tout le contrôle d'accès. Authorize et token sont
+    // deux requêtes distinctes espacées d'une minute au plus ; une rétrogradation ou un
+    // bannissement survenu entre-temps ne doit pas être masqué par un code qui était
+    // valide au moment de son émission.
     const user = await userReader.findById(stored.userId);
     if (!user) return { status: "invalid_grant" };
     if (user.banned || !user.emailVerified || !ADMIN_SSO_ROLES.has(user.role)) {
       return { status: "access_denied" };
     }
-    // Mandatory MFA (prod): a code minted just before enrollment must not be redeemable.
+    // MFA obligatoire (prod) : un code émis juste avant l'enrôlement ne doit pas être échangeable.
     if (process.env.NODE_ENV === "production" && !user.totpEnabled) return { status: "access_denied" };
 
     const adminDistrictId = await lookupAdminDistrictId(user, districtAdminReader);

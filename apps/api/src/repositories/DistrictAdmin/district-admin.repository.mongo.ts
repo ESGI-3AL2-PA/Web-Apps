@@ -6,6 +6,10 @@ import type { IDistrictAdminRepository } from "./district-admin.repository.js";
 
 type DistrictAdminDoc = WithMongoId<DistrictAdmin>;
 
+/**
+ * Implémentation Mongo du repository des administrateurs de quartier.
+ * Persiste la collection des rattachements (userId ↔ districtId).
+ */
 export class MongoDistrictAdminRepository implements IDistrictAdminRepository {
   private collection: Collection<DistrictAdminDoc>;
 
@@ -57,7 +61,8 @@ export class MongoDistrictAdminRepository implements IDistrictAdminRepository {
   }
 
   async ensureIndexes(): Promise<void> {
-    // Unique compound index — one user can only be admin once per district.
+    // Index composé unique — un utilisateur ne peut être administrateur qu'une seule
+    // fois par quartier.
     await this.collection.createIndex({ districtId: 1, userId: 1 }, { unique: true });
   }
 }

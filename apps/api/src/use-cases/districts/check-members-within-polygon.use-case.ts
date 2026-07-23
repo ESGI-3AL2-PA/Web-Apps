@@ -1,3 +1,4 @@
+// Cas d'usage (couche districts) : garde-fou de la frontière d'un quartier.
 import type { GeoJson } from "../../entities/district.entity.js";
 import type { IUserRepository } from "../../repositories/User/user.repository.js";
 import { getCoordinatesFromAddress } from "../../services/address.service.js";
@@ -5,13 +6,20 @@ import { isPointInGeometry } from "../../services/point-in-polygon.js";
 import { logger } from "../../logger.js";
 
 /**
- * Guards the district-boundary invariant "every member's address is inside the polygon".
- * Geocodes each current member and returns those whose address falls outside `polygon`.
- * A member whose address can't be geocoded is skipped (logged) rather than treated as
- * outside, so a transient geocoder failure can't wrongly block a legitimate boundary edit.
+ * Garantit l'invariant de frontière de quartier « l'adresse de chaque membre est dans le
+ * polygone ». Géocode chaque membre actuel et renvoie ceux dont l'adresse tombe hors de
+ * `polygon`. Un membre dont l'adresse ne peut pas être géocodée est ignoré (loggé) plutôt
+ * que considéré comme hors zone : ainsi une panne transitoire du géocodeur ne peut pas
+ * bloquer à tort une modification légitime de frontière.
  *
- * NB: this geocodes once per member — acceptable for realistic district sizes, but it is a
- * fan-out of external calls on each create/update with a boundary.
+ * NB : cela géocode une fois par membre — acceptable pour des tailles de quartier
+ * réalistes, mais c'est un fan-out d'appels externes à chaque création/mise à jour avec
+ * frontière.
+ *
+ * @param userRepository repository des utilisateurs (pour lister les membres du quartier)
+ * @param districtId identifiant du quartier
+ * @param polygon géométrie GeoJSON de la frontière à valider
+ * @returns la liste { id, address } des membres situés hors du polygone
  */
 export const checkMembersWithinPolygon = async (
   userRepository: IUserRepository,
@@ -27,6 +35,7 @@ export const checkMembersWithinPolygon = async (
       const geo = await getCoordinatesFromAddress(member.address);
       point = geo.coordinates as [number, number];
     } catch (err) {
+      // Échec de géocodage : on saute ce membre (voir NB ci-dessus) au lieu de le compter hors zone.
       logger.warn({ err, userId: member.id, districtId }, "polygon guard: could not geocode member — skipped");
       continue;
     }

@@ -7,9 +7,12 @@ import { DistrictGuard } from "./DistrictGuard";
 import NotFound from "../pages/NotFound";
 import ServerError from "../pages/ServerError";
 
-// Route components are code-split: each becomes its own chunk fetched on
-// navigation, keeping the initial bundle small. NotFound stays eager since it
-// doubles as the router errorElement.
+// Définition du routeur de l'app user-front. Toutes les routes sont protégées et
+// imbriquées sous le MainLayout ; les chemins sont en français (ex. /recherche, /annonce/:id).
+
+// Composants de route code-splittés : chacun devient son propre chunk chargé à la
+// navigation, ce qui garde le bundle initial léger. NotFound et ServerError restent
+// importés en dur (eager) car ils servent aussi de gestionnaires d'erreur du routeur.
 const Home = lazy(() => import("../pages/Home"));
 const Search = lazy(() => import("../pages/Search"));
 const ListingDetail = lazy(() => import("../pages/ListingDetail"));
@@ -25,6 +28,9 @@ const Incidents = lazy(() => import("../pages/Incidents"));
 
 export const router = createBrowserRouter([
   {
+    // Branche unique : n'admet que les rôles "user" et "admin" ; tout autre rôle
+    // (superAdmin) est redirigé vers la console admin. Le DistrictGuard bloque ensuite
+    // les utilisateurs sans quartier avant d'atteindre le layout.
     element: (
       <ProtectedRoute roles={["user", "admin"]} forbiddenRedirect={config.adminUrl}>
         <DistrictGuard>
@@ -32,7 +38,7 @@ export const router = createBrowserRouter([
         </DistrictGuard>
       </ProtectedRoute>
     ),
-    // Renders a themed 500 page for genuine loader/render errors (NotFound is the catch-all 404 below).
+    // Affiche une page 500 thémée pour les vraies erreurs de loader/rendu (le 404 fourre-tout est la route "*" ci-dessous).
     errorElement: <ServerError />,
     children: [
       { path: "/", element: <Home /> },

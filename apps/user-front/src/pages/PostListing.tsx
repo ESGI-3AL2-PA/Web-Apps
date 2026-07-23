@@ -7,6 +7,11 @@ import { getTags } from "../api-service/tags.service";
 import { tagLabel } from "../lib/tag-label";
 import { uploadImages } from "../api-service/uploads.service";
 
+/**
+ * Page : formulaire de dépôt d'une annonce (titre, prix en points, catégorie,
+ * description, jusqu'à 8 photos). Téléverse d'abord les images, puis crée
+ * l'annonce et redirige vers son détail.
+ */
 export default function PostListing() {
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
@@ -34,11 +39,13 @@ export default function PostListing() {
     };
   }, []);
 
-  // Revoke the current preview URLs when they're replaced (re-pick) or on unmount.
+  // Révoque les object URLs d'aperçu courants quand ils sont remplacés
+  // (re-sélection) ou au démontage, pour éviter les fuites mémoire.
   useEffect(() => () => previews.forEach((url) => URL.revokeObjectURL(url)), [previews]);
 
   const onFiles = (list: FileList | null) => {
     if (!list) return;
+    // On borne à 8 photos maximum.
     const picked = Array.from(list).slice(0, 8);
     setFiles(picked);
     setPreviews(picked.map((f) => URL.createObjectURL(f)));
@@ -49,6 +56,7 @@ export default function PostListing() {
     setError(null);
     setSubmitting(true);
     try {
+      // Téléverse les images d'abord ; leurs identifiants sont ensuite joints à l'annonce.
       const images = files.length > 0 ? await uploadImages(files) : [];
       const body: CreateListingDto = {
         title: title.trim(),

@@ -1,39 +1,44 @@
 /**
- * Redirect-URI policy for the desktop app's authorization-code flow (RFC 8252).
+ * Politique de redirect_uri pour le flux authorization-code de l'app desktop (RFC 8252).
  *
- * This is the open-redirect boundary: whatever passes here is a URL the authorize
- * endpoint will send the browser to, carrying an authorization code. It is a
- * whitelist of shapes, not a blacklist.
+ * C'est la frontière anti-open-redirect : tout ce qui passe ici est une URL vers laquelle
+ * l'endpoint authorize enverra le navigateur, porteuse d'un code d'autorisation. C'est
+ * une liste blanche de formes, pas une liste noire.
  *
- * The port is deliberately unconstrained. A native app cannot reserve a fixed port
- * (it may already be taken), so RFC 8252 §7.3 requires accepting any port on the
- * loopback interface — CallbackServer binds 127.0.0.1:0 and takes whatever the OS
- * gives it. An exact-match allowlist of URIs, the usual OAuth answer, cannot work here.
+ * Le port est volontairement non contraint. Une app native ne peut pas réserver un port
+ * fixe (il peut être déjà pris), donc RFC 8252 §7.3 impose d'accepter n'importe quel port
+ * sur l'interface loopback — CallbackServer bind sur 127.0.0.1:0 et prend ce que l'OS lui
+ * donne. Une allowlist d'URIs à correspondance exacte, la réponse OAuth habituelle, est
+ * ici impossible.
  *
- * Residual risk, inherent to the pattern: any local process can bind a loopback port,
- * so a hostile app on the same machine can register itself as the callback and race
- * for the code. PKCE is what makes an intercepted code useless — which is why the
- * challenge is mandatory rather than optional in this flow.
+ * Risque résiduel, inhérent au motif : n'importe quel processus local peut binder un port
+ * loopback, donc une app hostile sur la même machine peut s'enregistrer comme callback et
+ * courir pour intercepter le code. C'est PKCE qui rend un code intercepté inutile — d'où
+ * le caractère obligatoire (et non optionnel) du challenge dans ce flux.
  */
 
-/** The one path the desktop callback server serves (CallbackServer.java). */
+/** L'unique chemin servi par le serveur de callback desktop (CallbackServer.java). */
 export const CALLBACK_PATH = "/callback";
 
 /**
- * `URL.hostname` returns IPv6 literals *with* brackets, so the v6 loopback must be
- * matched as "[::1]" — a bare "::1" comparison silently never matches, which is the
- * bug the old login-page `isLoopback` shipped with.
+ * `URL.hostname` renvoie les littéraux IPv6 *avec* crochets ; le loopback v6 doit donc
+ * être comparé à "[::1]" — une comparaison à "::1" nu échouerait silencieusement à matcher.
  *
- * `localhost` is deliberately absent. RFC 8252 §8.3 prefers literal IPs because
- * `localhost` goes through name resolution and can be repointed by hosts-file or
- * DNS tampering on a compromised machine. The Java client already emits 127.0.0.1,
- * so refusing `localhost` costs it nothing.
+ * `localhost` est délibérément absent. RFC 8252 §8.3 préfère les IP littérales car
+ * `localhost` passe par la résolution de nom et peut être redirigé par altération du
+ * fichier hosts ou du DNS sur une machine compromise. Le client Java émet déjà 127.0.0.1,
+ * donc refuser `localhost` ne lui coûte rien.
  */
 const LOOPBACK_HOSTS: ReadonlySet<string> = new Set(["127.0.0.1", "[::1]"]);
 
-/** Bounds the work done on an attacker-supplied string before it is parsed. */
+/** Borne le travail effectué sur une chaîne fournie par l'attaquant avant de la parser. */
 const MAX_LENGTH = 512;
 
+/**
+ * Renvoie true ssi `raw` est un callback loopback autorisé pour le SSO desktop.
+ * Applique en cascade : longueur bornée, parsing URL, http uniquement, hôte loopback,
+ * chemin /callback exact, ni query/fragment/userinfo.
+ */
 export const isAllowedLoopbackRedirect = (raw: string): boolean => {
   if (typeof raw !== "string" || raw.length === 0 || raw.length > MAX_LENGTH) return false;
 
@@ -44,21 +49,23 @@ export const isAllowedLoopbackRedirect = (raw: string): boolean => {
     return false;
   }
 
-  // Plain http only: loopback is exempt from TLS, and we never issue an https callback.
+  // http en clair uniquement : le loopback est exempt de TLS, et on n'émet jamais de
+  // callback https.
   if (url.protocol !== "http:") return false;
 
-  // Parsed, not raw — the URL parser normalises octal/decimal IP spellings
-  // (0177.0.0.1 -> 127.0.0.1), so obfuscated forms cannot smuggle a different host past this.
+  // Sur l'URL parsée, pas la brute — le parseur normalise les écritures octales/décimales
+  // des IP (0177.0.0.1 -> 127.0.0.1), donc les formes obfusquées ne peuvent pas faire
+  // passer un hôte différent ici.
   if (!LOOPBACK_HOSTS.has(url.hostname)) return false;
 
-  // Fixed path, exact match — no prefix matching, no traversal.
+  // Chemin fixe, correspondance exacte — pas de préfixe, pas de traversée.
   if (url.pathname !== CALLBACK_PATH) return false;
 
-  // No pre-seeded query/fragment (they would collide with the code/state we append),
-  // and no userinfo (the "http://evil.com@127.0.0.1/" confusion trick).
+  // Ni query/fragment pré-remplis (ils entreraient en collision avec le code/state qu'on
+  // ajoute), ni userinfo (le piège de confusion « http://evil.com@127.0.0.1/ »).
   if (url.search !== "" || url.hash !== "" || url.username !== "" || url.password !== "") return false;
 
-  // Any port, including none (implicit :80). URL rejects out-of-range ports at parse
-  // time, so reaching here means the port is either absent or a valid 1-65535.
+  // N'importe quel port, y compris aucun (:80 implicite). URL rejette les ports hors
+  // plage au parsing, donc arriver ici signifie port absent ou valide 1-65535.
   return true;
 };

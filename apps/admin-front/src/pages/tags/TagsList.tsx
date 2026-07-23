@@ -1,3 +1,6 @@
+// Page de gestion des tags (référentiel global, non scopé par quartier) : liste recherchable,
+// création et édition en modale (clé technique + libellés/descriptions bilingues fr/en),
+// suppression avec confirmation.
 import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import type { CreateTagDto, TagResponseDto, UpdateTagDto } from "@repo/contracts";
@@ -14,6 +17,7 @@ import { useToast } from "../../components/Toast";
 import { useAsyncAction } from "../../hooks/useAsyncAction";
 
 export default function TagsList() {
+  // `t` de i18next est aliasé en `tr` : dans les cellules du tableau, `t` désigne le tag de la ligne.
   const { t: tr } = useTranslation();
   const list = useList<TagResponseDto>(listTags);
   const toast = useToast();
@@ -99,6 +103,10 @@ export default function TagsList() {
   );
 }
 
+/**
+ * Modale de création/édition d'un tag (création si `tag` est null, sinon édition).
+ * @param onSaved appelé après enregistrement, avec `created` = true si c'était une création.
+ */
 function TagEdit({
   tag,
   onClose,
@@ -123,10 +131,10 @@ function TagEdit({
     setError(null);
     try {
       const label = { fr: labelFr, en: labelEn };
-      // Only emit description when at least one language is filled; keep it optional.
+      // N'émet la description que si au moins une langue est renseignée ; elle reste optionnelle.
       const description = descFr || descEn ? { fr: descFr || undefined, en: descEn || undefined } : undefined;
       if (tag) {
-        // `name` is the stable key — immutable on edit, so it is not sent.
+        // `name` est la clé stable — immuable en édition, donc non envoyée.
         const body: UpdateTagDto = { label, description };
         await updateTag(tag.id, body);
       } else {

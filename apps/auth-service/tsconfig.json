@@ -1,3 +1,5 @@
+// Config TypeScript de base de l'auth-service : hérite du preset Node partagé et
+// compile src/ (rootDir) vers dist/ (outDir).
 {
   "extends": "@repo/typescript-config/node.json",
   "include": ["src"],

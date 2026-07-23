@@ -3,20 +3,27 @@ import { useAuth } from "@repo/hooks";
 import { checkApiHealth } from "../api-service/health";
 import ServerError from "../pages/ServerError";
 
-// After login, verify the api is reachable before rendering the app. While the
-// check is in flight we block on a loader (no flash of an app that would fail every
-// request); if the api is down we show a 500 page instead.
+/**
+ * Composant garde (wrapper) : une fois l'utilisateur authentifié, vérifie que l'api
+ * est joignable avant de rendre l'application.
+ *
+ * Pendant la vérification, on bloque sur un loader (pour ne pas laisser apparaître une
+ * appli qui échouerait à chaque requête) ; si l'api est injoignable on affiche la page 500
+ * (avec un bouton pour réessayer) à la place des enfants.
+ */
 export default function ApiHealthGuard({ children }: { children: ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
   const [status, setStatus] = useState<"checking" | "ok" | "down">("checking");
   const [retrying, setRetrying] = useState(false);
 
+  // Interroge l'endpoint de santé de l'api et met à jour le statut ("ok" / "down").
   const check = useCallback(async () => {
     const ok = await checkApiHealth();
     setStatus(ok ? "ok" : "down");
     return ok;
   }, []);
 
+  // Relance la vérification dès que l'authentification est résolue et l'utilisateur connecté.
   useEffect(() => {
     if (isLoading || !isAuthenticated) return;
     setStatus("checking");
@@ -32,7 +39,8 @@ export default function ApiHealthGuard({ children }: { children: ReactNode }) {
     }
   }, [check]);
 
-  // Auth still resolving or logged out → let AuthProvider / ProtectedRoute handle it.
+  // Auth encore en cours de résolution ou utilisateur déconnecté → on laisse
+  // AuthProvider / ProtectedRoute gérer le cas (pas de vérification de santé ici).
   if (isLoading || !isAuthenticated) return <>{children}</>;
   if (status === "down") return <ServerError onRetry={retry} retrying={retrying} />;
   if (status === "checking") {

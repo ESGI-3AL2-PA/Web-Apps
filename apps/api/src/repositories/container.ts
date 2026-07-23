@@ -41,6 +41,12 @@ import { MongoSyncChangesRepository } from "./Sync/sync-changes.repository.mongo
 import { MongoSyncConflictsRepository } from "./Sync/sync-conflicts.repository.mongo.js";
 import { MongoSyncWriterRepository } from "./Sync/sync-writer.repository.mongo.js";
 
+// Container d'injection de dépendances des repositories (couche infrastructure).
+//
+// Construit et enregistre chaque repository, puis expose `resolve(name)` pour que
+// les handlers de routes récupèrent leurs dépendances par nom. Selon la config,
+// chaque repository Mongo peut être enveloppé dans son homologue SATAN QL.
+
 import { SatanUserRepository } from "./User/user.repository.satan.js";
 import { SatanListingRepository } from "./Listing/listing.repository.satan.js";
 import { SatanContractRepository } from "./Contract/contract.repository.satan.js";
@@ -54,9 +60,10 @@ import { SatanConversationRepository } from "./Conversation/conversation.reposit
 import { SatanNotificationRepository } from "./Notification/notification.repository.satan.js";
 import { SatanTransactionRepository } from "./Transaction/transaction.repository.satan.js";
 
-// Fields are typed by interface so either the Mongo or the SATAN implementation
-// fits the same slot (see initContainer). The named type keeps resolve() typed
-// (an inline `NonNullable<typeof repositories>` collapses to `never` under our TS pin).
+// Les champs sont typés par interface pour que l'implémentation Mongo ou SATAN
+// occupe indifféremment le même emplacement (voir initContainer). Le type nommé
+// garde resolve() correctement typé (un `NonNullable<typeof repositories>` inline
+// s'effondre en `never` avec la version de TS épinglée du projet).
 type Container = {
   user: IUserRepository;
   listing: IListingRepository;
@@ -71,7 +78,7 @@ type Container = {
   notification: INotificationRepository;
   transaction: ITransactionRepository;
   graph: Neo4jGraphRepository;
-  // Offline sync (H2 ↔ Mongo). No SATAN variants — these are infrastructure, not domain queries.
+  // Synchronisation hors-ligne (H2 ↔ Mongo). Pas de variante SATAN — c'est de l'infrastructure, pas des requêtes métier.
   syncCounter: ICounterRepository;
   syncState: ISyncStateRepository;
   syncChanges: ISyncChangesRepository;
@@ -84,10 +91,10 @@ export type ContainerKeys = keyof Container;
 export { resolve };
 
 /**
- * Builds the repository container. When a SATAN client is supplied (and
- * `SATAN_REPOS` isn't `"false"`), each Mongo repo is wrapped in its SATAN-QL
- * counterpart, which answers the expressible queries through @repo/satan and
- * delegates the rest back to the Mongo repo it wraps.
+ * Construit le container de repositories. Lorsqu'un client SATAN est fourni (et
+ * que `SATAN_REPOS` n'est pas `"false"`), chaque repo Mongo est enveloppé dans son
+ * homologue SATAN QL, qui répond aux requêtes exprimables via @repo/satan et
+ * délègue le reste au repo Mongo qu'il enveloppe.
  */
 export const initContainer = (db: Db, neo4jDriver: Driver, satan?: SatanClient) => {
   const mongo = {
@@ -107,6 +114,7 @@ export const initContainer = (db: Db, neo4jDriver: Driver, satan?: SatanClient) 
 
   const syncCounter = new MongoCounterRepository(db);
 
+  // Active l'enveloppe SATAN uniquement si un client est fourni et n'a pas été désactivé par l'env.
   const useSatan = satan && process.env.SATAN_REPOS !== "false";
 
   const repositories: Container = {
@@ -131,7 +139,7 @@ export const initContainer = (db: Db, neo4jDriver: Driver, satan?: SatanClient) 
   };
   set(repositories);
 
-  // Ensure required indexes exist (idempotent, non-blocking on startup).
+  // Garantit l'existence des index requis (idempotent, non bloquant au démarrage).
   const withIndexes: Array<[string, { ensureIndexes(): Promise<void> }]> = [
     ["district", repositories.district],
     ["districtAdmin", repositories.districtAdmin],
@@ -148,6 +156,7 @@ export const initContainer = (db: Db, neo4jDriver: Driver, satan?: SatanClient) 
     ["syncChanges", repositories.syncChanges],
     ["syncConflicts", repositories.syncConflicts],
   ];
+  // Lance chaque création d'index en arrière-plan ; un échec est loggé sans bloquer le boot.
   for (const [name, repo] of withIndexes) {
     void repo.ensureIndexes().catch((err) => logger.error({ err, name }, "Failed to ensure indexes"));
   }
