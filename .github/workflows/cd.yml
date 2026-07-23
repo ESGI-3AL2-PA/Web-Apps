@@ -77,7 +77,7 @@ jobs:
         run: |
           curl -fsSL https://github.com/getsops/sops/releases/download/v3.9.1/sops-v3.9.1.linux.amd64 -o /usr/local/bin/sops
           chmod +x /usr/local/bin/sops
-          for k in VITE_AUTH_SERVICE_URL VITE_API_URL VITE_APP_URL VITE_ADMIN_URL; do
+          for k in VITE_AUTH_SERVICE_URL VITE_API_URL VITE_APP_URL VITE_ADMIN_URL VITE_LANDING_URL; do
             echo "$k=$(sops -d --input-type dotenv --extract "[\"$k\"]" prod.enc.env)" >> "$GITHUB_ENV"
           done
 
@@ -99,6 +99,7 @@ jobs:
             VITE_API_URL=${{ env.VITE_API_URL }}
             VITE_APP_URL=${{ env.VITE_APP_URL }}
             VITE_ADMIN_URL=${{ env.VITE_ADMIN_URL }}
+            VITE_LANDING_URL=${{ env.VITE_LANDING_URL }}
 
       # Report-only: surface CRITICAL/HIGH fixable CVEs in the Security tab without blocking
       # delivery on unfixable base-image noise.
