@@ -1,70 +1,74 @@
 #!/usr/bin/env bash
 #
-# backup.sh — point-in-time backup of every Connected NeighBours data store:
+# backup.sh — sauvegarde à un instant T de chaque magasin de données Connected NeighBours :
 #
-#   • MongoDB  (app database)                          → mongodump gzip archive
-#   • Neo4j    (graph projection / recommendations)    → neo4j-admin database dump
-#   • MinIO/S3 (voice messages, listing images,        → mc mirror (per bucket)
-#               Documenso PDFs)
+#   • MongoDB  (base applicative)                        → archive gzip mongodump
+#   • Neo4j    (projection graphe / recommandations)     → dump neo4j-admin database
+#   • MinIO/S3 (messages vocaux, images d'annonces,      → mc mirror (par bucket)
+#               PDF Documenso)
 #
-# Everything lands under a single timestamped directory:
+# Tout atterrit sous un unique répertoire horodaté :
 #
-#   $BACKUP_DIR/<UTC-timestamp>/
+#   $BACKUP_DIR/<horodatage-UTC>/
 #     ├── mongo/<db>.archive.gz
 #     ├── neo4j/<database>.dump
 #     └── minio/<bucket>/...
 #
-# Connection settings reuse the .env.dist variable names, so sourcing your env is
-# all the configuration you need:
+# Les paramètres de connexion réutilisent les noms de variables de .env.dist ; sourcer
+# votre env suffit donc comme configuration :
 #
 #   set -a; . ./.env; set +a
 #   ./scripts/backup.sh
 #
-# Run modes (USE_DOCKER):
-#   USE_DOCKER=0  (default) — tools run on the host; `mongodump`, `neo4j-admin`
-#                             and `mc` must be on PATH.
-#   USE_DOCKER=1            — tools run against the compose stack (no host tooling
-#                             needed). Mongo dumps via `docker compose exec`; Neo4j
-#                             and MinIO via one-off `docker compose run` containers
-#                             that reuse the service images/volumes/network.
+# Modes d'exécution (USE_DOCKER) :
+#   USE_DOCKER=0  (défaut) — les outils tournent sur l'hôte ; `mongodump`, `neo4j-admin`
+#                            et `mc` doivent être dans le PATH.
+#   USE_DOCKER=1           — les outils tournent contre la stack compose (aucun outillage
+#                            hôte requis). Mongo est dumpé via `docker compose exec` ; Neo4j
+#                            et MinIO via des conteneurs `docker compose run` jetables qui
+#                            réutilisent les images/volumes/réseau des services.
 #
-# NOTE: a Neo4j Community dump is an *offline* operation — the store must be
-# stopped. In docker mode this script stops the `neo4j` service, dumps, then
-# starts it again. On the host, stop your Neo4j instance before running.
+# NOTE : un dump Neo4j Community est une opération *hors ligne* — le store doit être
+# arrêté. En mode docker, ce script arrête le service `neo4j`, dumpe, puis le
+# redémarre. Sur l'hôte, arrêtez votre instance Neo4j avant de lancer.
 #
 set -euo pipefail
 
-# ── Config (env-driven, .env.dist names reused) ──────────────────────────────
+# ── Config (pilotée par l'env, noms de .env.dist réutilisés) ─────────────────
 MONGODB_URL="${MONGODB_URL:-mongodb://root:root@localhost:27017}"
 MONGODB_DB="${MONGODB_DB:-db}"
 
-NEO4J_DATABASE="${NEO4J_DATABASE:-neo4j}"   # Community default DB name
-# NEO4J_USER / NEO4J_PASSWORD are not needed for an offline dump but are honoured
-# by restore.sh and any online verification step.
+NEO4J_DATABASE="${NEO4J_DATABASE:-neo4j}"   # nom de DB par défaut en édition Community
+# NEO4J_USER / NEO4J_PASSWORD ne sont pas nécessaires pour un dump hors ligne mais sont
+# honorés par restore.sh et toute étape de vérification en ligne.
 
-# Object store — both app buckets live in the same MinIO instance; reuse the
-# MESSAGES_MINIO_* credentials as the canonical ones.
+# Object store — les deux buckets applicatifs vivent dans la même instance MinIO ; on réutilise
+# les identifiants MESSAGES_MINIO_* comme identifiants canoniques.
 MINIO_ENDPOINT="${MESSAGES_MINIO_ENDPOINT:-http://localhost:9000}"
 MINIO_ACCESS_KEY="${MESSAGES_MINIO_ACCESS_KEY:-minioadmin}"
 MINIO_SECRET_KEY="${MESSAGES_MINIO_SECRET_KEY:-minioadmin}"
-# Buckets to back up (space-separated). Defaults match the compose init job.
+# Buckets à sauvegarder (séparés par des espaces). Les défauts correspondent au job d'init compose.
 BACKUP_BUCKETS="${BACKUP_BUCKETS:-messages listings documenso}"
 
 BACKUP_DIR="${BACKUP_DIR:-./backups}"
 USE_DOCKER="${USE_DOCKER:-0}"
 COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.yml}"
 
+# Horodatage UTC servant de nom de répertoire de sortie unique.
 TIMESTAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 OUT_DIR="${BACKUP_DIR%/}/${TIMESTAMP}"
 
+# Affiche l'en-tête du script (lignes 2 à 40) en guise d'aide.
 usage() {
   sed -n '2,40p' "$0"
   exit "${1:-0}"
 }
 case "${1:-}" in -h | --help | help) usage 0 ;; esac
 
+# Wrapper docker compose épinglé sur le fichier compose choisi.
 compose() { docker compose -f "$COMPOSE_FILE" "$@"; }
 
+# Journalisation préfixée, envoyée sur stderr pour ne pas polluer les archives sur stdout.
 log() { printf '[backup] %s\n' "$*" >&2; }
 
 # ── Mongo ────────────────────────────────────────────────────────────────────
@@ -73,7 +77,7 @@ backup_mongo() {
   mkdir -p "${OUT_DIR}/mongo"
   log "MongoDB → ${dest}"
   if [ "$USE_DOCKER" = "1" ]; then
-    # mongodump streams the archive to stdout; -T disables TTY so the pipe is clean.
+    # mongodump streame l'archive sur stdout ; -T désactive le TTY pour garder le pipe propre.
     compose exec -T mongodb \
       mongodump --uri="$MONGODB_URL" --db="$MONGODB_DB" --archive --gzip >"$dest"
   else
@@ -88,8 +92,8 @@ backup_neo4j() {
   if [ "$USE_DOCKER" = "1" ]; then
     log "stopping neo4j service for offline dump"
     compose stop neo4j
-    # One-off container on the neo4j image; it inherits the neo4j_data volume from
-    # the service definition, and we bind-mount the host output dir at /backups.
+    # Conteneur jetable sur l'image neo4j ; il hérite du volume neo4j_data défini par
+    # le service, et on bind-monte le répertoire de sortie hôte sur /backups.
     compose run --rm --no-deps \
       -v "$(pwd)/${OUT_DIR}/neo4j:/backups" \
       neo4j \
@@ -97,7 +101,7 @@ backup_neo4j() {
     log "restarting neo4j service"
     compose start neo4j
   else
-    # Host mode: Neo4j must already be stopped.
+    # Mode hôte : Neo4j doit déjà être arrêté.
     neo4j-admin database dump "$NEO4J_DATABASE" \
       --to-path="${OUT_DIR}/neo4j" --overwrite-destination=true
   fi
@@ -108,8 +112,10 @@ backup_minio() {
   mkdir -p "${OUT_DIR}/minio"
   log "MinIO buckets: ${BACKUP_BUCKETS}"
   if [ "$USE_DOCKER" = "1" ]; then
-    # Run the mc client image on the compose network; `minio` resolves in-network.
+    # Lance l'image du client mc sur le réseau compose ; `minio` s'y résout en interne.
     local endpoint="${MINIO_ENDPOINT}"
+    # Un endpoint localhost/127.0.0.1 ne serait pas joignable depuis le conteneur : on le
+    # réécrit vers le nom de service in-network.
     case "$endpoint" in *localhost* | *127.0.0.1*) endpoint="http://minio:9000" ;; esac
     compose run --rm --no-deps -T \
       -v "$(pwd)/${OUT_DIR}/minio:/backup" \

@@ -1,16 +1,17 @@
-# SOPS config. Encrypts the production secrets file to the team's age recipient(s) so it can
-# be committed safely to this public repo. Only the values are encrypted; keys stay readable.
+# Config SOPS. Chiffre le fichier de secrets de production vers le(s) destinataire(s) age de
+# l'equipe pour qu'il puisse etre commite sans risque dans ce depot public. Seules les valeurs
+# sont chiffrees ; les cles restent lisibles.
 #
-# One-time setup:
-#   1. Generate a key:   age-keygen -o age-key.txt        (keep age-key.txt OUT of git)
-#      → the public key ("age1…") goes below; the private key goes on the VM
-#        (~/.config/sops/age/keys.txt) and into the GitHub secret SOPS_AGE_KEY.
-#   2. Author secrets:   cp .env.dist prod.env            (fill in real values + prod URLs)
-#   3. Encrypt + commit: sops -e prod.env > prod.enc.env  (prod.env stays gitignored;
-#      only prod.enc.env is committed)
-#   4. Edit later with:  sops prod.enc.env
+# Mise en place unique :
+#   1. Generer une cle :   age-keygen -o age-key.txt        (garder age-key.txt HORS de git)
+#      -> la cle publique ("age1...") va ci-dessous ; la cle privee va sur la VM
+#        (~/.config/sops/age/keys.txt) et dans le secret GitHub SOPS_AGE_KEY.
+#   2. Rediger les secrets : cp .env.dist prod.env          (remplir vraies valeurs + URL de prod)
+#   3. Chiffrer + commiter : sops -e prod.env > prod.enc.env (prod.env reste gitignore ;
+#      seul prod.enc.env est commite)
+#   4. Editer ensuite avec : sops prod.enc.env
 creation_rules:
   - path_regex: (^|/)prod\.enc\.env$
-    # Repo-dedicated recipient (private key: age-key.txt, gitignored). Add more
-    # comma-separated recipients to grant additional decryptors.
+    # Destinataire dedie au depot (cle privee : age-key.txt, gitignore). Ajouter d'autres
+    # destinataires separes par des virgules pour accorder de nouveaux dechiffreurs.
     age: age14854y7u2fvpgwuj4qgura5x402z4j0ze4p7t3n83stcd44zugfzqhsy3ku

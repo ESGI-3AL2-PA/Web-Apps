@@ -1,15 +1,16 @@
+# Stack de développement (défaut) : build depuis les sources, hot-reload via bind mount.
 services:
-  # Runs as a single-member replica set: the api's offline-sync watcher uses Change
-  # Streams, which throw on a standalone mongod. A one-member RS with root auth needs
-  # no keyfile (a future multi-member set would). This also unlocks multi-document
-  # transactions.
+  # Tourne comme un replica set à un seul membre : le watcher offline-sync de l'api utilise
+  # les Change Streams, qui échouent sur un mongod standalone. Un RS à un membre avec auth
+  # root n'a pas besoin de keyfile (un futur set multi-membres en aurait besoin). Cela
+  # débloque aussi les transactions multi-documents.
   mongodb:
     image: mongo:8
     restart: unless-stopped
-    # Mongo refuses to start with `BadValue: security.keyFile is required when
-    # authorization is enabled with replica sets` — a keyFile is mandatory whenever
-    # auth AND replication are both on, even for a single-member set. The keyfile is
-    # copied to 0400/mongodb at startup because git cannot preserve mode or ownership.
+    # Mongo refuse de démarrer avec `BadValue: security.keyFile is required when
+    # authorization is enabled with replica sets` — un keyFile est obligatoire dès que
+    # auth ET réplication sont tous deux actifs, même pour un set à un membre. Le keyfile
+    # est copié en 0400/mongodb au démarrage car git ne préserve ni mode ni propriétaire.
     command:
       - bash
       - -c
@@ -31,9 +32,9 @@ services:
       retries: 5
       start_period: 20s
 
-  # One-shot, idempotent: initiates the replica set on a fresh volume and exits.
-  # Everything that talks to Mongo waits on it completing, so no app ever connects
-  # before rs0 has a primary.
+  # One-shot idempotent : initialise le replica set sur un volume vierge puis s'arrête.
+  # Tout ce qui parle à Mongo attend son achèvement, donc aucune app ne se connecte avant
+  # que rs0 n'ait un primaire.
   mongo-init:
     image: mongo:8
     restart: "no"
@@ -55,8 +56,8 @@ services:
         rs.initiate({ _id: "rs0", members: [{ _id: 0, host: "mongodb:27017" }] });
         print("rs0 initiated");
 
-  # Unauthenticated Mongo admin UI on :8081 (dev only — the prod compose puts it
-  # behind HTTP basic auth).
+  # UI d'administration Mongo sans authentification sur :8081 (dev uniquement — le compose
+  # prod la place derrière une auth HTTP basic).
   mongo-express:
     image: mongo-express:1.0.2
     restart: on-failure
@@ -87,16 +88,16 @@ services:
       retries: 5
       start_period: 30s
 
-  # Local SMTP sink. Documenso requires an SMTP transport to boot; mailpit
-  # accepts everything and exposes a web UI on 8025 so we can read the signing
-  # invitation emails (and grab the signing links) during local E2E testing.
+  # Puits SMTP local. Documenso exige un transport SMTP pour démarrer ; mailpit accepte
+  # tout et expose une UI web sur 8025 pour lire les emails d'invitation à signer (et en
+  # récupérer les liens de signature) lors des tests E2E locaux.
   mailpit:
     image: axllent/mailpit:v1.20.0
     ports:
       - "${MAILPIT_SMTP_PORT:-1025}:1025"
       - "${MAILPIT_UI_PORT:-8025}:8025"
 
-  # Dedicated Postgres for Documenso (it is Prisma/Postgres; cannot share Mongo).
+  # Postgres dédié à Documenso (Prisma/Postgres ; ne peut pas partager Mongo).
   documenso-db:
     image: postgres:15
     ports:
@@ -113,11 +114,11 @@ services:
       timeout: 5s
       retries: 5
 
-  # Self-hosted Documenso (community edition). Stores uploaded/signed PDFs in MinIO
-  # (S3 transport — required for the api to download the PDF for in-app preview),
-  # mails via mailpit, signs with a local dev P12 cert (scripts/gen-documenso-cert.sh).
-  # Browser-facing on http://localhost:${DOCUMENSO_PORT:-3030}; the api reaches it
-  # in-network at http://documenso:3030 and its webhooks reach the api at api:3000.
+  # Documenso auto-hébergé (édition community). Stocke les PDFs uploadés/signés dans MinIO
+  # (transport S3 — requis pour que l'api télécharge le PDF et l'affiche en aperçu in-app),
+  # envoie les mails via mailpit, signe avec un cert P12 de dev local (scripts/gen-documenso-cert.sh).
+  # Côté navigateur sur http://localhost:${DOCUMENSO_PORT:-3030} ; l'api le joint en réseau
+  # interne sur http://documenso:3030 et ses webhooks atteignent l'api sur api:3000.
   documenso:
     image: documenso/documenso:v2.15.0
     depends_on:
@@ -127,8 +128,8 @@ services:
         condition: service_started
       minio-createbucket:
         condition: service_completed_successfully
-    # Same host/container port so the app's internal job queue (which posts jobs —
-    # incl. outbound email — to NEXT_PUBLIC_WEBAPP_URL) can reach itself over loopback.
+    # Même port hôte/conteneur pour que la file de jobs interne de l'app (qui poste des
+    # jobs — dont l'email sortant — vers NEXT_PUBLIC_WEBAPP_URL) se joigne elle-même en loopback.
     ports:
       - "${DOCUMENSO_PORT:-3030}:${DOCUMENSO_PORT:-3030}"
     extra_hosts:
@@ -142,13 +143,13 @@ services:
       NEXT_PRIVATE_ENCRYPTION_SECONDARY_KEY: ${DOCUMENSO_ENCRYPTION_SECONDARY_KEY:-documenso-dev-encryption-key-secondary}
       NEXT_PUBLIC_WEBAPP_URL: http://localhost:${DOCUMENSO_PORT:-3030}
       NEXT_PRIVATE_INTERNAL_WEBAPP_URL: http://localhost:${DOCUMENSO_PORT:-3030}
-      # Documenso blocks webhooks to private/loopback addresses (SSRF guard). Our
-      # api runs in-network as `api`, so allowlist it (host.docker.internal kept for
-      # the case where the api is run on the host via `npm run dev`).
+      # Documenso bloque les webhooks vers les adresses privées/loopback (garde-fou SSRF).
+      # Notre api tourne en réseau interne sous le nom `api`, on l'ajoute donc à l'allowlist
+      # (host.docker.internal conservé pour le cas où l'api tourne sur l'hôte via `npm run dev`).
       NEXT_PRIVATE_WEBHOOK_SSRF_BYPASS_HOSTS: api,host.docker.internal,localhost
       NEXT_PRIVATE_DATABASE_URL: postgres://documenso:documenso@documenso-db:5432/documenso
       NEXT_PRIVATE_DIRECT_DATABASE_URL: postgres://documenso:documenso@documenso-db:5432/documenso
-      # S3 (MinIO) storage so the api can download the PDF via the v1 API for preview.
+      # Stockage S3 (MinIO) pour que l'api télécharge le PDF via l'API v1 en vue de l'aperçu.
       NEXT_PUBLIC_UPLOAD_TRANSPORT: s3
       NEXT_PRIVATE_UPLOAD_ENDPOINT: http://minio:9000
       NEXT_PRIVATE_UPLOAD_FORCE_PATH_STYLE: "true"
@@ -156,7 +157,7 @@ services:
       NEXT_PRIVATE_UPLOAD_BUCKET: documenso
       NEXT_PRIVATE_UPLOAD_ACCESS_KEY_ID: minioadmin
       NEXT_PRIVATE_UPLOAD_SECRET_ACCESS_KEY: minioadmin
-      # SMTP → mailpit (no auth, plaintext).
+      # SMTP → mailpit (sans auth, en clair).
       NEXT_PRIVATE_SMTP_TRANSPORT: smtp-auth
       NEXT_PRIVATE_SMTP_HOST: mailpit
       NEXT_PRIVATE_SMTP_PORT: "1025"
@@ -164,12 +165,12 @@ services:
       NEXT_PRIVATE_SMTP_UNSAFE_IGNORE_TLS: "true"
       NEXT_PRIVATE_SMTP_FROM_NAME: Documenso Local
       NEXT_PRIVATE_SMTP_FROM_ADDRESS: documenso@local.dev
-      # Local dev signing certificate.
+      # Certificat de signature de dev local.
       NEXT_PRIVATE_SIGNING_LOCAL_FILE_PATH: /opt/documenso/cert.p12
       NEXT_PRIVATE_SIGNING_PASSPHRASE: ""
 
-  # S3-compatible object storage. Documenso stores its signed PDFs here, and the
-  # core app stores voice messages + listing images here.
+  # Stockage objet compatible S3. Documenso y range ses PDFs signés, et l'app principale
+  # y range les messages vocaux + images d'annonces.
   minio:
     image: minio/minio:RELEASE.2024-01-16T16-07-38Z
     command: server /data --console-address ":9001"
@@ -187,7 +188,7 @@ services:
       timeout: 5s
       retries: 5
 
-  # One-shot: create the buckets (documenso PDFs + voice messages), then exit.
+  # One-shot : crée les buckets (PDFs documenso + messages vocaux), puis s'arrête.
   minio-createbucket:
     image: minio/mc:RELEASE.2024-01-18T07-03-39Z
     depends_on:
@@ -203,9 +204,10 @@ services:
         mc mb --ignore-existing local/listings;
         exit 0;
 
-  # ── Application services (dev target, hot-reload via bind mount) ─────────────
-  # Running the api in-network means it reaches documenso:3030 and minio:9000 by
-  # name — no host/container split-horizon for the PDF proxy or webhooks.
+  # ── Services applicatifs (cible dev, hot-reload via bind mount) ─────────────
+  # Faire tourner l'api en réseau interne lui permet de joindre documenso:3030 et
+  # minio:9000 par leur nom — pas de split-horizon hôte/conteneur pour le proxy PDF
+  # ou les webhooks.
   api:
     restart: unless-stopped
     build:
@@ -227,17 +229,17 @@ services:
       NEO4J_USER: neo4j
       NEO4J_PASSWORD: password
       AUTH_JWKS_URL: http://auth-service:3001/.well-known/jwks.json
-      # Reach auth-service in-network to purge sessions on account deletion (GDPR erasure).
+      # Joint l'auth-service en réseau interne pour purger les sessions à la suppression de compte (effacement RGPD).
       AUTH_SERVICE_URL: http://auth-service:3001
       INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN:-dev-internal-service-token}
-      # Documenso reached in-network; secrets come from .env (created once in the UI).
+      # Documenso joignable en réseau interne ; secrets issus du .env (créés une fois via l'UI).
       DOCUMENSO_URL: http://documenso:3030
       DOCUMENSO_API_TOKEN: ${DOCUMENSO_API_TOKEN:-}
       DOCUMENSO_TEMPLATE_ID: ${DOCUMENSO_TEMPLATE_ID:-}
       DOCUMENSO_WEBHOOK_SECRET: ${DOCUMENSO_WEBHOOK_SECRET:-}
       DOCUMENSO_SIGNING_LANGUAGE: ${DOCUMENSO_SIGNING_LANGUAGE:-fr}
       CONTRACTS_SIGN_REDIRECT_URL: ${CONTRACTS_SIGN_REDIRECT_URL:-http://localhost:${USER_PORT:-5000}/mes-contrats}
-      # Voice-message storage in MinIO (bucket created by minio-createbucket).
+      # Stockage des messages vocaux dans MinIO (bucket créé par minio-createbucket).
       MESSAGES_MINIO_ENDPOINT: http://minio:9000
       MESSAGES_MINIO_BUCKET: messages
       MESSAGES_MINIO_ACCESS_KEY: minioadmin
@@ -246,10 +248,10 @@ services:
       LISTINGS_MINIO_BUCKET: listings
       LISTINGS_MINIO_ACCESS_KEY: minioadmin
       LISTINGS_MINIO_SECRET_KEY: minioadmin
-    # No hard dependency on `documenso`: the api calls it lazily per contract
-    # request and 502s if it's absent, so the app can run without it.
-    # Wait for the datastores to be READY, not just started — the api connects to
-    # Mongo + Neo4j at boot and fails fast (tsx --watch won't auto-retry) otherwise.
+    # Pas de dépendance dure à `documenso` : l'api l'appelle paresseusement par requête
+    # de contrat et renvoie 502 s'il est absent, donc l'app peut tourner sans lui.
+    # Attendre que les datastores soient PRÊTS, pas seulement démarrés — l'api se connecte
+    # à Mongo + Neo4j au boot et échoue vite (tsx --watch ne réessaie pas tout seul) sinon.
     depends_on:
       mongodb:
         condition: service_healthy
@@ -290,13 +292,15 @@ services:
       MONGODB_URL: mongodb://root:root@mongodb:27017/?replicaSet=rs0
       MONGODB_DB: db
       API_URL: http://api:3000
-      # Shared secret for the api→auth-service internal session-purge call (must match api).
+      # Secret partagé pour l'appel interne api→auth-service de purge de sessions (doit correspondre à celui de l'api).
       INTERNAL_SERVICE_TOKEN: ${INTERNAL_SERVICE_TOKEN:-dev-internal-service-token}
-      # No AUTH_*_KEY[_FILE] set → auth-service generates ephemeral RS256 keys on boot.
-      # Fine for dev (keys rotate on restart; the api's JWKS set refetches on the next
-      # verification miss). Provide stable keys via AUTH_*_KEY_FILE for prod.
-      # Dev email → mailpit (SMTP branch of email.service.ts). Verification/reset
-      # links are read from mailpit's UI (:8025). MFA is opt-in, so no auth bypasses.
+      # Aucune AUTH_*_KEY[_FILE] définie → l'auth-service génère des clés RS256 éphémères
+      # au boot. OK en dev (les clés tournent au redémarrage ; le JWKS set de l'api se
+      # rafraîchit au prochain échec de vérification). Fournir des clés stables via
+      # AUTH_*_KEY_FILE en prod.
+      # Email dev → mailpit (branche SMTP de email.service.ts). Les liens de vérification/
+      # réinitialisation se lisent dans l'UI de mailpit (:8025). Le MFA est opt-in, donc
+      # aucun contournement d'auth.
       SMTP_HOST: mailpit
       SMTP_PORT: "1025"
       SMTP_SECURE: "false"
@@ -371,22 +375,23 @@ services:
     depends_on:
       - auth-service
 
-  # One-shot: seed MongoDB + Neo4j with sample data, then exit. Idempotent (keyed on
-  # deterministic seed IDs), so it re-runs safely on every `up`. Reuses the api image.
+  # One-shot : seed MongoDB + Neo4j avec des données d'exemple, puis s'arrête. Idempotent
+  # (clé sur des IDs de seed déterministes), donc se relance sans risque à chaque `up`.
+  # Réutilise l'image api.
   api-seed:
     build:
       context: .
       dockerfile: apps/api/Dockerfile
-      # build, not dev: the dev stage only copies apps/api/src, so @repo/shared
-      # resolves to a package with no dist/. The api service gets away with it
-      # because it bind-mounts the repo; a one-shot seed has no mount.
+      # build, pas dev : le stage dev ne copie que apps/api/src, donc @repo/shared
+      # se résout vers un package sans dist/. Le service api s'en sort car il bind-monte
+      # le repo ; un seed one-shot n'a pas de mount.
       target: build
     restart: "no"
     command: ["npx", "tsx", "apps/api/src/scripts/seed.ts"]
     environment:
       NODE_ENV: development
-      # Picks seed-data/<name>.txt. Set SEED_SCENARIO in .env to swap datasets
-      # without having to restate the whole `command` array in an override file.
+      # Sélectionne seed-data/<name>.txt. Définir SEED_SCENARIO dans .env pour changer de
+      # jeu de données sans redéclarer tout le tableau `command` dans un fichier d'override.
       SEED_SCENARIO: ${SEED_SCENARIO:-demo}
       MONGODB_URL: mongodb://root:root@mongodb:27017/?replicaSet=rs0
       MONGODB_DB: db
@@ -401,12 +406,12 @@ services:
       neo4j:
         condition: service_healthy
 
-  # One-shot: seed/promote the superAdmin account (idempotent, keyed on email).
+  # One-shot : seed/promotion du compte superAdmin (idempotent, clé sur l'email).
   auth-seed:
     build:
       context: .
       dockerfile: apps/auth-service/Dockerfile
-      # build, not dev — see api-seed.
+      # build, pas dev — voir api-seed.
       target: build
     restart: "no"
     command: ["npx", "tsx", "apps/auth-service/src/seed-superadmin.ts"]
@@ -421,9 +426,9 @@ services:
         condition: service_healthy
       mongo-init:
         condition: service_completed_successfully
-      # Must run AFTER api-seed: that one drops `users` wholesale, which would take
-      # the superAdmin with it. Without this the two one-shots race and the
-      # superAdmin survives or not depending on which finishes last.
+      # Doit tourner APRÈS api-seed : celui-ci drop entièrement la collection `users`, ce
+      # qui emporterait le superAdmin avec elle. Sans ça les deux one-shots se courent
+      # après et le superAdmin survit ou non selon lequel finit en dernier.
       api-seed:
         condition: service_completed_successfully
 
