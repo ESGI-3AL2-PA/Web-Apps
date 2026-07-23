@@ -1,6 +1,14 @@
+// Helpers d'inspection de l'expiration d'un access token JWT, côté client.
+// Décodage purement local du payload (aucune vérification de signature) : sert uniquement
+// à décider quand déclencher un refresh préventif, pas à établir une confiance.
+
 /**
- * Extracts the `exp` claim (seconds since epoch) from a JWT.
- * Returns null if the token is malformed or has no exp.
+ * Extrait le claim `exp` (secondes depuis l'epoch) d'un JWT.
+ * Retourne null si le token est malformé ou n'a pas de claim `exp`.
+ *
+ * Décode la 2e section (payload) encodée en base64url : on reconvertit l'alphabet
+ * base64url vers base64 standard (- → +, _ → /) avant `atob`. Toute anomalie
+ * (nombre de sections ≠ 3, base64 invalide, JSON invalide) tombe dans le catch → null.
  */
 export function getJwtExpiry(token: string): number | null {
   try {
@@ -15,7 +23,12 @@ export function getJwtExpiry(token: string): number | null {
 }
 
 /**
- * Returns true if the token expires within `thresholdSeconds` from now.
+ * Indique si le token expire dans moins de `thresholdSeconds` à partir de maintenant.
+ *
+ * Fail-safe : un token illisible ou sans `exp` est traité comme « expirant bientôt »
+ * (retourne true), ce qui pousse l'appelant à rafraîchir plutôt qu'à faire confiance à un
+ * token douteux. `Date.now()` est en millisecondes, d'où la division par 1000 pour
+ * comparer des secondes.
  */
 export function isTokenExpiringSoon(token: string, thresholdSeconds = 60): boolean {
   const exp = getJwtExpiry(token);

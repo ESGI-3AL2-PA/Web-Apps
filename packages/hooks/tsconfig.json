@@ -1,5 +1,7 @@
 {
+  // Hérite du preset partagé « bibliothèque React » (packages/typescript-config).
   "extends": "../typescript-config/react-library.json",
+  // Type-check tout le package (aucun rootDir/outDir : ce package est consommé en source).
   "include": ["."],
   "exclude": ["node_modules"]
 }
