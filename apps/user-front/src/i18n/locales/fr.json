@@ -12,10 +12,14 @@
   },
   "noDistrict": {
     "title": "Vous n'êtes rattaché à aucun quartier",
-    "desc": "Votre adresse n'est dans aucun quartier, vous ne pouvez donc pas encore utiliser l'application. Créez votre propre quartier autour de votre adresse, ou vérifiez à nouveau dès qu'un quartier la couvre.",
+    "desc": "Votre adresse n'est dans aucun quartier, vous ne pouvez donc pas encore utiliser l'application. Corrigez votre adresse si elle est erronée, créez votre propre quartier autour d'elle, ou vérifiez à nouveau dès qu'un quartier la couvre.",
     "chooseDesc": "Votre adresse se trouve dans plusieurs quartiers. Choisissez celui que vous souhaitez rejoindre.",
     "checkAgain": "Vérifier à nouveau",
     "createOwn": "Créer mon quartier",
+    "changeAddress": "Modifier mon adresse",
+    "addressLabel": "Nouvelle adresse",
+    "addressPlaceholder": "Saisissez votre adresse",
+    "saveAddress": "Enregistrer et vérifier",
     "backToLanding": "Retour à l'accueil",
     "error": "Une erreur est survenue. Veuillez réessayer."
   },
