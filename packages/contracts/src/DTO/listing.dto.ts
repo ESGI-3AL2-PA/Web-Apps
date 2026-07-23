@@ -37,11 +37,11 @@ export const ListingResponseDtoSchema = z
       .optional()
       .openapi({ description: "Tag names attached to this listing", example: ["gardening", "weekend-help"] }),
     images: z.array(z.string()).optional().openapi({ description: "URLs of images attached to this listing" }),
-    // Renseigné côté serveur pour l'utilisateur authentifié : indique s'il a déjà pris ce service.
+    // Renseigné côté serveur pour l'utilisateur authentifié : indique s'il a déjà pris cette annonce.
     userHasContract: z
       .boolean()
       .optional()
-      .openapi({ description: "True si le user authentifié a déjà pris ce service" }),
+      .openapi({ description: "Whether the authenticated user has already taken this listing" }),
     createdAt: z.string().datetime().openapi({ description: "Creation timestamp" }),
     expiresAt: z.string().datetime().optional().openapi({ description: "Expiry timestamp" }),
   })
