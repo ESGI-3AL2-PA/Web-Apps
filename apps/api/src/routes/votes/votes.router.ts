@@ -6,7 +6,7 @@ import { callerCanReadDistrict, resolveCallerListDistrict } from "../../middlewa
 import { getVotesUseCase } from "../../use-cases/votes/get-votes.use-case.js";
 import { getVoteByIdUseCase } from "../../use-cases/votes/get-vote-by-id.use-case.js";
 import { createVoteUseCase } from "../../use-cases/votes/create-vote.use-case.js";
-import { updateVoteUseCase } from "../../use-cases/votes/update-vote.use-case.js";
+import { updateVoteUseCase, VoteDateRangeError } from "../../use-cases/votes/update-vote.use-case.js";
 import { deleteVoteUseCase } from "../../use-cases/votes/delete-vote.use-case.js";
 import {
   submitVoteResponseUseCase,
@@ -100,11 +100,18 @@ export const votesRouter = s.router(votesContract, {
     if (body.status !== undefined && !isAdmin) {
       return { status: 403, body: { message: "Seul un administrateur peut publier ou fermer un vote" } };
     }
-    const vote = await updateVoteUseCase(resolve("vote"))(id, body);
-    if (!vote) {
-      return { status: 404, body: { message: "Vote not found" } };
+    try {
+      const vote = await updateVoteUseCase(resolve("vote"))(id, body);
+      if (!vote) {
+        return { status: 404, body: { message: "Vote not found" } };
+      }
+      return { status: 200, body: vote };
+    } catch (err) {
+      if (err instanceof VoteDateRangeError) {
+        return { status: 400, body: { message: err.message } };
+      }
+      throw err;
     }
-    return { status: 200, body: vote };
   },
 
   deleteVote: async ({ params: { id } }) => {

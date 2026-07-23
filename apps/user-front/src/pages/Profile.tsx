@@ -5,6 +5,7 @@ import type {
   EventQueryDto,
   ListingQueryDto,
   TransactionResponseDto,
+  UpdateUserDto,
   UserResponseDto,
   VoteQueryDto,
 } from "@repo/contracts";
@@ -214,18 +215,29 @@ export default function Profile() {
   }, [uid]);
 
   const save = async () => {
-    if (!uid) return;
+    if (!uid || !fullUser) return;
+
+    // On n'envoie que les champs réellement modifiés. PATCH /users/:id exige une
+    // ré-authentification TOTP fraîche (step-up) dès que le corps touche `address`
+    // (whenBodyTouches) ; renvoyer aveuglément l'adresse inchangée faisait donc réclamer
+    // un code step-up à *chaque* sauvegarde de profil — même une simple modif de
+    // téléphone. Le diff contre le profil chargé cantonne le step-up aux vrais
+    // changements d'adresse/email/mot de passe. Les chaînes vides sont conservées (pas
+    // supprimées) pour qu'effacer un champ optionnel comme le téléphone persiste.
+    const changed: UpdateUserDto = {};
+    if (form.firstName !== fullUser.firstName) changed.firstName = form.firstName;
+    if (form.lastName !== fullUser.lastName) changed.lastName = form.lastName;
+    if (form.phone.trim() !== (fullUser.phone ?? "")) changed.phone = form.phone.trim();
+    if (form.address !== (fullUser.address ?? "")) changed.address = form.address;
+
+    if (Object.keys(changed).length === 0) {
+      setEditing(false);
+      return;
+    }
+
     setSaving(true);
     try {
-      const updated = await updateUser(uid, {
-        firstName: form.firstName,
-        lastName: form.lastName,
-        // On envoie la valeur nettoyée (même ""), pour qu'effacer un téléphone
-        // existant persiste réellement — `|| undefined` supprimerait la chaîne
-        // vide et l'ancien numéro resterait.
-        phone: form.phone.trim(),
-        address: form.address || undefined,
-      });
+      const updated = await updateUser(uid, changed);
       setFullUser(updated);
       setEditing(false);
     } catch {

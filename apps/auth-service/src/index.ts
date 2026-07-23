@@ -32,7 +32,7 @@ import { MongoRefreshTokenRepository } from "./repositories/RefreshToken/refresh
 import { MongoAuthorizationCodeRepository } from "./repositories/AuthorizationCode/authorization-code.repository.mongo.js";
 import type { IRefreshTokenRepository } from "./repositories/RefreshToken/refresh-token.repository.js";
 import { initKeys } from "./keys.js";
-import { setupGracefulShutdown } from "@repo/shared";
+import { setupGracefulShutdown, requestValidationErrorHandler } from "@repo/shared";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -143,6 +143,7 @@ const loginHtml = renderPage(path.join(__dirname, "login-page", "index.html"));
 const registerHtml = renderPage(path.join(__dirname, "register-page", "index.html"));
 const verifyHtml = renderPage(path.join(__dirname, "verify-page", "index.html"));
 const resetPasswordHtml = renderPage(path.join(__dirname, "reset-password-page", "index.html"));
+const forgotPasswordHtml = renderPage(path.join(__dirname, "forgot-password-page", "index.html"));
 
 app.get("/login", (_req, res) => {
   res.type("html").send(loginHtml);
@@ -152,6 +153,9 @@ app.get("/register", (_req, res) => {
 });
 app.get("/reset-password", (_req, res) => {
   res.type("html").send(resetPasswordHtml);
+});
+app.get("/forgot-password", (_req, res) => {
+  res.type("html").send(forgotPasswordHtml);
 });
 
 // L'email de vérification pointe directement vers GET /auth/verify?token=…. Une
@@ -322,7 +326,12 @@ app.use("/auth/desktop/token", express.urlencoded({ extended: false }));
 app.use(desktopSsoRouter);
 
 // Endpoints d'auth (ts-rest)
-createExpressEndpoints({ ...authContract }, { ...authRouter }, app);
+// `any` typé pour suivre la convention de l'api : la signature d'option de ts-rest type le
+// req du handler en TsRestRequest, contre lequel notre handler typé Express est rejeté
+// structurellement.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const endpointOptions: any = { requestValidationErrorHandler };
+createExpressEndpoints({ ...authContract }, { ...authRouter }, app, endpointOptions);
 
 app.use((_req, _res, next) => {
   next(new NotFoundError());

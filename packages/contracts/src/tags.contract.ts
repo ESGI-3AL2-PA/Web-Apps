@@ -9,6 +9,7 @@ import {
   UpdateTagDtoSchema,
   NotFoundErrorSchema,
   BadRequestErrorSchema,
+  ConflictErrorSchema,
   PaginatedResponseDtoSchema,
 } from "./DTO";
 import { auth } from "./auth-meta";
@@ -59,6 +60,7 @@ export const tagsContract = c.router({
     responses: {
       201: TagResponseDtoSchema,
       400: BadRequestErrorSchema,
+      409: ConflictErrorSchema,
     },
     summary: "Create a new tag (admin only)",
     metadata: auth({ audience: "api", roles: ["admin", "superAdmin"] }),
@@ -73,6 +75,7 @@ export const tagsContract = c.router({
     responses: {
       200: TagResponseDtoSchema,
       404: NotFoundErrorSchema,
+      409: ConflictErrorSchema,
     },
     summary: "Partially update a tag (admin only)",
     metadata: auth({

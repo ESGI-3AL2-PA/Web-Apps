@@ -4,7 +4,7 @@ import { resolve } from "../../repositories/container.js";
 import { resolveCallerListDistrict } from "../../middleware/district-scope.js";
 import { getTagsUseCase } from "../../use-cases/tags/get-tags.use-case.js";
 import { getTagByIdUseCase } from "../../use-cases/tags/get-tag-by-id.use-case.js";
-import { createTagUseCase } from "../../use-cases/tags/create-tag.use-case.js";
+import { createTagUseCase, TagConflictError } from "../../use-cases/tags/create-tag.use-case.js";
 import { updateTagUseCase } from "../../use-cases/tags/update-tag.use-case.js";
 import { deleteTagUseCase } from "../../use-cases/tags/delete-tag.use-case.js";
 
@@ -41,16 +41,30 @@ export const tagsRouter = s.router(tagsContract, {
     if (!districtId) {
       return { status: 400, body: { message: "districtId required" } };
     }
-    const newTag = await createTagUseCase(resolve("tag"), resolve("graph"))({ ...body, districtId });
-    return { status: 201, body: newTag };
+    try {
+      const newTag = await createTagUseCase(resolve("tag"), resolve("graph"))({ ...body, districtId });
+      return { status: 201, body: newTag };
+    } catch (err) {
+      if (err instanceof TagConflictError) {
+        return { status: 409, body: { message: err.message } };
+      }
+      throw err;
+    }
   },
 
   updateTag: async ({ params: { id }, body }) => {
-    const tag = await updateTagUseCase(resolve("tag"), resolve("graph"))(id, body);
-    if (!tag) {
-      return { status: 404, body: { message: "Tag not found" } };
+    try {
+      const tag = await updateTagUseCase(resolve("tag"), resolve("graph"))(id, body);
+      if (!tag) {
+        return { status: 404, body: { message: "Tag not found" } };
+      }
+      return { status: 200, body: tag };
+    } catch (err) {
+      if (err instanceof TagConflictError) {
+        return { status: 409, body: { message: err.message } };
+      }
+      throw err;
     }
-    return { status: 200, body: tag };
   },
 
   deleteTag: async ({ params: { id } }) => {

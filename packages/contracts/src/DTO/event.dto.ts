@@ -47,8 +47,14 @@ export const CreateEventDtoSchema = z
       .min(1)
       .max(500)
       .openapi({ description: "Event location (1-500 characters)", example: "Place du Tertre, Montmartre" }),
-    totalSeats: z.number().int().min(1).openapi({ description: "Total number of seats (minimum 1)" }),
+    totalSeats: z.number().int().min(1).max(1_000_000).openapi({ description: "Total number of seats (1–1,000,000)" }),
     eventDate: z.string().datetime().openapi({ description: "Event date and time (ISO 8601)" }),
+  })
+  // eventDate est un instant absolu (ISO 8601) : le comparer à `now` est donc insensible au
+  // fuseau horaire — un événement ne peut pas être planifié dans le passé.
+  .refine((data) => new Date(data.eventDate) > new Date(), {
+    message: "eventDate must be in the future",
+    path: ["eventDate"],
   })
   .openapi("CreateEvent");
 export type CreateEventDto = z.infer<typeof CreateEventDtoSchema>;
@@ -59,10 +65,13 @@ export const UpdateEventDtoSchema = z
     title: z.string().min(1).max(300).optional(),
     description: z.string().min(1).optional(),
     location: z.string().min(1).max(500).optional(),
-    totalSeats: z.number().int().min(1).optional(),
+    totalSeats: z.number().int().min(1).max(1_000_000).optional(),
     status: EventStatusSchema.optional(),
     eventDate: z.string().datetime().optional(),
   })
+  // Pas de garde-fou de date future ici : les formulaires d'édition resoumettent l'eventDate
+  // stockée, donc un événement déjà passé doit rester modifiable (corriger une faute, l'annuler).
+  // Le garde-fou de date passée vit sur la création, où la date est toujours une saisie nouvelle.
   .openapi("UpdateEvent");
 export type UpdateEventDto = z.infer<typeof UpdateEventDtoSchema>;
 

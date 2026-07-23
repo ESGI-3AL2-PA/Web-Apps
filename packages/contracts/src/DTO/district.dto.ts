@@ -32,7 +32,8 @@ export const CreateDistrictDtoSchema = z
       .number()
       .int()
       .min(0)
-      .openapi({ description: "Tokens granted to a new member when they join", example: 100 }),
+      .max(1_000_000)
+      .openapi({ description: "Tokens granted to a new member when they join (0–1,000,000)", example: 100 }),
   })
   .openapi({ title: "CreateDistrict" });
 export type CreateDistrictDto = z.infer<typeof CreateDistrictDtoSchema>;
@@ -47,8 +48,9 @@ export const UpdateDistrictDtoSchema = z
       .number()
       .int()
       .min(0)
+      .max(1_000_000)
       .optional()
-      .openapi({ description: "Tokens granted to a new member when they join", example: 100 }),
+      .openapi({ description: "Tokens granted to a new member when they join (0–1,000,000)", example: 100 }),
   })
   .openapi({ title: "UpdateDistrict" });
 export type UpdateDistrictDto = z.infer<typeof UpdateDistrictDtoSchema>;

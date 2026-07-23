@@ -75,6 +75,7 @@ export const votesContract = c.router({
     body: UpdateVoteDtoSchema,
     responses: {
       200: VoteResponseDtoSchema,
+      400: BadRequestErrorSchema,
       403: ForbiddenErrorSchema,
       404: NotFoundErrorSchema,
     },

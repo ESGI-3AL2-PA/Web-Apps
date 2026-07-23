@@ -178,6 +178,9 @@
       </form>
       <div id="resendBox" class="resend-box" hidden></div>
       <div class="link">
+        <a id="forgotLink" href="/forgot-password" data-i18n="forgotPassword">Mot de passe oublié ?</a>
+      </div>
+      <div class="link">
         <span data-i18n="noAccount">Vous n'avez pas de compte ?</span>
         <a id="registerLink" href="/register" data-i18n="register">S'inscrire</a>
       </div>
@@ -198,6 +201,7 @@
           submit: "Se connecter",
           noAccount: "Vous n'avez pas de compte ?",
           register: "S'inscrire",
+          forgotPassword: "Mot de passe oublié ?",
           loginFailed: "Échec de la connexion",
           mfaTitle: "Code à deux facteurs",
           mfaLabel: "Code à 6 chiffres de votre application d'authentification",
@@ -223,6 +227,7 @@
           submit: "Sign In",
           noAccount: "Don't have an account?",
           register: "Register",
+          forgotPassword: "Forgot password?",
           loginFailed: "Login failed",
           mfaTitle: "Two-factor code",
           mfaLabel: "6-digit code from your authenticator",
@@ -283,6 +288,9 @@
       // Keep redirect_uri and lang on register link.
       document.getElementById("registerLink").href =
         "/register?redirect_uri=" + encodeURIComponent(redirectUri) + "&lang=" + lang;
+
+      // Carry the current language onto the forgot-password link.
+      document.getElementById("forgotLink").href = "/forgot-password?lang=" + lang;
 
       // Wire a "resend verification email" button to the enumeration-safe endpoint.
       // Always 200 on success; 429 when rate-limited (3/60s) — both surface a message,

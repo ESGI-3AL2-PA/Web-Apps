@@ -32,6 +32,19 @@ export const errorHandler = (err: Error, req: Request, res: Response, _next: Nex
     return res.status(err.statusCode).json({ message: err.message });
   }
 
+  // Body-parser / http-errors signalent une entrée client malformée par un 4xx
+  // portant `expose: true` (ex. un corps de requête non-JSON → 400
+  // "entity.parse.failed", ou un corps trop volumineux → 413). `expose` est le
+  // contrat de http-errors pour « ce statut + ce message sont sûrs à renvoyer au
+  // client » ; on l'honore donc au lieu de masquer une erreur client en 500. Les
+  // 5xx ne positionnent jamais expose : elles continuent de retomber sur le chemin
+  // opaque Internal-server-error ci-dessous.
+  const httpErr = err as { statusCode?: number; status?: number; expose?: boolean };
+  const status = httpErr.statusCode ?? httpErr.status;
+  if (httpErr.expose === true && typeof status === "number" && status >= 400 && status < 500) {
+    return res.status(status).json({ message: err.message });
+  }
+
   // req.log est le logger enfant par-requête de pino-http (porte l'id de corrélation).
   req.log.error({ err }, "Unhandled error");
   return res.status(500).json({ message: "Internal server error" });

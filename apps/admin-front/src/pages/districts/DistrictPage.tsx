@@ -85,6 +85,14 @@ export default function DistrictPage() {
     setSaved(false);
     if (!districtId) return;
 
+    // `required` bloque un champ vraiment vide mais pas un champ composé uniquement d'espaces,
+    // et n'affiche aucun message dans l'app — on valide explicitement et on sauve la valeur nettoyée.
+    const trimmedName = name.trim();
+    if (!trimmedName) {
+      setError(t("districts.nameRequired"));
+      return;
+    }
+
     if (geoJson && !isValidPolygon(geoJson)) {
       setError(t("districts.invalidPolygon"));
       return;
@@ -93,7 +101,7 @@ export default function DistrictPage() {
     setSubmitting(true);
     try {
       // null efface explicitement un tracé existant ; undefined serait supprimé par la sérialisation JSON.
-      await updateDistrict(districtId, { name, geoJson, startingPoints });
+      await updateDistrict(districtId, { name: trimmedName, geoJson, startingPoints });
       setSaved(true);
       toast.show(t("districts.saved"));
     } catch (err: unknown) {
@@ -203,13 +211,18 @@ function NewDistrictModal({ onClose }: { onClose: () => void }) {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
+    const trimmedName = name.trim();
+    if (!trimmedName) {
+      setError(t("districts.nameRequired"));
+      return;
+    }
     if (!geoJson || !isValidPolygon(geoJson)) {
       setError(t("districts.invalidPolygon"));
       return;
     }
     setSubmitting(true);
     try {
-      const created = await createDistrict({ name, geoJson, startingPoints });
+      const created = await createDistrict({ name: trimmedName, geoJson, startingPoints });
       toast.show(t("districts.created"));
       await reload(created.id);
       onClose();

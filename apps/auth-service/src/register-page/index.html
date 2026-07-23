@@ -362,6 +362,13 @@
         input.addEventListener("keydown", (e) => {
           if (e.key === "Escape") close();
         });
+        // Close when focus leaves the field. The results list is absolutely positioned and
+        // would otherwise stay open overlapping the "S'inscrire" button just below it, so a
+        // click meant for submit landed on the list instead. Deferred so a suggestion's
+        // mousedown (which preventDefaults to keep focus) still registers before teardown.
+        input.addEventListener("blur", () => {
+          setTimeout(close, 100);
+        });
         document.addEventListener("mousedown", (e) => {
           if (!e.target.closest(".autocomplete")) close();
         });
