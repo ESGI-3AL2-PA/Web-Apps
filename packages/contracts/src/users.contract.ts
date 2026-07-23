@@ -23,7 +23,18 @@ import { auth } from "./auth-meta";
 
 const c = initContract();
 
+/**
+ * Contract ts-rest des utilisateurs.
+ *
+ * Couvre le CRUD utilisateur ainsi que des actions métier : modération (ban,
+ * exclusion d'un quartier), conformité RGPD (export et suppression de compte),
+ * et onboarding par quartier (résolution/adhésion et création de son propre
+ * quartier). Les routes sensibles (identité, suppression, transaction) exigent
+ * une revérification step-up TOTP. La création (createUser) est réservée au
+ * token de service interne émis par l'auth-service.
+ */
 export const usersContract = c.router({
+  // GET /users — liste paginée des utilisateurs. Admin/superAdmin uniquement.
   getUsers: {
     method: "GET",
     path: "/users",
@@ -35,6 +46,7 @@ export const usersContract = c.router({
     metadata: auth({ audience: "api", roles: ["admin", "superAdmin"] }),
   },
 
+  // GET /users/:id — un utilisateur par son id. Lui-même (selfParam) ou admin (bypass superAdmin).
   getUserById: {
     method: "GET",
     path: "/users/:id",
@@ -50,6 +62,7 @@ export const usersContract = c.router({
     }),
   },
 
+  // GET /users/:id/export — export RGPD complet des données personnelles. Soi-même uniquement.
   exportUserData: {
     method: "GET",
     path: "/users/:id/export",
@@ -58,10 +71,10 @@ export const usersContract = c.router({
       200: UserDataExportResponseDtoSchema,
       404: NotFoundErrorSchema,
     },
-    // GDPR Art. 15/20: canonical server-side export of ALL of the caller's personal
-    // data in one authenticated call. Strictly self-scoped (selfParam:"id", NO admin
-    // bypass — this dumps private messages/sessions; an admin has no business pulling
-    // another user's full export here). notFoundOnDeny hides other users' existence.
+    // RGPD Art. 15/20 : export serveur canonique de TOUTES les données personnelles de l'appelant
+    // en un seul appel authentifié. Strictement limité à soi (selfParam:"id", AUCUN bypass admin —
+    // cet export livre messages privés/sessions ; un admin n'a pas à tirer l'export complet d'un
+    // autre utilisateur ici). notFoundOnDeny masque l'existence des autres utilisateurs.
     summary: "Export all of your personal data as a single JSON document (self only).",
     metadata: auth({
       audience: "api",
@@ -69,6 +82,7 @@ export const usersContract = c.router({
     }),
   },
 
+  // POST /users — crée un utilisateur. Token de service interne uniquement (appelé par l'auth-service au register).
   createUser: {
     method: "POST",
     path: "/users",
@@ -92,14 +106,16 @@ export const usersContract = c.router({
       409: ConflictErrorSchema,
     },
     summary: "Partially update a user (self or admin)",
+    // PATCH /users/:id — mise à jour partielle. Soi-même (selfParam) ou admin (bypass superAdmin).
     metadata: auth({
       audience: "api",
       scope: { resource: "user", selfParam: "id", bypassRoles: ["superAdmin"] },
-      // Identity/recovery + district-moving fields require a fresh TOTP step-up in production.
+      // Les champs d'identité/récupération et de changement de quartier exigent un step-up TOTP frais en production.
       stepUp: { whenBodyTouches: ["email", "address", "newPassword"] },
     }),
   },
 
+  // PATCH /users/:id/ban — bannit/débannit un utilisateur ordinaire. Admin limité à son quartier ; superAdmin n'importe lequel.
   banUser: {
     method: "PATCH",
     path: "/users/:id/ban",
@@ -118,6 +134,7 @@ export const usersContract = c.router({
     }),
   },
 
+  // POST /users/:id/kick — exclut un utilisateur ordinaire de son quartier. Admin limité à son quartier ; superAdmin n'importe lequel.
   kickFromDistrict: {
     method: "POST",
     path: "/users/:id/kick",
@@ -128,9 +145,9 @@ export const usersContract = c.router({
       403: ForbiddenErrorSchema,
       404: NotFoundErrorSchema,
     },
-    // Distinct from ban: removes a regular user from their district and redistributes
-    // their balance to the remaining members. Does NOT set `banned`. Admins scoped to
-    // their district; superAdmin any (same policy as banUser).
+    // Distinct du ban : retire un utilisateur ordinaire de son quartier et redistribue son solde
+    // aux membres restants. Ne met PAS `banned`. Admins limités à leur quartier ; superAdmin
+    // n'importe lequel (même politique que banUser).
     summary: "Kick a regular user from their district, redistributing their points to the remaining members.",
     metadata: auth({
       audience: "api",
@@ -139,6 +156,7 @@ export const usersContract = c.router({
     }),
   },
 
+  // POST /users/me/resolve-district — résout et rejoint le quartier contenant son adresse. Soi-même.
   resolveMyDistrict: {
     method: "POST",
     path: "/users/me/resolve-district",
@@ -146,27 +164,28 @@ export const usersContract = c.router({
     responses: {
       200: ResolveDistrictResponseDtoSchema,
     },
-    // Re-geocode the caller's stored address and, if exactly one district contains them
-    // (or the caller picks one among several via body.districtId) and they are
-    // district-less, join it (granting its starting points). Used by the onboarding
-    // "check again" / district-picker affordance. Any authenticated user, self-scoped to sub.
+    // Re-géocode l'adresse enregistrée de l'appelant et, si exactement un quartier le contient
+    // (ou s'il en choisit un parmi plusieurs via body.districtId) et qu'il est sans quartier, l'y
+    // fait adhérer (en lui octroyant les points de départ). Utilisé par l'affordance d'onboarding
+    // « revérifier » / sélecteur de quartier. Tout utilisateur authentifié, limité à son propre sub.
     summary: "Resolve and join the district containing your address (self).",
     metadata: auth({ audience: "api" }),
   },
 
+  // POST /users/me/district — crée son propre quartier depuis son adresse et en devient l'admin. Soi-même.
   createOwnDistrict: {
     method: "POST",
     path: "/users/me/district",
     body: c.noBody(),
     responses: {
       201: DistrictResponseDtoSchema,
-      // Already have a district / not a plain user, or the address couldn't be geocoded.
+      // A déjà un quartier / n'est pas un utilisateur ordinaire, ou l'adresse n'a pas pu être géocodée.
       409: ConflictErrorSchema,
     },
-    // Self-service onboarding: a district-less user creates an active district over their
-    // geocoded address (placeholder box + temp name) and is promoted to its admin. The
-    // client then redirects them into the admin app to refine it. The use-case enforces
-    // role==="user" && no districtId.
+    // Onboarding en self-service : un utilisateur sans quartier crée un quartier actif sur son
+    // adresse géocodée (boîte englobante provisoire + nom temporaire) et est promu son admin.
+    // Le client le redirige ensuite dans l'app admin pour l'affiner. Le cas d'usage vérifie
+    // role==="user" && absence de districtId.
     summary: "Create your own district from your address and become its admin (self).",
     metadata: auth({ audience: "api" }),
   },
@@ -180,15 +199,15 @@ export const usersContract = c.router({
       204: z.undefined(),
       403: ForbiddenErrorSchema,
       404: NotFoundErrorSchema,
-      // Account data was erased locally but a downstream dependency (auth-service
-      // session purge) did not complete — erasure is only partial. Surfaced instead
-      // of a false 204 so the caller knows to retry (GDPR Art. 17).
+      // Les données du compte ont été effacées localement mais une dépendance aval (purge des
+      // sessions côté auth-service) n'a pas abouti — l'effacement n'est que partiel. Remonté au
+      // lieu d'un faux 204 pour que l'appelant sache qu'il faut réessayer (RGPD Art. 17).
       502: BadGatewayErrorSchema,
     },
-    // Self-service account deletion (GDPR erasure): a user may delete ONLY their own
-    // account — selfParam:"id", no superAdmin bypass (admins can't delete others via
-    // this route; banning is the moderation tool). superAdmin accounts are protected
-    // by a use-case guardrail. notFoundOnDeny hides other users' existence (404 not 403).
+    // DELETE /users/:id — suppression de compte en self-service (effacement RGPD) : un utilisateur ne peut
+    // supprimer QUE son propre compte — selfParam:"id", pas de bypass superAdmin (les admins ne peuvent pas
+    // supprimer autrui par cette route ; le bannissement est l'outil de modération). Les comptes superAdmin
+    // sont protégés par un garde-fou du cas d'usage. notFoundOnDeny masque l'existence d'autrui (404 et non 403).
     summary: "Delete your own account. superAdmin accounts cannot be deleted.",
     metadata: auth({
       audience: "api",

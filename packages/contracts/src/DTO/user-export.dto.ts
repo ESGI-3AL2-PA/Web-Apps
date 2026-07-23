@@ -1,16 +1,18 @@
+// DTO (couche contracts) : schéma zod de l'export de données personnelles d'un
+// utilisateur (RGPD art. 15 « accès » + art. 20 « portabilité »). Un seul appel
+// authentifié, limité à soi-même, renvoie TOUTES les catégories de données que la
+// plateforme détient sur l'utilisateur, dans un unique document JSON portable.
 import { z } from "../zod";
 
-// GDPR Art. 15 (access) + Art. 20 (portability): the canonical, server-side data
-// export. One authenticated self-scoped call returns EVERY category of personal data
-// the platform holds for the user, in a single portable JSON document.
-//
-// Rows are intentionally passthrough (`z.record`) rather than each domain's response
-// DTO: the export is a faithful dump of what is stored, so it must not silently drop
-// fields a stricter response schema would omit, and it must not fail validation if a
-// stored row predates a schema change. Secrets (password hash, TOTP secret) are the
-// only fields stripped, and that happens in the use-case before serialization.
+// Chaque ligne est volontairement en passthrough (`z.record`) plutôt que le DTO de
+// réponse du domaine concerné : l'export est un dump fidèle de ce qui est stocké, il
+// ne doit donc ni écarter en silence des champs qu'un schéma plus strict omettrait,
+// ni échouer à la validation si une ligne stockée précède un changement de schéma.
+// Seuls les secrets (hash du mot de passe, secret TOTP) sont retirés, et cela se fait
+// dans le cas d'usage avant sérialisation.
 const Row = z.record(z.string(), z.unknown());
 
+/** Document d'export RGPD : agrège toutes les catégories de données personnelles de l'utilisateur (profil, annonces, contrats, points, événements, votes, signalements, messagerie, notifications, sessions, graphe Neo4j). */
 export const UserDataExportResponseDtoSchema = z
   .object({
     exportedAt: z.string().datetime().openapi({ description: "When this export was generated" }),

@@ -14,8 +14,15 @@ import { auth } from "./auth-meta";
 
 const c = initContract();
 
-// District-admins management is restricted to superAdmin: it's a privilege escalation.
+/**
+ * Contract ts-rest des affectations administrateur de quartier.
+ *
+ * Une affectation lie un utilisateur à un quartier qu'il administre. La gestion
+ * de ces affectations est réservée au superAdmin : accorder ce rôle est une
+ * escalade de privilège, donc toutes les routes exigent `roles: ["superAdmin"]`.
+ */
 export const districtAdminsContract = c.router({
+  // GET /district-admins — liste paginée des affectations, filtrable par quartier ou utilisateur. superAdmin.
   getDistrictAdmins: {
     method: "GET",
     path: "/district-admins",
@@ -27,6 +34,7 @@ export const districtAdminsContract = c.router({
     metadata: auth({ audience: "api", roles: ["superAdmin"] }),
   },
 
+  // GET /district-admins/:id — une affectation par son id. superAdmin.
   getDistrictAdminById: {
     method: "GET",
     path: "/district-admins/:id",
@@ -39,6 +47,7 @@ export const districtAdminsContract = c.router({
     metadata: auth({ audience: "api", roles: ["superAdmin"] }),
   },
 
+  // POST /district-admins — accorde à un utilisateur les droits d'admin sur un quartier. 409 si déjà admin. superAdmin.
   createDistrictAdmin: {
     method: "POST",
     path: "/district-admins",
@@ -51,6 +60,7 @@ export const districtAdminsContract = c.router({
     metadata: auth({ audience: "api", roles: ["superAdmin"] }),
   },
 
+  // DELETE /district-admins/:id — révoque les droits d'administrateur de quartier. superAdmin.
   deleteDistrictAdmin: {
     method: "DELETE",
     path: "/district-admins/:id",

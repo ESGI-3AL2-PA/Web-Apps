@@ -1,6 +1,15 @@
 import { z } from "../zod";
 import { GeoJsonSchema, GeoJsonInputSchema } from "./geoJson.dto";
 
+/**
+ * DTO (schémas zod) du quartier.
+ *
+ * Un quartier porte un nom, une frontière géographique GeoJSON facultative et un
+ * capital de départ (`startingPoints`) crédité à tout nouveau membre. Réponse tolérante
+ * sur le GeoJSON stocké, entrée stricte (Polygon/MultiPolygon validés) côté création/mise à jour.
+ */
+
+// Forme de réponse d'un quartier renvoyée par l'API.
 export const DistrictResponseDtoSchema = z
   .object({
     id: z.string().openapi({ description: "Unique district identifier" }),
@@ -14,6 +23,7 @@ export const DistrictResponseDtoSchema = z
   .openapi({ title: "DistrictResponse" });
 export type DistrictResponseDto = z.infer<typeof DistrictResponseDtoSchema>;
 
+// Corps de création d'un quartier : nom 1-200 caractères, frontière et points de départ (>= 0).
 export const CreateDistrictDtoSchema = z
   .object({
     name: z.string().min(1).max(200).openapi({ description: "District name", example: "Montmartre" }),
@@ -27,10 +37,11 @@ export const CreateDistrictDtoSchema = z
   .openapi({ title: "CreateDistrict" });
 export type CreateDistrictDto = z.infer<typeof CreateDistrictDtoSchema>;
 
+// Corps de mise à jour partielle : tous les champs sont facultatifs.
 export const UpdateDistrictDtoSchema = z
   .object({
     name: z.string().min(1).max(200).optional().openapi({ description: "District name", example: "Montmartre" }),
-    // null clears an existing boundary; omitted/undefined leaves it untouched.
+    // null efface la frontière existante ; omis/undefined la laisse inchangée.
     geoJson: GeoJsonInputSchema.nullable().optional(),
     startingPoints: z
       .number()
@@ -42,11 +53,14 @@ export const UpdateDistrictDtoSchema = z
   .openapi({ title: "UpdateDistrict" });
 export type UpdateDistrictDto = z.infer<typeof UpdateDistrictDtoSchema>;
 
+// Paramètre d'URL : identifiant du quartier.
 export const DistrictParamsDtoSchema = z.object({ id: z.string() }).openapi({ title: "DistrictParams" });
 export type DistrictParamsDto = z.infer<typeof DistrictParamsDtoSchema>;
 
+// Query string de listing paginé, avec recherche facultative par nom.
 export const DistrictQueryDtoSchema = z
   .object({
+    // Pagination : page >= 1, 20 par défaut, plafonnée à 100 par page.
     page: z.coerce.number().int().min(1).optional().default(1),
     limit: z.coerce.number().int().min(1).max(100).optional().default(20),
     search: z.string().max(200).optional().openapi({ description: "District name", example: "Montmartre" }),

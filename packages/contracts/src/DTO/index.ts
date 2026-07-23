@@ -1,3 +1,9 @@
+/**
+ * Baril d'exports des DTO (schémas zod + types inférés) partagés par les contrats ts-rest.
+ *
+ * Réexporte chaque module DTO du dossier afin que les contrats et les fronts importent
+ * l'ensemble des schémas/DTO depuis un point d'entrée unique (`@repo/contracts` → DTO).
+ */
 export * from "./query.dto";
 export * from "./geoJson.dto";
 export * from "./user.dto";

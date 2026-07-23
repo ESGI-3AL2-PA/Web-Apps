@@ -15,7 +15,15 @@ import { auth } from "./auth-meta";
 
 const c = initContract();
 
+/**
+ * Contract ts-rest des tags.
+ *
+ * Les lectures sont ouvertes à tout utilisateur authentifié. La création, la
+ * mise à jour et la suppression sont réservées aux admins ; les modifications
+ * sont en outre limitées au quartier du tag (bypass superAdmin).
+ */
 export const tagsContract = c.router({
+  // GET /tags — liste paginée des tags. Tout utilisateur authentifié.
   getTags: {
     method: "GET",
     path: "/tags",
@@ -36,12 +44,14 @@ export const tagsContract = c.router({
       404: NotFoundErrorSchema,
     },
     summary: "Get a single tag by ID",
-    // Reads are open to any authenticated user — the tag list (getTags) is
-    // unscoped, so scoping single-tag reads by district only produced a 403 for
-    // every non-admin (whose adminDistrictId is null) with no security benefit.
+    // GET /tags/:id — un tag par son id. Tout utilisateur authentifié.
+    // Les lectures sont ouvertes : la liste des tags (getTags) n'est pas restreinte par quartier,
+    // donc limiter la lecture d'un tag isolé au quartier ne produisait qu'un 403 pour tout non-admin
+    // (dont l'adminDistrictId est null), sans aucun bénéfice de sécurité.
     metadata: auth({ audience: "api" }),
   },
 
+  // POST /tags — crée un tag. Admin uniquement.
   createTag: {
     method: "POST",
     path: "/tags",
@@ -54,6 +64,7 @@ export const tagsContract = c.router({
     metadata: auth({ audience: "api", roles: ["admin", "superAdmin"] }),
   },
 
+  // PATCH /tags/:id — mise à jour partielle. Admin du quartier du tag (bypass superAdmin).
   updateTag: {
     method: "PATCH",
     path: "/tags/:id",
@@ -75,6 +86,7 @@ export const tagsContract = c.router({
     }),
   },
 
+  // DELETE /tags/:id — supprime un tag. Admin du quartier du tag (bypass superAdmin).
   deleteTag: {
     method: "DELETE",
     path: "/tags/:id",

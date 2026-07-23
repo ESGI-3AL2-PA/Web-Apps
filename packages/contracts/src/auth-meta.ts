@@ -1,20 +1,26 @@
+// Contracts : métadonnées d'autorisation par endpoint. Ce fichier définit la forme
+// de la politique d'auth attachée à chaque route (`metadata.auth`), un helper
+// `auth()` côté auteur du contrat et un lecteur `getAuthPolicy()` côté middleware.
 import type { AppRoute } from "@ts-rest/core";
 
 /**
- * Per-endpoint authorization policy, declared in the contract's `metadata.auth`
- * and enforced by a single generic middleware in the api. This is the single
- * source of truth for who may call each endpoint.
+ * Politique d'autorisation par endpoint, déclarée dans le `metadata.auth` du
+ * contrat et appliquée par un unique middleware générique dans l'api. C'est la
+ * source de vérité unique de qui peut appeler chaque endpoint.
  *
- * Static parts (public / audience / roles) are checked directly. Record-level
- * parts (`scope`) make the middleware load the target record via the DI
- * container and check ownership / district before the handler runs.
+ * Les parties statiques (public / audience / rôles) sont vérifiées directement.
+ * La partie au niveau enregistrement (`scope`) fait charger l'enregistrement cible
+ * par le middleware via le conteneur d'injection, puis vérifier la propriété / le
+ * quartier avant l'exécution du handler.
  */
 
+/** Audience (claim `aud`) attendue sur le token : api publique ou usage interne. */
 export type Audience = "api" | "api:internal";
 
+/** Rôles reconnus, dont `service` (token interne éphémère émis par l'auth-service). */
 export type Role = "user" | "admin" | "superAdmin" | "service";
 
-/** Names the enforcement middleware uses to resolve a repository and read fields. */
+/** Noms que le middleware d'enforcement utilise pour résoudre un repository et lire ses champs. */
 export type ResourceKind =
   | "user"
   | "listing"
@@ -29,67 +35,71 @@ export type ResourceKind =
   | "district"
   | "tag";
 
-/** Record-level (data-dependent) policy. Absent => no record is loaded. */
+/** Politique au niveau enregistrement (dépendante des données). Absente => aucun enregistrement n'est chargé. */
 export interface AuthScope {
-  /** Which container repo to load the record from. */
+  /** Repository du conteneur d'où charger l'enregistrement. */
   resource: ResourceKind;
-  /** Path param holding the record id (default "id"). */
+  /** Param de chemin portant l'id de l'enregistrement (défaut "id"). */
   idParam?: string;
-  /** Record field whose value must equal `req.user.sub` for the owner (e.g. "authorId"). */
+  /** Champ de l'enregistrement dont la valeur doit égaler `req.user.sub` pour le propriétaire (ex. "authorId"). */
   ownerField?: string;
-  /** OR-list of owner fields (e.g. ["providerId", "beneficiaryId"]). */
+  /** Liste de champs de propriété en OU (ex. ["providerId", "beneficiaryId"]). */
   ownerFields?: string[];
-  /** Record field that is an array of user ids (e.g. conversation "participants"). */
+  /** Champ de l'enregistrement qui est un tableau d'ids utilisateur (ex. "participants" d'une conversation). */
   ownerArrayField?: string;
-  /** Record field holding the district id (matched against the caller's adminDistrictId). */
+  /** Champ portant l'id de quartier (comparé à l'adminDistrictId de l'appelant). */
   districtField?: string;
-  /** Array form of the district field (e.g. votes "districtIds"). */
+  /** Forme tableau du champ quartier (ex. "districtIds" d'un vote). */
   districtArrayField?: string;
-  /** Roles that skip the ownership / district check entirely. */
+  /** Rôles qui court-circuitent entièrement le contrôle de propriété / quartier. */
   bypassRoles?: Role[];
-  /** Respond 404 (hide existence) instead of 403 when access is denied. */
+  /** Répondre 404 (masquer l'existence) au lieu de 403 quand l'accès est refusé. */
   notFoundOnDeny?: boolean;
   /**
-   * The id path param itself is a user id and must equal `req.user.sub`
-   * (or a bypass role). No record is loaded. Used for the /users/:id family.
+   * Le param d'id du chemin est lui-même un id utilisateur et doit égaler
+   * `req.user.sub` (ou un rôle de bypass). Aucun enregistrement n'est chargé.
+   * Utilisé par la famille de routes /users/:id.
    */
   selfParam?: string;
 }
 
 /**
- * Step-up (fresh-TOTP) requirement for a sensitive operation. Enforced by the api's
- * `requireStepUp` middleware, but only in production — dev stays friction-free.
- * The caller proves possession by sending an `X-Step-Up-Token` (minted at /auth/step-up).
+ * Exigence de step-up (TOTP récent) pour une opération sensible. Appliquée par le
+ * middleware `requireStepUp` de l'api, mais uniquement en production — le dev reste
+ * sans friction. L'appelant prouve la possession en envoyant un `X-Step-Up-Token`
+ * (émis par /auth/step-up).
  */
 export interface StepUpPolicy {
-  /** The operation always requires step-up (e.g. delete account, token transfer). */
+  /** L'opération exige toujours un step-up (ex. suppression de compte, transfert de points). */
   always?: boolean;
-  /** Require step-up only when the request body sets any of these fields (e.g. email/address on a PATCH). */
+  /** Exiger le step-up seulement si le corps de requête touche l'un de ces champs (ex. email/adresse sur un PATCH). */
   whenBodyTouches?: string[];
 }
 
+/** Politique d'auth complète attachée à une route via `metadata.auth`. */
 export interface AuthPolicy {
-  /** No authentication at all. */
+  /** Aucune authentification. */
   public?: boolean;
-  /** Allowed roles. Omitted => any authenticated role (subject to `audience`). */
+  /** Rôles autorisés. Omis => tout rôle authentifié (selon `audience`). */
   roles?: Role[];
-  /** Required `aud` claim on the token. */
+  /** Claim `aud` requis sur le token. */
   audience?: Audience;
-  /** GET is allowed for any end-user even when `roles` is set. */
+  /** GET autorisé pour tout utilisateur final même quand `roles` est défini. */
   readBypassesRoles?: boolean;
-  /** Record-level ownership / district enforcement. */
+  /** Enforcement propriété / quartier au niveau enregistrement. */
   scope?: AuthScope;
-  /** Fresh-TOTP step-up requirement (production only). */
+  /** Exigence de step-up TOTP récent (production seulement). */
   stepUp?: StepUpPolicy;
 }
 
 /**
- * Author-side helper. ts-rest types `metadata` as `unknown`, so this brands the
- * value while giving full type-checking on the policy object at the call site.
+ * Helper côté auteur du contrat. ts-rest type `metadata` comme `unknown` ; ceci
+ * marque la valeur tout en offrant un typage complet de l'objet de politique au
+ * point d'appel.
  */
 export const auth = (policy: AuthPolicy): { auth: AuthPolicy } => ({ auth: policy });
 
-/** Consumer-side runtime guard used by the enforcement middleware. */
+/** Garde runtime côté consommateur, utilisée par le middleware d'enforcement pour extraire la politique d'une route. */
 export const getAuthPolicy = (route: AppRoute): AuthPolicy | undefined => {
   const meta = (route as { metadata?: unknown }).metadata;
   if (meta && typeof meta === "object" && "auth" in meta) {

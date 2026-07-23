@@ -1,7 +1,12 @@
+// DTO zod de l'authentification : login (avec défis MFA / enrôlement TOTP),
+// refresh + CSRF, logout, vérification d'email, mot de passe oublié / réinitialisé,
+// gestion des sessions, step-up (ré-authentification pour une opération sensible),
+// enrôlement / désactivation TOTP, les enveloppes d'erreur, et le register.
 import { z } from "../zod";
 import { UserResponseDtoSchema, LangSchema } from "./user.dto";
 import { StrongPasswordSchema } from "./password.schema";
 
+/** Corps du POST /auth/login : identifiants email + mot de passe (min 8). */
 export const LoginRequestDtoSchema = z
   .object({
     email: z.string().email().openapi({ description: "User's email address", example: "john.doe@example.com" }),
@@ -10,6 +15,7 @@ export const LoginRequestDtoSchema = z
   .openapi({ title: "LoginRequest" });
 export type LoginRequestDto = z.infer<typeof LoginRequestDtoSchema>;
 
+// Login réussi : access token JWT + CSRF token (le refresh token part en cookie httpOnly).
 export const LoginResponseDtoSchema = z
   .object({
     access_token: z.string().openapi({ description: "JWT access token (RS256)" }),
@@ -19,6 +25,7 @@ export const LoginResponseDtoSchema = z
   .openapi({ title: "LoginResponse" });
 export type LoginResponseDto = z.infer<typeof LoginResponseDtoSchema>;
 
+// Réponse du refresh : nouvel access token + CSRF token pivoté (rotation à chaque refresh).
 export const RefreshResponseDtoSchema = z
   .object({
     access_token: z.string().openapi({ description: "New JWT access token" }),
@@ -34,6 +41,7 @@ export const LogoutResponseDtoSchema = z
   .openapi({ title: "LogoutResponse" });
 export type LogoutResponseDto = z.infer<typeof LogoutResponseDtoSchema>;
 
+// GET /auth/csrf : renvoie le CSRF token courant issu du cookie (vide si non connecté).
 export const CsrfResponseDtoSchema = z
   .object({
     csrf_token: z.string().openapi({ description: "Current CSRF token from cookie (empty if not logged in)" }),
@@ -48,6 +56,7 @@ export const AuthMessageResponseDtoSchema = z
   .openapi({ title: "AuthMessageResponse" });
 export type AuthMessageResponseDto = z.infer<typeof AuthMessageResponseDtoSchema>;
 
+// Query de vérification d'email : le token à usage unique envoyé par mail.
 export const VerifyEmailQuerySchema = z
   .object({
     token: z.string().min(1),
@@ -69,6 +78,7 @@ export const ForgotPasswordRequestSchema = z
   .openapi({ title: "ForgotPasswordRequest" });
 export type ForgotPasswordRequestDto = z.infer<typeof ForgotPasswordRequestSchema>;
 
+// Réinitialisation : token reçu par mail + nouveau mot de passe (règles StrongPassword).
 export const ResetPasswordRequestSchema = z
   .object({
     token: z.string().min(1),
@@ -77,6 +87,8 @@ export const ResetPasswordRequestSchema = z
   .openapi({ title: "ResetPasswordRequest" });
 export type ResetPasswordRequestDto = z.infer<typeof ResetPasswordRequestSchema>;
 
+// Session active (adossée à un refresh token) listée dans la gestion des appareils.
+// `current` marque la session qui émet la requête.
 export const SessionResponseDtoSchema = z
   .object({
     id: z.string().openapi({ description: "Session (refresh-token) id" }),
@@ -96,6 +108,8 @@ export type SessionListResponseDto = z.infer<typeof SessionListResponseDtoSchema
 export const SessionParamsDtoSchema = z.object({ id: z.string().min(1) }).openapi({ title: "SessionParams" });
 export type SessionParamsDto = z.infer<typeof SessionParamsDtoSchema>;
 
+// Défi MFA : le login s'arrête là, il faut rejouer le code TOTP via /auth/login/mfa
+// en présentant ce mfa_token éphémère.
 export const MfaRequiredResponseSchema = z
   .object({
     mfa_required: z.literal(true),
@@ -104,6 +118,7 @@ export const MfaRequiredResponseSchema = z
   .openapi({ title: "MfaRequiredResponse" });
 export type MfaRequiredResponseDto = z.infer<typeof MfaRequiredResponseSchema>;
 
+// Second pas du login MFA : le mfa_token reçu + le code TOTP (exactement 6 chiffres).
 export const LoginMfaRequestSchema = z
   .object({
     mfa_token: z.string().min(1),
@@ -112,6 +127,8 @@ export const LoginMfaRequestSchema = z
   .openapi({ title: "LoginMfaRequest" });
 export type LoginMfaRequestDto = z.infer<typeof LoginMfaRequestSchema>;
 
+// Défi d'enrôlement : compte qui doit activer le TOTP avant de continuer ; le
+// enroll_token pilote la cérémonie /auth/login/enroll/*.
 export const EnrollmentRequiredResponseSchema = z
   .object({
     enrollment_required: z.literal(true),
@@ -120,11 +137,13 @@ export const EnrollmentRequiredResponseSchema = z
   .openapi({ title: "EnrollmentRequiredResponse" });
 export type EnrollmentRequiredResponseDto = z.infer<typeof EnrollmentRequiredResponseSchema>;
 
+// Réponse de login non finalisée : soit un défi MFA, soit un défi d'enrôlement.
 export const LoginChallengeResponseSchema = z
   .union([MfaRequiredResponseSchema, EnrollmentRequiredResponseSchema])
   .openapi({ title: "LoginChallengeResponse" });
 export type LoginChallengeResponseDto = z.infer<typeof LoginChallengeResponseSchema>;
 
+// Step-up : on redemande le code TOTP pour obtenir un jeton autorisant UNE opération sensible.
 export const StepUpRequestSchema = z
   .object({
     code: z.string().regex(/^\d{6}$/, "6-digit code required"),
@@ -132,6 +151,7 @@ export const StepUpRequestSchema = z
   .openapi({ title: "StepUpRequest" });
 export type StepUpRequestDto = z.infer<typeof StepUpRequestSchema>;
 
+// Jeton step-up éphémère à renvoyer dans l'en-tête X-Step-Up-Token de l'opération autorisée.
 export const StepUpResponseSchema = z
   .object({
     step_up_token: z
@@ -141,6 +161,7 @@ export const StepUpResponseSchema = z
   .openapi({ title: "StepUpResponse" });
 export type StepUpResponseDto = z.infer<typeof StepUpResponseSchema>;
 
+// Début d'enrôlement TOTP : URL otpauth:// (pour le QR code) + secret en clair (saisie manuelle).
 export const TotpEnrollResponseSchema = z
   .object({
     otpauth_url: z.string(),
@@ -156,6 +177,7 @@ export const EnrollStartRequestSchema = z
   .openapi({ title: "EnrollStartRequest" });
 export type EnrollStartRequestDto = z.infer<typeof EnrollStartRequestSchema>;
 
+// Confirmation d'enrôlement forcé : le ticket enroll_token + un premier code TOTP valide.
 export const EnrollConfirmRequestSchema = z
   .object({
     enroll_token: z.string().min(1),
@@ -164,6 +186,7 @@ export const EnrollConfirmRequestSchema = z
   .openapi({ title: "EnrollConfirmRequest" });
 export type EnrollConfirmRequestDto = z.infer<typeof EnrollConfirmRequestSchema>;
 
+// Simple code TOTP à 6 chiffres (activation depuis le profil, etc.).
 export const TotpCodeRequestSchema = z
   .object({
     code: z.string().regex(/^\d{6}$/, "6-digit code required"),
@@ -171,6 +194,7 @@ export const TotpCodeRequestSchema = z
   .openapi({ title: "TotpCodeRequest" });
 export type TotpCodeRequestDto = z.infer<typeof TotpCodeRequestSchema>;
 
+// Désactivation du TOTP : ré-authentification par le mot de passe courant.
 export const TotpDisableRequestSchema = z
   .object({
     password: z.string().min(1),
@@ -178,6 +202,7 @@ export const TotpDisableRequestSchema = z
   .openapi({ title: "TotpDisableRequest" });
 export type TotpDisableRequestDto = z.infer<typeof TotpDisableRequestSchema>;
 
+// Enveloppes d'erreur normalisées renvoyées par l'auth-service (401 / 403 / 409).
 export const UnauthorizedErrorSchema = z
   .object({
     message: z.string().openapi({ description: "Error message" }),
@@ -203,6 +228,9 @@ export const ConflictErrorSchema = z
   .openapi({ title: "ConflictError", description: "Resource already exists" });
 export type ConflictError = z.infer<typeof ConflictErrorSchema>;
 
+// Corps du register : identité + adresse + mot de passe fort. `lang` fixe la langue des
+// emails transactionnels (repli sur Accept-Language puis fr). Traité par l'auth-service
+// qui crée ensuite l'utilisateur côté api.
 export const RegisterRequestDtoSchema = z
   .object({
     firstName: z.string().min(1).max(100).openapi({ description: "User's first name", example: "John" }),

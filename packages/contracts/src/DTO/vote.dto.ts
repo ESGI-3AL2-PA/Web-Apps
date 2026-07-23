@@ -1,11 +1,18 @@
+// DTO (couche contracts) : schémas zod des votes / sondages de quartier. Couvre la
+// vue de réponse (avec masquage des résultats tant que l'appelant n'a pas voté), la
+// création, la mise à jour, le listing, la soumission d'un bulletin et l'agrégation
+// des résultats.
 import { z } from "../zod";
 
+/** Modalité du vote : choix unique ou choix multiple. */
 export const VoteTypeSchema = z.enum(["single_choice", "multiple_choice"]);
 export type VoteType = z.infer<typeof VoteTypeSchema>;
 
+/** Cycle de vie d'un vote : brouillon, ouvert, clôturé. */
 export const VoteStatusSchema = z.enum(["draft", "open", "closed"]);
 export type VoteStatus = z.infer<typeof VoteStatusSchema>;
 
+/** Entrée de résultat agrégé : le nombre de voix pour une option donnée. */
 export const VoteResultEntrySchema = z
   .object({
     option: z.string().openapi({ description: "Option label" }),
@@ -14,6 +21,11 @@ export const VoteResultEntrySchema = z
   .openapi({ title: "VoteResultEntry" });
 export type VoteResultEntry = z.infer<typeof VoteResultEntrySchema>;
 
+// Vote renvoyé par l'API. Confidentialité du dépouillement : les compteurs par option
+// (`results`) restent à zéro tant que l'appelant n'a pas voté ou que le vote n'est pas
+// clôturé, alors que `totalResponses` reste toujours visible. `userHasVoted` /
+// `myChosenOptions` renseignent l'état personnel de l'appelant.
+/** Vote / sondage renvoyé par l'API, avec résultats masqués jusqu'au vote ou à la clôture. */
 export const VoteResponseDtoSchema = z
   .object({
     id: z.string().openapi({ description: "Unique vote identifier" }),
@@ -42,6 +54,7 @@ export const VoteResponseDtoSchema = z
   .openapi({ title: "VoteResponse" });
 export type VoteResponseDto = z.infer<typeof VoteResponseDtoSchema>;
 
+/** Corps de création d'un vote : au moins un quartier, une question (1..500) et au moins deux options. */
 export const CreateVoteDtoSchema = z
   .object({
     districtIds: z.array(z.string()).min(1).openapi({ description: "Districts concerned" }),
@@ -54,6 +67,7 @@ export const CreateVoteDtoSchema = z
   .openapi({ title: "CreateVote" });
 export type CreateVoteDto = z.infer<typeof CreateVoteDtoSchema>;
 
+/** Corps de mise à jour partielle d'un vote (permet aussi de changer son `status`, ex. ouvrir/clôturer). */
 export const UpdateVoteDtoSchema = z
   .object({
     question: z.string().min(1).max(500).optional(),
@@ -66,9 +80,11 @@ export const UpdateVoteDtoSchema = z
   .openapi({ title: "UpdateVote" });
 export type UpdateVoteDto = z.infer<typeof UpdateVoteDtoSchema>;
 
+/** Param de route : identifiant du vote ciblé. */
 export const VoteParamsDtoSchema = z.object({ id: z.string() }).openapi({ title: "VoteParams" });
 export type VoteParamsDto = z.infer<typeof VoteParamsDtoSchema>;
 
+/** Query de listing des votes : pagination, recherche texte et filtres par statut, quartier et créateur. */
 export const VoteQueryDtoSchema = z
   .object({
     page: z.coerce.number().int().min(1).optional().default(1),
@@ -82,6 +98,9 @@ export const VoteQueryDtoSchema = z
 export type VoteQueryDto = z.infer<typeof VoteQueryDtoSchema>;
 export type VoteQueryInput = z.input<typeof VoteQueryDtoSchema>;
 
+// Bulletin soumis : `chosenOption` pour un vote à choix unique, `chosenOptions` pour
+// un vote à choix multiple. Le refine impose qu'au moins l'un des deux soit renseigné.
+/** Corps de soumission d'un bulletin de vote (option unique ou options multiples selon la modalité). */
 export const SubmitVoteResponseDtoSchema = z
   .object({
     chosenOption: z.string().optional().openapi({ description: "Option unique (single_choice)" }),
@@ -93,6 +112,7 @@ export const SubmitVoteResponseDtoSchema = z
   .openapi({ title: "SubmitVoteResponse" });
 export type SubmitVoteResponseDto = z.infer<typeof SubmitVoteResponseDtoSchema>;
 
+/** Résultats agrégés d'un vote : total des réponses et décompte par option. */
 export const VoteResultsResponseDtoSchema = z
   .object({
     voteId: z.string(),

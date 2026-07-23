@@ -1,8 +1,12 @@
+// Config TS du package contracts (contracts ts-rest + DTO zod partagés).
 {
+  // Hérite des options communes du monorepo.
   "extends": "@repo/typescript-config/base.json",
   "include": ["src", "index.ts"],
   "compilerOptions": {
+    // NodeNext : résolution ESM alignée sur "type": "module" du package.
     "module": "NodeNext",
+    // Sortie du build (tsc) — consommée par les apps qui dépendent du package.
     "outDir": "./dist"
   }
 }

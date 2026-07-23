@@ -1,12 +1,19 @@
+// DTO (couche contracts) : schémas zod de l'utilisateur. Expose la vue de réponse
+// (profil + rôle + quartier + solde + flags de sécurité), la création, la mise à jour
+// (avec confirmation de mot de passe), le bannissement, la résolution de quartier par
+// géocodage et les schémas de listing/params.
 import { z } from "../zod";
 import { StrongPasswordSchema } from "./password.schema";
 
+/** Rôles applicatifs. `admin` = administrateur d'un quartier ; `superAdmin` = accès global. */
 export const UserRoleSchema = z.enum(["user", "admin", "superAdmin"]);
 export type UserRole = z.infer<typeof UserRoleSchema>;
 
+/** Langue de préférence (emails transactionnels), fr par défaut. */
 export const LangSchema = z.enum(["fr", "en"]);
 export type Lang = z.infer<typeof LangSchema>;
 
+/** Utilisateur renvoyé par l'API. `adminDistrictId` n'est peuplé (au login/userinfo) que pour un admin de quartier ; `balance` est le solde de points. */
 export const UserResponseDtoSchema = z
   .object({
     id: z.string().openapi({ description: "Unique user identifier" }),
@@ -35,6 +42,7 @@ export const UserResponseDtoSchema = z
   .openapi({ title: "UserResponse" });
 export type UserResponseDto = z.infer<typeof UserResponseDtoSchema>;
 
+/** Corps d'inscription : identité, email, mot de passe fort (min 12 car. maj/min/chiffre/symbole) et adresse (servant à rattacher un quartier). */
 export const CreateUserDtoSchema = z
   .object({
     firstName: z.string().min(1).max(100).openapi({ description: "User's first name", example: "John" }),
@@ -52,6 +60,7 @@ export const CreateUserDtoSchema = z
   .openapi({ title: "CreateUser" });
 export type CreateUserDto = z.infer<typeof CreateUserDtoSchema>;
 
+/** Corps de mise à jour partielle du profil ; `currentPassword` requis dès qu'on définit `newPassword` (voir le refine plus bas). */
 export const UpdateUserDtoSchema = z
   .object({
     firstName: z.string().min(1).max(100).optional().openapi({ description: "User's first name", example: "John" }),
@@ -72,6 +81,8 @@ export const UpdateUserDtoSchema = z
     address: z.string().optional().openapi({ description: "User's address", example: "12 Rue de la Paix, Paris" }),
     lang: LangSchema.optional().openapi({ description: "Preferred language for transactional emails" }),
   })
+  // Changer le mot de passe exige de fournir l'actuel : `newPassword` sans
+  // `currentPassword` échoue la validation, l'erreur étant rattachée à ce champ.
   .refine((data) => !data.newPassword || !!data.currentPassword, {
     message: "currentPassword is required when setting newPassword",
     path: ["currentPassword"],
@@ -79,6 +90,7 @@ export const UpdateUserDtoSchema = z
   .openapi({ title: "UpdateUser" });
 export type UpdateUserDto = z.infer<typeof UpdateUserDtoSchema>;
 
+/** Corps de bannissement : `banned` true bloque la connexion, false lève le ban. */
 export const BanUserDtoSchema = z
   .object({
     banned: z.boolean().openapi({ description: "true to ban (block login), false to lift the ban" }),
@@ -86,8 +98,9 @@ export const BanUserDtoSchema = z
   .openapi({ title: "BanUser" });
 export type BanUserDto = z.infer<typeof BanUserDtoSchema>;
 
-// Optional chosen district — sent when the caller's address falls inside several
-// overlapping districts and they pick which one to join.
+// Quartier choisi (optionnel) — envoyé lorsque l'adresse de l'appelant tombe dans
+// plusieurs quartiers qui se chevauchent et qu'il désigne lequel rejoindre.
+/** Corps de résolution de quartier : `districtId` optionnel pour départager plusieurs quartiers couvrant l'adresse. */
 export const ResolveDistrictRequestDtoSchema = z
   .object({
     districtId: z.string().optional().openapi({ description: "District to join when several contain the address" }),
@@ -95,13 +108,16 @@ export const ResolveDistrictRequestDtoSchema = z
   .openapi({ title: "ResolveDistrictRequest" });
 export type ResolveDistrictRequestDto = z.infer<typeof ResolveDistrictRequestDtoSchema>;
 
-// Re-geocoding the caller's stored address and joining the containing district.
-// - resolved:true  => joined (the client re-hydrates its user via /auth/userinfo)
-// - resolved:false with candidates.length > 1 => address is in several districts; the
-//   caller must re-call with a chosen districtId
-// - resolved:false with candidates empty => no district covers the address yet
-// candidates is a minimal {id,name} shape on purpose — nesting the titled DistrictResponse
-// here trips @ts-rest/open-api's duplicate-title check.
+// Re-géocodage de l'adresse stockée de l'appelant puis rattachement au quartier qui
+// la contient.
+// - resolved:true  => rattaché (le client réhydrate son utilisateur via /auth/userinfo)
+// - resolved:false avec candidates.length > 1 => l'adresse est dans plusieurs quartiers ;
+//   l'appelant doit rappeler en fournissant un districtId choisi
+// - resolved:false avec candidates vide => aucun quartier ne couvre encore l'adresse
+// candidates a volontairement une forme minimale {id,name} : imbriquer ici le
+// DistrictResponse (qui a un `title`) déclenche le contrôle de titres dupliqués de
+// @ts-rest/open-api.
+/** Réponse de résolution de quartier : `resolved` indique si un rattachement a eu lieu, `candidates` liste les quartiers à départager sinon. */
 export const ResolveDistrictResponseDtoSchema = z
   .object({
     resolved: z.boolean().openapi({ description: "Whether a district was found and joined" }),
@@ -112,6 +128,7 @@ export const ResolveDistrictResponseDtoSchema = z
   .openapi({ title: "ResolveDistrictResponse" });
 export type ResolveDistrictResponseDto = z.infer<typeof ResolveDistrictResponseDtoSchema>;
 
+/** Param de route : identifiant de l'utilisateur ciblé. */
 export const UserParamsDtoSchema = z
   .object({
     id: z.string(),
@@ -119,6 +136,7 @@ export const UserParamsDtoSchema = z
   .openapi({ title: "UserParams" });
 export type UserParamsDto = z.infer<typeof UserParamsDtoSchema>;
 
+/** Query de listing des utilisateurs : pagination, recherche texte et filtres par quartier de résidence et par rôle. */
 export const UserQueryDtoSchema = z
   .object({
     page: z.coerce.number().int().min(1).optional().default(1),

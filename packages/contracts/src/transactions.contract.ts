@@ -15,7 +15,17 @@ import { auth } from "./auth-meta";
 
 const c = initContract();
 
+/**
+ * Contract ts-rest des transactions de points.
+ *
+ * Une transaction est soit un transfert entre utilisateurs, soit un
+ * crédit/débit système. La création exige une revérification step-up TOTP
+ * systématique (`stepUp: { always: true }`). Les relevés par utilisateur (liste
+ * et solde) sont accessibles à l'intéressé, à l'admin de son quartier ou au
+ * superAdmin.
+ */
 export const transactionsContract = c.router({
+  // GET /transactions — liste paginée des transactions. Tout utilisateur authentifié.
   getTransactions: {
     method: "GET",
     path: "/transactions",
@@ -27,6 +37,8 @@ export const transactionsContract = c.router({
     metadata: auth({ audience: "api" }),
   },
 
+  // POST /transactions — crée une transaction (transfert entre utilisateurs ou crédit/débit système).
+  // Renvoie les écritures de transaction résultantes. Step-up TOTP systématique.
   createTransaction: {
     method: "POST",
     path: "/transactions",
@@ -51,15 +63,17 @@ export const transactionsContract = c.router({
       403: ForbiddenErrorSchema,
     },
     summary: "Get a paginated list of transactions for a specific user (self, district admin, or superAdmin)",
-    // ownerField:"id" (self) + districtField (a district admin may view a user IN their
-    // district) + superAdmin bypass. Not selfParam, which short-circuits to 403 before the
-    // district check and would exclude admins.
+    // GET /users/:id/transactions — relevé paginé d'un utilisateur. Lui-même, admin de son quartier, ou superAdmin.
+    // ownerField:"id" (soi-même) + districtField (un admin peut voir un utilisateur DE son quartier)
+    // + bypass superAdmin. On n'utilise pas selfParam, qui court-circuite en 403 avant le contrôle
+    // de quartier et exclurait les admins.
     metadata: auth({
       audience: "api",
       scope: { resource: "user", ownerField: "id", districtField: "districtId", bypassRoles: ["superAdmin"] },
     }),
   },
 
+  // GET /users/:id/balance — solde de points courant d'un utilisateur. Lui-même, admin de son quartier, ou superAdmin.
   getUserBalance: {
     method: "GET",
     path: "/users/:id/balance",

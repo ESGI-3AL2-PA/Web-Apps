@@ -15,7 +15,16 @@ import { auth } from "./auth-meta";
 
 const c = initContract();
 
+/**
+ * Contract ts-rest des annonces (listings).
+ *
+ * Lectures ouvertes à tout utilisateur authentifié. La création est ouverte ;
+ * la mise à jour et la suppression sont réservées à l'auteur ou à un
+ * administrateur du quartier de l'annonce (bypass superAdmin). Une route de
+ * comptage renvoie le nombre d'annonces actives, éventuellement par quartier.
+ */
 export const listingsContract = c.router({
+  // GET /listings — liste paginée des annonces. Tout utilisateur authentifié.
   getListings: {
     method: "GET",
     path: "/listings",
@@ -27,6 +36,7 @@ export const listingsContract = c.router({
     metadata: auth({ audience: "api" }),
   },
 
+  // GET /listings/:id — une annonce par son id. Tout utilisateur authentifié.
   getListingById: {
     method: "GET",
     path: "/listings/:id",
@@ -39,6 +49,7 @@ export const listingsContract = c.router({
     metadata: auth({ audience: "api" }),
   },
 
+  // POST /listings — crée une annonce. Tout utilisateur authentifié.
   createListing: {
     method: "POST",
     path: "/listings",
@@ -51,6 +62,7 @@ export const listingsContract = c.router({
     metadata: auth({ audience: "api" }),
   },
 
+  // PATCH /listings/:id — mise à jour partielle. Auteur (ownerField) ou admin du quartier.
   updateListing: {
     method: "PATCH",
     path: "/listings/:id",
@@ -73,6 +85,7 @@ export const listingsContract = c.router({
     }),
   },
 
+  // DELETE /listings/:id — supprime une annonce. Auteur ou admin du quartier.
   deleteListing: {
     method: "DELETE",
     path: "/listings/:id",
@@ -95,10 +108,12 @@ export const listingsContract = c.router({
     }),
   },
 
+  // GET /listings/count/active — nombre d'annonces actives, éventuellement limité à un quartier.
   getActiveListingsCount: {
     method: "GET",
     path: "/listings/count/active",
     query: z.object({
+      // Restreint le comptage à un seul quartier.
       districtId: z.string().optional().openapi({ description: "Restrict the count to one district" }),
     }),
     responses: {

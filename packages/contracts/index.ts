@@ -1,4 +1,7 @@
-import "./src/zod"; // must run before any .openapi() calls
+// Point d'entrée du package @repo/contracts : source unique des contrats ts-rest et
+// des DTO zod partagés entre l'api, l'auth-service et les frontends. L'ordre importe :
+// l'extension zod (`.openapi()`) doit être installée avant que tout schéma l'appelle.
+import "./src/zod"; // doit s'exécuter avant tout appel à .openapi()
 export * from "./src/auth-meta";
 export * from "./src/DTO/index";
 export * from "./src/users.contract";

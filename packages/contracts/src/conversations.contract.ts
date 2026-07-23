@@ -20,7 +20,13 @@ import { auth } from "./auth-meta";
 
 const c = initContract();
 
+// Contrat ts-rest de la messagerie (api) : conversations et messages (texte, vocal,
+// image, pièces jointes, accusés de lecture). Toutes les routes exigent audience
+// "api". Note de sécurité (security-M2) : les écritures sont réservées aux
+// participants — pas de `districtField` sur les écritures, pour qu'un admin de
+// quartier non participant ne puisse pas injecter ou muter le contenu d'un échange privé.
 export const conversationsContract = c.router({
+  // GET /conversations — authentifié. Liste paginée des conversations.
   getConversations: {
     method: "GET",
     path: "/conversations",
@@ -32,6 +38,7 @@ export const conversationsContract = c.router({
     metadata: auth({ audience: "api" }),
   },
 
+  // GET /conversations/:id — participant uniquement. 404 (au lieu de 403) si refusé.
   getConversationById: {
     method: "GET",
     path: "/conversations/:id",
@@ -52,6 +59,7 @@ export const conversationsContract = c.router({
     }),
   },
 
+  // POST /conversations — authentifié. Crée une nouvelle conversation.
   createConversation: {
     method: "POST",
     path: "/conversations",
@@ -64,6 +72,8 @@ export const conversationsContract = c.router({
     metadata: auth({ audience: "api" }),
   },
 
+  // GET /conversations/:id/messages — participant uniquement. Liste paginée des
+  // messages ; 404 si refusé.
   getMessages: {
     method: "GET",
     path: "/conversations/:id/messages",
@@ -85,6 +95,7 @@ export const conversationsContract = c.router({
     }),
   },
 
+  // POST /conversations/:id/messages — participant uniquement. Envoie un message texte.
   sendMessage: {
     method: "POST",
     path: "/conversations/:id/messages",
@@ -95,8 +106,9 @@ export const conversationsContract = c.router({
       404: NotFoundErrorSchema,
     },
     summary: "Send a message in a conversation (participant only)",
-    // security-M2: writes are participant-only. No districtField — a district admin who
-    // is not a participant must not be able to inject messages into a private conversation.
+    // security-M2 : écritures réservées aux participants. Pas de districtField — un
+    // admin de quartier non participant ne doit pas pouvoir injecter de messages dans
+    // une conversation privée.
     metadata: auth({
       audience: "api",
       scope: {
@@ -107,6 +119,8 @@ export const conversationsContract = c.router({
     }),
   },
 
+  // POST /conversations/:id/messages/voice — participant uniquement. Envoie un message
+  // vocal.
   sendVoiceMessage: {
     method: "POST",
     path: "/conversations/:id/messages/voice",
@@ -117,7 +131,7 @@ export const conversationsContract = c.router({
       404: NotFoundErrorSchema,
     },
     summary: "Send a voice message in a conversation (participant only)",
-    // security-M2: writes are participant-only (see sendMessage).
+    // security-M2 : écritures réservées aux participants (voir sendMessage).
     metadata: auth({
       audience: "api",
       scope: {
@@ -128,6 +142,8 @@ export const conversationsContract = c.router({
     }),
   },
 
+  // POST /conversations/:id/messages/image — participant uniquement. Envoie un message
+  // image ; 400 si l'image est invalide.
   sendImageMessage: {
     method: "POST",
     path: "/conversations/:id/messages/image",
@@ -139,7 +155,7 @@ export const conversationsContract = c.router({
       404: NotFoundErrorSchema,
     },
     summary: "Send an image message in a conversation (participant only)",
-    // security-M2: writes are participant-only (see sendMessage).
+    // security-M2 : écritures réservées aux participants (voir sendMessage).
     metadata: auth({
       audience: "api",
       scope: {
@@ -150,6 +166,7 @@ export const conversationsContract = c.router({
     }),
   },
 
+  // PATCH /messages/:id/read — participant uniquement. Marque un message comme lu.
   markMessageRead: {
     method: "PATCH",
     path: "/messages/:id/read",
@@ -160,8 +177,9 @@ export const conversationsContract = c.router({
       404: NotFoundErrorSchema,
     },
     summary: "Mark a message as read (conversation participant only)",
-    // security-M2: read-receipt writes are participant-only. No districtField — a district
-    // admin moderating a conversation must not mutate its read state.
+    // security-M2 : les accusés de lecture sont réservés aux participants. Pas de
+    // districtField — un admin de quartier qui modère une conversation ne doit pas
+    // muter son état de lecture.
     metadata: auth({
       audience: "api",
       scope: {
@@ -172,6 +190,8 @@ export const conversationsContract = c.router({
     }),
   },
 
+  // POST /messages/:id/media — expéditeur uniquement. Attache un média (photo/audio/
+  // fichier) à un message existant.
   attachMedia: {
     method: "POST",
     path: "/messages/:id/media",
@@ -182,8 +202,9 @@ export const conversationsContract = c.router({
       404: NotFoundErrorSchema,
     },
     summary: "Attach media (photo/audio/file) to an existing message (sender only)",
-    // security-M2 follow-up: media attach is sender-only. No districtField — a district admin
-    // who is not the message sender must not be able to attach media to a private message.
+    // suite de security-M2 : l'ajout de média est réservé à l'expéditeur. Pas de
+    // districtField — un admin de quartier qui n'est pas l'expéditeur ne doit pas
+    // pouvoir attacher un média à un message privé.
     metadata: auth({
       audience: "api",
       scope: { resource: "message", ownerField: "senderId", notFoundOnDeny: true },

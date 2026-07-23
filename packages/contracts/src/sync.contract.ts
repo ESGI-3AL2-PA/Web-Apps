@@ -13,10 +13,16 @@ import { auth } from "./auth-meta";
 
 const c = initContract();
 
-// The desktop client authenticates with its operator's own access token (no shared
-// secret). Both directions are additionally district-scoped in the handlers — see
-// sync-gateway.md §5.5 / Decision D1.
+/**
+ * Contract ts-rest de la synchronisation hors-ligne (client desktop).
+ *
+ * Le client desktop s'authentifie avec l'access token de son opérateur (pas de
+ * secret partagé) ; les deux routes exigent donc le rôle admin ou superAdmin.
+ * Les deux directions sont en outre limitées au quartier dans les handlers —
+ * voir sync-gateway.md §5.5 / Décision D1.
+ */
 export const syncContract = c.router({
+  // POST /sync/ingest — applique un lot d'événements hors-ligne poussés par une instance desktop. Admin/superAdmin.
   ingest: {
     method: "POST",
     path: "/sync/ingest",
@@ -30,6 +36,7 @@ export const syncContract = c.router({
     metadata: auth({ audience: "api", roles: ["admin", "superAdmin"] }),
   },
 
+  // GET /sync/changes — interroge le flux ordonné des changements à appliquer localement. Admin/superAdmin.
   getChanges: {
     method: "GET",
     path: "/sync/changes",
