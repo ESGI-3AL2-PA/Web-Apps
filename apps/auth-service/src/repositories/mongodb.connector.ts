@@ -1,7 +1,11 @@
+// Connecteur Mongo de l'auth-service (couche repository, infrastructure).
+// Expose un unique client partagé par toute l'application et réexporte les
+// fonctions de cycle de vie de la connexion que le reste du code importe.
 import { createMongoConnector } from "@repo/shared";
 
-// One shared client for the whole app. The connector logic lives in @repo/shared;
-// this binds it to the auth-service's env and re-exports the functions the app imports.
+// Un seul client partagé pour toute l'application. La logique du connecteur vit
+// dans @repo/shared ; ici on la lie à l'environnement de l'auth-service et on
+// réexporte les fonctions consommées par l'application.
 const connector = createMongoConnector();
 
 export const connectDB = connector.connectDB;

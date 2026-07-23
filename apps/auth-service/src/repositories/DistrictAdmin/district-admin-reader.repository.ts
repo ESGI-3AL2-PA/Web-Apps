@@ -1,7 +1,8 @@
-// Read-only view of the `district_admins` relationship. The api owns writes
-// (admin promotion); the auth-service only reads it to mint the adminDistrictId
-// claim at login/refresh. One district per admin (unique on userId).
+// Vue en lecture seule de la relation `district_admins`. L'api possède les écritures
+// (promotion d'administrateur de quartier) ; l'auth-service ne fait que la lire pour forger
+// le claim adminDistrictId au login / refresh. Un seul quartier par administrateur (unicité
+// sur userId).
 export interface IDistrictAdminReaderRepository {
-  /** The district this user administers, or null if they are not an admin of any. */
+  /** Le quartier administré par cet utilisateur, ou null s'il n'administre aucun quartier. */
   findDistrictIdByUserId(userId: string): Promise<string | null>;
 }

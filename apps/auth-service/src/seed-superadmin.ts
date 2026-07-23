@@ -1,10 +1,13 @@
+// Script de seed (exécuté hors du serveur HTTP) : crée ou promeut le compte
+// superAdmin, le seul rôle que le flux d'inscription ne peut pas produire.
 import { randomUUID } from "crypto";
 import argon2 from "argon2";
 import { connectDB } from "./repositories/mongodb.connector.js";
 
-// Seeds (or promotes) a superAdmin — the only role the register flow can't create.
-// Idempotent: keyed on email. Re-running never clobbers an existing user's password;
-// it just ensures the account is a verified superAdmin. Configure via env.
+// Crée (ou promeut) un superAdmin — le seul rôle que le flux d'inscription ne
+// peut pas créer. Idempotent : indexé sur l'email. Une réexécution n'écrase
+// jamais le mot de passe d'un utilisateur existant ; elle garantit seulement que
+// le compte est un superAdmin vérifié. Configuration via variables d'environnement.
 const email = process.env.SEED_SUPERADMIN_EMAIL ?? "superadmin@local.dev";
 const password = process.env.SEED_SUPERADMIN_PASSWORD ?? "ChangeMe!2345";
 const firstName = process.env.SEED_SUPERADMIN_FIRSTNAME ?? "Super";
@@ -17,7 +20,8 @@ const seed = async () => {
   const result = await db.collection("users").updateOne(
     { email },
     {
-      // Set only when creating — promoting an existing user leaves these untouched.
+      // Appliqué uniquement à la création — promouvoir un utilisateur existant
+      // laisse ces champs intacts.
       $setOnInsert: {
         _id: randomUUID(),
         email,
@@ -31,12 +35,13 @@ const seed = async () => {
         totpEnabled: false,
         createdAt: now,
       },
-      // Always enforced, whether creating or promoting.
+      // Toujours imposé, à la création comme à la promotion.
       $set: { role: "superAdmin", emailVerified: true, updatedAt: now },
     },
     { upsert: true },
   );
 
+  // upsertedCount > 0 => insertion (création). Sinon, le compte existait déjà.
   if (result.upsertedCount > 0) {
     console.warn(`Seeded superAdmin ${email} with password "${password}" — change it after first login.`);
   } else {

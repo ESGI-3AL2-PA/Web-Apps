@@ -1,3 +1,6 @@
+// Suite de tests : cas d'usage refresh (rotation des tokens). Couvre la rotation
+// nominale, la détection de rejeu (révocation à portée famille ou globale pour les
+// anciens tokens), token inconnu, token expiré, utilisateur banni et utilisateur supprimé.
 import { createHash } from "crypto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { RefreshToken } from "../entities/refresh-token.entity.js";
@@ -6,9 +9,9 @@ import type { IDistrictAdminReaderRepository } from "../repositories/DistrictAdm
 import type { IUserReaderRepository, UserRecord } from "../repositories/User/user-reader.repository.js";
 import { refreshUseCase } from "./refresh.use-case.js";
 
-// Mock the token signer / key provider so the use-case never touches a real RS256 key.
-// signAccessToken/lookupAdminDistrictId are unit-tested elsewhere; here we only care
-// about the rotation + reuse-detection logic around them.
+// Mocke le signataire de tokens / fournisseur de clés pour que le cas d'usage ne touche jamais
+// une vraie clé RS256. signAccessToken/lookupAdminDistrictId sont testés ailleurs ; ici seule
+// compte la logique de rotation + détection de rejeu qui les entoure.
 vi.mock("./issue-tokens.js", () => ({
   signAccessToken: vi.fn().mockResolvedValue("fake.access.token"),
   lookupAdminDistrictId: vi.fn().mockResolvedValue(null),
@@ -94,6 +97,7 @@ describe("refreshUseCase", () => {
     repo = makeRefreshRepo();
   });
 
+  // Cas nominal : token valide → réclame le token actif et en émet un nouveau (même famille de session).
   it("rotates a valid token: claims the active token and mints a fresh one", async () => {
     const stored = makeStoredToken();
     repo.claimByTokenHash.mockResolvedValue(stored);
@@ -106,16 +110,17 @@ describe("refreshUseCase", () => {
     expect(result).not.toBeNull();
     expect(result?.accessToken).toBe("fake.access.token");
     expect(result?.refreshToken).toMatch(/^[a-f0-9]{128}$/);
-    // rotation persists a new token that preserves the session identity
+    // la rotation persiste un nouveau token qui préserve l'identité de session (même sessionId)
     expect(repo.create).toHaveBeenCalledTimes(1);
     expect(repo.create.mock.calls[0]![0]).toMatchObject({ sessionId: "session-1", userId: "user-1" });
-    // no theft response on the happy path
+    // aucune réponse anti-vol sur le chemin nominal
     expect(repo.revokeBySessionId).not.toHaveBeenCalled();
     expect(repo.revokeAllForUser).not.toHaveBeenCalled();
   });
 
+  // Rejeu d'un token déjà pivoté → révoque UNIQUEMENT la famille de session, pas tout l'utilisateur.
   it("replay of an already-rotated token revokes ONLY the session family, not the whole user", async () => {
-    repo.claimByTokenHash.mockResolvedValue(null); // already claimed → not active
+    repo.claimByTokenHash.mockResolvedValue(null); // déjà réclamé → plus actif
     repo.findByTokenHash.mockResolvedValue(
       makeStoredToken({ revokedAt: new Date().toISOString(), sessionId: "session-9" }),
     );
@@ -125,12 +130,13 @@ describe("refreshUseCase", () => {
     const result = await refresh(RAW_TOKEN);
 
     expect(result).toBeNull();
-    // family-scoped revoke (internal reuse-detection: no userId argument)
+    // révocation à portée famille (détection de rejeu interne : pas d'argument userId)
     expect(repo.revokeBySessionId).toHaveBeenCalledWith("session-9");
     expect(repo.revokeAllForUser).not.toHaveBeenCalled();
     expect(repo.create).not.toHaveBeenCalled();
   });
 
+  // Rejeu d'un ancien token (ligne révoquée sans sessionId) → repli sur la révocation de toutes les sessions de l'utilisateur.
   it("legacy replay (revoked row with no sessionId) falls back to revoking all user sessions", async () => {
     repo.claimByTokenHash.mockResolvedValue(null);
     repo.findByTokenHash.mockResolvedValue(
@@ -147,6 +153,7 @@ describe("refreshUseCase", () => {
     expect(repo.create).not.toHaveBeenCalled();
   });
 
+  // Token inconnu (jamais vu) → renvoie null sans aucune révocation.
   it("unknown token (never seen) returns null without any revoke", async () => {
     repo.claimByTokenHash.mockResolvedValue(null);
     repo.findByTokenHash.mockResolvedValue(null);
@@ -161,6 +168,7 @@ describe("refreshUseCase", () => {
     expect(repo.create).not.toHaveBeenCalled();
   });
 
+  // Token expiré (réclamé mais au-delà de l'expiration) → renvoie null, aucun token émis ni révoqué.
   it("expired token (claimed but past expiry) returns null and mints nothing", async () => {
     repo.claimByTokenHash.mockResolvedValue(makeStoredToken({ expiresAt: pastIso, expiresAtDate: new Date(pastIso) }));
     const userReader = makeUserReader(makeUser());
@@ -174,6 +182,7 @@ describe("refreshUseCase", () => {
     expect(repo.revokeAllForUser).not.toHaveBeenCalled();
   });
 
+  // Utilisateur banni → révoque toutes ses sessions et refuse d'émettre un token.
   it("banned user revokes all their sessions and refuses to mint a token", async () => {
     repo.claimByTokenHash.mockResolvedValue(makeStoredToken({ userId: "user-1" }));
     const userReader = makeUserReader(makeUser({ banned: true }));
@@ -186,6 +195,7 @@ describe("refreshUseCase", () => {
     expect(repo.create).not.toHaveBeenCalled();
   });
 
+  // Utilisateur absent (supprimé en cours de session) → renvoie null sans émettre.
   it("missing user (deleted mid-session) returns null without minting", async () => {
     repo.claimByTokenHash.mockResolvedValue(makeStoredToken());
     const userReader = makeUserReader(null);

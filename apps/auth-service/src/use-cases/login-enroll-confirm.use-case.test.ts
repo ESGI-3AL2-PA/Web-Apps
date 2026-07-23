@@ -1,14 +1,17 @@
+// Suite de tests : cérémonie de confirmation d'enrôlement (login-enroll-confirm).
+// Vérifie les branches ticket invalide / code invalide / émission des tokens, en
+// stubbant la crypto jose, le sous-cas confirmTotp et l'émission de tokens.
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { IDistrictAdminReaderRepository } from "../repositories/DistrictAdmin/district-admin-reader.repository.js";
 import type { IRefreshTokenRepository } from "../repositories/RefreshToken/refresh-token.repository.js";
 import type { IUserReaderRepository, UserRecord } from "../repositories/User/user-reader.repository.js";
 import { loginEnrollConfirmUseCase } from "./login-enroll-confirm.use-case.js";
 
-// Drive jwtVerify's outcome directly — exercise the ceremony, not jose's crypto.
+// Pilote directement le résultat de jwtVerify — on teste la cérémonie, pas la crypto de jose.
 vi.mock("jose", () => ({ jwtVerify: vi.fn() }));
 
-// confirmTotpUseCase is unit-tested on its own; here we stub its verdict so we test
-// the ceremony's branching (invalid token / invalid code / token issuance).
+// confirmTotpUseCase est testé unitairement à part ; on stubbe son verdict pour tester
+// les branches de la cérémonie (ticket invalide / code invalide / émission des tokens).
 const confirmMock = vi.fn();
 vi.mock("./confirm-totp.use-case.js", () => ({
   confirmTotpUseCase: () => confirmMock,
@@ -65,11 +68,13 @@ const validPayload = { payload: { sub: "user-1" } } as unknown as Awaited<Return
 
 describe("loginEnrollConfirmUseCase", () => {
   beforeEach(() => {
+    // Par défaut : ticket valide et confirmation TOTP réussie ; chaque test surcharge au besoin.
     vi.clearAllMocks();
     jwtVerifyMock.mockResolvedValue(validPayload);
     confirmMock.mockResolvedValue("ok");
   });
 
+  // Cas nominal : ticket + code valides → confirmation puis émission des vrais tokens avec le contexte de session.
   it("a valid enroll token + code confirms and issues the real tokens", async () => {
     const userReader = makeUserReader(makeUser());
     const confirm = loginEnrollConfirmUseCase(
@@ -91,6 +96,7 @@ describe("loginEnrollConfirmUseCase", () => {
     );
   });
 
+  // Ticket non vérifiable → invalid-token, sans confirmer ni émettre quoi que ce soit.
   it("an unverifiable enroll token is rejected without confirming or issuing", async () => {
     jwtVerifyMock.mockRejectedValue(new Error("bad token"));
     const userReader = makeUserReader(makeUser());
@@ -107,6 +113,7 @@ describe("loginEnrollConfirmUseCase", () => {
     expect(issueTokens).not.toHaveBeenCalled();
   });
 
+  // Code TOTP invalide → invalid-code, aucun token émis.
   it("an invalid code surfaces invalid-code and issues nothing", async () => {
     confirmMock.mockResolvedValue("invalid-code");
     const userReader = makeUserReader(makeUser());

@@ -1,3 +1,11 @@
+/**
+ * Cas d'usage : rotation du refresh token.
+ *
+ * Couche use-case de l'auth-service. À chaque appel de refresh, l'ancien refresh
+ * token est révoqué (rotation stricte) et un nouvel access token + refresh token
+ * sont émis. La détection de réutilisation d'un token déjà tourné sert de garde
+ * anti-vol de session.
+ */
 import { randomBytes, createHash } from "crypto";
 import type { IRefreshTokenRepository } from "../repositories/RefreshToken/refresh-token.repository.js";
 import type { IUserReaderRepository } from "../repositories/User/user-reader.repository.js";
@@ -9,6 +17,14 @@ interface RefreshResult {
   refreshToken: string;
 }
 
+/**
+ * Factory du cas d'usage de refresh.
+ *
+ * @returns Une fonction prenant le refresh token brut ; elle renvoie le nouveau
+ *   couple de tokens, ou `null` si le token est invalide / expiré / rejeté
+ *   (utilisateur banni, replay détecté). Un `null` doit conduire l'appelant à
+ *   effacer les cookies et répondre 401.
+ */
 export const refreshUseCase = (
   refreshTokenRepo: IRefreshTokenRepository,
   userReader: IUserReaderRepository,
@@ -17,15 +33,16 @@ export const refreshUseCase = (
   return async (rawRefreshToken: string): Promise<RefreshResult | null> => {
     const tokenHash = createHash("sha256").update(rawRefreshToken).digest("hex");
 
-    // Atomically claim (revoke) the active token so two concurrent refreshes can't
-    // both pass the check and mint tokens — the compare-and-swap lets exactly one win.
+    // Réclame (et révoque) atomiquement le token actif : deux refresh concurrents
+    // ne peuvent pas passer tous les deux le contrôle et émettre des tokens — le
+    // compare-and-swap ne laisse gagner qu'un seul appel.
     const stored = await refreshTokenRepo.claimByTokenHash(tokenHash);
     if (!stored) {
-      // The token isn't active. If it once existed (now revoked), this is a replay
-      // of an already-rotated token → treat as theft and revoke that session's
-      // family only. Scoping to the family (not the whole user) keeps the user's
-      // other devices logged in — revoking everything would let one stale token on
-      // one device cascade into logging the account out everywhere.
+      // Le token n'est pas actif. S'il a existé (désormais révoqué), c'est un
+      // replay d'un token déjà tourné → on traite ça comme un vol et on révoque
+      // uniquement la famille de cette session. Limiter à la famille (et non à tout
+      // l'utilisateur) garde ses autres appareils connectés — tout révoquer
+      // laisserait un token périmé sur un appareil déconnecter le compte partout.
       const seen = await refreshTokenRepo.findByTokenHash(tokenHash);
       if (seen) {
         if (seen.sessionId) await refreshTokenRepo.revokeBySessionId(seen.sessionId);
@@ -34,18 +51,20 @@ export const refreshUseCase = (
       return null;
     }
 
-    // Check expiry — the claim already revoked it, so no extra revoke needed here.
+    // Contrôle d'expiration — le claim l'a déjà révoqué, inutile de re-révoquer ici.
     if (new Date(stored.expiresAt) < new Date()) {
       return null;
     }
 
-    // Look up user for fresh claims — incl. a re-read of the district-admin
-    // relationship, so promotion/demotion takes effect on the next refresh.
+    // Relit l'utilisateur pour des claims frais — y compris la relation
+    // administrateur de quartier, afin qu'une promotion/rétrogradation prenne
+    // effet dès le prochain refresh.
     const user = await userReader.findById(stored.userId);
     if (!user) return null;
 
-    // A banned user's sessions are dead: revoke the whole family and refuse to mint a new token
-    // (the caller clears cookies and returns 401), completing the block started at the api layer.
+    // Les sessions d'un utilisateur banni sont mortes : on révoque toute la famille
+    // et on refuse d'émettre un nouveau token (l'appelant efface les cookies et
+    // renvoie 401), complétant le blocage entamé côté api.
     if (user.banned) {
       await refreshTokenRepo.revokeAllForUser(user.id);
       return null;
@@ -54,7 +73,7 @@ export const refreshUseCase = (
     const adminDistrictId = await lookupAdminDistrictId(user, districtAdminReader);
     const accessToken = await signAccessToken(user, adminDistrictId);
 
-    // Issue new refresh token
+    // Émet un nouveau refresh token (64 octets aléatoires, stocké en sha256).
     const newRawRefreshToken = randomBytes(64).toString("hex");
     const newTokenHash = createHash("sha256").update(newRawRefreshToken).digest("hex");
 
@@ -67,7 +86,8 @@ export const refreshUseCase = (
       expiresAt: expiresAt.toISOString(),
       expiresAtDate: expiresAt,
       revokedAt: null,
-      // Preserve the session's identity/origin across rotation; only lastUsedAt moves.
+      // Conserve l'identité/origine de la session à travers la rotation ; seul
+      // lastUsedAt change.
       createdAt: stored.createdAt,
       sessionId: stored.sessionId,
       userAgent: stored.userAgent,

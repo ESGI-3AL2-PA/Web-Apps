@@ -1,14 +1,19 @@
+// Service TOTP (couche services) : fine surcouche autour d'otplib qui vérifie un
+// code et renvoie son pas de temps absolu, brique de l'anti-rejeu du MFA.
 import { authenticator } from "otplib";
 
-// otplib's authenticator default time step (seconds). `authenticator.options.step` is only set if
-// it has been explicitly customised, so fall back to the library default of 30.
+// Pas de temps par défaut de l'authenticator otplib (en secondes).
+// `authenticator.options.step` n'est renseigné que s'il a été personnalisé
+// explicitement ; on retombe donc sur la valeur par défaut de la lib (30).
 const TOTP_STEP_SECONDS = authenticator.options.step ?? 30;
 
 /**
- * Verify a TOTP code and return the absolute time-step it corresponds to (the TOTP counter),
- * or null if the code is invalid. The step lets callers reject replay of an already-consumed code
- * within its validity window: `checkDelta` returns how many steps the matching code is offset from
- * "now" (0 for the current window, ±1 if a look-around window is configured).
+ * Vérifie un code TOTP et renvoie le pas de temps absolu auquel il correspond
+ * (le compteur TOTP), ou null si le code est invalide. Ce pas permet aux appelants
+ * de rejeter le rejeu d'un code déjà consommé dans sa fenêtre de validité :
+ * `checkDelta` renvoie de combien de pas le code correspondant est décalé par
+ * rapport à « maintenant » (0 pour la fenêtre courante, ±1 si une fenêtre de
+ * tolérance est configurée).
  */
 export const verifyTotpStep = (code: string, secret: string): number | null => {
   const delta = authenticator.checkDelta(code, secret);

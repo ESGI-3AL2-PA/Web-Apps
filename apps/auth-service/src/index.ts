@@ -1,4 +1,13 @@
-import "@repo/shared/load-env"; // must be first: loads .env before any module reads process.env
+/**
+ * Point d'entrée de l'auth-service (Express + ts-rest, port 3001).
+ *
+ * Assemble et démarre le serveur : logging pino, en-têtes de sécurité (helmet/CSP),
+ * CORS, health/readiness, pages HTML servies (login/register/verify/reset), endpoints
+ * internes service-à-service (purge/export de sessions), rate limits par route, SSO
+ * desktop (PKCE), puis les handlers ts-rest du contrat auth. Au boot : connexion Mongo,
+ * init des clés RS256, création best-effort des index TTL, écoute et arrêt gracieux.
+ */
+import "@repo/shared/load-env"; // doit être en premier : charge .env avant que tout module lise process.env
 import path from "path";
 import fs from "fs";
 import { timingSafeEqual } from "crypto";
@@ -32,27 +41,28 @@ const allowedOrigins = (process.env.CORS_ORIGINS ?? "http://localhost:3000,http:
   .map((s) => s.trim())
   .filter(Boolean);
 
-// User-front base URL — where verified users are sent (via /login?redirect_uri=…).
+// URL de base du user-front — où sont redirigés les utilisateurs vérifiés (via /login?redirect_uri=…).
 const appUrl = process.env.VITE_APP_URL ?? "http://localhost:5000";
 
 const app: Application = express();
 const port = Number(process.env.AUTH_PORT ?? process.env.PORT) || 3001;
 
-// Behind a reverse proxy/LB, set TRUST_PROXY (e.g. "1" for one hop) so
-// express-rate-limit keys on the real client IP. Left unset by default so a
-// directly-exposed instance can't be fooled by spoofed X-Forwarded-For headers.
+// Derrière un reverse proxy / load balancer, définir TRUST_PROXY (ex. "1" pour un saut)
+// pour qu'express-rate-limit se base sur la vraie IP client. Non défini par défaut afin
+// qu'une instance exposée directement ne soit pas trompée par des X-Forwarded-For falsifiés.
 const trustProxy = process.env.TRUST_PROXY;
 if (trustProxy) {
   app.set("trust proxy", /^\d+$/.test(trustProxy) ? Number(trustProxy) : trustProxy === "true" ? true : trustProxy);
 }
 
-// Per-request access logging + correlation id (req.id, exposed as req.log child
-// logger). Mounted first so every request is logged.
+// Log d'accès par requête + identifiant de corrélation (req.id, exposé via le logger
+// enfant req.log). Monté en premier pour que chaque requête soit journalisée.
 app.use(
   pinoHttp({
     logger,
-    // Strip PII from request logs (GDPR Art. 32): the default serializer would otherwise
-    // record the client IP and the Cookie / Authorization (Bearer) headers on every request.
+    // Purge les données personnelles des logs de requête (RGPD art. 32) : sans ça, le
+    // sérialiseur par défaut enregistrerait l'IP client et les en-têtes Cookie /
+    // Authorization (Bearer) à chaque requête.
     redact: {
       paths: [
         "req.headers.authorization",
@@ -66,9 +76,10 @@ app.use(
   }),
 );
 
-// Security headers. CSP allows the inline script/style on the login & register
-// pages plus the register page's address-autocomplete fetch to the French BAN
-// (api-adresse.data.gouv.fr), while forbidding framing (clickjacking) and plugins.
+// En-têtes de sécurité. La CSP autorise le script/style inline des pages login &
+// register plus l'appel d'autocomplétion d'adresse de la page register vers la BAN
+// française (api-adresse.data.gouv.fr), tout en interdisant le framing (clickjacking)
+// et les plugins.
 app.use(
   helmet({
     contentSecurityPolicy: {
@@ -88,7 +99,7 @@ app.use(
   cors({
     origin: allowedOrigins,
     methods: ["GET", "POST", "OPTIONS"],
-    // X-Step-Up-Token is replayed on disable-TOTP (the front hits auth-service directly for it).
+    // X-Step-Up-Token est rejoué lors de la désactivation TOTP (le front appelle l'auth-service directement).
     allowedHeaders: ["Content-Type", "Authorization", "X-CSRF-Token", "X-Step-Up-Token"],
     credentials: true,
   }),
@@ -96,15 +107,16 @@ app.use(
 app.use(express.json());
 app.use(cookieParser() as RequestHandler);
 
-// Liveness: cheap, dependency-free. Answers "is the process up?" — used to decide
-// whether to restart the container. Must stay static so a slow/down DB never trips it.
+// Liveness : peu coûteux, sans dépendance. Répond « le process tourne-t-il ? » — sert à
+// décider s'il faut redémarrer le conteneur. Doit rester statique pour qu'une DB lente
+// ou HS ne le fasse jamais échouer.
 app.get("/health", (_req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
-// Readiness: "can this instance serve traffic?" — pings Mongo so the LB can pull a
-// node with a dead DB out of rotation. Mongo is required for every auth flow, so its
-// failure returns 503.
+// Readiness : « cette instance peut-elle servir du trafic ? » — ping Mongo pour que le
+// load balancer sorte de rotation un nœud à DB morte. Mongo est requise pour tout flux
+// d'auth, donc son échec renvoie 503.
 app.get("/readyz", async (_req, res) => {
   let mongoOk = true;
   try {
@@ -120,7 +132,7 @@ app.get("/readyz", async (_req, res) => {
   });
 });
 
-// Login & register pages — inject the trusted-redirect-origin allowlist into the page
+// Pages login & register — injecte dans la page l'allowlist des origines de redirection de confiance.
 const renderPage = (pagePath: string) => {
   const html = fs.readFileSync(pagePath, "utf-8");
   return html
@@ -142,10 +154,10 @@ app.get("/reset-password", (_req, res) => {
   res.type("html").send(resetPasswordHtml);
 });
 
-// The verification email links straight to GET /auth/verify?token=…. A browser
-// navigation (Accept: text/html) gets this friendly page, which then re-hits the same
-// endpoint with Accept: application/json to run the actual verification. JSON/API
-// callers fall through to the ts-rest handler mounted further down.
+// L'email de vérification pointe directement vers GET /auth/verify?token=…. Une
+// navigation navigateur (Accept: text/html) reçoit cette page conviviale, qui rappelle
+// ensuite le même endpoint en Accept: application/json pour lancer la vérification
+// réelle. Les appelants JSON/API tombent sur le handler ts-rest monté plus bas.
 app.get("/auth/verify", (req, res, next) => {
   if (req.accepts(["json", "html"]) === "html") {
     res.type("html").send(verifyHtml);
@@ -154,26 +166,29 @@ app.get("/auth/verify", (req, res, next) => {
   next();
 });
 
-// JWKS endpoint
+// Endpoint JWKS (clés publiques de vérification des access tokens)
 app.get("/.well-known/jwks.json", jwksHandler);
 
-// Internal service-to-service endpoint (not part of the ts-rest contract, not behind
-// user auth). Guarded by a shared secret in X-Internal-Token. The api calls this after
-// deleting a user so their refresh-token rows (incl. IP/User-Agent history) are erased.
+// Endpoint interne service-à-service (hors contrat ts-rest, hors auth utilisateur).
+// Protégé par un secret partagé dans X-Internal-Token. L'api l'appelle après la
+// suppression d'un utilisateur pour effacer ses lignes de refresh token (historique
+// IP/User-Agent inclus).
 const internalTokenValid = (provided: string | undefined): boolean => {
   const expected = process.env.INTERNAL_SERVICE_TOKEN;
   if (!expected || !provided) return false;
   const a = Buffer.from(provided);
   const b = Buffer.from(expected);
-  // timingSafeEqual throws on length mismatch — length-check first, still constant-time
-  // for equal-length inputs (the only case an attacker controls once past this guard).
+  // timingSafeEqual lève une exception si les longueurs diffèrent — d'où le contrôle de
+  // longueur d'abord ; reste à temps constant pour des entrées de même longueur (le seul
+  // cas qu'un attaquant contrôle une fois passé ce garde).
   return a.length === b.length && timingSafeEqual(a, b);
 };
 
 app.post(
   "/internal/sessions/purge",
-  // Shared-secret-guarded, no user auth — throttle to blunt online brute-forcing of the
-  // internal token. Legitimate callers are the api (rare deletions), well under this cap.
+  // Protégé par secret partagé, sans auth utilisateur — throttle pour freiner le
+  // brute-force en ligne du token interne. Les appelants légitimes (l'api, suppressions
+  // rares) restent bien en dessous de ce plafond.
   rateLimit({
     windowMs: 60_000,
     limit: 20,
@@ -191,7 +206,7 @@ app.post(
       res.status(400).json({ message: "userId is required" });
       return;
     }
-    // Annotate as the interface so the (never-typed) resolve() result is callable.
+    // Annoté comme l'interface pour que le résultat (jamais typé) de resolve() soit appelable.
     const refreshTokenRepo: IRefreshTokenRepository = resolve("refreshToken");
     refreshTokenRepo
       .deleteAllForUser(userId)
@@ -203,13 +218,14 @@ app.post(
   },
 );
 
-// GDPR Art. 15/20 export counterpart to the purge above: the api aggregates a user's
-// full data export and calls this to fold in the refresh-token session history (IP /
-// User-Agent / timestamps) it doesn't own. Same shared-secret guard. Token hashes are
-// stripped — they're secrets, never part of the subject's personal data.
+// Pendant « export » de la purge ci-dessus (RGPD art. 15/20) : l'api agrège l'export
+// complet des données d'un utilisateur et appelle ceci pour y intégrer l'historique de
+// sessions des refresh tokens (IP / User-Agent / horodatages) qu'elle ne détient pas.
+// Même garde par secret partagé. Les hash de tokens sont retirés — ce sont des secrets,
+// jamais des données personnelles de la personne concernée.
 app.post(
   "/internal/sessions/export",
-  // Same shared-secret guard as purge — throttle it too (PII read).
+  // Même garde par secret partagé que la purge — throttle aussi (lecture de PII).
   rateLimit({
     windowMs: 60_000,
     limit: 20,
@@ -241,14 +257,15 @@ app.post(
   },
 );
 
-// Rate limits — mounted before the ts-rest handlers so they run first.
-// In-memory store: fine for single-instance, swap for Redis if scaled.
+// Rate limits — montés avant les handlers ts-rest pour s'exécuter en premier.
+// Store en mémoire : suffisant en mono-instance, à remplacer par Redis en cas de scaling.
 const limiterMessage = { message: "Too many requests — try again later" };
 app.use(
   "/auth/login",
-  // Prefix-matches /auth/login AND its sub-steps (/login/mfa, /login/enroll/*), so with
-  // mandatory MFA a single sign-in spends several requests here (password → mfa or
-  // enroll start+confirm) plus any wrong/expired-code retries. Keep it well above that.
+  // Correspond par préfixe à /auth/login ET à ses sous-étapes (/login/mfa,
+  // /login/enroll/*) ; avec MFA obligatoire, une seule connexion consomme plusieurs
+  // requêtes ici (mot de passe → mfa ou enrôlement start+confirm) plus les retries en cas
+  // de code erroné/expiré. À garder bien au-dessus de ce total.
   rateLimit({ windowMs: 60_000, limit: 30, standardHeaders: "draft-7", legacyHeaders: false, message: limiterMessage }),
 );
 app.use(
@@ -285,7 +302,7 @@ app.use(
 );
 app.use(
   "/auth/step-up",
-  // One per sensitive op + wrong/expired-code retries; users may chain several ops.
+  // Un appel par opération sensible + retries de code erroné/expiré ; l'utilisateur peut enchaîner plusieurs opérations.
   rateLimit({ windowMs: 60_000, limit: 30, standardHeaders: "draft-7", legacyHeaders: false, message: limiterMessage }),
 );
 app.use(
@@ -298,13 +315,13 @@ app.use(
   rateLimit({ windowMs: 60_000, limit: 30, standardHeaders: "draft-7", legacyHeaders: false, message: limiterMessage }),
 );
 
-// Desktop app SSO (authorization code + PKCE). urlencoded parsing is scoped to the
-// token endpoint — OAuth requires form encoding there, while the rest of this
-// service is JSON. Mounted before the ts-rest handlers so the rate limit above applies.
+// SSO app desktop (authorization code + PKCE). Le parsing urlencoded est limité à
+// l'endpoint token — OAuth y exige l'encodage form, alors que le reste de ce service est
+// en JSON. Monté avant les handlers ts-rest pour que le rate limit ci-dessus s'applique.
 app.use("/auth/desktop/token", express.urlencoded({ extended: false }));
 app.use(desktopSsoRouter);
 
-// Auth endpoints (ts-rest)
+// Endpoints d'auth (ts-rest)
 createExpressEndpoints({ ...authContract }, { ...authRouter }, app);
 
 app.use((_req, _res, next) => {
@@ -318,11 +335,12 @@ connectDB()
     initContainer(db);
     await initKeys();
 
-    // Best-effort: ensure the refresh-token TTL index exists so expired sessions
-    // self-purge, then backfill `expiresAtDate` on legacy rows that predate the field
-    // (GDPR storage-limitation, finding gdpr-H3) so the TTL actually reaps them. Never
-    // block boot on either — log and continue if they fail. Built directly from `db`
-    // (not via resolve) since the repo is a stateless wrapper.
+    // Best-effort : garantir l'existence de l'index TTL des refresh tokens pour que les
+    // sessions expirées se purgent seules, puis backfiller `expiresAtDate` sur les
+    // anciennes lignes antérieures à ce champ (limitation de conservation RGPD, finding
+    // gdpr-H3) pour que le TTL les moissonne réellement. Ne jamais bloquer le boot sur
+    // l'un ou l'autre — logger et continuer en cas d'échec. Construit directement depuis
+    // `db` (pas via resolve) car le repo est un wrapper sans état.
     const refreshTokenRepo = new MongoRefreshTokenRepository(db);
     await refreshTokenRepo
       .ensureIndexes()
@@ -332,8 +350,8 @@ connectDB()
       })
       .catch((err) => logger.error({ err }, "Failed to ensure/backfill refresh-token indexes"));
 
-    // Same best-effort treatment for the desktop-SSO authorization codes: the TTL index
-    // reaps 60-second codes, the unique index guards the single-use claim.
+    // Même traitement best-effort pour les codes d'autorisation du SSO desktop : l'index
+    // TTL moissonne les codes à 60 secondes, l'index unique garantit l'usage unique.
     await new MongoAuthorizationCodeRepository(db)
       .ensureIndexes()
       .catch((err) => logger.error({ err }, "Failed to ensure authorization-code indexes"));

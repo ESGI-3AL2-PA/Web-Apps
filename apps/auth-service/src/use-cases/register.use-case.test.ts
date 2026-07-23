@@ -3,8 +3,15 @@ import type { IAuthTokenRepository } from "../repositories/AuthToken/auth-token.
 import type { IUserReaderRepository, UserRecord } from "../repositories/User/user-reader.repository.js";
 import { registerUseCase } from "./register.use-case.js";
 
-// The use-case signs a service JWT and emails a verification link; neither is under
-// test here, so stub the key provider and the mailer.
+/**
+ * Suite de tests du cas d'usage d'inscription.
+ *
+ * Vérifie que l'inscription passe par l'appel de création côté api, et surtout que
+ * le corps de cet appel ne transporte aucun ancien champ de consentement (CGU).
+ */
+
+// Le cas d'usage signe un JWT de service et envoie un lien de vérification ; ni
+// l'un ni l'autre n'est testé ici, on stub donc le fournisseur de clés et le mailer.
 vi.mock("../keys.js", () => ({
   getPrivateKey: vi.fn().mockReturnValue("fake-private-key"),
   getKeyId: vi.fn().mockReturnValue("test-kid"),
@@ -86,11 +93,12 @@ describe("registerUseCase", () => {
     vi.unstubAllGlobals();
   });
 
+  // Crée l'utilisateur via l'appel api, sans aucun champ de CGU/consentement.
   it("creates the user via the API hop with no terms/consent fields", async () => {
     const userReader = makeUserReader();
     (userReader.findByEmail as ReturnType<typeof vi.fn>)
-      .mockResolvedValueOnce(null) // pre-create existence check
-      .mockResolvedValueOnce(makeUser()); // post-create lookup
+      .mockResolvedValueOnce(null) // contrôle d'existence avant création
+      .mockResolvedValueOnce(makeUser()); // relecture après création
 
     const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({}) });
     vi.stubGlobal("fetch", fetchMock);
@@ -101,8 +109,9 @@ describe("registerUseCase", () => {
     expect(result).toBe("ok");
     expect(fetchMock).toHaveBeenCalledTimes(1);
 
-    // Consent capture was removed (no ToS/Privacy Policy served yet) — the create-user
-    // hop must carry none of the old terms fields.
+    // La capture de consentement a été retirée (pas encore de CGU/politique de
+    // confidentialité servies) — l'appel de création ne doit transporter aucun des
+    // anciens champs de CGU.
     const body = JSON.parse(fetchMock.mock.calls[0]![1].body);
     expect(body).not.toHaveProperty("acceptedTerms");
     expect(body).not.toHaveProperty("termsVersion");

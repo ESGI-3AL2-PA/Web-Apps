@@ -1,17 +1,19 @@
+// Suite de tests : second facteur du login (login-mfa). Couvre ticket invalide,
+// utilisateur absent, TOTP non activé, code invalide et rejeu, jusqu'au cas nominal.
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { IDistrictAdminReaderRepository } from "../repositories/DistrictAdmin/district-admin-reader.repository.js";
 import type { IRefreshTokenRepository } from "../repositories/RefreshToken/refresh-token.repository.js";
 import type { IUserReaderRepository, UserRecord } from "../repositories/User/user-reader.repository.js";
 import { loginMfaUseCase } from "./login-mfa.use-case.js";
 
-// The MFA token is a real RS256 JWT in prod; here we drive jwtVerify's outcome
-// directly so we exercise the code path, not jose's crypto.
+// Le ticket MFA est un vrai JWT RS256 en prod ; ici on pilote directement le résultat
+// de jwtVerify pour tester le chemin de code, pas la crypto de jose.
 vi.mock("jose", () => ({
   jwtVerify: vi.fn(),
 }));
 
-// verifyTotpStep wraps otplib; stub it so a "valid" code maps to a known step
-// and an "invalid" one to null without computing real HOTP counters.
+// verifyTotpStep enveloppe otplib ; on le stubbe pour qu'un code « valide » corresponde à un
+// pas connu et un code « invalide » à null, sans calculer de vrais compteurs HOTP.
 vi.mock("../services/totp.js", () => ({
   verifyTotpStep: vi.fn(),
 }));
@@ -71,11 +73,13 @@ const validPayload = { payload: { sub: "user-1" } } as unknown as Awaited<Return
 
 describe("loginMfaUseCase", () => {
   beforeEach(() => {
+    // Par défaut : ticket valide et code résolu au pas 12345 ; chaque test surcharge au besoin.
     vi.clearAllMocks();
     jwtVerifyMock.mockResolvedValue(validPayload);
     verifyTotpStepMock.mockReturnValue(12345);
   });
 
+  // Cas nominal : ticket valide + code valide non encore consommé → émission des tokens.
   it("valid MFA token + valid unused code mints tokens", async () => {
     const userReader = makeUserReader(makeUser());
     const loginMfa = loginMfaUseCase(userReader as unknown as IUserReaderRepository, refreshRepo, districtAdminReader);
@@ -84,7 +88,7 @@ describe("loginMfaUseCase", () => {
     const result = await loginMfa("mfa.jwt", "123456", context);
 
     expect(result.kind).toBe("ok");
-    // The consumed step is the one verifyTotpStep resolved the code to.
+    // Le pas consommé est celui auquel verifyTotpStep a résolu le code.
     expect(userReader.consumeTotpStep).toHaveBeenCalledWith("user-1", 12345);
     expect(issueTokens).toHaveBeenCalledWith(
       expect.objectContaining({ id: "user-1" }),
@@ -94,6 +98,7 @@ describe("loginMfaUseCase", () => {
     );
   });
 
+  // Ticket non vérifiable → invalid-mfa-token, sans même chercher l'utilisateur.
   it("an unverifiable MFA token is rejected without looking the user up", async () => {
     jwtVerifyMock.mockRejectedValue(new Error("bad signature"));
     const userReader = makeUserReader(makeUser());
@@ -106,6 +111,7 @@ describe("loginMfaUseCase", () => {
     expect(issueTokens).not.toHaveBeenCalled();
   });
 
+  // Ticket sans sujet (sub) → invalid-mfa-token.
   it("a token with no subject is rejected as invalid-mfa-token", async () => {
     jwtVerifyMock.mockResolvedValue({ payload: {} } as unknown as Awaited<ReturnType<typeof jwtVerify>>);
     const userReader = makeUserReader(makeUser());
@@ -116,6 +122,7 @@ describe("loginMfaUseCase", () => {
     expect(result).toEqual({ kind: "invalid-mfa-token" });
   });
 
+  // Sujet du ticket introuvable (utilisateur supprimé) → user-not-found.
   it("returns user-not-found when the subject no longer exists", async () => {
     const userReader = makeUserReader(null);
     const loginMfa = loginMfaUseCase(userReader as unknown as IUserReaderRepository, refreshRepo, districtAdminReader);
@@ -126,6 +133,7 @@ describe("loginMfaUseCase", () => {
     expect(issueTokens).not.toHaveBeenCalled();
   });
 
+  // Utilisateur sans enrôlement TOTP confirmé → totp-not-enabled, sans vérifier de code.
   it("returns totp-not-enabled when the user has no confirmed enrollment", async () => {
     const userReader = makeUserReader(makeUser({ totpEnabled: false, totpSecret: null }));
     const loginMfa = loginMfaUseCase(userReader as unknown as IUserReaderRepository, refreshRepo, districtAdminReader);
@@ -136,6 +144,7 @@ describe("loginMfaUseCase", () => {
     expect(verifyTotpStepMock).not.toHaveBeenCalled();
   });
 
+  // Code hors fenêtre (verifyTotpStep → null) → invalid-code, sans consommer de pas ni émettre.
   it("an invalid code is rejected and mints nothing", async () => {
     verifyTotpStepMock.mockReturnValue(null);
     const userReader = makeUserReader(makeUser());
@@ -148,6 +157,7 @@ describe("loginMfaUseCase", () => {
     expect(issueTokens).not.toHaveBeenCalled();
   });
 
+  // Rejeu : code valide mais pas déjà consommé (consumeTotpStep → false) → invalid-code.
   it("a replayed code (step already consumed) is rejected even though it verifies", async () => {
     const userReader = makeUserReader(makeUser());
     userReader.consumeTotpStep.mockResolvedValue(false);

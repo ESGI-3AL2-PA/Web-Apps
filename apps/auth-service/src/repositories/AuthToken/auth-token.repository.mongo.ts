@@ -6,6 +6,10 @@ import type { IAuthTokenRepository } from "./auth-token.repository.js";
 
 type AuthTokenDoc = WithMongoId<AuthToken>;
 
+/**
+ * Implémentation Mongo de IAuthTokenRepository (collection `auth_tokens`).
+ * Persiste les tokens à usage unique de vérification d'email / reset de mot de passe.
+ */
 export class MongoAuthTokenRepository implements IAuthTokenRepository {
   private collection: Collection<AuthTokenDoc>;
 
@@ -14,12 +18,14 @@ export class MongoAuthTokenRepository implements IAuthTokenRepository {
   }
 
   async create(data: Omit<AuthToken, "id">): Promise<AuthToken> {
+    // _id = UUID applicatif ; toEntity le remappe vers `id` en sortie.
     const doc: AuthTokenDoc = { ...data, _id: randomUUID() };
     await this.collection.insertOne(doc);
     return toEntity<AuthToken>(doc);
   }
 
   async findActiveByHash(tokenHash: string, type: AuthTokenType): Promise<AuthToken | null> {
+    // usedAt: null → token pas encore consommé.
     const doc = await this.collection.findOne({ tokenHash, type, usedAt: null });
     return doc ? toEntity<AuthToken>(doc) : null;
   }
@@ -29,6 +35,7 @@ export class MongoAuthTokenRepository implements IAuthTokenRepository {
   }
 
   async revokeAllForUser(userId: string, type: AuthTokenType): Promise<void> {
+    // Consomme d'un coup tous les tokens actifs du type visé pour cet utilisateur.
     await this.collection.updateMany({ userId, type, usedAt: null }, { $set: { usedAt: new Date().toISOString() } });
   }
 }

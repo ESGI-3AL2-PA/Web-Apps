@@ -1,3 +1,11 @@
+/**
+ * Cas d'usage de connexion (auth-service).
+ *
+ * Vérifie les identifiants puis décide de la suite selon l'état du compte :
+ * émission directe des tokens, défi TOTP (MFA), enrôlement forcé, ou rejet
+ * (identifiants invalides / banni / email non vérifié). Résultat modélisé par
+ * une union discriminée `LoginResult` consommée par le router `/auth/login`.
+ */
 import argon2 from "argon2";
 import { SignJWT } from "jose";
 import { TOKEN_AUDIENCE_ENROLL } from "@repo/shared";
@@ -7,6 +15,7 @@ import type { IDistrictAdminReaderRepository } from "../repositories/DistrictAdm
 import { getKeyId, getPrivateKey } from "../keys.js";
 import { issueTokensForUser, type IssuedTokens, type SessionContext } from "./issue-tokens.js";
 
+/** Issue de la connexion : succès (avec tokens) ou l'une des raisons de rejet/étape intermédiaire. */
 export type LoginResult =
   | ({ kind: "ok" } & IssuedTokens)
   | { kind: "invalid-credentials" }
@@ -15,12 +24,17 @@ export type LoginResult =
   | { kind: "mfa-required"; mfaToken: string }
   | { kind: "enrollment-required"; enrollToken: string };
 
-// Cached argon2 hash of a throwaway value — verified against when the email is
-// unknown so login takes the same time whether or not the account exists
-// (defeats timing-based user enumeration).
+// Hash argon2 (mis en cache) d'une valeur bidon — vérifié quand l'email est
+// inconnu pour que la connexion prenne le même temps que le compte existe ou non
+// (contre l'énumération d'utilisateurs par mesure du temps de réponse).
 let dummyHash: string | null = null;
 const getDummyHash = async () => (dummyHash ??= await argon2.hash("timing-equalizer"));
 
+/**
+ * Factory du cas d'usage de connexion. Reçoit ses repositories et renvoie le
+ * handler qui prend les identifiants (+ un `SessionContext` optionnel : IP,
+ * user-agent) et retourne un `LoginResult`.
+ */
 export const loginUseCase = (
   userReader: IUserReaderRepository,
   refreshTokenRepo: IRefreshTokenRepository,
@@ -29,6 +43,7 @@ export const loginUseCase = (
   return async (data: { email: string; password: string }, context?: SessionContext): Promise<LoginResult> => {
     const user = await userReader.findByEmail(data.email);
     if (!user) {
+      // Vérification factice pour égaliser le temps de réponse (voir dummyHash).
       await argon2.verify(await getDummyHash(), data.password).catch(() => false);
       return { kind: "invalid-credentials" };
     }
@@ -40,9 +55,9 @@ export const loginUseCase = (
 
     if (!user.emailVerified) return { kind: "email-not-verified" };
 
-    // Already-enrolled users are challenged for their TOTP code (opt-in or mandatory alike).
+    // Un utilisateur déjà enrôlé est mis au défi de son code TOTP (opt-in ou obligatoire).
     if (user.totpEnabled) {
-      // Issue a short-lived MFA token; client must POST it + a TOTP code to /auth/login/mfa.
+      // Émet un token MFA à courte durée ; le client doit le POSTer + un code TOTP à /auth/login/mfa.
       const mfaToken = await new SignJWT({})
         .setProtectedHeader({ alg: "RS256", kid: getKeyId() })
         .setSubject(user.id)
@@ -54,9 +69,10 @@ export const loginUseCase = (
       return { kind: "mfa-required", mfaToken };
     }
 
-    // In production MFA is mandatory: a user without TOTP must enroll before any tokens are
-    // issued. We hand back a short-lived `enroll` ticket that drives /auth/login/enroll/*.
-    // In dev this branch is skipped, so TOTP stays fully opt-in locally.
+    // En production, le MFA est obligatoire : un utilisateur sans TOTP doit s'enrôler avant
+    // qu'aucun token ne soit émis. On renvoie un ticket `enroll` de courte durée qui pilote
+    // /auth/login/enroll/*. En dev, cette branche est sautée : le TOTP reste totalement
+    // optionnel en local.
     if (process.env.NODE_ENV === "production") {
       const enrollToken = await new SignJWT({})
         .setProtectedHeader({ alg: "RS256", kid: getKeyId() })

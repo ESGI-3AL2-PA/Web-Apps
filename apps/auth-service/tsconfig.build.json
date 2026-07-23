@@ -1,3 +1,5 @@
+// Config TypeScript dédiée au build de production (`tsc`) : hérite de tsconfig.json
+// mais exclut les tests, qui ne doivent pas atterrir dans dist/.
 {
   "extends": "./tsconfig.json",
   "exclude": ["node_modules", "src/**/*.test.ts"]

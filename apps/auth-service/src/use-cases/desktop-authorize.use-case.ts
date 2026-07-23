@@ -1,10 +1,13 @@
+// Cas d'usage — étape « authorize » du flux SSO OAuth (code + PKCE) du client
+// desktop admin (JavaFX). Transforme la session web existante (cookie refresh /auth)
+// en un code d'autorisation à usage unique, réservé aux admins/superAdmin.
 import { createHash, randomBytes } from "crypto";
 import type { IAuthorizationCodeRepository } from "../repositories/AuthorizationCode/authorization-code.repository.js";
 import type { IRefreshTokenRepository } from "../repositories/RefreshToken/refresh-token.repository.js";
 import type { IUserReaderRepository } from "../repositories/User/user-reader.repository.js";
 import { ADMIN_SSO_ROLES, DESKTOP_CLIENT_ID } from "../sso/client-registry.js";
 
-/** Codes are redeemed server-to-server within a second or two of issue. */
+/** Le code est échangé de serveur à serveur en une seconde ou deux après émission. */
 const CODE_TTL_MS = 60 * 1000;
 
 export type AuthorizeOutcome =
@@ -17,19 +20,20 @@ export interface AuthorizeInput {
   redirectUri: string;
   codeChallenge: string;
   /**
-   * `prompt=login`: refuse the existing session and revoke it, so the caller is sent
-   * back through the login page. This is what makes desktop account switching work.
+   * `prompt=login` : refuse la session existante et la révoque, pour renvoyer l'appelant
+   * vers la page de connexion. C'est ce qui permet le changement de compte côté desktop.
    */
   forceReauth?: boolean;
 }
 
 /**
- * Turns the caller's existing browser session (the /auth refresh cookie) into a
- * one-shot authorization code — but only for admins.
+ * Transforme la session navigateur existante de l'appelant (le cookie refresh /auth)
+ * en un code d'autorisation à usage unique — mais uniquement pour les admins.
  *
- * The role gate lives here rather than in the desktop client because the client is
- * a jar on a user's machine: any check it performs can be patched out. Refusing the
- * code server-side means a non-admin has nothing to exchange.
+ * Le contrôle de rôle est ici plutôt que dans le client desktop car ce dernier est
+ * un jar sur la machine de l'utilisateur : tout contrôle qu'il effectue peut être
+ * contourné par patch. Refuser le code côté serveur signifie qu'un non-admin n'a
+ * rien à échanger.
  */
 export const desktopAuthorizeUseCase = (
   authorizationCodeRepo: IAuthorizationCodeRepository,
@@ -41,16 +45,18 @@ export const desktopAuthorizeUseCase = (
 
     const tokenHash = createHash("sha256").update(input.rawRefreshToken).digest("hex");
 
-    // Revoke before refusing, so the old session cannot be reused from another tab.
-    // Unlike the normal read path below, discarding this session is the whole point.
+    // Révoquer avant de refuser, pour que l'ancienne session ne puisse pas être
+    // réutilisée depuis un autre onglet. Contrairement au chemin de lecture normal
+    // ci-dessous, jeter cette session est précisément le but.
     if (input.forceReauth) {
       await refreshTokenRepo.revokeByTokenHash(tokenHash);
       return { status: "unauthenticated" };
     }
 
-    // findActive, not claim: this is a *read* of the session. Rotating the refresh
-    // token here would invalidate the cookie still held by the browser tab the user
-    // came from, logging them out of the web app as a side effect of a desktop login.
+    // findActive, pas claim : c'est une *lecture* de la session. Faire tourner le
+    // refresh token ici invaliderait le cookie encore détenu par l'onglet navigateur
+    // d'où vient l'utilisateur, le déconnectant de l'app web comme effet de bord d'une
+    // connexion desktop.
     const session = await refreshTokenRepo.findActiveByTokenHash(tokenHash);
     if (!session) return { status: "unauthenticated" };
     if (new Date(session.expiresAt) < new Date()) return { status: "unauthenticated" };
@@ -61,9 +67,10 @@ export const desktopAuthorizeUseCase = (
     if (user.banned) return { status: "forbidden", reason: "banned" };
     if (!user.emailVerified) return { status: "forbidden", reason: "unverified" };
     if (!ADMIN_SSO_ROLES.has(user.role)) return { status: "forbidden", reason: "role" };
-    // Defense-in-depth for mandatory MFA: even though a desktop code is minted from an
-    // existing web session (which in prod only exists post-enrollment), refuse to issue one
-    // for a non-enrolled admin so this path can never become an MFA bypass.
+    // Défense en profondeur pour la MFA obligatoire : même si un code desktop est
+    // frappé depuis une session web existante (qui en prod n'existe qu'après enrôlement),
+    // on refuse d'en émettre pour un admin non enrôlé afin que ce chemin ne puisse jamais
+    // devenir un contournement de MFA.
     if (process.env.NODE_ENV === "production" && !user.totpEnabled) return { status: "forbidden", reason: "totp" };
 
     const code = randomBytes(32).toString("hex");
