@@ -8,6 +8,8 @@ This document describes the technical architecture of the monorepo.
 
 The project is a **Turborepo monorepo** built entirely in TypeScript, following a **contract-first** approach where every API endpoint is defined once as a shared contract consumed by both the backend and frontends.
 
+> 📊 For rendered diagrams (system view, monorepo dependency graph, API layers, auth flow, deployment topology) see [`architecture-schema.md`](./architecture-schema.md).
+
 ```
 .
 ├── apps/

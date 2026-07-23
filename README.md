@@ -25,6 +25,13 @@ The repo is a Turborepo + npm workspaces monorepo.
 - `@repo/eslint-config` — shared ESLint configs
 - `@repo/typescript-config` — shared `tsconfig.json`s
 
+## Architecture
+
+See [`documentation/architecture-schema.md`](documentation/architecture-schema.md) for rendered
+diagrams (system view, monorepo dependency graph, API Clean Architecture layers, auth flow, and
+deployment topology), and [`documentation/architecture.md`](documentation/architecture.md) for the
+full prose walkthrough.
+
 ## API docs
 
 The api serves interactive **Scalar** docs at [`/docs`](http://localhost:3000/docs) and the raw OpenAPI
