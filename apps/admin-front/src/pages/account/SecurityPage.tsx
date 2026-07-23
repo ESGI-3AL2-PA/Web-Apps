@@ -1,3 +1,4 @@
+// Page « Sécurité » du compte : héberge la carte de gestion de la double authentification (2FA/TOTP).
 import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@repo/hooks";
@@ -7,6 +8,8 @@ export default function SecurityPage() {
   const { t } = useTranslation();
   const { user, getAccessToken, refresh } = useAuth();
 
+  // Fournisseur de token pour TwoFactorCard : renvoie l'access token courant, ou le rafraîchit
+  // s'il est absent/expiré.
   const token = useCallback(
     async (): Promise<string | null> => getAccessToken() ?? (await refresh()),
     [getAccessToken, refresh],

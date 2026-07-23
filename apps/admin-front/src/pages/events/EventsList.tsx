@@ -1,3 +1,5 @@
+// Page de gestion des événements du quartier actif : liste filtrable/paginée avec consultation,
+// création, édition et suppression via modales. La création requiert un quartier en scope.
 import { useState, type FormEvent, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import type { CreateEventDto, EventResponseDto, EventStatus, UpdateEventDto } from "@repo/contracts";
@@ -154,6 +156,7 @@ export default function EventsList() {
   );
 }
 
+/** Paire libellé/valeur en lecture seule dans la fiche de consultation. */
 function Info({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div>
@@ -163,13 +166,19 @@ function Info({ label, value }: { label: string; value: ReactNode }) {
   );
 }
 
-// datetime-local <-> ISO helpers. The input speaks local "YYYY-MM-DDTHH:mm"; the API speaks ISO.
+// Conversion datetime-local <-> ISO. L'input parle en local "YYYY-MM-DDTHH:mm" ; l'API parle en ISO.
+// On soustrait le décalage horaire avant de tronquer pour préserver l'heure locale affichée.
 const toLocalInput = (iso: string): string => {
   const d = new Date(iso);
   const off = d.getTimezoneOffset();
   return new Date(d.getTime() - off * 60_000).toISOString().slice(0, 16);
 };
 
+/**
+ * Formulaire de création/édition d'un événement (mode déduit de la présence de `event`).
+ * @param districtId quartier auquel rattacher l'événement à la création.
+ * @param onSaved appelé après un enregistrement réussi.
+ */
 function EventForm({
   event,
   districtId,
@@ -195,6 +204,7 @@ function EventForm({
     setSubmitting(true);
     setError(null);
     try {
+      // Reconvertit la saisie datetime-local (locale) en ISO attendu par l'API.
       const iso = new Date(eventDate).toISOString();
       if (event) {
         const body: UpdateEventDto = {

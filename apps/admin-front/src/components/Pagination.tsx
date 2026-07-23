@@ -1,17 +1,23 @@
+// Composant : barre de pagination pour les tableaux (précédent / page X / suivant).
 import { useTranslation } from "react-i18next";
 
 interface PaginationProps {
-  page: number;
-  limit: number;
-  total: number;
+  page: number; // page courante, 1-indexée
+  limit: number; // taille de page (nombre d'éléments par page)
+  total: number; // total d'éléments toutes pages confondues
   onPageChange: (page: number) => void;
 }
 
+/**
+ * Contrôles de pagination avec libellé de plage ("X–Y sur N").
+ * Calcule le nombre de pages et les bornes affichées ; les boutons se désactivent
+ * aux extrémités. Composant purement contrôlé — l'état de page vit chez le parent.
+ */
 export function Pagination({ page, limit, total, onPageChange }: PaginationProps) {
   const { t } = useTranslation();
-  const totalPages = Math.max(1, Math.ceil(total / limit));
-  const from = total === 0 ? 0 : (page - 1) * limit + 1;
-  const to = Math.min(page * limit, total);
+  const totalPages = Math.max(1, Math.ceil(total / limit)); // au moins 1 page, même vide
+  const from = total === 0 ? 0 : (page - 1) * limit + 1; // premier index affiché
+  const to = Math.min(page * limit, total); // dernier index affiché (borné au total)
 
   return (
     <nav aria-label={t("common.table.pagination")} className="flex items-center justify-between gap-4 mt-4">

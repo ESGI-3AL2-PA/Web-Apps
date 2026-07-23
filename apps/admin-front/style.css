@@ -1,1 +1,3 @@
+/* Feuille de style racine de l'admin-front : importe le thème FlyonUI partagé
+   (couleurs de marque, polices, tokens light/dark [data-theme]) — source unique. */
 @import "../../packages/theme/theme.css";

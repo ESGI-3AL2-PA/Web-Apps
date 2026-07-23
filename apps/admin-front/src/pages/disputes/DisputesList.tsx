@@ -1,3 +1,6 @@
+// Page de gestion des litiges : liste les contrats marqués « en litige » du quartier actif
+// et permet à l'administrateur de trancher (libérer les points au prestataire ou rembourser
+// le bénéficiaire) via une modale.
 import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import type { ContractResponseDto, ResolveDisputeDto } from "@repo/contracts";
@@ -15,7 +18,8 @@ import { formatDate, formatTokens } from "../../lib/format";
 
 export default function DisputesList() {
   const { t } = useTranslation();
-  // Only disputed contracts; the district scope is injected by useScopedList and enforced server-side.
+  // Uniquement les contrats en litige ; le scope quartier est injecté par useScopedList et
+  // appliqué côté serveur.
   const list = useScopedList<ContractResponseDto>(listContracts, { initialFilters: { disputed: "true" } });
   const toast = useToast();
   const [resolving, setResolving] = useState<ContractResponseDto | null>(null);
@@ -71,6 +75,11 @@ export default function DisputesList() {
   );
 }
 
+/**
+ * Modale de résolution d'un litige : récapitule le contrat et laisse choisir l'issue
+ * (« release » = libérer les points au prestataire, « refund » = rembourser le bénéficiaire).
+ * @param onResolved appelé après un règlement réussi (ferme, notifie et rafraîchit la liste).
+ */
 function ResolveModal({
   contract,
   onClose,

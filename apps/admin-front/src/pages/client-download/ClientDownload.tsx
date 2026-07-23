@@ -1,3 +1,6 @@
+// Page de téléchargement du client desktop (JavaFX) : récupère la dernière release GitHub et
+// propose les liens de téléchargement (exécutable Windows + JARs par OS), avec repli sur des URLs
+// statiques si la release ne fournit pas d'asset.
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { formatDate } from "../../lib/format";
@@ -9,6 +12,8 @@ export default function ClientDownload() {
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
   const [release, setRelease] = useState<LatestRelease | null>(null);
 
+  // Au montage : récupère la dernière release. L'AbortController annule la requête au démontage
+  // et évite de basculer en erreur si l'abandon est volontaire.
   useEffect(() => {
     const ctrl = new AbortController();
     fetchLatestRelease(ctrl.signal)
@@ -51,6 +56,7 @@ export default function ClientDownload() {
           </a>
         )}
 
+        {/* Un bouton de JAR par OS : URL fournie par la release, sinon repli sur l'asset statique. */}
         <div className="flex flex-wrap gap-2">
           {JARS.map(({ os, icon, asset }) => (
             <a

@@ -1,3 +1,4 @@
+// Définition du routeur react-router de la console admin : arbre de routes protégées, cadrées par quartier.
 import { lazy } from "react";
 import { createBrowserRouter } from "react-router-dom";
 import { ProtectedRoute } from "@repo/hooks";
@@ -6,8 +7,8 @@ import AdminLayout from "../layouts/AdminLayout";
 import NotFound from "../pages/NotFound";
 import ServerError from "../pages/ServerError";
 
-// Route components are code-split: each becomes its own chunk fetched on
-// navigation, keeping the initial bundle small.
+// Les composants de page sont découpés en chunks (code splitting) : chacun est chargé à la
+// navigation, ce qui garde le bundle initial léger.
 const Dashboard = lazy(() => import("../pages/dashboard/Dashboard"));
 const UsersList = lazy(() => import("../pages/users/UsersList"));
 const DistrictPage = lazy(() => import("../pages/districts/DistrictPage"));
@@ -23,6 +24,8 @@ const SecurityPage = lazy(() => import("../pages/account/SecurityPage"));
 
 export const router = createBrowserRouter([
   {
+    // Racine : réservée aux admin / superAdmin (ProtectedRoute), puis cadrée par quartier
+    // (DistrictScopeProvider) et habillée par le layout admin partagé.
     element: (
       <ProtectedRoute roles={["admin", "superAdmin"]}>
         <DistrictScopeProvider>
@@ -30,8 +33,9 @@ export const router = createBrowserRouter([
         </DistrictScopeProvider>
       </ProtectedRoute>
     ),
-    // Themed 500 for genuine loader/render throws (NotFound is the catch-all 404 below).
+    // Page 500 thématisée pour les vraies erreurs de loader/rendu (le 404 fourre-tout est NotFound plus bas).
     errorElement: <ServerError />,
+    // `handle.title` porte la clé i18n du titre de page, lue par le layout pour la barre supérieure.
     children: [
       { path: "/", element: <Dashboard />, handle: { title: "nav.dashboard" } },
       { path: "/users", element: <UsersList />, handle: { title: "nav.users" } },
@@ -45,6 +49,7 @@ export const router = createBrowserRouter([
       { path: "/votes", element: <VotesList />, handle: { title: "nav.votes" } },
       { path: "/client", element: <ClientDownload />, handle: { title: "nav.client" } },
       { path: "/security", element: <SecurityPage />, handle: { title: "nav.security" } },
+      // Fourre-tout : toute route non reconnue rend le 404.
       { path: "*", element: <NotFound /> },
     ],
   },

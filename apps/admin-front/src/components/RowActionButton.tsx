@@ -1,7 +1,11 @@
+// Composant : bouton d'action de ligne (icône seule) pour les colonnes d'action du DataTable.
 import type { MouseEventHandler } from "react";
 
-// Icon-only row action for DataTable action columns. The label doubles as the tooltip and the
-// accessible name, so text is never needed to convey meaning.
+/**
+ * Action de ligne icône-seule. Le `label` sert à la fois d'infobulle (title) et de
+ * nom accessible (aria-label) : aucun texte visible n'est requis pour porter le sens.
+ * `variant` permet d'ajouter une classe de couleur flyonui (ex. btn-error).
+ */
 export function RowActionButton({
   icon,
   label,

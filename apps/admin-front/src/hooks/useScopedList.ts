@@ -1,3 +1,4 @@
+// Hook : variante de useList qui injecte automatiquement le quartier actif dans les params.
 import { useDistrictScope } from "../app/DistrictScopeProvider";
 import { useList } from "./useList";
 import type { ListParams, Paginated } from "../api-service/types";
@@ -7,9 +8,12 @@ interface UseScopedListOptions {
   initialFilters?: Record<string, string>;
 }
 
-// Like useList, but injects the active district scope as a `districtId` param so the page only
-// shows the selected district's rows. Use on district-scoped resources (users, incidents,
-// listings, events, votes). The api enforces the same scope server-side regardless.
+/**
+ * Comme useList, mais injecte le quartier sélectionné en tant que param `districtId` pour que la
+ * page n'affiche que les lignes de ce quartier. À utiliser sur les ressources rattachées à un
+ * quartier (utilisateurs, signalements, annonces, événements, votes). L'api applique de toute
+ * façon la même portée côté serveur.
+ */
 export function useScopedList<T>(
   fetcher: (params: ListParams) => Promise<Paginated<T>>,
   options: UseScopedListOptions = {},

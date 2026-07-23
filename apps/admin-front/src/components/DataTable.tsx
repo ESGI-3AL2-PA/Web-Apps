@@ -1,26 +1,31 @@
+// Composant de tableau générique et typé, réutilisé par toutes les pages de liste de la console.
+// Gère l'affichage des états chargement / erreur / vide via une ligne unique à colspan étendu.
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
+/** Description d'une colonne : en-tête, rendu de cellule à partir de la ligne, classes optionnelles. */
 export interface Column<T> {
   header: string;
-  /** Cell renderer; receives the row. */
+  /** Rendu de cellule ; reçoit la ligne. */
   cell: (row: T) => ReactNode;
   className?: string;
 }
 
+/** Props de DataTable. */
 interface DataTableProps<T> {
   columns: Column<T>[];
   rows: T[];
-  rowKey: (row: T) => string;
+  rowKey: (row: T) => string; // clé React stable par ligne
   loading?: boolean;
   error?: string | null;
-  emptyLabel?: string;
-  /** Optional per-row actions rendered in a trailing column. */
+  emptyLabel?: string; // texte quand la liste est vide (défaut : « aucun résultat »)
+  /** Actions par ligne, rendues dans une colonne finale optionnelle. */
   actions?: (row: T) => ReactNode;
 }
 
 export function DataTable<T>({ columns, rows, rowKey, loading, error, emptyLabel, actions }: DataTableProps<T>) {
   const { t } = useTranslation();
+  // colspan couvrant toutes les colonnes (+ la colonne d'actions) pour les lignes d'état.
   const colSpan = columns.length + (actions ? 1 : 0);
 
   return (

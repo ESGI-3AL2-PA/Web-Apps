@@ -1,3 +1,6 @@
+// Page de gestion des signalements du quartier actif : liste filtrable (statut + catégorie
+// texte libre débouncée), édition (changement de statut, assignation à un admin, note
+// d'historique) avec frise chronologique, et suppression.
 import { useEffect, useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import type { IncidentResponseDto, IncidentStatus, UpdateIncidentDto } from "@repo/contracts";
@@ -27,7 +30,7 @@ export default function IncidentsList() {
   const [editing, setEditing] = useState<IncidentResponseDto | null>(null);
   const [deleting, setDeleting] = useState<IncidentResponseDto | null>(null);
 
-  // Every row is in the active district (the console is district-scoped), so no district column.
+  // Chaque ligne appartient au quartier actif (la console est scopée par quartier) : pas de colonne quartier.
   const columns: Column<IncidentResponseDto>[] = [
     { header: t("common.fields.category"), cell: (i) => i.category },
     {
@@ -117,7 +120,10 @@ export default function IncidentsList() {
   );
 }
 
-// Free-text category filter, debounced so it commits as you type without a request per keystroke.
+/**
+ * Filtre de catégorie en texte libre, débouncé (300 ms) pour ne pas déclencher une requête à
+ * chaque frappe : ne valide `onChange` que lorsque la saisie diffère de la valeur committée.
+ */
 function CategoryFilter({ value, onChange }: { value: string; onChange: (value: string) => void }) {
   const { t } = useTranslation();
   const [text, setText] = useState(value);
@@ -126,7 +132,7 @@ function CategoryFilter({ value, onChange }: { value: string; onChange: (value: 
       if (text !== value) onChange(text);
     }, 300);
     return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- `value` is the committed value; syncing on it would fight typing
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `value` est la valeur committée ; se synchroniser dessus entrerait en conflit avec la frappe
   }, [text]);
 
   return (
@@ -142,6 +148,11 @@ function CategoryFilter({ value, onChange }: { value: string; onChange: (value: 
   );
 }
 
+/**
+ * Modale de traitement d'un signalement : édite statut, assignation et note d'historique,
+ * et affiche la frise chronologique des changements passés. Les champs optionnels vides ne
+ * sont pas envoyés (undefined).
+ */
 function IncidentEdit({
   incident,
   onClose,

@@ -1,3 +1,6 @@
+// Page superAdmin de gestion des administrateurs de quartier : formulaire pour attribuer
+// (« grant ») le rôle à un utilisateur sur un quartier donné, tableau des attributions
+// existantes et révocation avec confirmation.
 import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import type { DistrictAdminResponseDto } from "@repo/contracts";
@@ -26,8 +29,11 @@ export default function DistrictAdminsList() {
   const [userId, setUserId] = useState("");
   const [revoking, setRevoking] = useState<DistrictAdminResponseDto | null>(null);
 
+  // Résout le nom d'un quartier depuis son id, avec repli sur l'id brut si introuvable.
   const districtName = (id: string) => districts.find((d) => d.id === id)?.name ?? id;
 
+  // Attribue le rôle d'administrateur de quartier ; ne soumet rien tant que quartier + utilisateur
+  // ne sont pas tous deux renseignés.
   const onGrant = (e: FormEvent) => {
     e.preventDefault();
     if (!districtId || !userId) return;

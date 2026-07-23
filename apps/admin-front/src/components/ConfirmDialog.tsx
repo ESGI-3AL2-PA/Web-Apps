@@ -2,17 +2,22 @@ import { useId } from "react";
 import { useTranslation } from "react-i18next";
 import { ModalFrame } from "./ModalFrame";
 
+/** Props de ConfirmDialog. */
 interface ConfirmDialogProps {
-  open: boolean;
+  open: boolean; // affiche la modale ; ne rend rien si false
   title: string;
   message: string;
-  confirmLabel?: string;
-  busy?: boolean;
-  error?: string | null;
+  confirmLabel?: string; // libellé du bouton de confirmation (défaut : « supprimer »)
+  busy?: boolean; // opération en cours : désactive les boutons et bloque la fermeture
+  error?: string | null; // message d'erreur à afficher (relié via aria-describedby)
   onConfirm: () => void;
   onCancel: () => void;
 }
 
+/**
+ * Modale de confirmation générique (action destructive par défaut). L'appelant pilote l'état
+ * `busy`/`error` — le composant est purement présentationnel et contrôlé.
+ */
 export function ConfirmDialog({
   open,
   title,

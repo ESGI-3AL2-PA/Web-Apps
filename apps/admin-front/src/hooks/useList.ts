@@ -1,6 +1,9 @@
+// Hook générique de gestion des listes paginées : centralise l'état (page/recherche/filtres) et
+// le cycle de vie du fetch pour tous les écrans de liste. Expose `useList` et ses types.
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ListParams, Paginated } from "../api-service/types";
 
+/** Valeur retournée par `useList` : données paginées + état + setters pour piloter la liste. */
 export interface UseListResult<T> {
   items: T[];
   total: number;
@@ -19,13 +22,17 @@ export interface UseListResult<T> {
 interface UseListOptions {
   limit?: number;
   initialFilters?: Record<string, string>;
-  // Params injected on top of user-controlled search/filters (e.g. the active district scope).
-  // Changing them refetches. Kept separate from `filters` so page/search UI never touches them.
+  // Params injectés par-dessus la recherche/les filtres pilotés par l'utilisateur (ex. le quartier
+  // sélectionné). Les modifier déclenche un refetch. Gardés distincts de `filters` pour que l'UI de
+  // pagination/recherche n'y touche jamais.
   extraParams?: Record<string, string | undefined>;
 }
 
-// Encapsulates list state (page/search/filters) + fetch lifecycle. Every list screen drives a
-// fetcher of shape (params) => Paginated<T>; changing page/search/filters refetches automatically.
+/**
+ * Encapsule l'état d'une liste (page/recherche/filtres) et le cycle de vie du fetch. Chaque écran
+ * de liste fournit un `fetcher` de forme (params) => Paginated<T> ; tout changement de
+ * page/recherche/filtres relance automatiquement le chargement.
+ */
 export function useList<T>(
   fetcher: (params: ListParams) => Promise<Paginated<T>>,
   options: UseListOptions = {},
@@ -40,8 +47,8 @@ export function useList<T>(
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
 
-  // `search` drives the input immediately; `debouncedSearch` drives the fetch so typing doesn't
-  // fire a request per keystroke.
+  // `search` alimente le champ de saisie immédiatement ; `debouncedSearch` alimente le fetch, avec
+  // un délai de 300 ms, pour ne pas déclencher une requête à chaque frappe.
   const [debouncedSearch, setDebouncedSearch] = useState("");
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search), 300);
@@ -53,6 +60,7 @@ export function useList<T>(
     setSearchState(value);
   }, []);
 
+  // Positionne (ou retire, si valeur vide) un filtre et revient à la page 1.
   const setFilter = useCallback((key: string, value: string) => {
     setPage(1);
     setFilters((prev) => {
@@ -63,16 +71,19 @@ export function useList<T>(
     });
   }, []);
 
+  // Force un rechargement en incrémentant une clé factice observée par l'effet de fetch.
   const refetch = useCallback(() => setReloadKey((k) => k + 1), []);
 
-  // Serialize so the object identity (recreated each render by callers) doesn't drive effects.
+  // Sérialisé pour que l'identité de l'objet (recréé à chaque render par les appelants) ne pilote
+  // pas les effets — seul le contenu compte.
   const extraParamsKey = JSON.stringify(options.extraParams ?? {});
   const scopeRef = useRef(extraParamsKey);
 
   useEffect(() => {
-    // A scope change (new extraParams) resets to the first page — the current page may not
-    // exist within the newly scoped result set. Reset inline (not in a separate effect) so
-    // the reset and fetch share one path: a scope change from page>1 fires a single request.
+    // Un changement de portée (nouveaux extraParams) réinitialise à la première page : la page
+    // courante peut ne pas exister dans le nouvel ensemble de résultats. La réinitialisation est
+    // faite ici (pas dans un effet séparé) pour que reset et fetch partagent un seul chemin : un
+    // changement de portée depuis page>1 ne déclenche qu'une seule requête.
     if (scopeRef.current !== extraParamsKey) {
       scopeRef.current = extraParamsKey;
       if (page !== 1) {
@@ -81,10 +92,13 @@ export function useList<T>(
       }
     }
 
+    // Garde anti-course : si l'effet est nettoyé avant la résolution du fetch, on ignore le résultat.
     let cancelled = false;
     setLoading(true);
     setError(null);
 
+    // Construit les query params : pagination + recherche + filtres + extraParams (portée),
+    // en n'incluant que les valeurs non vides.
     const params: ListParams = { page, limit };
     if (debouncedSearch) params.search = debouncedSearch;
     for (const [key, value] of Object.entries(filters)) {

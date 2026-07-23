@@ -1,3 +1,5 @@
+// Config : initialise i18next pour l'admin-front (français par défaut, anglais en secours).
+// Importé une fois par main.tsx avant le premier render ; exporte l'instance i18n.
 import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
 import LanguageDetector from "i18next-browser-languagedetector";
@@ -5,8 +7,8 @@ import fr from "./locales/fr.json";
 import en from "./locales/en.json";
 
 i18n
-  .use(LanguageDetector)
-  .use(initReactI18next)
+  .use(LanguageDetector) // détecte la langue (localStorage puis navigateur)
+  .use(initReactI18next) // branche i18next sur React
   .init({
     resources: {
       fr: { translation: fr },
@@ -14,18 +16,18 @@ i18n
     },
     fallbackLng: "fr",
     supportedLngs: ["fr", "en"],
-    nonExplicitSupportedLngs: true,
-    load: "languageOnly",
-    interpolation: { escapeValue: false },
+    nonExplicitSupportedLngs: true, // "fr-FR" est accepté comme "fr"
+    load: "languageOnly", // ignore la région : on ne charge que "fr"/"en"
+    interpolation: { escapeValue: false }, // React échappe déjà le HTML
     detection: {
       order: ["localStorage", "navigator"],
-      lookupLocalStorage: "lang",
+      lookupLocalStorage: "lang", // clé localStorage où lire/écrire la langue
       caches: ["localStorage"],
     },
   });
 
-// Keep <html lang> in sync with the active language. The document title is owned by AdminLayout
-// (per-route), so we don't touch it here.
+// Garde l'attribut <html lang> aligné sur la langue active. Le titre du document est géré par
+// AdminLayout (par route), on n'y touche donc pas ici.
 const syncHtmlLang = (lng: string) => {
   document.documentElement.setAttribute("lang", lng);
 };

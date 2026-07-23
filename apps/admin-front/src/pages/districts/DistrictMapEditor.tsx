@@ -1,3 +1,7 @@
+// Éditeur de tracé de quartier : carte Leaflet + Geoman permettant de dessiner, éditer,
+// déplacer, découper et supprimer un polygone unique délimitant un quartier. Émet la géométrie
+// GeoJSON à chaque modification. Composant non contrôlé : `value` sert de géométrie initiale
+// seulement, l'éditeur gère ensuite son état en interne.
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { GeoJson } from "@repo/contracts";
@@ -9,7 +13,8 @@ import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
 import markerIcon from "leaflet/dist/images/marker-icon.png";
 import markerShadow from "leaflet/dist/images/marker-shadow.png";
 
-// Leaflet's default marker icon paths break under bundlers — repoint them to Vite's resolved asset URLs.
+// Les chemins d'icônes de marqueur par défaut de Leaflet sont cassés sous un bundler — on les
+// repointe vers les URLs d'assets résolues par Vite.
 delete (L.Icon.Default.prototype as unknown as { _getIconUrl?: unknown })._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: markerIcon2x,
@@ -17,17 +22,21 @@ L.Icon.Default.mergeOptions({
   shadowUrl: markerShadow,
 });
 
-// No "default served city" concept exists yet — Paris is a placeholder center for brand-new districts.
+// Aucune notion de « ville desservie par défaut » n'existe encore — Paris sert de centre
+// provisoire pour les quartiers tout neufs.
 const DEFAULT_CENTER: L.LatLngTuple = [48.8566, 2.3522];
 const DEFAULT_ZOOM = 12;
 
 interface DistrictMapEditorProps {
-  /** Initial geometry. Treated as the map's starting state only — later prop changes are ignored, since
-   *  this editor owns geometry state internally once mounted and re-syncing would fight user edits. */
+  /** Géométrie initiale. Traitée comme état de départ de la carte uniquement — les changements
+   *  ultérieurs de cette prop sont ignorés, car l'éditeur possède son état de géométrie en interne
+   *  une fois monté et une resynchronisation entrerait en conflit avec les modifications de l'utilisateur. */
   value: GeoJson | null;
   onChange: (geoJson: GeoJson | null) => void;
   className?: string;
 }
+
+/** Éditeur cartographique de polygone de quartier ({@link DistrictMapEditorProps}). */
 
 export function DistrictMapEditor({ value, onChange, className }: DistrictMapEditorProps) {
   const { t } = useTranslation();
@@ -35,10 +44,13 @@ export function DistrictMapEditor({ value, onChange, className }: DistrictMapEdi
   const onChangeRef = useRef(onChange);
   const [warning, setWarning] = useState<string | null>(null);
 
+  // Garde onChange dans une ref pour que les handlers Leaflet (attachés une seule fois au montage)
+  // appellent toujours la dernière closure sans avoir à réinitialiser la carte.
   useEffect(() => {
     onChangeRef.current = onChange;
   }, [onChange]);
 
+  // Initialise la carte, les contrôles de dessin et les écouteurs une seule fois (montage).
   useEffect(() => {
     if (!containerRef.current) return;
 
@@ -47,6 +59,8 @@ export function DistrictMapEditor({ value, onChange, className }: DistrictMapEdi
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
     }).addTo(map);
 
+    // On n'autorise que le polygone (+ édition/déplacement/suppression/découpe) : un quartier est
+    // une zone, pas un point ni une ligne.
     map.pm.addControls({
       position: "topleft",
       drawMarker: false,
@@ -66,11 +80,14 @@ export function DistrictMapEditor({ value, onChange, className }: DistrictMapEdi
     let editableLayer: L.Polygon | null = null;
     let readonlyLayer: L.GeoJSON | null = null;
 
+    // Remonte la géométrie du polygone au parent sous forme GeoJSON.
     const emitChange = (layer: L.Polygon) => {
       const geometry = layer.toGeoJSON().geometry as { type: string; coordinates: unknown[] };
       onChangeRef.current({ type: geometry.type, coordinates: geometry.coordinates });
     };
 
+    // Attache à une couche éditable les écouteurs qui réémettent la géométrie à chaque modification :
+    // édition de sommet, fin de déplacement, suppression (émet null) et découpe (suit la nouvelle couche).
     const trackEditableLayer = (layer: L.Polygon) => {
       editableLayer = layer;
       layer.on("pm:edit", () => emitChange(layer));
@@ -86,6 +103,8 @@ export function DistrictMapEditor({ value, onChange, className }: DistrictMapEdi
       });
     };
 
+    // À la création d'un nouveau polygone : on efface toute couche préexistante (lecture seule ou
+    // éditable) — un seul polygone à la fois — puis on active l'édition et on suit la nouvelle couche.
     map.on("pm:create", (e) => {
       setWarning(null);
       if (readonlyLayer) {
@@ -101,6 +120,9 @@ export function DistrictMapEditor({ value, onChange, className }: DistrictMapEdi
       emitChange(layer);
     });
 
+    // Hydrate la carte depuis la géométrie initiale : un Polygon devient éditable et cadré ;
+    // un MultiPolygon est affiché en lecture seule avec un avertissement (non éditable ici) ;
+    // tout autre type ou un GeoJSON invalide déclenche un avertissement.
     if (value) {
       try {
         const group = L.geoJSON(value as unknown as GeoJSON.Geometry);
@@ -127,7 +149,7 @@ export function DistrictMapEditor({ value, onChange, className }: DistrictMapEdi
     return () => {
       map.remove();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- `value` is the initial geometry only, intentionally not re-run on change
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `value` n'est que la géométrie initiale, volontairement non ré-exécuté à son changement
   }, []);
 
   return (

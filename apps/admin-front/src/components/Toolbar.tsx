@@ -1,6 +1,8 @@
+// Composant : barre d'outils au-dessus des tableaux (recherche + filtres + actions).
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
+/** Descripteur d'un filtre déroulant (select) : clé, libellé, valeur courante, options et handler. */
 export interface FilterSelect {
   key: string;
   label: string;
@@ -11,15 +13,20 @@ export interface FilterSelect {
 
 interface ToolbarProps {
   search?: string;
-  onSearchChange?: (value: string) => void;
+  onSearchChange?: (value: string) => void; // absent ⇒ champ de recherche masqué
   searchPlaceholder?: string;
   filters?: FilterSelect[];
-  /** Extra inline filter controls rendered alongside the selects (e.g. a debounced text filter). */
+  /** Contrôles de filtre inline supplémentaires, rendus à côté des selects (ex. filtre texte debouncé). */
   extraFilters?: ReactNode;
-  /** Trailing slot, e.g. a "Create" button. */
+  /** Emplacement de fin de barre, poussé à droite — ex. un bouton "Créer". */
   actions?: ReactNode;
 }
 
+/**
+ * Barre d'outils de liste : champ de recherche optionnel, une série de filtres select,
+ * des filtres additionnels libres, et un emplacement d'actions aligné à droite.
+ * Chaque select ajoute une option "tous" en tête pour réinitialiser le filtre.
+ */
 export function Toolbar({ search, onSearchChange, searchPlaceholder, filters, extraFilters, actions }: ToolbarProps) {
   const { t } = useTranslation();
   return (

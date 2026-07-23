@@ -1,12 +1,14 @@
-// Shape returned by every paginated api list endpoint (mirrors PaginatedResponseDtoSchema).
+// Types partagés par toute la couche api-service : forme des réponses paginées et des query params de liste.
+
+/** Forme renvoyée par chaque endpoint de liste paginé de l'api (miroir de PaginatedResponseDtoSchema). */
 export interface Paginated<T> {
   data: T[];
-  total: number;
-  page: number;
-  limit: number;
+  total: number; // nombre total d'éléments (toutes pages confondues)
+  page: number; // page courante (1-indexée)
+  limit: number; // taille de page
 }
 
-// Common query params accepted by list endpoints. Domain-specific filters extend this.
+/** Query params communs aux endpoints de liste. La signature d'index permet des filtres spécifiques au domaine. */
 export interface ListParams {
   page?: number;
   limit?: number;
