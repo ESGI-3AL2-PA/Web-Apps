@@ -1,15 +1,19 @@
+// Schéma zod partagé (couche « entity / persistance »). Source unique de vérité
+// du document utilisateur, dérivé par les deux backends.
 import { z } from "zod";
 import { syncProvenanceSchema } from "./sync-provenance.js";
 
+// Rôles applicatifs : utilisateur simple, administrateur (de quartier), superAdmin.
 export const UserRoleSchema = z.enum(["user", "admin", "superAdmin"]);
 export type UserRole = z.infer<typeof UserRoleSchema>;
 
 /**
- * Canonical schema for a document in the shared `users` collection — the single
- * source of truth both backends derive from (api via `entities/user.entity.ts`,
- * auth-service via `UserRecord`). Previously each app hand-declared its own view of
- * this document and they drifted (auth added `totpSecret`/`lang`/`lastTotpStep`; api
- * omitted `lastTotpStep`). Any new field goes here once.
+ * Schéma canonique d'un document de la collection partagée `users` — source unique
+ * de vérité dont les deux backends dérivent (api via `entities/user.entity.ts`,
+ * auth-service via `UserRecord`). Auparavant chaque app déclarait à la main sa
+ * propre vue de ce document et elles avaient divergé (auth avait ajouté
+ * `totpSecret`/`lang`/`lastTotpStep` ; api omettait `lastTotpStep`). Tout nouveau
+ * champ se déclare ici, une seule fois.
  */
 export const userDocumentSchema = z.object({
   id: z.string(),
@@ -26,11 +30,11 @@ export const userDocumentSchema = z.object({
   emailVerified: z.boolean().default(false),
   totpSecret: z.string().nullable().default(null),
   totpEnabled: z.boolean().default(false),
-  // Preferred language for transactional emails; missing is treated as "fr".
+  // Langue préférée pour les emails transactionnels ; l'absence est traitée comme "fr".
   lang: z.enum(["fr", "en"]).optional(),
-  // Highest TOTP time-step already consumed; used to reject replay of a code within its window.
+  // Time-step TOTP le plus élevé déjà consommé ; sert à rejeter le rejeu d'un code dans sa fenêtre.
   lastTotpStep: z.number().optional(),
-  // Internal offline-sync provenance; stripped by `toEntity` before the doc leaves the repo.
+  // Provenance interne de synchro offline ; retirée par `toEntity` avant que le doc ne quitte le repo.
   _sync: syncProvenanceSchema.optional(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),

@@ -1,10 +1,12 @@
 import { z } from "zod";
 
 /**
- * Canonical schema for a document in the shared `district_admins` collection (join
- * between a user and the district they administer). Read by both backends — api has
- * full CRUD, auth-service reads it to resolve `adminDistrictId` at token time. The
- * read/write split is intentional; only the document shape + collection name are shared.
+ * Schéma canonique d'un document de la collection partagée `district_admins` (table de
+ * jointure entre un utilisateur et le quartier qu'il administre). Lu par les deux
+ * backends : l'api en a le CRUD complet, l'auth-service le lit pour résoudre
+ * `adminDistrictId` au moment de l'émission du token. Le partage lecture/écriture est
+ * volontairement asymétrique ; seuls la forme du document et le nom de la collection
+ * sont mutualisés.
  */
 export const districtAdminDocumentSchema = z.object({
   id: z.string(),
