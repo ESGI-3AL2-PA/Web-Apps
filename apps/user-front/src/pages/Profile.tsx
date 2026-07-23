@@ -5,6 +5,7 @@ import type {
   EventQueryDto,
   ListingQueryDto,
   TransactionResponseDto,
+  UpdateUserDto,
   UserResponseDto,
   VoteQueryDto,
 } from "@repo/contracts";
@@ -196,17 +197,28 @@ export default function Profile() {
   }, [uid]);
 
   const save = async () => {
-    if (!uid) return;
+    if (!uid || !fullUser) return;
+
+    // Send only the fields that actually changed. PATCH /users/:id gates a fresh-TOTP
+    // step-up on the body touching `address` (whenBodyTouches), so blindly resending the
+    // unchanged address made *every* profile save — even a plain phone edit — demand a
+    // step-up code. Diffing against the loaded profile keeps step-up scoped to real
+    // address/email/password changes. Empty strings are kept (not dropped) so clearing an
+    // optional field like phone persists.
+    const changed: UpdateUserDto = {};
+    if (form.firstName !== fullUser.firstName) changed.firstName = form.firstName;
+    if (form.lastName !== fullUser.lastName) changed.lastName = form.lastName;
+    if (form.phone.trim() !== (fullUser.phone ?? "")) changed.phone = form.phone.trim();
+    if (form.address !== (fullUser.address ?? "")) changed.address = form.address;
+
+    if (Object.keys(changed).length === 0) {
+      setEditing(false);
+      return;
+    }
+
     setSaving(true);
     try {
-      const updated = await updateUser(uid, {
-        firstName: form.firstName,
-        lastName: form.lastName,
-        // Send the trimmed value (even ""), so clearing an existing phone actually persists —
-        // `|| undefined` would drop the empty string and the old number would stick.
-        phone: form.phone.trim(),
-        address: form.address || undefined,
-      });
+      const updated = await updateUser(uid, changed);
       setFullUser(updated);
       setEditing(false);
     } catch {
