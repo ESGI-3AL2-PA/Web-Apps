@@ -1,6 +1,7 @@
 // Composant : carte de gestion de la double authentification (TOTP) d'un admin.
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { TotpCodeInput, TOTP_CODE_LENGTH } from "@repo/hooks";
 import { confirmTotp, disableTotp, enrollTotp, StepUpRequiredError } from "../api-service/totp";
 import { useStepUp } from "./step-up-context";
 
@@ -132,17 +133,10 @@ export function TwoFactorCard({
             </div>
             <label className="block text-sm font-medium">
               {t("security.twoFactor.codeLabel")}
-              <input
-                inputMode="numeric"
-                maxLength={6}
-                className="input mt-1 w-40 tracking-[0.3em]"
-                value={code}
-                onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
-                placeholder="000000"
-              />
+              <TotpCodeInput value={code} onChange={setCode} />
             </label>
             <div className="flex gap-2">
-              <button className="btn btn-primary" disabled={busy || code.length !== 6} onClick={confirm}>
+              <button className="btn btn-primary" disabled={busy || code.length !== TOTP_CODE_LENGTH} onClick={confirm}>
                 {t("security.twoFactor.verify")}
               </button>
               <button className="btn btn-soft" disabled={busy} onClick={() => setEnroll(null)}>

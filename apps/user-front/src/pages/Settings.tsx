@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useAuth } from "@repo/hooks";
+import { useAuth, TotpCodeInput, TOTP_CODE_LENGTH } from "@repo/hooks";
 import type { SessionResponseDto } from "@repo/contracts";
 import { getSessions, revokeOtherSessions, revokeSession } from "../api-service/sessions.service";
 import { deleteAccount, exportMyData, requestPasswordReset } from "../api-service/account.service";
@@ -169,17 +169,10 @@ function TwoFactorCard({ token, initialEnabled }: { token: () => Promise<string 
           </div>
           <label className="block text-sm font-medium">
             {t("settings.twoFactor.codeLabel")}
-            <input
-              inputMode="numeric"
-              maxLength={6}
-              className="input mt-1 w-40 tracking-[0.3em]"
-              value={code}
-              onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
-              placeholder="000000"
-            />
+            <TotpCodeInput value={code} onChange={setCode} />
           </label>
           <div className="flex gap-2">
-            <button className="btn btn-primary" disabled={busy || code.length !== 6} onClick={confirm}>
+            <button className="btn btn-primary" disabled={busy || code.length !== TOTP_CODE_LENGTH} onClick={confirm}>
               {t("settings.twoFactor.verify")}
             </button>
             <button className="btn btn-soft" disabled={busy} onClick={() => setEnroll(null)}>
