@@ -1,11 +1,12 @@
 /**
- * Wire types for the worker protocol. The worker executes the query against
- * Mongo and returns the result, so the Node side is Mongo-agnostic — the op
- * descriptor / driver shapes live entirely in Python.
+ * Types de transport (« wire types ») du protocole du worker. Le worker exécute
+ * la requête contre Mongo et renvoie le résultat, donc le côté Node ignore tout
+ * de Mongo — le descripteur d'opération / les formes du driver vivent entièrement
+ * en Python.
  */
 
-/** Raw shape emitted by worker.py on stdout (ndjson). `result` is whatever the
- *  executed query returned (documents / driver counts). */
+/** Forme brute émise par worker.py sur stdout (ndjson). `result` est ce qu'a
+ *  renvoyé la requête exécutée (documents / compteurs du driver). */
 export interface SatanResponse {
   id: string;
   ok: boolean;
@@ -15,8 +16,8 @@ export interface SatanResponse {
 }
 
 /**
- * Thrown by SatanClient.query() when the worker responds ok=false. Keeps the
- * original Python stack under .pythonTrace for debugging.
+ * Levée par SatanClient.query() quand le worker répond ok=false. Conserve la
+ * stack Python d'origine sous .pythonTrace pour le débogage.
  */
 export class SatanQueryError extends Error {
   public readonly pythonTrace?: string;

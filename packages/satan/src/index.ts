@@ -1,6 +1,6 @@
 /**
- * Public entry point for @repo/satan.
- * Consumed by apps/api: `import { createSatanClient, quote } from "@repo/satan";`
+ * Point d'entrée public de @repo/satan.
+ * Consommé par apps/api : `import { createSatanClient, quote } from "@repo/satan";`
  */
 
 export { SatanClient, createSatanClient } from "./SatanClient";

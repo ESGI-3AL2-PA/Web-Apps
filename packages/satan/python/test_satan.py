@@ -102,7 +102,7 @@ CASES = [
             "filter": {"tags": {"$regex": r"^a\.b$", "$options": "i"}},
         },
     ),
-    # A wildcard in an IEQ value stays literal (no ReDoS / no match-all).
+    # Un wildcard dans une valeur IEQ reste littéral (pas de ReDoS / pas de match-all).
     (
         'FIND listings WHERE tags IEQ "*"',
         {
@@ -111,7 +111,7 @@ CASES = [
             "filter": {"tags": {"$regex": r"^\*$", "$options": "i"}},
         },
     ),
-    # -- string unescaping: UTF-8 preserved, only quote()'s escapes decoded -----
+    # -- déséchappement de chaîne : UTF-8 préservé, seules les séquences de quote() décodées --
     (
         'FIND users WHERE firstName = "café\\n"',
         {

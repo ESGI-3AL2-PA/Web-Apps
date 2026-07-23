@@ -1,13 +1,14 @@
 /**
- * Smoke test for @repo/satan. The worker executes against Mongo, so this needs a
- * database: set MONGODB_URL (and optionally MONGODB_DB) to run it, otherwise it
- * skips. Parse/translate is covered Mongo-free by python/test_satan.py.
+ * Smoke test de @repo/satan. Le worker s'exécute contre Mongo : il faut donc une
+ * base de données — définir MONGODB_URL (et éventuellement MONGODB_DB) pour le
+ * lancer, sinon il est ignoré. Le parse/translate est couvert sans Mongo par
+ * python/test_satan.py.
  *
- * Run (after `npm run build -w @repo/satan`, with a Python that has ply+pymongo):
+ * Lancement (après `npm run build -w @repo/satan`, avec un Python muni de ply+pymongo) :
  *   MONGODB_URL=mongodb://root:root@localhost:27017 MONGODB_DB=db \
  *     SATAN_PYTHON=packages/satan/.venv/bin/python npx tsx packages/satan/smoke.mts
  *
- * Not part of the shipped build (excluded from tsconfig `include`).
+ * Ne fait pas partie du build livré (exclu du `include` de tsconfig).
  */
 
 import assert from "node:assert/strict";
@@ -29,14 +30,17 @@ const client = createSatanClient({
 client.on("stderr", (line: string) => process.stderr.write(`[worker] ${line}`));
 
 async function main(): Promise<void> {
+  // FIND doit renvoyer un tableau de documents.
   const rows = await client.query("FIND users LIMIT 1");
   assert.ok(Array.isArray(rows), "FIND should return an array");
   console.warn(`✓ FIND users LIMIT 1 → ${rows.length} row(s)`);
 
+  // COUNT doit renvoyer un objet { count }.
   const counted = await client.query("COUNT users");
   assert.ok(typeof counted?.count === "number", "COUNT should return { count }");
   console.warn(`✓ COUNT users → ${counted.count}`);
 
+  // Une requête malformée doit être rejetée avec SatanQueryError.
   await assert.rejects(() => client.query("FIND WHERE"), SatanQueryError);
   console.warn("✓ malformed query rejects with SatanQueryError");
 
