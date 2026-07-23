@@ -131,6 +131,7 @@ const loginHtml = renderPage(path.join(__dirname, "login-page", "index.html"));
 const registerHtml = renderPage(path.join(__dirname, "register-page", "index.html"));
 const verifyHtml = renderPage(path.join(__dirname, "verify-page", "index.html"));
 const resetPasswordHtml = renderPage(path.join(__dirname, "reset-password-page", "index.html"));
+const forgotPasswordHtml = renderPage(path.join(__dirname, "forgot-password-page", "index.html"));
 
 app.get("/login", (_req, res) => {
   res.type("html").send(loginHtml);
@@ -140,6 +141,9 @@ app.get("/register", (_req, res) => {
 });
 app.get("/reset-password", (_req, res) => {
   res.type("html").send(resetPasswordHtml);
+});
+app.get("/forgot-password", (_req, res) => {
+  res.type("html").send(forgotPasswordHtml);
 });
 
 // The verification email links straight to GET /auth/verify?token=…. A browser
