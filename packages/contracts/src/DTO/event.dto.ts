@@ -35,7 +35,7 @@ export const CreateEventDtoSchema = z
       .min(1)
       .max(500)
       .openapi({ description: "Event location (1-500 characters)", example: "Place du Tertre, Montmartre" }),
-    totalSeats: z.number().int().min(1).openapi({ description: "Total number of seats (minimum 1)" }),
+    totalSeats: z.number().int().min(1).max(1_000_000).openapi({ description: "Total number of seats (1–1,000,000)" }),
     eventDate: z.string().datetime().openapi({ description: "Event date and time (ISO 8601)" }),
   })
   // eventDate is an absolute instant (ISO 8601), so comparing to `now` is timezone-safe:
@@ -52,7 +52,7 @@ export const UpdateEventDtoSchema = z
     title: z.string().min(1).max(300).optional(),
     description: z.string().min(1).optional(),
     location: z.string().min(1).max(500).optional(),
-    totalSeats: z.number().int().min(1).optional(),
+    totalSeats: z.number().int().min(1).max(1_000_000).optional(),
     status: EventStatusSchema.optional(),
     eventDate: z.string().datetime().optional(),
   })
