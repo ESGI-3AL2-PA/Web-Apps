@@ -2,7 +2,7 @@
 // opérations admin sensibles. Fournit le contexte StepUpContext au reste de l'app.
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { useAuth } from "@repo/hooks";
+import { useAuth, TotpCodeInput, TOTP_CODE_LENGTH } from "@repo/hooks";
 import { fetchStepUpToken } from "../api-service/step-up";
 import { setStepUpHandler } from "../api-service/api";
 import { FormModal } from "./FormModal";
@@ -60,7 +60,7 @@ export function StepUpProvider({ children }: { children: ReactNode }) {
   const submit = useCallback(
     async (e: FormEvent) => {
       e.preventDefault();
-      if (code.length !== 6) return; // TOTP = exactement 6 chiffres
+      if (code.length !== TOTP_CODE_LENGTH) return;
       setBusy(true);
       setError(null);
       try {
@@ -97,15 +97,7 @@ export function StepUpProvider({ children }: { children: ReactNode }) {
           <p className="text-sm text-base-content/70">{t("stepUp.desc")}</p>
           <label className="block text-sm font-medium">
             {t("stepUp.codeLabel")}
-            <input
-              autoFocus
-              inputMode="numeric"
-              maxLength={6}
-              className="input mt-1 w-40 tracking-[0.3em]"
-              value={code}
-              onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
-              placeholder="000000"
-            />
+            <TotpCodeInput autoFocus value={code} onChange={setCode} />
           </label>
         </FormModal>
       )}

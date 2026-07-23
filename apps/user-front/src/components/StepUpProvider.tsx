@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { useAuth } from "@repo/hooks";
+import { useAuth, TotpCodeInput, TOTP_CODE_LENGTH } from "@repo/hooks";
 import { fetchStepUpToken } from "../api-service/step-up.service";
 import { setStepUpHandler } from "../api-service/api";
 import { useFocusTrap } from "../lib/useFocusTrap";
@@ -61,7 +61,7 @@ export function StepUpProvider({ children }: { children: ReactNode }) {
   // Valide le code : récupère un access token frais (refresh si besoin), échange
   // token + code contre un step-up token, puis résout la promesse en attente.
   const submit = useCallback(async () => {
-    if (code.length !== 6) return;
+    if (code.length !== TOTP_CODE_LENGTH) return;
     setBusy(true);
     setError(null);
     try {
@@ -118,25 +118,13 @@ export function StepUpProvider({ children }: { children: ReactNode }) {
             )}
             <label className="mt-4 block text-sm font-medium">
               {t("stepUp.codeLabel")}
-              <input
-                autoFocus
-                inputMode="numeric"
-                maxLength={6}
-                className="input mt-1 w-40 tracking-[0.3em]"
-                value={code}
-                // Ne garde que les chiffres pour un code TOTP à 6 chiffres.
-                onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") submit();
-                }}
-                placeholder="000000"
-              />
+              <TotpCodeInput autoFocus value={code} onChange={setCode} onSubmit={submit} />
             </label>
             <div className="mt-5 flex justify-end gap-2">
               <button onClick={cancel} disabled={busy} className="btn btn-soft">
                 {t("common.cancel")}
               </button>
-              <button onClick={submit} disabled={busy || code.length !== 6} className="btn btn-primary">
+              <button onClick={submit} disabled={busy || code.length !== TOTP_CODE_LENGTH} className="btn btn-primary">
                 {t("stepUp.verify")}
               </button>
             </div>
