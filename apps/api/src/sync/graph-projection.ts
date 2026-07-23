@@ -1,10 +1,10 @@
 /**
- * Mirrors a sync-applied write into the Neo4j projection.
+ * Couche sync : reflète une écriture appliquée par la sync dans la projection Neo4j.
  *
- * The sync writer goes straight to Mongo, bypassing the incident/user use-cases that
- * normally maintain the graph — without this, recommendations would drift away from
- * the data the desktop app pushes. Best-effort, like every other graph write
- * (`syncGraph` logs and continues), because Mongo remains the source of truth.
+ * Le writer de sync écrit directement dans Mongo, court-circuitant les use-cases
+ * incident/user qui maintiennent normalement le graphe — sans ceci, les recommandations
+ * dériveraient des données poussées par l'app desktop. Best-effort, comme toute autre
+ * écriture de graphe (`syncGraph` logge et continue), car Mongo reste la source de vérité.
  */
 import type { SyncEntity, SyncOperation } from "@repo/contracts";
 import type { IGraphRepository } from "../repositories/Graph/graph.repository.js";
@@ -12,8 +12,14 @@ import { syncGraph } from "../repositories/Graph/graph.sync.js";
 
 type Doc = Record<string, unknown>;
 
+// Coercition défensive vers string : un document de sync est du JSON non typé.
 const str = (v: unknown): string => (typeof v === "string" ? v : "");
 
+/**
+ * Applique dans Neo4j l'effet d'une écriture de sync (INSERT/UPDATE/DELETE) pour une
+ * entité `user` ou `incident`. Les quartiers ne sont jamais écrits par la sync et sont
+ * ignorés. Toutes les écritures passent par `syncGraph` (best-effort, loggé).
+ */
 export const projectSyncWrite = async (
   graph: IGraphRepository,
   entity: SyncEntity,
@@ -21,7 +27,7 @@ export const projectSyncWrite = async (
   mongoId: string,
   doc: Doc | null,
 ): Promise<void> => {
-  if (entity === "district") return; // districts are never written by sync
+  if (entity === "district") return; // les quartiers ne sont jamais écrits par la sync
 
   if (operation === "DELETE") {
     await syncGraph(`sync.delete${entity}(${mongoId})`, () =>

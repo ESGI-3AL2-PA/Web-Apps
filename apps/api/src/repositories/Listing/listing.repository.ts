@@ -1,6 +1,10 @@
 import type { ListingSort } from "@repo/contracts";
 import type { Listing } from "../../entities/listing.entity.js";
 
+/**
+ * Contrat du repository des annonces (listings). Implémenté par les versions
+ * Mongo et SATAN QL ; les cas d'usage ne dépendent que de cette interface.
+ */
 export interface IListingRepository {
   ensureIndexes(): Promise<void>;
 
@@ -30,6 +34,6 @@ export interface IListingRepository {
 
   countActiveListings(districtId?: string): Promise<number>;
 
-  /** Delete every listing authored by a user (account deletion). */
+  /** Supprime toutes les annonces créées par un user (suppression de compte). */
   deleteByAuthor(authorId: string): Promise<void>;
 }

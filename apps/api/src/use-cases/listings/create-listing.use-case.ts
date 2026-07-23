@@ -4,6 +4,16 @@ import type { IListingRepository } from "../../repositories/Listing/listing.repo
 import type { IGraphRepository } from "../../repositories/Graph/graph.repository.js";
 import { syncGraph } from "../../repositories/Graph/graph.sync.js";
 
+/**
+ * Cas d'usage : creer une annonce.
+ *
+ * Cree l'annonce en statut « active » (tags et images par defaut a vide), puis
+ * la miroite dans le graphe : noeud + arete auteur + une arete par tag. La
+ * categorie du noeud graphe est le premier tag de l'annonce.
+ *
+ * @param data DTO de creation etendu de `authorId` et `districtId` (resolus depuis le contexte auth).
+ * @returns l'annonce creee.
+ */
 export const createListingUseCase = (listingRepository: IListingRepository, graphRepository: IGraphRepository) => {
   return async (data: CreateListingDto & { authorId: string; districtId: string }): Promise<Listing> => {
     const listing = await listingRepository.createListing({
@@ -13,7 +23,7 @@ export const createListingUseCase = (listingRepository: IListingRepository, grap
       status: "active",
     });
 
-    // Mirror the listing into the graph: node + author + tag edges.
+    // Miroir de l'annonce dans le graphe : noeud + aretes auteur et tags.
     await syncGraph(`upsertListing(${listing.id})`, () =>
       graphRepository.upsertListing({ id: listing.id, category: listing.tags[0] }),
     );

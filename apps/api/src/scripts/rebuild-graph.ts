@@ -1,13 +1,13 @@
 /**
- * Graph reconciliation script — wipes the Neo4j projection and rebuilds it from
- * Mongo (the source of truth), healing any drift accumulated by the best-effort
- * per-request syncGraph writes.
+ * Script de réconciliation du graphe — efface la projection Neo4j et la reconstruit
+ * depuis Mongo (la source de vérité), corrigeant toute dérive accumulée par les
+ * écritures graphe best-effort faites à chaque requête (syncGraph).
  *
- * Usage:
- *   npm run graph:rebuild        # from apps/api
+ * Usage :
+ *   npm run graph:rebuild        # depuis apps/api
  *   tsx src/scripts/rebuild-graph.ts
  *
- * Safe to run repeatedly; it is a full rebuild (reset + replay), not an incremental sync.
+ * Rejouable sans risque : reconstruction complète (reset + replay), pas une sync incrémentale.
  */
 
 import { connectDB, closeDB } from "../repositories/mongodb.connector.js";
@@ -16,6 +16,8 @@ import { initContainer, resolve } from "../repositories/container.js";
 import { rebuildGraphUseCase } from "../use-cases/graph/rebuild-graph.use-case.js";
 
 const main = async (): Promise<void> => {
+  // Ouvre les deux connexions et amorce le container de repositories : le cas d'usage
+  // résout ensuite ses dépendances via `resolve(...)` comme en runtime.
   const db = await connectDB();
   const driver = await connectNeo4j();
   initContainer(db, driver);

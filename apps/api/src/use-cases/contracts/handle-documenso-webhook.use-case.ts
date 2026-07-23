@@ -6,8 +6,16 @@ import type { ITransactionRepository } from "../../repositories/Transaction/tran
 import { runInTransaction } from "../../repositories/tx.js";
 import { mapDocumensoStatus, type DocumensoWebhookEvent } from "../../services/documenso.service.js";
 
-// Credits `amount` to a user and records the ledger entry. Used to release the
-// escrow to the provider on completion or refund it to the beneficiary on rejection.
+/**
+ * Cas d'usage : traitement d'un webhook Documenso (événements de signature).
+ *
+ * Ce fichier expose la factory du cas d'usage et un helper `credit` de crédit + écriture
+ * de journal, partagé par les transitions de complétion et de rejet.
+ */
+
+// Crédite le prix du contrat à un utilisateur et enregistre l'écriture de journal
+// (ledger). Sert à verser le séquestre au prestataire à la complétion, ou à le
+// rembourser au bénéficiaire au rejet.
 const credit = async (
   transactionRepository: ITransactionRepository,
   contract: Contract,
@@ -30,23 +38,30 @@ const credit = async (
     session,
   );
   if (session) {
-    // Inside a transaction: the status gate + balance move + ledger row commit or roll
-    // back together, so a ledger failure can't leave the escrow settled without a record.
+    // Dans une transaction : la garde de statut + le mouvement de solde + l'écriture de
+    // journal sont validés ou annulés ensemble, si bien qu'un échec de journal ne peut pas
+    // laisser le séquestre réglé sans trace.
     await ledgerWrite;
   } else {
-    // Sequential fallback (standalone Mongo, no transactions): the balance move already
-    // settled the escrow and the atomic gate fired, so keep the ledger write best-effort
-    // — a failure here must not 500 the webhook and cause a re-credit on retry.
+    // Repli séquentiel (Mongo autonome, sans transactions) : le mouvement de solde a déjà
+    // réglé le séquestre et la garde atomique a joué, donc on garde l'écriture de journal
+    // en best-effort — un échec ici ne doit pas faire 500 le webhook et provoquer un
+    // re-crédit lors du renvoi (retry).
     await ledgerWrite.catch((err) =>
       logger.error({ err, contractId: contract.id }, "escrow-settle ledger write failed"),
     );
   }
 };
 
-// Maps an inbound Documenso event to a contract status transition. Idempotent: the
-// atomic complete/reject gates ensure the escrow is released or refunded at most
-// once even if the same event is delivered twice. Returns null when the event can't
-// be matched to a contract so the handler can still 200 the webhook.
+/**
+ * Fabrique le cas d'usage de traitement du webhook Documenso.
+ *
+ * Fait correspondre un événement Documenso entrant à une transition de statut du contrat.
+ * Idempotent : les gardes atomiques complete/reject garantissent que le séquestre est
+ * versé ou remboursé au plus une fois, même si le même événement est livré deux fois.
+ * Renvoie `null` quand l'événement ne peut être rattaché à aucun contrat, pour que le
+ * handler puisse quand même répondre 200 au webhook.
+ */
 export const handleDocumensoWebhookUseCase = (
   contractRepository: IContractRepository,
   transactionRepository: ITransactionRepository,
@@ -59,12 +74,12 @@ export const handleDocumensoWebhookUseCase = (
     if (!contract) return null;
 
     const signatureStatus = mapDocumensoStatus(event.payload?.status);
-    // Unknown/unhandled event — ignore it (don't touch the contract).
+    // Événement inconnu/non géré — on l'ignore (on ne touche pas au contrat).
     if (signatureStatus === null) return contract;
 
     if (signatureStatus === "completed") {
-      // Both parties signed — atomically transition and release the escrow to the
-      // provider (once). Gate + balance + ledger commit together.
+      // Les deux parties ont signé — transition atomique + versement du séquestre au
+      // prestataire (une seule fois). Garde + solde + journal validés ensemble.
       const completed = await runInTransaction(async (session) => {
         const c = await contractRepository.completeContract(contract.id, session);
         if (c) await credit(transactionRepository, c, c.providerId, session);
@@ -74,8 +89,8 @@ export const handleDocumensoWebhookUseCase = (
     }
 
     if (signatureStatus === "rejected") {
-      // A party declined — atomically transition and refund the escrow to the
-      // beneficiary (once).
+      // Une partie a refusé — transition atomique + remboursement du séquestre au
+      // bénéficiaire (une seule fois).
       const rejected = await runInTransaction(async (session) => {
         const c = await contractRepository.rejectContract(contract.id, session);
         if (c) await credit(transactionRepository, c, c.beneficiaryId, session);
@@ -84,9 +99,9 @@ export const handleDocumensoWebhookUseCase = (
       return rejected ?? contract;
     }
 
-    // Non-terminal transition (pending/draft): apply it atomically only while the
-    // contract is still non-terminal, so a late or out-of-order event can't drag a
-    // completed/rejected contract back to pending. Already-terminal → no-op.
+    // Transition non terminale (pending/draft) : appliquée atomiquement uniquement tant
+    // que le contrat n'est pas terminal, pour qu'un événement tardif ou dans le désordre
+    // ne puisse pas ramener un contrat completed/rejected à pending. Déjà terminal → no-op.
     const updated = await contractRepository.applyNonTerminalStatus(contract.id, signatureStatus);
     return updated ?? contract;
   };

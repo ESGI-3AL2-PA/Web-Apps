@@ -10,8 +10,15 @@ import { deleteTagUseCase } from "../../use-cases/tags/delete-tag.use-case.js";
 
 const s = initServer();
 
+/**
+ * Router ts-rest des tags (catégories utilisées par les annonces, événements, etc.).
+ *
+ * Couche router. CRUD scopé par quartier : les mutations propagent aussi le tag
+ * dans la projection graphe (resolve("graph")) pour les recommandations.
+ */
 export const tagsRouter = s.router(tagsContract, {
   getTags: async ({ query: { page, limit, search, districtId }, req }) => {
+    // Résout le quartier effectif de l'appelant (un user normal est confiné au sien).
     const scope = await resolveCallerListDistrict(req.user!, districtId, resolve("user"));
     if ("empty" in scope) {
       return { status: 200, body: { data: [], total: 0, page, limit } };
@@ -29,6 +36,7 @@ export const tagsRouter = s.router(tagsContract, {
   },
 
   createTag: async ({ body, req }) => {
+    // Un admin ne peut créer que dans son quartier ; un superAdmin cible celui du body.
     const districtId = req.user!.role === "admin" ? req.user!.adminDistrictId : body.districtId;
     if (!districtId) {
       return { status: 400, body: { message: "districtId required" } };

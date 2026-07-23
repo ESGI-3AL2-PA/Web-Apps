@@ -6,6 +6,12 @@ import type { IContractRepository } from "./contract.repository.js";
 
 type ContractDoc = WithMongoId<Contract>;
 
+/**
+ * Repository Mongo des contrats (e-signature Documenso + escrow). Gère le cycle de vie de la
+ * signature (complete/reject), les litiges (dispute/resolve) et l'unicité des contrats actifs,
+ * en s'appuyant sur des mises à jour atomiques `findOneAndUpdate` avec gardes pour rester correct
+ * sous concurrence (webhooks Documenso simultanés).
+ */
 export class MongoContractRepository implements IContractRepository {
   private collection: Collection<ContractDoc>;
 
@@ -13,23 +19,25 @@ export class MongoContractRepository implements IContractRepository {
     this.collection = db.collection("contracts");
   }
 
+  /** Crée les index : filtrage par quartier, lookup webhook par doc Documenso, et unicité du contrat actif. */
   async ensureIndexes(): Promise<void> {
-    // Backs district-scoped list filtering.
+    // Soutient le filtrage des listes scopées par quartier.
     await this.collection.createIndex({ districtId: 1 });
-    // Backs the webhook lookup by Documenso document id (sparse: null before a
-    // document is generated). Unique — one contract per Documenso document.
+    // Soutient le lookup du webhook par id de document Documenso (sparse : null avant qu'un
+    // document soit généré). Unique — un contrat par document Documenso.
     await this.collection.createIndex({ documensoDocumentId: 1 }, { unique: true, sparse: true });
-    // At most one *active* contract per (listing, provider, beneficiary). Makes the
-    // duplicate-create guard atomic — the app-level findActiveContract check races
-    // under concurrency. Contracts are always created "pending", so equality on that
-    // status covers every create; the trio frees up once the contract goes terminal
-    // (completed/rejected) or is deleted. ($in isn't allowed in a partial filter.)
+    // Au plus un contrat *actif* par (annonce, prestataire, bénéficiaire). Rend la garde anti-doublon
+    // atomique — le contrôle findActiveContract au niveau app est sujet aux courses sous concurrence.
+    // Les contrats sont toujours créés "pending", donc l'égalité sur ce statut couvre chaque création ;
+    // le trio se libère dès que le contrat devient terminal (completed/rejected) ou est supprimé.
+    // ($in n'est pas autorisé dans un partial filter.)
     await this.collection.createIndex(
       { listingId: 1, providerId: 1, beneficiaryId: 1 },
       { unique: true, partialFilterExpression: { signatureStatus: "pending" } },
     );
   }
 
+  /** Liste paginée des contrats, filtrable par annonce, quartier, partie (provider/beneficiary/partyId), statut et litige. */
   async getContracts(params: {
     listingId?: string;
     districtId?: string;
@@ -64,6 +72,7 @@ export class MongoContractRepository implements IContractRepository {
     if (districtId) filter.districtId = districtId;
     if (providerId) filter.providerId = providerId;
     if (beneficiaryId) filter.beneficiaryId = beneficiaryId;
+    // partyId : contrats où l'utilisateur est prestataire OU bénéficiaire (l'une ou l'autre partie).
     if (partyId) filter.$or = [{ providerId: partyId }, { beneficiaryId: partyId }];
     if (signatureStatus) filter.signatureStatus = signatureStatus as ContractSignatureStatus;
     if (disputed !== undefined) filter.disputed = disputed;
@@ -80,22 +89,25 @@ export class MongoContractRepository implements IContractRepository {
     return { data: docs.map((d) => toEntity<Contract>(d)), total, page, limit };
   }
 
+  /** Récupère un contrat par son id, ou null s'il n'existe pas. */
   async getContractById(id: string): Promise<Contract | null> {
     const doc = await this.collection.findOne({ _id: id });
     return doc ? toEntity<Contract>(doc) : null;
   }
 
+  /** Récupère le contrat associé à un document Documenso (utilisé par le handler de webhook). */
   async getContractByDocumensoDocumentId(documentId: number): Promise<Contract | null> {
     const doc = await this.collection.findOne({ documensoDocumentId: documentId });
     return doc ? toEntity<Contract>(doc) : null;
   }
 
+  /** Passe le contrat en "completed" atomiquement (garde anti double-libération et anti-litige). */
   async completeContract(id: string, session?: ClientSession): Promise<Contract | null> {
-    // The {$nin} guard + $set are one atomic update, so concurrent webhooks can't
-    // both transition (and double-release), and a rejected contract can't complete.
-    // The {disputed: {$ne: true}} guard freezes settlement while a dispute is open —
-    // a disputed contract must not auto-release the escrow on the next signature event;
-    // only an admin resolving the dispute may move the money.
+    // La garde {$nin} + le $set forment une seule mise à jour atomique : des webhooks concurrents ne
+    // peuvent pas transitionner tous les deux (et double-libérer l'escrow), et un contrat rejeté ne
+    // peut pas se compléter. La garde {disputed: {$ne: true}} gèle le règlement tant qu'un litige est
+    // ouvert — un contrat en litige ne doit pas auto-libérer l'escrow au prochain événement de
+    // signature ; seul un admin résolvant le litige peut déplacer l'argent.
     const result = await this.collection.findOneAndUpdate(
       { _id: id, signatureStatus: { $nin: ["completed", "rejected"] }, disputed: { $ne: true } },
       { $set: { signatureStatus: "completed", providerSigningUrl: null, beneficiarySigningUrl: null } },
@@ -104,9 +116,10 @@ export class MongoContractRepository implements IContractRepository {
     return result ? toEntity<Contract>(result) : null;
   }
 
+  /** Passe le contrat en "rejected" atomiquement (mêmes gardes terminal + gel de litige que complete). */
   async rejectContract(id: string, session?: ClientSession): Promise<Contract | null> {
-    // Same terminal + dispute-freeze guard as completeContract: a disputed contract can't
-    // auto-refund on a signature event either — it stays frozen until an admin resolves it.
+    // Même garde terminal + gel de litige que completeContract : un contrat en litige ne peut pas
+    // non plus auto-rembourser sur un événement de signature — il reste gelé jusqu'à résolution par un admin.
     const result = await this.collection.findOneAndUpdate(
       { _id: id, signatureStatus: { $nin: ["completed", "rejected"] }, disputed: { $ne: true } },
       {
@@ -121,11 +134,12 @@ export class MongoContractRepository implements IContractRepository {
     return result ? toEntity<Contract>(result) : null;
   }
 
+  /** Ouvre atomiquement un litige, uniquement si le contrat est dans un état contestable (pending ou completed). */
   async disputeContract(id: string, reason: string, session?: ClientSession): Promise<Contract | null> {
-    // Atomically raise a dispute only while the contract is in a disputable state
-    // (pending or completed — not draft/rejected). The state guard + $set are one update,
-    // so a concurrent settlement webhook can't stamp a dispute onto a just-terminal
-    // contract, and disputing can't pass on stale read-then-write data.
+    // Ouvre atomiquement un litige seulement tant que le contrat est dans un état contestable
+    // (pending ou completed — pas draft/rejected). La garde d'état + le $set forment une seule
+    // mise à jour, donc un webhook de règlement concurrent ne peut pas apposer un litige sur un
+    // contrat tout juste terminal, et l'ouverture ne peut pas s'appuyer sur des données lues-puis-écrites périmées.
     const result = await this.collection.findOneAndUpdate(
       { _id: id, signatureStatus: { $in: ["pending", "completed"] } },
       { $set: { disputed: true, disputeReason: reason } },
@@ -134,16 +148,16 @@ export class MongoContractRepository implements IContractRepository {
     return result ? toEntity<Contract>(result) : null;
   }
 
+  /** Résout un litige : le clôt et fixe le statut terminal, en renvoyant l'état pré-résolution pour le règlement de l'escrow. */
   async resolveDispute(
     id: string,
     terminalStatus: ContractSignatureStatus,
     session?: ClientSession,
   ): Promise<Contract | null> {
-    // Atomically clear the dispute (only while disputed:true, so concurrent resolves
-    // settle the escrow at most once) and move to the given terminal status, clearing
-    // signing URLs. Returns the contract's *pre-resolution* state so the caller can
-    // settle the escrow based on whether it was still held; null if it wasn't disputed
-    // or doesn't exist.
+    // Lève atomiquement le litige (seulement tant que disputed:true, pour que des résolutions
+    // concurrentes ne règlent l'escrow qu'une seule fois) et passe au statut terminal donné en
+    // effaçant les URLs de signature. Renvoie l'état *pré-résolution* du contrat pour que l'appelant
+    // règle l'escrow selon qu'il était encore retenu ; null s'il n'était pas en litige ou n'existe pas.
     const result = await this.collection.findOneAndUpdate(
       { _id: id, disputed: true },
       {
@@ -160,9 +174,10 @@ export class MongoContractRepository implements IContractRepository {
     return result ? toEntity<Contract>(result) : null;
   }
 
+  /** Applique un statut non terminal (ex. draft→pending), ignoré si le contrat est déjà terminal (garde anti-régression). */
   async applyNonTerminalStatus(id: string, status: ContractSignatureStatus): Promise<Contract | null> {
-    // Same {$nin} terminal guard as complete/reject — a pending/draft event that
-    // arrives after settlement finds no match and is ignored, so it can't regress.
+    // Même garde terminal {$nin} que complete/reject — un événement pending/draft qui arrive après
+    // le règlement ne trouve aucune correspondance et est ignoré, donc il ne peut pas faire régresser l'état.
     const result = await this.collection.findOneAndUpdate(
       { _id: id, signatureStatus: { $nin: ["completed", "rejected"] } },
       { $set: { signatureStatus: status } },
@@ -171,6 +186,7 @@ export class MongoContractRepository implements IContractRepository {
     return result ? toEntity<Contract>(result) : null;
   }
 
+  /** Trouve un contrat encore actif (draft ou pending) pour le trio (annonce, prestataire, bénéficiaire) — garde anti-doublon. */
   async findActiveContract(params: {
     listingId: string;
     providerId: string;
@@ -185,6 +201,7 @@ export class MongoContractRepository implements IContractRepository {
     return doc ? toEntity<Contract>(doc) : null;
   }
 
+  /** Insère un nouveau contrat (id UUID + createdAt générés côté serveur). */
   async createContract(data: Omit<Contract, "id" | "createdAt">): Promise<Contract> {
     const now = new Date().toISOString();
     const doc: ContractDoc = { ...data, _id: randomUUID(), createdAt: now };
@@ -192,6 +209,7 @@ export class MongoContractRepository implements IContractRepository {
     return toEntity<Contract>(doc);
   }
 
+  /** Met à jour partiellement un contrat et renvoie le document mis à jour (id et createdAt exclus). */
   async updateContract(id: string, data: Partial<Omit<Contract, "id" | "createdAt">>): Promise<Contract | null> {
     const result = await this.collection.findOneAndUpdate(
       { _id: id },
@@ -201,9 +219,10 @@ export class MongoContractRepository implements IContractRepository {
     return result ? toEntity<Contract>(result) : null;
   }
 
+  /** Supprime un contrat et renvoie le document supprimé (son état à la suppression) pour un éventuel remboursement d'escrow. */
   async deleteContract(id: string, session?: ClientSession): Promise<Contract | null> {
-    // findOneAndDelete returns the removed doc with its state at deletion, so the
-    // caller can atomically decide whether to refund a still-held escrow.
+    // findOneAndDelete renvoie le document supprimé avec son état au moment de la suppression, pour
+    // que l'appelant puisse décider atomiquement de rembourser un escrow encore retenu.
     const result = await this.collection.findOneAndDelete({ _id: id }, { session });
     return result ? toEntity<Contract>(result) : null;
   }

@@ -1,5 +1,14 @@
 import type { Event } from "../../entities/event.entity.js";
 
+/**
+ * Interface du repository des événements (couche persistance).
+ *
+ * Gère les événements de quartier, leur liste d'inscrits (avec sièges restants),
+ * et une sous-collection d'interactions par utilisateur (présence + note, ou
+ * signal d'intérêt 👍/👎). Ces interactions sont la source de vérité durable,
+ * projetée dans Neo4j en best-effort par l'appelant pour le moteur de
+ * recommandation.
+ */
 export interface IEventRepository {
   ensureIndexes(): Promise<void>;
 
@@ -20,7 +29,8 @@ export interface IEventRepository {
 
   getEventById(id: string): Promise<Event | null>;
 
-  /** Batch fetch by IDs. Result order is NOT guaranteed — re-sort if needed. */
+  /** Récupération par lot d'ids. L'ordre du résultat n'est PAS garanti — re-trier
+   *  si besoin. */
   getEventsByIds(ids: string[]): Promise<Event[]>;
 
   createEvent(data: Omit<Event, "id" | "createdAt">): Promise<Event>;
@@ -29,28 +39,35 @@ export interface IEventRepository {
 
   deleteEvent(id: string): Promise<boolean>;
 
+  /** Inscrit un utilisateur (garde-fou : pas déjà inscrit et sièges restants > 0). */
   addRegistrant(id: string, userId: string): Promise<Event | null>;
 
+  /** Désinscrit un utilisateur et libère son siège. */
   removeRegistrant(id: string, userId: string): Promise<Event | null>;
 
-  /** Record (upsert) a user's attendance + optional rating for an event. Source of truth;
-   *  the Neo4j edge is a projection synced best-effort by the caller. */
+  /** Enregistre (upsert) la présence d'un utilisateur + note optionnelle pour un
+   *  événement. Source de vérité ; l'arête Neo4j est une projection synchronisée en
+   *  best-effort par l'appelant. */
   recordAttendance(eventId: string, userId: string, rating?: number): Promise<void>;
 
-  /** Record (upsert) a user's 👍/👎 interest signal for an event. Source of truth. */
+  /** Enregistre (upsert) le signal d'intérêt 👍/👎 d'un utilisateur pour un
+   *  événement. Source de vérité. */
   recordInterest(eventId: string, userId: string, score: number): Promise<void>;
 
-  /** Remove all interaction rows (attendance/interest) for a user — used on account deletion. */
+  /** Supprime toutes les lignes d'interaction (présence/intérêt) d'un utilisateur —
+   *  utilisé à la suppression de compte. */
   deleteUserInteractions(userId: string): Promise<void>;
 
-  /** All attendance/interest rows — used by the graph reconciliation job. */
+  /** Toutes les lignes de présence/intérêt — utilisé par le job de réconciliation
+   *  du graphe. */
   getAllInteractions(): Promise<
     { eventId: string; userId: string; kind: "attendance" | "interest"; rating?: number; score?: number }[]
   >;
 
-  /** Delete every event created by a user (account deletion). */
+  /** Supprime tous les événements créés par un utilisateur (suppression de compte). */
   deleteByCreator(creatorId: string): Promise<void>;
 
-  /** Remove a user from the registrant list of every event they joined (account deletion). */
+  /** Retire un utilisateur de la liste des inscrits de tous les événements qu'il
+   *  avait rejoints (suppression de compte). */
   removeUserFromAllEvents(userId: string): Promise<void>;
 }

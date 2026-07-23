@@ -6,18 +6,25 @@ import type { IUserRepository } from "../../repositories/User/user.repository.js
 import { InMemoryUserRepository } from "../../repositories/User/user.repository.in-memory.js";
 import { createOwnDistrictUseCase, type CreateOwnDistrictDeps } from "./create-own-district.use-case.js";
 
-// Geocode alice's address to a fixed point (no network).
+/**
+ * Suite de tests du cas d'usage createOwnDistrictUseCase (auto-création d'un quartier par un
+ * utilisateur). Vérifie : la création à partir du point géocodé + promotion + adhésion créditée,
+ * le refus si l'appelant a déjà un quartier ou n'est pas un simple utilisateur, et le cas d'échec
+ * de géocodage. Le géocodage, la transaction Mongo et le solde sont mockés.
+ */
+
+// Géocode l'adresse d'alice vers un point fixe (aucun appel réseau).
 vi.mock("../../services/address.service.js", () => ({
   getCoordinatesFromAddress: vi.fn(async () => ({ type: "Point", coordinates: [2.34, 48.86] })),
 }));
 import { getCoordinatesFromAddress } from "../../services/address.service.js";
 
-// Run the ledger callback without a real Mongo session (founder join grants points).
+// Exécute le callback du grand livre sans vraie session Mongo (l'adhésion du fondateur crédite des points).
 vi.mock("../../repositories/tx.js", () => ({
   runInTransaction: (fn: (session?: unknown) => unknown) => fn(undefined),
 }));
 
-// A transaction repo backed by the in-memory user records so the granted balance is real.
+// Un transaction repo adossé aux enregistrements utilisateur en mémoire, pour que le solde crédité soit réel.
 const makeTxRepo = (userRepo: IUserRepository): ITransactionRepository =>
   ({
     adjustBalance: vi.fn(async (id: string, delta: number) => {
@@ -62,7 +69,7 @@ const makeDeps = (repo: InMemoryUserRepository) => {
     districtRepository: {
       createDistrict,
       deleteDistrict: vi.fn(async () => true),
-      // The founder join re-reads the district for its startingPoints.
+      // L'adhésion du fondateur relit le quartier pour récupérer ses startingPoints.
       getDistrictById: vi.fn(async (id: string) => ({ id, name: "D", startingPoints: 100 })),
     } as unknown as CreateOwnDistrictDeps["districtRepository"],
     graphRepository: {
@@ -81,6 +88,7 @@ const makeDeps = (repo: InMemoryUserRepository) => {
 describe("createOwnDistrictUseCase", () => {
   beforeEach(() => vi.clearAllMocks());
 
+  // Cas nominal : crée le quartier depuis le point géocodé, promeut l'appelant admin et le fait adhérer avec les points de départ.
   it("creates a district from the address point, promotes the caller, and joins them with points", async () => {
     const repo = new InMemoryUserRepository();
     const alice = await seedUser(repo);
@@ -89,15 +97,15 @@ describe("createOwnDistrictUseCase", () => {
     const result = await createOwnDistrictUseCase(deps)(alice.id);
 
     expect(result.kind).toBe("ok");
-    // District seeded with a closed-ring box around [2.34, 48.86], a temp name, and
-    // non-zero starting points the founder receives on join.
+    // Quartier initialisé avec un anneau fermé (box) autour de [2.34, 48.86], un nom temporaire
+    // et des points de départ non nuls que le fondateur reçoit à l'adhésion.
     const created = createDistrict.mock.calls[0]![0];
     expect(created.name).toBe("Alice's district");
     expect(created.startingPoints).toBe(100);
     expect(created.geoJson!.type).toBe("Polygon");
     expect((created.geoJson!.coordinates as number[][][])[0]).toHaveLength(5);
-    // Linked as district admin + promoted to admin role + made a resident of the
-    // district (districtId set) with its starting points credited.
+    // Rattaché comme administrateur de quartier + promu au rôle admin + fait résident du
+    // quartier (districtId renseigné) avec ses points de départ crédités.
     expect(createDistrictAdmin).toHaveBeenCalledWith({ districtId: "d-new", userId: alice.id });
     const founder = (await repo.getUserById(alice.id))!;
     expect(founder.role).toBe("admin");
@@ -105,6 +113,7 @@ describe("createOwnDistrictUseCase", () => {
     expect(founder.balance).toBe(100);
   });
 
+  // Refuse un utilisateur qui possède déjà un quartier.
   it("refuses a user who already has a district", async () => {
     const repo = new InMemoryUserRepository();
     const bob = await seedUser(repo, { email: "bob@x.io", districtId: "d-existing" });
@@ -116,6 +125,7 @@ describe("createOwnDistrictUseCase", () => {
     expect(createDistrict).not.toHaveBeenCalled();
   });
 
+  // Refuse un non-utilisateur simple (ex. déjà admin) : seul un rôle "user" peut s'auto-créer un quartier.
   it("refuses a non-user (e.g. already an admin)", async () => {
     const repo = new InMemoryUserRepository();
     const adm = await seedUser(repo, { email: "adm@x.io", role: "admin" });
@@ -124,6 +134,7 @@ describe("createOwnDistrictUseCase", () => {
     expect((await createOwnDistrictUseCase(deps)(adm.id)).kind).toBe("forbidden");
   });
 
+  // Renvoie geocode-failed quand l'adresse ne peut pas être localisée (aucun quartier n'est créé).
   it("returns geocode-failed when the address can't be located", async () => {
     vi.mocked(getCoordinatesFromAddress).mockRejectedValueOnce(new Error("no result"));
     const repo = new InMemoryUserRepository();

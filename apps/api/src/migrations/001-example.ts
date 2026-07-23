@@ -1,22 +1,22 @@
 /**
- * 001-example — no-op example migration.
+ * 001-example — migration d'exemple sans effet (no-op).
  *
- * Copy this file to `NNN-your-change.ts` (next number, zero-padded) and fill in
- * `up`. Keep `up` idempotent where you can (e.g. `createIndex` is safe to re-run)
- * so a half-applied run can be retried. Provide `down` when the change is
- * reversible; the runner uses it for `npm run migrate:down`.
+ * Copier ce fichier vers `NNN-votre-changement.ts` (numéro suivant, avec zéros de tête) et
+ * remplir `up`. Garder `up` idempotent quand c'est possible (ex. `createIndex` est réexécutable
+ * sans risque) pour qu'une exécution partielle puisse être relancée. Fournir `down` quand le
+ * changement est réversible ; le runner l'utilise pour `npm run migrate:down`.
  */
 
 import type { Db } from "mongodb";
 
 export const up = async (db: Db): Promise<void> => {
-  // Example (left commented — this migration intentionally does nothing):
+  // Exemple (laissé en commentaire — cette migration ne fait volontairement rien) :
   //   await db.collection("users").createIndex({ email: 1 }, { unique: true });
   void db;
 };
 
 export const down = async (db: Db): Promise<void> => {
-  // Reverse of `up`. Example:
+  // Inverse de `up`. Exemple :
   //   await db.collection("users").dropIndex("email_1");
   void db;
 };

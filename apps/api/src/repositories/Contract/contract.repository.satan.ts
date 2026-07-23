@@ -4,9 +4,14 @@ import type { Contract, ContractSignatureStatus } from "../../entities/contract.
 import type { IContractRepository } from "./contract.repository.js";
 import { eq, paginate, where } from "../satan.helpers.js";
 
-/** SATAN QL for the id lookup and the paginated list (COUNT + FIND, party match
- *  via OR); Mongo for the atomic guarded transitions, return-the-removed-doc
- *  deletes and session-scoped writes a scalar language can't express. */
+/**
+ * Repository des contrats en implémentation hybride.
+ *
+ * Utilise le langage SATAN QL pour la recherche par id et la liste paginée
+ * (COUNT + FIND, match d'une partie via OR) ; délègue à Mongo les transitions
+ * atomiques gardées, les suppressions qui renvoient le document retiré et les
+ * écritures scopées à une session, qu'un langage scalaire ne peut exprimer.
+ */
 export class SatanContractRepository implements IContractRepository {
   constructor(
     private readonly mongo: IContractRepository,
@@ -35,6 +40,7 @@ export class SatanContractRepository implements IContractRepository {
       districtId && eq("districtId", districtId),
       providerId && eq("providerId", providerId),
       beneficiaryId && eq("beneficiaryId", beneficiaryId),
+      // Le filtre "partie" matche prestataire OU bénéficiaire (une seule clause OR).
       partyId && `(providerId = ${quote(partyId)} OR beneficiaryId = ${quote(partyId)})`,
       signatureStatus && eq("signatureStatus", signatureStatus),
       disputed !== undefined && eq("disputed", disputed),
@@ -42,7 +48,7 @@ export class SatanContractRepository implements IContractRepository {
     return paginate<Contract>(this.satan, "contracts", clause, { page, limit });
   }
 
-  // --- delegated to Mongo (atomic transitions / session-scoped writes) ---
+  // --- délégué à Mongo (transitions atomiques / écritures scopées à une session) ---
   ensureIndexes(): Promise<void> {
     return this.mongo.ensureIndexes();
   }

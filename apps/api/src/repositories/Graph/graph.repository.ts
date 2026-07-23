@@ -1,14 +1,17 @@
 /**
- * Graph repository — Neo4j projection of the metier domain.
+ * Repository graphe — projection Neo4j du domaine métier (interface + types).
  *
- * Mongo is the source of truth for full documents; Neo4j stores the same
- * entities as nodes (with a minimal subset of attributes) plus all the
- * relationships needed for traversal queries and the recommendation engine.
+ * Mongo reste la source de vérité pour les documents complets ; Neo4j stocke
+ * les mêmes entités sous forme de nodes (avec un sous-ensemble minimal
+ * d'attributs) plus toutes les relations nécessaires aux requêtes de
+ * traversée et au moteur de recommandation.
  *
- * Sync is dual-write: every Mongo mutation is mirrored to Neo4j. To avoid
- * blocking the API when Neo4j is degraded, the use-cases wrap these calls
- * in best-effort try/catch (log + continue).
+ * La synchro est en dual-write : chaque mutation Mongo est répliquée dans
+ * Neo4j. Pour ne pas bloquer l'API quand Neo4j est dégradé, les cas d'usage
+ * enveloppent ces appels dans un try/catch best-effort (log + on continue).
  */
+
+// ─── Types de nodes (sous-ensemble d'attributs projeté dans Neo4j) ──────────
 
 export interface UserNode {
   id: string;
@@ -51,7 +54,7 @@ export interface TagNode {
   category?: string;
 }
 
-/** A relationship touching the exported user, flattened for a portable JSON dump. */
+/** Une relation touchant l'user exporté, aplatie pour un dump JSON portable. */
 export interface UserGraphRelationship {
   type: string;
   direction: "out" | "in";
@@ -59,24 +62,25 @@ export interface UserGraphRelationship {
   other: { labels: string[]; properties: Record<string, unknown> };
 }
 
-/** The user's node plus every edge it participates in (GDPR export). */
+/** Le node de l'user plus chaque relation à laquelle il participe (export RGPD). */
 export interface UserGraphExport {
   nodes: Array<{ labels: string[]; properties: Record<string, unknown> }>;
   relationships: UserGraphRelationship[];
 }
 
 export interface IGraphRepository {
-  // ─── Projection maintenance ───────────────────────────────────────────────
-  /** Wipe the entire projection (MATCH (n) DETACH DELETE n) — used by the
-   *  reconciliation job before replaying the graph from Mongo. */
+  // ─── Maintenance de la projection ─────────────────────────────────────────
+  /** Vide toute la projection (MATCH (n) DETACH DELETE n) — utilisé par le job
+   *  de réconciliation avant de rejouer le graphe depuis Mongo. */
   reset(): Promise<void>;
 
-  // ─── GDPR export ──────────────────────────────────────────────────────────
-  /** All nodes + relationships touching this user — LIVES_IN (address), social
-   *  KNOWS, and every domain edge — for the Art. 15/20 data export. Read-only. */
+  // ─── Export RGPD ──────────────────────────────────────────────────────────
+  /** Tous les nodes + relations touchant cet user — LIVES_IN (adresse), le
+   *  KNOWS social et chaque relation métier — pour l'export de données
+   *  (art. 15/20). Lecture seule. */
   exportUserGraph(userId: string): Promise<UserGraphExport>;
 
-  // ─── Nodes (upsert + delete) ──────────────────────────────────────────────
+  // ─── Nodes (upsert + suppression) ─────────────────────────────────────────
   upsertUser(node: UserNode): Promise<void>;
   deleteUser(id: string): Promise<void>;
 
@@ -98,10 +102,10 @@ export interface IGraphRepository {
   upsertTag(node: TagNode): Promise<void>;
   deleteTag(name: string): Promise<void>;
 
-  // ─── Residence ────────────────────────────────────────────────────────────
+  // ─── Résidence ────────────────────────────────────────────────────────────
   linkUserLivesIn(userId: string, districtId: string, since?: string, address?: string): Promise<void>;
 
-  // ─── Events ───────────────────────────────────────────────────────────────
+  // ─── Événements ───────────────────────────────────────────────────────────
   linkUserCreatedEvent(userId: string, eventId: string): Promise<void>;
   linkDistrictContainsEvent(districtId: string, eventId: string): Promise<void>;
   linkUserRegisteredForEvent(userId: string, eventId: string, registrationDate: string, status: string): Promise<void>;
@@ -131,12 +135,12 @@ export interface IGraphRepository {
    */
   getRecommendedEventIds(userId: string, limit: number): Promise<string[]>;
 
-  // ─── Listings ─────────────────────────────────────────────────────────────
+  // ─── Annonces ─────────────────────────────────────────────────────────────
   linkUserPublishedListing(userId: string, listingId: string): Promise<void>;
   linkUserRepliedToListing(userId: string, listingId: string, replyDate: string): Promise<void>;
   linkListingTagged(listingId: string, tagName: string): Promise<void>;
 
-  // ─── Services (generated from a paid listing → contract) ──────────────────
+  // ─── Services (générés par une annonce payante → contrat) ─────────────────
   linkListingGeneratesService(
     listingId: string,
     serviceId: string,
@@ -146,14 +150,14 @@ export interface IGraphRepository {
   linkUserOffersService(userId: string, serviceId: string, serviceDate: string): Promise<void>;
   linkUserBenefitsFromService(userId: string, serviceId: string, serviceDate: string, status: string): Promise<void>;
 
-  // ─── Votes ────────────────────────────────────────────────────────────────
+  // ─── Votes / sondages ─────────────────────────────────────────────────────
   linkUserVoted(userId: string, voteId: string, option: string, voteDate: string): Promise<void>;
   linkDistrictConcernsVote(districtId: string, voteId: string): Promise<void>;
 
-  // ─── Incidents ────────────────────────────────────────────────────────────
+  // ─── Signalements ─────────────────────────────────────────────────────────
   linkUserReportedIncident(userId: string, incidentId: string): Promise<void>;
   linkDistrictContainsIncident(districtId: string, incidentId: string): Promise<void>;
 
-  // ─── Social network ───────────────────────────────────────────────────────
+  // ─── Réseau social ────────────────────────────────────────────────────────
   linkUserKnows(userIdA: string, userIdB: string): Promise<void>;
 }

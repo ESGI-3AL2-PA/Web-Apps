@@ -1,3 +1,8 @@
+// Suite de tests de l'appartenance à un quartier : vérifie la redistribution des points au
+// départ (leaveDistrict), le crédit des points de départ à l'arrivée (joinDistrict) et
+// l'exclusion (kickFromDistrictUseCase), en s'appuyant sur des repos en mémoire pour
+// pouvoir affirmer la conservation du total de points de bout en bout.
+
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { User } from "../../entities/user.entity.js";
 import type { IUserRepository } from "../../repositories/User/user.repository.js";
@@ -8,13 +13,13 @@ import { InMemoryUserRepository } from "../../repositories/User/user.repository.
 import { joinDistrict, leaveDistrict, type MembershipDeps } from "./district-membership.use-case.js";
 import { kickFromDistrictUseCase } from "./kick-from-district.use-case.js";
 
-// Execute the ledger callback without a real Mongo session.
+// Exécute le callback du ledger sans vraie session Mongo.
 vi.mock("../../repositories/tx.js", () => ({
   runInTransaction: (fn: (session?: unknown) => unknown) => fn(undefined),
 }));
 
-// A transaction repo backed by the in-memory user records so balance moves are real and
-// conservation can be asserted end-to-end.
+// Repository de transactions adossé aux enregistrements utilisateurs en mémoire, pour que
+// les mouvements de solde soient réels et que la conservation soit vérifiable de bout en bout.
 const makeTxRepo = (userRepo: IUserRepository): ITransactionRepository =>
   ({
     adjustBalance: vi.fn(async (id: string, delta: number) => {
@@ -34,14 +39,18 @@ const makeTxRepo = (userRepo: IUserRepository): ITransactionRepository =>
     ),
   }) as unknown as ITransactionRepository;
 
+// Repository de quartier bouchonné : renvoie toujours un quartier avec les points de départ fixés.
 const makeDistrictRepo = (startingPoints: number): IDistrictRepository =>
   ({
     getDistrictById: vi.fn(async (id: string) => ({ id, name: "D", startingPoints })),
   }) as unknown as IDistrictRepository;
 
+// Stub du repository graphe : no-op sur les liens/upserts, non pertinent pour ces tests.
 const graphStub = (): IGraphRepository =>
   ({ linkUserLivesIn: vi.fn(async () => {}), upsertDistrict: vi.fn(async () => {}) }) as unknown as IGraphRepository;
 
+// Crée un membre en base mémoire et force son id + sa date de création (l'ordre de
+// redistribution suit la date de création : les plus anciens reçoivent le reste en premier).
 const seedMember = async (
   repo: InMemoryUserRepository,
   id: string,
@@ -66,9 +75,10 @@ const seedMember = async (
   } as unknown as Omit<User, "id" | "createdAt" | "updatedAt">);
   const created = (await repo.findUsersByDistrict(districtId)).find((u) => u.firstName === id)!;
   created.id = id;
-  created.createdAt = createdAt; // control redistribution order (earliest first get the remainder)
+  created.createdAt = createdAt; // pilote l'ordre de redistribution (les plus anciens reçoivent le reste)
 };
 
+// Assemble les dépendances du cas d'usage autour d'un repo utilisateur en mémoire partagé.
 const makeDeps = (startingPoints = 100): { deps: MembershipDeps; repo: InMemoryUserRepository } => {
   const repo = new InMemoryUserRepository();
   const deps: MembershipDeps = {
@@ -83,6 +93,8 @@ const makeDeps = (startingPoints = 100): { deps: MembershipDeps; repo: InMemoryU
 describe("leaveDistrict — point redistribution", () => {
   beforeEach(() => vi.clearAllMocks());
 
+  // Le solde du partant est réparti à parts égales entre les membres restants, total conservé
+  // (méthode du plus fort reste).
   it("splits the balance evenly across remaining members, conserving the total (largest-remainder)", async () => {
     const { deps, repo } = makeDeps();
     await seedMember(repo, "leaver", "d1", 150, "2026-01-01T00:00:00.000Z");
@@ -95,17 +107,18 @@ describe("leaveDistrict — point redistribution", () => {
 
     expect(updated?.districtId).toBe("");
     const m = async (id: string) => (await repo.getUserById(id))!.balance;
-    // 150 / 4 => 37 each, remainder 2 handed to the two earliest members => 38,38,37,37
+    // 150 / 4 => 37 chacun, reste 2 attribué aux deux membres les plus anciens => 38,38,37,37
     expect(await m("m1")).toBe(38);
     expect(await m("m2")).toBe(38);
     expect(await m("m3")).toBe(37);
     expect(await m("m4")).toBe(37);
     expect(await m("leaver")).toBe(0);
-    // Total conserved.
+    // Total conservé.
     const total = (await m("m1")) + (await m("m2")) + (await m("m3")) + (await m("m4")) + (await m("leaver"));
     expect(total).toBe(150);
   });
 
+  // Quand le partant est le seul membre, son solde est détruit (personne pour le recevoir).
   it("burns the balance when the leaver is the sole member (no one to receive it)", async () => {
     const { deps, repo } = makeDeps();
     await seedMember(repo, "solo", "d1", 100, "2026-01-01T00:00:00.000Z");
@@ -116,6 +129,7 @@ describe("leaveDistrict — point redistribution", () => {
     expect((await repo.getUserById("solo"))!.balance).toBe(0);
   });
 
+  // Sans effet pour un utilisateur déjà sans quartier.
   it("is a no-op for an already district-less user", async () => {
     const { deps, repo } = makeDeps();
     await seedMember(repo, "nomad", "", 42, "2026-01-01T00:00:00.000Z");
@@ -130,6 +144,7 @@ describe("leaveDistrict — point redistribution", () => {
 describe("joinDistrict — starting points", () => {
   beforeEach(() => vi.clearAllMocks());
 
+  // Assigne le quartier et crédite ses points de départ.
   it("assigns the district and credits its starting points", async () => {
     const { deps, repo } = makeDeps(100);
     await seedMember(repo, "newbie", "", 0, "2026-01-01T00:00:00.000Z");
@@ -144,6 +159,7 @@ describe("joinDistrict — starting points", () => {
 describe("kickFromDistrictUseCase", () => {
   beforeEach(() => vi.clearAllMocks());
 
+  // Refuse d'exclure un utilisateur non ordinaire (admin, etc.).
   it("refuses to kick a non-regular user", async () => {
     const { deps, repo } = makeDeps();
     await seedMember(repo, "adm", "d1", 10, "2026-01-01T00:00:00.000Z", "admin");
@@ -153,6 +169,7 @@ describe("kickFromDistrictUseCase", () => {
     expect(result.kind).toBe("forbidden");
   });
 
+  // Exclut un utilisateur ordinaire : redistribue ses points et vide son quartier.
   it("kicks a regular user, redistributing points and clearing their district", async () => {
     const { deps, repo } = makeDeps();
     await seedMember(repo, "target", "d1", 90, "2026-01-01T00:00:00.000Z");

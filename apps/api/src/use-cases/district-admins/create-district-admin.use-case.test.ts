@@ -1,3 +1,7 @@
+// Suite de tests du cas d'usage « créer un administrateur de quartier ».
+// Vérifie la promotion (rôle admin), l'affectation du quartier et l'octroi des points
+// initiaux via le registre (ledger), les cas exemptés (résident déjà rattaché, superAdmin)
+// et le conflit sur la paire unique (districtId, userId).
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { User } from "../../entities/user.entity.js";
 import type { IUserRepository } from "../../repositories/User/user.repository.js";
@@ -9,7 +13,7 @@ import type { MembershipDeps } from "../users/district-membership.use-case.js";
 import { InMemoryUserRepository } from "../../repositories/User/user.repository.in-memory.js";
 import { createDistrictAdminUseCase, DistrictAdminAlreadyExistsError } from "./create-district-admin.use-case.js";
 
-// Run the ledger callback without a real Mongo session (the join grants points).
+// Exécute le callback du registre sans vraie session Mongo (le rattachement octroie les points).
 vi.mock("../../repositories/tx.js", () => ({
   runInTransaction: (fn: (session?: unknown) => unknown) => fn(undefined),
 }));
@@ -71,6 +75,7 @@ const makeDeps = (repo: InMemoryUserRepository, startingPoints = 100) => {
 describe("createDistrictAdminUseCase", () => {
   beforeEach(() => vi.clearAllMocks());
 
+  // Utilisateur sans quartier : promu admin, rattaché au quartier, crédité des points initiaux.
   it("promotes a district-less user, sets their district, and grants its starting points", async () => {
     const repo = new InMemoryUserRepository();
     const u = await seedUser(repo, { email: "newbie" });
@@ -84,6 +89,7 @@ describe("createDistrictAdminUseCase", () => {
     expect(promoted.balance).toBe(100);
   });
 
+  // Résident déjà rattaché à un quartier : promu admin mais quartier et solde inchangés.
   it("leaves an existing resident's district and balance untouched", async () => {
     const repo = new InMemoryUserRepository();
     const u = await seedUser(repo, { email: "resident", districtId: "home", balance: 5 });
@@ -93,11 +99,12 @@ describe("createDistrictAdminUseCase", () => {
 
     const promoted = (await repo.getUserById(u.id))!;
     expect(promoted.role).toBe("admin");
-    expect(promoted.districtId).toBe("home"); // not moved to d1
-    expect(promoted.balance).toBe(5); // no grant
+    expect(promoted.districtId).toBe("home"); // non déplacé vers d1
+    expect(promoted.balance).toBe(5); // aucun octroi
     expect(deps.graphRepository.linkUserLivesIn).not.toHaveBeenCalled();
   });
 
+  // superAdmin exempté : ni changement de rôle ni quartier forcé.
   it("exempts a superAdmin — no role change, no forced district", async () => {
     const repo = new InMemoryUserRepository();
     const u = await seedUser(repo, { email: "super", role: "superAdmin", districtId: "" });
@@ -111,6 +118,7 @@ describe("createDistrictAdminUseCase", () => {
     expect(deps.graphRepository.linkUserLivesIn).not.toHaveBeenCalled();
   });
 
+  // Paire (districtId, userId) déjà existante : lève DistrictAdminAlreadyExistsError, aucune création.
   it("throws when the (districtId, userId) pair already exists", async () => {
     const repo = new InMemoryUserRepository();
     const u = await seedUser(repo);

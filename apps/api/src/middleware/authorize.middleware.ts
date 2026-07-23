@@ -14,13 +14,17 @@ import type { INotificationRepository } from "../repositories/Notification/notif
 import type { IDistrictRepository } from "../repositories/District/district.repository.js";
 import type { ITagRepository } from "../repositories/Tag/tag.repository.js";
 
-// A loaded record, accessed generically by field name.
+// Middleware — autorisation globale pilotée par les métadonnées du contrat. Applique la
+// politique `metadata.auth` de chaque route : audience, rôles, self-param, propriété et quartier.
+// Expose aussi les prédicats purs (ownsRecord / inDistrict / hasRecordCheck), testables isolément.
+
+// Un enregistrement chargé, accédé génériquement par nom de champ.
 type Record_ = globalThis.Record<string, unknown>;
 type RecordLoader = (id: string) => Promise<Record_ | null>;
 
-// The ONLY place per-resource specifics live: how to fetch a record by id.
-// `resolve()` is assigned into an interface-typed const because in bare expression
-// position the container's generic otherwise infers `never` (same workaround as the routers).
+// Le SEUL endroit où vit la spécificité par ressource : comment charger un enregistrement par id.
+// `resolve()` est affecté à une const typée par interface car en position d'expression nue le
+// générique du container inférerait sinon `never` (même contournement que dans les routeurs).
 const loaders: Partial<Record<ResourceKind, RecordLoader>> = {
   user: async (id) => {
     const repo: IUserRepository = resolve("user");
@@ -66,8 +70,8 @@ const loaders: Partial<Record<ResourceKind, RecordLoader>> = {
     const repo: ITagRepository = resolve("tag");
     return (await repo.getTagById(id)) as Record_ | null;
   },
-  // Composite: a message plus its parent conversation's participants, so
-  // message-level routes can authorize against conversation membership.
+  // Composite : un message plus les participants de sa conversation parente, pour que les
+  // routes au niveau message puissent autoriser en fonction de l'appartenance à la conversation.
   messageParticipants: async (id) => {
     const repo: IConversationRepository = resolve("conversation");
     const message = await repo.getMessageById(id);
@@ -78,6 +82,7 @@ const loaders: Partial<Record<ResourceKind, RecordLoader>> = {
   },
 };
 
+/** Vrai si `sub` possède l'enregistrement : champ propriétaire unique, liste OR de champs, ou appartenance à un champ tableau. */
 export const ownsRecord = (rec: Record_, scope: AuthScope, sub: string): boolean => {
   if (scope.ownerField && rec[scope.ownerField] === sub) return true;
   if (scope.ownerFields?.some((f) => rec[f] === sub)) return true;
@@ -87,8 +92,9 @@ export const ownsRecord = (rec: Record_, scope: AuthScope, sub: string): boolean
   return false;
 };
 
+/** Vrai si le quartier administré par l'appelant correspond au(x) quartier(s) de l'enregistrement (accès modération). */
 export const inDistrict = (rec: Record_, scope: AuthScope, adminDistrictId: string | null): boolean => {
-  // Degrades safely: until the adminDistrictId claim is minted, district never matches.
+  // Dégradation sûre : tant que le claim adminDistrictId n'est pas émis, le quartier ne matche jamais.
   if (!adminDistrictId) return false;
   if (scope.districtField) return rec[scope.districtField] === adminDistrictId;
   if (scope.districtArrayField && Array.isArray(rec[scope.districtArrayField])) {
@@ -97,17 +103,17 @@ export const inDistrict = (rec: Record_, scope: AuthScope, adminDistrictId: stri
   return false;
 };
 
+/** Vrai si le scope exige de charger l'enregistrement (un champ propriétaire ou quartier est déclaré). */
 export const hasRecordCheck = (scope: AuthScope): boolean =>
   Boolean(
     scope.ownerField || scope.ownerFields || scope.ownerArrayField || scope.districtField || scope.districtArrayField,
   );
 
 /**
- * Single, contract-metadata-driven authorization gate. Registered as
- * `globalMiddleware` on every ts-rest endpoint set; reads `req.tsRestRoute`
- * (set by @ts-rest/express before this runs) and enforces the route's
- * `metadata.auth` policy. `requireAuth` runs earlier (global) and has already
- * verified the token + set `req.user`.
+ * Porte d'autorisation unique, pilotée par les métadonnées du contrat. Enregistrée comme
+ * `globalMiddleware` sur chaque jeu d'endpoints ts-rest ; lit `req.tsRestRoute` (posé par
+ * @ts-rest/express avant son exécution) et applique la politique `metadata.auth` de la route.
+ * `requireAuth` s'exécute avant (global) et a déjà vérifié le token + renseigné `req.user`.
  */
 export const authorize: RequestHandler = async (req, res, next) => {
   const route = (req as { tsRestRoute?: AppRoute }).tsRestRoute;
@@ -127,7 +133,7 @@ export const authorize: RequestHandler = async (req, res, next) => {
     return;
   }
 
-  // 2. role (skipped for GET when readBypassesRoles is set)
+  // 2. rôle (ignoré pour un GET quand readBypassesRoles est activé)
   const isRead = req.method === "GET";
   if (policy?.roles && !(isRead && policy.readBypassesRoles)) {
     if (!policy.roles.includes(user.role as never)) {
@@ -139,7 +145,7 @@ export const authorize: RequestHandler = async (req, res, next) => {
   const scope = policy?.scope;
   if (!scope) return next();
 
-  // 3. self-param family (/users/:id ...): the id param must equal the subject.
+  // 3. famille self-param (/users/:id ...) : le param id doit être égal au sujet du token.
   if (scope.selfParam) {
     const targetId = req.params[scope.selfParam];
     const bypass = scope.bypassRoles?.includes(user.role as never) ?? false;
@@ -150,10 +156,10 @@ export const authorize: RequestHandler = async (req, res, next) => {
     return next();
   }
 
-  // 4. record-level ownership / district
+  // 4. propriété / quartier au niveau de l'enregistrement
   if (hasRecordCheck(scope)) {
     const id = req.params[scope.idParam ?? "id"];
-    if (!id) return next(); // collection/create route — nothing to load
+    if (!id) return next(); // route de collection/création — rien à charger
 
     const loader = loaders[scope.resource];
     if (!loader) {
@@ -163,14 +169,14 @@ export const authorize: RequestHandler = async (req, res, next) => {
 
     const rec = await loader(id);
     if (!rec) {
-      res.status(404).json({ message: "Not found" }); // 404 always precedes 403
+      res.status(404).json({ message: "Not found" }); // le 404 précède toujours le 403
       return;
     }
 
     const bypass = scope.bypassRoles?.includes(user.role as never) ?? false;
     const isOwner = ownsRecord(rec, scope, user.sub);
-    // A grant that came solely from the caller's district (not ownership / bypass):
-    // this is a district admin acting as a moderator on a record they don't own.
+    // Un accès accordé uniquement par le quartier de l'appelant (ni propriété ni bypass) :
+    // c'est un administrateur de quartier agissant comme modérateur sur un enregistrement qu'il ne possède pas.
     const districtGrant = !bypass && !isOwner && inDistrict(rec, scope, user.adminDistrictId ?? null);
     const allowed = bypass || isOwner || districtGrant;
     if (!allowed) {
@@ -178,9 +184,9 @@ export const authorize: RequestHandler = async (req, res, next) => {
       return;
     }
 
-    // security-M2: audit non-participant admin reads of private conversations. After the
-    // read-only fix, conversation writes no longer carry districtField, so a district grant
-    // on a conversation resource can only be a moderation read of a DM the admin isn't in.
+    // security-M2 : audite les lectures par un admin non-participant de conversations privées. Depuis
+    // le correctif read-only, les écritures de conversation ne portent plus districtField, donc un accès
+    // par quartier sur une ressource conversation ne peut être qu'une lecture de modération d'un DM où l'admin n'est pas.
     if (districtGrant && isRead && scope.resource === "conversation") {
       req.log.info(
         {
@@ -193,7 +199,7 @@ export const authorize: RequestHandler = async (req, res, next) => {
       );
     }
 
-    // Hand the already-loaded record to the handler to avoid a second fetch.
+    // Transmet l'enregistrement déjà chargé au handler pour éviter un second fetch.
     req.authRecord = rec;
   }
 

@@ -1,14 +1,15 @@
 /**
- * End-to-end endpoint verification for the SATAN-backed repositories.
+ * Vérification end-to-end des endpoints pour les repositories adossés à SATAN.
  *
- * Logs in against the auth-service, then walks the api's routes — the SATAN-QL
- * paths (getById across entities, the paginated COUNT+FIND lists incl. CONTAINS
- * search, balance projection, setBanned update, id deletes) strictly, and the
- * remaining Mongo-fallback aggregations as smoke. Prints a PASS/FAIL/SKIP table
- * and, when OUT is set, writes a JSON summary (getById + full list bodies) so the
- * same run can be compared with SATAN_REPOS=true vs false (parity).
+ * Se connecte à l'auth-service, puis parcourt les routes de l'api — les chemins
+ * SATAN-QL (getById sur toutes les entités, les listes paginées COUNT+FIND y compris
+ * la recherche CONTAINS, la projection de solde, la mise à jour setBanned, les
+ * suppressions par id) de façon stricte, et les agrégations Mongo-fallback restantes
+ * en simple smoke test. Affiche une table PASS/FAIL/SKIP et, quand OUT est défini,
+ * écrit un résumé JSON (corps de getById + listes complètes) afin de comparer la même
+ * exécution avec SATAN_REPOS=true vs false (parité).
  *
- * Usage:
+ * Usage :
  *   API_URL=http://localhost:3100 AUTH_URL=http://localhost:3001 \
  *     OUT=/tmp/satan-on.json npx tsx apps/api/src/scripts/verify-endpoints.ts
  */
@@ -21,6 +22,7 @@ type Res = { status: number; json: unknown };
 const results: { name: string; state: "PASS" | "FAIL" | "SKIP"; detail: string }[] = [];
 const record = (name: string, state: "PASS" | "FAIL" | "SKIP", detail = "") => results.push({ name, state, detail });
 
+/** Authentifie un compte auprès de l'auth-service et renvoie son access token. */
 async function login(email: string, password: string): Promise<string> {
   const r = await fetch(`${AUTH}/auth/login`, {
     method: "POST",
@@ -32,6 +34,7 @@ async function login(email: string, password: string): Promise<string> {
   return body.access_token;
 }
 
+/** Appel HTTP authentifié vers l'api, renvoyant le status + le corps JSON parsé (ou le texte brut si non-JSON). */
 async function req(method: string, path: string, token: string, body?: unknown): Promise<Res> {
   const r = await fetch(`${API}${path}`, {
     method,
@@ -58,7 +61,7 @@ const firstId = (listBody: unknown): string | undefined => {
 async function main() {
   const su = await login("superadmin@local.dev", "ChangeMe!2345");
 
-  // --- getById via SATAN find (discover an id from the list, then read it) ---
+  // --- getById via SATAN find (on découvre un id depuis la liste, puis on le lit) ---
   const entities: { name: string; list: string; byId: (id: string) => string; path: string; note?: string }[] = [
     { name: "users", list: "/users", byId: (id) => `/users/${id}`, path: "users" },
     { name: "districts", list: "/districts", byId: (id) => `/districts/${id}`, path: "districts" },
@@ -106,8 +109,8 @@ async function main() {
     );
   }
 
-  // --- SATAN paginated lists (COUNT + FIND, incl. CONTAINS search) ---
-  // Captured in full so the SATAN-on vs -off runs can be diffed for parity.
+  // --- Listes paginées SATAN (COUNT + FIND, y compris recherche CONTAINS) ---
+  // Capturées intégralement pour pouvoir differ les exécutions SATAN-on vs -off (parité).
   const listBodies: Record<string, unknown> = {};
   const listProbes: [string, string][] = [
     ["/users?page=1&limit=5", "users:page"],
@@ -134,7 +137,7 @@ async function main() {
     record(`GET ${path} (SATAN list)`, ok ? "PASS" : "FAIL", `HTTP ${r.status}`);
   }
 
-  // --- SATAN getBalance (projection) ---
+  // --- SATAN getBalance (projection du solde) ---
   const bal = await req("GET", "/users/seed-user-alice/balance", su);
   record(
     "GET /users/:id/balance (SATAN getBalance)",
@@ -142,11 +145,11 @@ async function main() {
     `HTTP ${bal.status} ${JSON.stringify(bal.json)}`,
   );
 
-  // --- Mongo-fallback aggregations (smoke) ---
+  // --- Agrégations Mongo-fallback (smoke test) ---
   const stats = await req("GET", "/incidents/stats", su);
   record("GET /incidents/stats (fallback smoke)", stats.status === 200 ? "PASS" : "FAIL", `HTTP ${stats.status}`);
 
-  // --- SATAN setBanned round-trip (updateReturning) ---
+  // --- Aller-retour SATAN setBanned (updateReturning) ---
   const ban = await req("PATCH", "/users/seed-user-bob/ban", su, { banned: true });
   const bannedOk = ban.status === 200 && (ban.json as { banned?: boolean })?.banned === true;
   const unban = await req("PATCH", "/users/seed-user-bob/ban", su, { banned: false });
@@ -157,8 +160,8 @@ async function main() {
     `ban HTTP ${ban.status}=${(ban.json as { banned?: boolean })?.banned}, unban HTTP ${unban.status}=${(unban.json as { banned?: boolean })?.banned}`,
   );
 
-  // --- SATAN delete round-trip (create → SATAN getById → SATAN delete → 404) ---
-  // Mirror an existing tag's shape so the create body satisfies the contract.
+  // --- Aller-retour SATAN delete (create → SATAN getById → SATAN delete → 404) ---
+  // On calque la forme d'un tag existant pour que le corps de création satisfasse le contrat.
   const tagsList = await req("GET", "/tags?limit=1", su);
   const sampleTag = (tagsList.json as { data?: Record<string, unknown>[] })?.data?.[0];
   if (sampleTag) {
@@ -171,7 +174,7 @@ async function main() {
     const newId = idOf(create.json);
     if (create.status < 300 && newId) {
       const got = await req("GET", `/tags/${newId}`, su); // SATAN getTagById
-      const del = await req("DELETE", `/tags/${newId}`, su); // SATAN deleteTag
+      const del = await req("DELETE", `/tags/${newId}`, su); // SATAN deleteTag (suppression)
       const gone = await req("GET", `/tags/${newId}`, su);
       const ok = got.status === 200 && del.status >= 200 && del.status < 300 && gone.status === 404;
       record(
@@ -190,7 +193,7 @@ async function main() {
     record("tag delete round-trip", "SKIP", "no sample tag to mirror");
   }
 
-  // --- report ---
+  // --- rapport ---
   const pass = results.filter((r) => r.state === "PASS").length;
   const fail = results.filter((r) => r.state === "FAIL").length;
   const skip = results.filter((r) => r.state === "SKIP").length;

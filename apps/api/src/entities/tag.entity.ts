@@ -1,12 +1,16 @@
 import { z } from "zod";
 
-// `name` is the stable key (stored on listings, used as URL/query filter and graph key).
-// `label`/`description` hold per-language display text.
+// Entité Tag : catégorie d'annonces propre à un quartier, avec libellés multilingues.
+// `name` est la clé stable (stockée sur les annonces, utilisée comme filtre URL/requête et clé de graphe).
+// `label`/`description` portent le texte d'affichage par langue.
+
+// Libellé affiché du tag : fr et en tous deux obligatoires (1 à 100 caractères).
 export const TagLabelSchema = z.object({
   fr: z.string().min(1).max(100),
   en: z.string().min(1).max(100),
 });
 
+// Description facultative par langue (max 500) : `.partial()` rend chaque langue optionnelle.
 export const TagDescriptionSchema = z
   .object({
     fr: z.string().max(500),

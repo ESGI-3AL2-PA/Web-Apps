@@ -1,9 +1,18 @@
+// Cas d'usage : crée un tag et le projette dans le graphe Neo4j.
 import type { CreateTagDto } from "@repo/contracts";
 import type { Tag } from "../../entities/tag.entity.js";
 import type { ITagRepository } from "../../repositories/Tag/tag.repository.js";
 import type { IGraphRepository } from "../../repositories/Graph/graph.repository.js";
 import { syncGraph } from "../../repositories/Graph/graph.sync.js";
 
+/**
+ * Factory du cas d'usage de création de tag.
+ * Persiste le tag dans Mongo puis fait un upsert du nœud correspondant dans Neo4j.
+ * La projection graphe passe par `syncGraph` : une panne Neo4j est loguée sans faire
+ * échouer la création (le graphe est un miroir best-effort, Mongo reste la source de vérité).
+ * @param tagRepository repository Mongo des tags
+ * @param graphRepository repository graphe (Neo4j)
+ */
 export const createTagUseCase = (tagRepository: ITagRepository, graphRepository: IGraphRepository) => {
   return async (data: Omit<CreateTagDto, "districtId"> & { districtId: string }): Promise<Tag> => {
     const tag = await tagRepository.createTag(data);

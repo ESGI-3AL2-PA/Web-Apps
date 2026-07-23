@@ -1,8 +1,21 @@
+// Cas d'usage (couche conversations) : envoyer un message image.
+// Écriture en trois temps avec compensation : créer la ligne de message, stocker les
+// octets dans le bucket privé, puis rattacher la mediaUrl. Si l'une des deux dernières
+// étapes échoue, on annule les précédentes (best-effort) pour ne jamais laisser une bulle
+// "[image]" illisible ou un fichier orphelin.
 import type { Message } from "../../entities/conversation.entity.js";
 import type { IConversationRepository } from "../../repositories/Conversation/conversation.repository.js";
 import { ImageAttachError } from "../../middleware/error-handler.js";
 import { deleteMessageImage, saveMessageImage } from "../../services/media-storage.service.js";
 
+/**
+ * Factory du cas d'usage « envoyer un message image ».
+ * @param conversationRepository repository des conversations
+ * @returns une fonction (conversationId, senderId, image {octets + type MIME}) qui
+ *   renvoie le message rattaché et la liste des participants, ou `null` si la
+ *   conversation n'existe pas / l'expéditeur n'en est pas membre (→ 404 au routeur).
+ *   Lève ImageAttachError (500 typé) si le média ne peut pas être rattaché.
+ */
 export const sendImageMessageUseCase = (conversationRepository: IConversationRepository) => {
   return async (
     conversationId: string,
@@ -10,11 +23,11 @@ export const sendImageMessageUseCase = (conversationRepository: IConversationRep
     image: { bytes: Buffer; contentType: string },
   ): Promise<{ message: Message; participants: string[] } | null> => {
     const conversation = await conversationRepository.getConversationById(conversationId);
-    // Not-found and non-participant both fall through to 404 at the router (we don't
-    // disclose the existence of a conversation the caller isn't a member of).
+    // Introuvable et non-participant retombent tous deux sur un 404 côté routeur (on ne
+    // divulgue pas l'existence d'une conversation dont l'appelant n'est pas membre).
     if (!conversation || !conversation.participants.includes(senderId)) return null;
 
-    // 1) Create the message (no mediaUrl yet).
+    // 1) Crée le message (sans mediaUrl pour l'instant).
     const message = await conversationRepository.createMessage({
       conversationId,
       senderId,
@@ -23,8 +36,9 @@ export const sendImageMessageUseCase = (conversationRepository: IConversationRep
       content: "[image]",
     });
 
-    // 2) Store the bytes under the message id in the private messages bucket. If the
-    //    write fails, delete the row so we don't leave an unreadable "[image]" bubble.
+    // 2) Stocke les octets sous l'id du message dans le bucket privé des messages. Si
+    //    l'écriture échoue, on supprime la ligne pour ne pas laisser de bulle "[image]"
+    //    illisible.
     try {
       await saveMessageImage(message.id, image.bytes, image.contentType);
     } catch (err) {
@@ -32,10 +46,11 @@ export const sendImageMessageUseCase = (conversationRepository: IConversationRep
       throw err;
     }
 
-    // 3) Point mediaUrl at the participant-checked stream (relative, like audio). If
-    //    attach throws OR reports no row, the image is stored but the message has no
-    //    mediaUrl — an orphan. Compensate (delete bytes + row, best-effort) and surface
-    //    a typed 500 rather than returning a broken "[image]" bubble.
+    // 3) Pointe la mediaUrl vers le flux protégé par vérification de participant (relatif,
+    //    comme l'audio). Si l'update lève OU renvoie null (ligne absente), l'image est
+    //    stockée mais le message n'a pas de mediaUrl → orphelin. On compense (suppression
+    //    des octets + de la ligne, best-effort) et on remonte un 500 typé plutôt que de
+    //    renvoyer une bulle "[image]" cassée.
     let updated: Message | null;
     try {
       updated = await conversationRepository.attachMedia(message.id, `/messages/${message.id}/image`, "image");

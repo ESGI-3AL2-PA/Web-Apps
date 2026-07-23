@@ -1,11 +1,18 @@
+/**
+ * Repository (implémentation Mongo) des tags de la collection `tags`.
+ *
+ * CRUD des tags avec listage paginé + recherche (nom et libellés/descriptions
+ * multilingues), le tout filtrable par quartier. Normalise à la lecture les
+ * documents hérités qui précèdent l'ajout des champs par langue.
+ */
 import { randomUUID } from "crypto";
 import type { Collection, Db, Filter } from "mongodb";
 import type { Tag } from "../../entities/tag.entity.js";
 import { escapeRegex } from "../escape-regex.js";
 import type { ITagRepository } from "./tag.repository.js";
 
-// Stored shape tolerates legacy docs written before per-language labels existed
-// (label absent, description a plain string); toTag normalizes them on read.
+// La forme stockée tolère les documents hérités écrits avant l'existence des libellés
+// par langue (label absent, description en simple chaîne) ; toTag les normalise à la lecture.
 type StoredTag = Omit<Tag, "id" | "label" | "description"> & {
   label?: Tag["label"];
   description?: Tag["description"] | string;
@@ -20,7 +27,7 @@ export class MongoTagRepository implements ITagRepository {
   }
 
   async ensureIndexes(): Promise<void> {
-    // Backs district-scoped list filtering and the per-district name dedupe in getTagsByNames.
+    // Soutient le filtrage du listage par quartier et la déduplication par nom (par quartier) de getTagsByNames.
     await this.collection.createIndex({ districtId: 1, name: 1 });
   }
 
@@ -34,8 +41,10 @@ export class MongoTagRepository implements ITagRepository {
 
     const filter: Filter<TagDoc> = {};
     if (search) {
+      // escapeRegex neutralise les métacaractères pour une recherche insensible à la casse sûre.
       const safe = escapeRegex(search);
       const rx = { $regex: safe, $options: "i" };
+      // Recherche sur le nom brut + les libellés/descriptions FR et EN.
       filter.$or = [
         { name: rx },
         { "label.fr": rx },
@@ -63,6 +72,7 @@ export class MongoTagRepository implements ITagRepository {
     return doc ? this.toTag(doc) : null;
   }
 
+  /** Résout un lot de tags par leurs noms au sein d'un quartier (utilisé au rattachement de tags). */
   async getTagsByNames(districtId: string, names: string[]): Promise<Tag[]> {
     if (names.length === 0) return [];
     const docs = await this.collection.find({ districtId, name: { $in: names } }).toArray();
@@ -89,12 +99,13 @@ export class MongoTagRepository implements ITagRepository {
     return result.deletedCount === 1;
   }
 
+  // Mappe un document Mongo vers l'entité Tag, en normalisant les documents hérités.
   private toTag(doc: TagDoc): Tag {
     const { _id, label, description, ...rest } = doc;
     return {
       id: _id,
       ...rest,
-      // Legacy docs may predate per-language fields — fall back so responses stay valid.
+      // Les documents hérités peuvent précéder les champs par langue — repli pour garder des réponses valides.
       label: label ?? { fr: doc.name, en: doc.name },
       description: typeof description === "string" ? { fr: description, en: description } : description,
     };

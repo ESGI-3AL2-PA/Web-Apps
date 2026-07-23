@@ -3,9 +3,14 @@ import { resolve } from "../../repositories/container.js";
 import { getUserByIdUseCase } from "../../use-cases/users/get-user-by-id.use-case.js";
 import { getUsersUseCase } from "../../use-cases/users/get-users.use-case.js";
 
-// GET /users/public/search?q= — recherche par nom, réservée aux users du même quartier.
-// Renvoie uniquement { id, firstName, lastName } pour alimenter l'autocomplete côté user-front
-// (nouvelle conversation) sans exposer d'annuaire global ni de données sensibles.
+/**
+ * Handler Express brut (hors ts-rest) : `GET /users/public/search?q=`.
+ *
+ * Recherche par nom, réservée aux users du même quartier. Renvoie uniquement
+ * `{ id, firstName, lastName }` pour alimenter l'autocomplete côté user-front
+ * (nouvelle conversation) sans exposer d'annuaire global ni de données sensibles.
+ * Court-circuite avec un tableau vide si la requête fait moins de 2 caractères.
+ */
 export const userSearchHandler = async (req: Request, res: Response, next: NextFunction) => {
   try {
     if (!req.user) {
@@ -34,6 +39,7 @@ export const userSearchHandler = async (req: Request, res: Response, next: NextF
       limit: 10,
     });
 
+    // On exclut l'appelant de ses propres résultats et on ne renvoie que les champs publics.
     res.json(
       data.filter((u) => u.id !== caller.id).map((u) => ({ id: u.id, firstName: u.firstName, lastName: u.lastName })),
     );

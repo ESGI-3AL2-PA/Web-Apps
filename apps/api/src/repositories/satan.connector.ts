@@ -1,15 +1,18 @@
 import { createSatanClient, type SatanClient } from "@repo/satan";
 import { logger } from "../logger.js";
 
+// Connecteur SATAN de l'api (couche infrastructure). Gère le worker SATAN QL
+// singleton (un processus python persistant) utilisé par les repositories SATAN.
+
 let client: SatanClient | null = null;
 
 /**
- * Spawns the persistent SATAN QL worker and verifies it before the app serves
- * traffic — mirrors `neo4j.connector.ts`. The worker owns the Mongo connection
- * (we only forward MONGODB_URL / MONGODB_DB to it); the verify runs a real
- * `FIND` so it proves the whole chain — python + ply + pymongo + Mongo
- * reachability — in one shot, and a timeout turns a missing dep into a clear
- * boot error instead of a hang on the first real request.
+ * Démarre le worker SATAN QL persistant et le vérifie avant que l'app serve du
+ * trafic — reflète `neo4j.connector.ts`. Le worker possède la connexion Mongo (on
+ * ne lui transmet que MONGODB_URL / MONGODB_DB) ; la vérification exécute un vrai
+ * `FIND`, ce qui prouve toute la chaîne — python + ply + pymongo + accessibilité
+ * de Mongo — en une seule fois. Un timeout transforme une dépendance manquante en
+ * erreur de démarrage claire plutôt qu'en blocage à la première vraie requête.
  */
 export const connectSatan = async (): Promise<SatanClient> => {
   if (client) return client;
@@ -21,6 +24,7 @@ export const connectSatan = async (): Promise<SatanClient> => {
     mongoDb: process.env.MONGODB_DB,
   });
 
+  // Capture les lignes stderr du worker pour les joindre au message d'erreur de timeout (et log si SATAN_DEBUG).
   const stderr: string[] = [];
   c.on("stderr", (line: string) => {
     stderr.push(line);
@@ -28,7 +32,7 @@ export const connectSatan = async (): Promise<SatanClient> => {
   });
 
   const verify = c.query("FIND _healthcheck");
-  verify.catch(() => {}); // swallow a late rejection if the timeout wins the race
+  verify.catch(() => {}); // absorbe un rejet tardif si le timeout gagne la course
 
   let timer: NodeJS.Timeout | undefined;
   const timeout = new Promise<never>((_resolve, reject) => {
@@ -45,6 +49,7 @@ export const connectSatan = async (): Promise<SatanClient> => {
     );
   });
 
+  // La vérification aboutit, ou le timeout de 5 s l'emporte : la première course terminée décide.
   try {
     await Promise.race([verify, timeout]);
   } catch (err) {

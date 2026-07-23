@@ -1,4 +1,7 @@
-import "@repo/shared/load-env"; // must be first: loads .env before any module reads process.env
+// Point d'entrée de l'api : monte Express (helmet, cors, rate limiting, logs), génère la doc
+// OpenAPI/Scalar, enregistre les routes ts-rest derrière requireAuth + authorize + requireStepUp,
+// puis connecte les datastores (Mongo/Neo4j/SATAN), démarre Socket.io et le flux de sync offline.
+import "@repo/shared/load-env"; // doit être en premier : charge .env avant qu'un module ne lise process.env
 import express, { type Application, type RequestHandler } from "express";
 import cors from "cors";
 import helmet from "helmet";
@@ -68,20 +71,20 @@ import { apiReference } from "@scalar/express-api-reference";
 const app: Application = express();
 const port = Number(process.env.API_PORT ?? process.env.PORT) || 3000;
 
-// Behind a reverse proxy/LB, set TRUST_PROXY (e.g. "1") so req.ip reflects the
-// real client. Unset by default to avoid trusting spoofed X-Forwarded-For.
+// Derrière un reverse proxy / load balancer, définir TRUST_PROXY (ex. "1") pour que req.ip
+// reflète le vrai client. Non défini par défaut pour ne pas faire confiance à un X-Forwarded-For usurpé.
 const trustProxy = process.env.TRUST_PROXY;
 if (trustProxy) {
   app.set("trust proxy", /^\d+$/.test(trustProxy) ? Number(trustProxy) : trustProxy === "true" ? true : trustProxy);
 }
 
-// Per-request access logging + correlation id (req.id, exposed as req.log child
-// logger). Mounted first so every request — including /health and /docs — is logged.
+// Log d'accès par requête + identifiant de corrélation (req.id, exposé via le logger enfant
+// req.log). Monté en premier pour que chaque requête — y compris /health et /docs — soit journalisée.
 app.use(
   pinoHttp({
     logger,
-    // Strip PII from request logs (GDPR Art. 32): the default serializer would otherwise
-    // record the client IP and the Cookie / Authorization (Bearer) headers on every request.
+    // Retire les données personnelles des logs (RGPD art. 32) : sinon le sérialiseur par défaut
+    // enregistrerait l'IP client et les en-têtes Cookie / Authorization (Bearer) à chaque requête.
     redact: {
       paths: [
         "req.headers.authorization",
@@ -95,8 +98,8 @@ app.use(
   }),
 );
 
-// Security headers. CSP is disabled because the Scalar /docs UI loads its own
-// assets; the rest (X-Frame-Options, HSTS, X-Content-Type-Options, …) still apply.
+// En-têtes de sécurité. La CSP est désactivée car l'UI Scalar /docs charge ses propres
+// assets ; le reste (X-Frame-Options, HSTS, X-Content-Type-Options, …) s'applique toujours.
 app.use(helmet({ contentSecurityPolicy: false }));
 
 const openApiDocument = generateOpenApi(
@@ -146,7 +149,7 @@ const openApiDocument = generateOpenApi(
     ],
   },
   {
-    // Reflect each route's contract `metadata.auth` policy in the generated docs.
+    // Reporte la politique `metadata.auth` de chaque route du contrat dans la doc générée.
     operationMapper: (operation, appRoute) => {
       const policy = getAuthPolicy(appRoute);
       if (!policy || policy.public) return operation;
@@ -174,8 +177,8 @@ app.use(
   cors({
     origin: allowedOrigins,
     methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
-    // X-Step-Up-Token carries the fresh-MFA proof the front replays on a sensitive op after
-    // a 401 step_up_required; without it here the browser's preflight blocks the retry.
+    // X-Step-Up-Token porte la preuve de MFA fraîche que le front rejoue sur une opération
+    // sensible après un 401 step_up_required ; sans lui ici, le preflight du navigateur bloque le retry.
     allowedHeaders: ["Content-Type", "Authorization", "X-Step-Up-Token"],
     credentials: true,
   }),
@@ -183,16 +186,16 @@ app.use(
 // Limite augmentée pour accepter les uploads audio inline en base64 (~5MB max).
 app.use(express.json({ limit: "10mb" }));
 
-// Liveness: cheap, dependency-free. Answers "is the process up?" — used to decide
-// whether to restart the container. Must stay static so a slow/down DB never trips it.
+// Liveness : peu coûteux, sans dépendance. Répond « le process tourne-t-il ? » — sert à décider
+// s'il faut redémarrer le conteneur. Doit rester statique pour qu'une base lente/HS ne le fasse jamais échouer.
 app.get("/health", (_req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
-// Readiness: "can this instance serve traffic?" — pings dependencies so the LB can
-// pull a node with a dead DB out of rotation. Mongo is required (down → 503). Neo4j
-// is a projection (Mongo is source of truth, graph writes are best-effort), so its
-// failure degrades recommendations but the instance stays in rotation (200 "degraded").
+// Readiness : « cette instance peut-elle servir du trafic ? » — ping les dépendances pour que
+// le load balancer sorte de la rotation un nœud dont la base est morte. Mongo est requis (HS → 503).
+// Neo4j est une projection (Mongo fait foi, les écritures graphe sont best-effort) : sa panne
+// dégrade les recommandations mais l'instance reste en rotation (200 « degraded »).
 app.get("/readyz", async (_req, res) => {
   const [mongo, neo] = await Promise.allSettled([pingDB(), pingNeo4j()]);
   const mongoOk = mongo.status === "fulfilled";
@@ -202,8 +205,8 @@ app.get("/readyz", async (_req, res) => {
   res.status(mongoOk ? 200 : 503).json({ status, checks, timestamp: new Date().toISOString() });
 });
 
-// The OpenAPI schema + Scalar UI expose the full endpoint catalogue, so they must
-// not be public in production. Off by default in prod unless ENABLE_API_DOCS=true.
+// Le schéma OpenAPI + l'UI Scalar exposent tout le catalogue d'endpoints : ils ne doivent
+// donc pas être publics en production. Désactivés par défaut en prod sauf si ENABLE_API_DOCS=true.
 const docsEnabled = process.env.NODE_ENV !== "production" || process.env.ENABLE_API_DOCS === "true";
 if (docsEnabled) {
   app.get("/openapi.json", (req, res) => {
@@ -214,66 +217,66 @@ if (docsEnabled) {
     apiReference({
       url: "/openapi.json",
       theme: "moon",
-    }) as unknown as RequestHandler, // Ugly but it works ¯\_(ツ)_/¯
+    }) as unknown as RequestHandler, // Moche mais ça marche ¯\_(ツ)_/¯
   );
 }
 
-// Rate limiting (per client IP; req.ip honours the TRUST_PROXY setting above).
-// Defined up-front so even the pre-auth Documenso webhook can be throttled. Mirrors
-// the auth-service limiter — 1-minute window, draft-7 headers. Endpoints that trigger
-// external work (Documenso/email on create, an S3 fetch on the PDF proxy) get tighter
-// caps below. NOTE: in-memory store — fine single-instance, move to a shared store
-// (Redis) before scaling the api horizontally.
+// Rate limiting (par IP client ; req.ip respecte le réglage TRUST_PROXY ci-dessus).
+// Défini en amont pour que même le webhook Documenso pré-auth puisse être throttlé. Reprend
+// le limiteur de l'auth-service — fenêtre d'1 minute, en-têtes draft-7. Les endpoints qui
+// déclenchent du travail externe (Documenso/email à la création, fetch S3 sur le proxy PDF)
+// ont des plafonds plus stricts plus bas. NOTE : store en mémoire — OK en instance unique,
+// passer à un store partagé (Redis) avant de scaler l'api horizontalement.
 const rateLimitMessage = { message: "Too many requests — try again later" };
 const makeLimiter = (limit: number) =>
   rateLimit({ windowMs: 60_000, limit, standardHeaders: "draft-7", legacyHeaders: false, message: rateLimitMessage });
 
-// Documenso posts signing events here. It authenticates with a shared secret
-// (verified inside the handler), not our JWT, so it must sit ABOVE requireAuth — which
-// also puts it above the global limiter. It settles/refunds escrow, so it carries a
-// tight limiter of its own to blunt online brute-forcing of the shared secret.
+// Documenso poste ici ses événements de signature. Il s'authentifie via un secret partagé
+// (vérifié dans le handler), pas notre JWT : il doit donc être AU-DESSUS de requireAuth — ce qui
+// le place aussi au-dessus du limiteur global. Il solde/rembourse l'escrow, d'où son propre
+// limiteur strict pour freiner un brute-force en ligne du secret partagé.
 app.post("/contracts/webhook", makeLimiter(30), documensoWebhookHandler);
 
-// Everything below /health, /openapi.json and /docs requires a valid access token.
-// requireAuth verifies the JWT (iss/aud) and sets req.user.
+// Tout ce qui suit /health, /openapi.json et /docs exige un access token valide.
+// requireAuth vérifie le JWT (iss/aud) et renseigne req.user.
 app.use(requireAuth);
-// Global cap first, so it also covers the raw handlers below (public search, public
-// profile, media streams) — not only the ts-rest contract routes.
+// Plafond global d'abord, pour qu'il couvre aussi les handlers bruts ci-dessous (recherche
+// publique, profil public, flux média) — pas seulement les routes de contrat ts-rest.
 app.use(makeLimiter(120));
 app.get("/users/public/search", userSearchHandler);
 app.get("/users/:id/public", userPublicHandler);
-// The voice/image message POSTs are ts-rest contract routes (conversationsContract).
-// Only the binary media streams stay raw handlers. Unlike public listing images
-// (/uploads/images/:key, above requireAuth), these sit BELOW requireAuth and do their
-// own participant check — a photo/voice note in a conversation is participant-private.
+// Les POST de messages voix/image sont des routes de contrat ts-rest (conversationsContract).
+// Seuls les flux média binaires restent des handlers bruts. Contrairement aux images publiques
+// d'annonces (/uploads/images/:key, au-dessus de requireAuth), ceux-ci sont SOUS requireAuth et
+// font leur propre vérification de participant — une photo/note vocale d'une conversation est privée.
 app.get("/messages/:id/audio", audioStreamHandler);
 app.get("/messages/:id/image", imageMessageStreamHandler);
 
-// Binary passthrough for the signed contract PDF (proxied from Documenso so the
-// front never talks to Documenso/S3 directly). Raw handler — does its own party/
-// admin authorization. Registered before the ts-rest contract routes.
+// Passthrough binaire du PDF de contrat signé (proxifié depuis Documenso pour que le
+// front ne parle jamais directement à Documenso/S3). Handler brut — fait sa propre
+// autorisation partie/admin. Enregistré avant les routes de contrat ts-rest.
 app.get("/contracts/:id/pdf", makeLimiter(30), contractPdfHandler);
 
-// Listing images: serve + upload (MinIO). Both now sit BELOW requireAuth — a valid
-// token is required to fetch (no per-listing authz), so a leaked image URL is useless
-// without a session, and the global limiter above rate-limits the read. Upload gets a
-// tighter cap (writes to object storage). Images are blob-fetched by the front
-// (AuthedImage), so no cross-origin <img> embedding / CORP needed.
+// Images d'annonces : lecture + upload (MinIO). Les deux sont maintenant SOUS requireAuth — un
+// token valide est requis pour lire (pas d'autz par annonce), donc une URL d'image fuitée est
+// inutile sans session, et le limiteur global ci-dessus rate-limite la lecture. L'upload a un
+// plafond plus strict (écrit dans le stockage objet). Les images sont récupérées en blob par le
+// front (AuthedImage), donc pas besoin d'embed <img> cross-origin ni de CORP.
 app.get("/uploads/images/:key", imageStreamHandler);
 app.post("/uploads/images", makeLimiter(30), imageUploadHandler);
 
-// Authorization is declared per-route in the contract `metadata.auth` and enforced
-// by this single global middleware (reads req.tsRestRoute, loads records for
-// ownership/district checks). No per-resource path mounting needed.
-// Register every contract with the same metadata-driven global authorization
-// middleware. Typed `any` so it doesn't perturb each call's TRouter inference
-// (the contract's generic flows from args 1-2); `authorize` is a valid Express handler.
+// L'autorisation est déclarée par route dans le `metadata.auth` du contrat et appliquée par
+// ce middleware global unique (lit req.tsRestRoute, charge les enregistrements pour les
+// vérifications de propriété/quartier). Pas besoin de monter un chemin par ressource.
+// Enregistre chaque contrat avec le même middleware d'autorisation global piloté par les
+// métadonnées. Typé `any` pour ne pas perturber l'inférence TRouter de chaque appel (le
+// générique du contrat vient des args 1-2) ; `authorize` est un handler Express valide.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const endpointOptions: any = { globalMiddleware: [authorize, requireStepUp] };
 
-// Tighter cap on contract creation — each call fans out to Documenso (document
-// generation + invitation emails) and escrows funds. Registered before the ts-rest
-// contracts router so it runs first, then falls through to the handler.
+// Plafond plus strict sur la création de contrat — chaque appel fan-out vers Documenso
+// (génération du document + emails d'invitation) et met des fonds sous escrow. Enregistré avant
+// le routeur de contrats ts-rest pour s'exécuter en premier, puis passer la main au handler.
 app.post("/contracts", makeLimiter(10));
 
 createExpressEndpoints(usersContract, usersRouter, app, endpointOptions);
@@ -298,10 +301,10 @@ app.use((_req, _res, next) => {
 
 app.use(errorHandler);
 
-// Best-effort: bring up the SATAN QL worker so the container can resolve the
-// SATAN-backed repositories. If it can't start (e.g. python/`ply` missing) we
-// log and fall back to the Mongo repos rather than refusing to boot. Skip
-// entirely when SATAN_REPOS=false.
+// Best-effort : démarre le worker SATAN QL pour que le conteneur puisse résoudre les
+// repositories adossés à SATAN. S'il ne démarre pas (ex. python/`ply` manquant), on log et
+// on retombe sur les repos Mongo plutôt que de refuser de booter. Totalement ignoré
+// quand SATAN_REPOS=false.
 const maybeConnectSatan = async (): Promise<SatanClient | undefined> => {
   if (process.env.SATAN_REPOS === "false") {
     logger.warn("SATAN repositories disabled (SATAN_REPOS=false) — using Mongo repositories");
@@ -317,10 +320,10 @@ const maybeConnectSatan = async (): Promise<SatanClient | undefined> => {
   }
 };
 
-// Retry the initial datastore connections with backoff: `depends_on:
-// service_healthy` only gates the first boot, and tsx --watch won't re-run the
-// entrypoint after a fatal exit — so a transient Mongo/Neo4j blip on (re)start
-// would otherwise wedge the process until a file changes.
+// Réessaie les connexions initiales aux datastores avec backoff : `depends_on:
+// service_healthy` ne gouverne que le premier boot, et tsx --watch ne relance pas
+// l'entrypoint après un exit fatal — un aléa transitoire Mongo/Neo4j au (re)démarrage
+// bloquerait sinon le process jusqu'à ce qu'un fichier change.
 withRetry(() => Promise.all([connectDB(), connectNeo4j()]), { label: "database connection" })
   .then(async ([db, neo4jDriver]) => {
     const satan = await maybeConnectSatan();
@@ -336,10 +339,10 @@ withRetry(() => Promise.all([connectDB(), connectNeo4j()]), { label: "database c
         "API server running — ready to accept connections",
       );
     });
-    // Offline sync: seed the change feed on first boot (making ?since=0 a full
-    // snapshot), then tail the collections. Both need a replica set — on a standalone
-    // mongod `db.watch()` throws, so this is best-effort: the rest of the api still
-    // serves, only the desktop sync feed goes stale.
+    // Sync offline : amorce le flux de changements au premier boot (rendant ?since=0 un
+    // snapshot complet), puis tail les collections. Les deux exigent un replica set — sur un
+    // mongod standalone `db.watch()` lève une erreur, donc c'est best-effort : le reste de
+    // l'api continue de servir, seul le flux de sync du client desktop se fige.
     const syncChanges = resolve("syncChanges");
     const syncState = resolve("syncState");
     void seedExistingDocs(db, syncChanges, syncState)

@@ -4,9 +4,12 @@ import { TOKEN_ISSUER, TOKEN_ALG, TOKEN_AUDIENCE, TOKEN_AUDIENCE_INTERNAL } from
 import { resolve } from "../repositories/container.js";
 import type { IUserRepository } from "../repositories/User/user.repository.js";
 
+// Middleware — authentification : vérifie le Bearer JWT contre le JWKS de l'auth-service et
+// renseigne req.user. L'autorisation (rôles, propriété, quartier) est gérée ailleurs (authorize).
+
 const jwksUrl = process.env.AUTH_JWKS_URL ?? "http://localhost:3001/.well-known/jwks.json";
-// Exported so `requireStepUp` validates step-up tokens against the same key set — a
-// step-up token is just another RS256 JWT auth-service signs, distinguished by its audience.
+// Exporté pour que `requireStepUp` valide les step-up tokens contre le même jeu de clés — un
+// step-up token n'est qu'un autre JWT RS256 signé par l'auth-service, distingué par son audience.
 export const JWKS = createRemoteJWKSet(new URL(jwksUrl));
 
 export interface AuthUser {
@@ -16,20 +19,22 @@ export interface AuthUser {
   firstName?: string;
   lastName?: string;
   aud: string;
-  /** District this user administers (admin only); minted into the token at login/refresh. */
+  /** Quartier que cet utilisateur administre (admin uniquement) ; injecté dans le token au login/refresh. */
   adminDistrictId?: string | null;
 }
 
 declare module "express-serve-static-core" {
   interface Request {
     user?: AuthUser;
-    /** Record loaded by the authorize middleware for an ownership/district check. */
+    /** Enregistrement chargé par le middleware authorize pour une vérification de propriété/quartier. */
     authRecord?: unknown;
   }
 }
 
-// Authentication only: verifies the JWT (signature/iss/aud) and sets req.user.
-// Authorization is handled by the contract-metadata-driven `authorize` middleware.
+/**
+ * Authentification uniquement : vérifie le JWT (signature/iss/aud) et renseigne req.user.
+ * L'autorisation est prise en charge par le middleware `authorize` piloté par les métadonnées du contrat.
+ */
 export const requireAuth: RequestHandler = async (req, res, next) => {
   const authHeader = req.headers.authorization;
   if (!authHeader?.startsWith("Bearer ")) {
@@ -56,9 +61,10 @@ export const requireAuth: RequestHandler = async (req, res, next) => {
       adminDistrictId: (payload.adminDistrictId as string | null | undefined) ?? null,
     };
 
-    // Immediately reject a still-valid token if the account has since been banned. Only regular
-    // users can be banned, so we only pay the lookup for `role: "user"` requests (admin/service
-    // traffic is untouched). Login + refresh are also blocked in auth-service.
+    // Rejette immédiatement un token encore valide si le compte a été banni depuis. Seuls les
+    // utilisateurs standards peuvent être bannis, donc on ne paie le lookup que pour les requêtes
+    // `role: "user"` (le trafic admin/service n'est pas touché). Le login + refresh sont aussi
+    // bloqués côté auth-service.
     if (req.user.role === "user") {
       const userRepo: IUserRepository = resolve("user");
       const user = await userRepo.getUserById(req.user.sub);

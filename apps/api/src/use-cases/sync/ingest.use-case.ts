@@ -1,3 +1,7 @@
+// Cas d'usage sync : ingère un lot d'événements offline poussés par une instance desktop.
+// Cœur du protocole de synchronisation côté serveur — décide, événement par événement,
+// entre appliqué / conflit (quarantaine) / rejeté, avec autorisation par quartier,
+// détection de concurrence optimiste (baseUpdatedAt) et dédoublonnage.
 import type {
   AppliedEventDto,
   ConflictedEventDto,
@@ -16,30 +20,32 @@ import { SYNC_ENTITIES, districtOf, pickWritable, redactServerDoc } from "../../
 import { projectSyncWrite } from "../../sync/graph-projection.js";
 import { scopeAllowsDistrict, type SyncScope } from "../../sync/sync-scope.js";
 
+/** Dépendances du cas d'usage : writer Mongo, repository des conflits, projection graphe. */
 export interface IngestDeps {
   writer: ISyncWriterRepository;
   conflicts: ISyncConflictsRepository;
   graph: IGraphRepository;
 }
 
+/** Paramètres d'un appel : le lot d'événements, l'instance émettrice, le scope (quartier autorisé). */
 export interface IngestParams {
   events: IngestEventDto[];
   instanceId: string;
   scope: SyncScope;
 }
 
-/** The client's optimistic-concurrency token is stale iff it was sent and disagrees. */
+/** Le token de concurrence optimiste du client est périmé ssi il a été envoyé et diffère du serveur. */
 const isStale = (baseUpdatedAt: string | undefined, serverDoc: SyncDoc): boolean =>
   baseUpdatedAt !== undefined && serverDoc.updatedAt !== baseUpdatedAt;
 
 /**
- * Applies a batch of offline events pushed by one desktop instance.
+ * Applique un lot d'événements offline poussés par une instance desktop.
  *
- * Three outcomes per event, mirroring the wire contract (§4.1): `applied` (with the
- * exact persisted `updatedAt`, so the client advances its token straight from the
- * ack), `conflicts` (quarantined, nothing overwritten — the client keeps its pending
- * row), and `rejected` (an authorization refusal that can never succeed on retry, so
- * the client drops the row instead of looping).
+ * Trois issues possibles par événement, calquées sur le contrat réseau (§4.1) :
+ * `applied` (avec l'`updatedAt` exact persisté, pour que le client avance son token
+ * directement depuis l'ack), `conflicts` (mis en quarantaine, rien n'est écrasé — le
+ * client conserve sa ligne en attente), et `rejected` (refus d'autorisation qui ne
+ * pourra jamais réussir en réessayant, le client abandonne la ligne au lieu de boucler).
  */
 export const ingestUseCase = (deps: IngestDeps) => {
   const { writer, conflicts, graph } = deps;
@@ -81,15 +87,16 @@ export const ingestUseCase = (deps: IngestDeps) => {
     const processEvent = async (event: IngestEventDto): Promise<void> => {
       const config = SYNC_ENTITIES[event.entity];
 
-      // Districts flow server → client only (§5.3).
+      // Les quartiers ne circulent que serveur → client (§5.3).
       if (!config.ingestAllowed) {
         logger.warn({ entity: event.entity, instanceId }, "sync ingest: refused a write to a read-only entity");
         rejected.push({ id: event.id, reason: "read-only-entity" });
         return;
       }
 
-      // An UPDATE/DELETE names no server record: structurally impossible, not an
-      // authorization call. Report it so the client drops the row instead of retrying.
+      // Un UPDATE/DELETE ne désigne aucun enregistrement serveur : structurellement
+      // impossible, ce n'est pas une question d'autorisation. On le signale pour que le
+      // client abandonne la ligne au lieu de réessayer.
       if (event.operation !== "INSERT" && !event.mongoId) {
         logger.warn(
           { entity: event.entity, operation: event.operation, instanceId },
@@ -101,8 +108,9 @@ export const ingestUseCase = (deps: IngestDeps) => {
 
       const serverDoc = event.mongoId ? await writer.findById(event.entity, event.mongoId) : null;
 
-      // District authorization. For an UPDATE/DELETE the SERVER doc decides, so a
-      // client cannot smuggle a foreign record in by relabelling its payload.
+      // Autorisation par quartier. Pour un UPDATE/DELETE, c'est le doc SERVEUR qui
+      // tranche : un client ne peut donc pas faire passer en fraude un enregistrement
+      // d'un autre quartier en réétiquetant son payload.
       const targetDistrict = districtOf(event.entity, serverDoc ?? event.data);
       if (!scopeAllowsDistrict(scope, targetDistrict)) {
         logger.warn(
@@ -113,8 +121,9 @@ export const ingestUseCase = (deps: IngestDeps) => {
         return;
       }
 
-      // A record with an open conflict holds further ingests: refresh the captured
-      // local snapshot and re-ack the same conflict rather than piling up rows.
+      // Un enregistrement avec un conflit ouvert bloque les ingestions suivantes : on
+      // rafraîchit le snapshot local capturé et on ré-acquitte le même conflit plutôt
+      // que d'empiler de nouvelles lignes.
       if (event.mongoId) {
         const held = await conflicts.findPending(event.entity, event.mongoId);
         if (held) {
@@ -128,11 +137,11 @@ export const ingestUseCase = (deps: IngestDeps) => {
 
       if (event.operation === "DELETE") {
         if (!serverDoc) {
-          await ack(event, event.mongoId!, null, event.entity); // already gone — idempotent
+          await ack(event, event.mongoId!, null, event.entity); // déjà disparu — idempotent
           return;
         }
         if (isStale(event.baseUpdatedAt, serverDoc)) {
-          await raiseConflict(event, event.mongoId!, "update", serverDoc); // delete-vs-edit
+          await raiseConflict(event, event.mongoId!, "update", serverDoc); // suppression vs édition
           return;
         }
         await writer.remove(event.entity, event.mongoId!);
@@ -145,8 +154,8 @@ export const ingestUseCase = (deps: IngestDeps) => {
           await raiseConflict(event, event.mongoId!, "update", serverDoc);
           return;
         }
-        // A missing doc is a remote delete racing a local edit: recreate it
-        // (last-write-wins — there is nothing to conflict against).
+        // Un doc absent = une suppression distante en concurrence avec une édition
+        // locale : on le recrée (last-write-wins — il n'y a rien contre quoi entrer en conflit).
         const { updatedAt } = serverDoc
           ? (await writer.update(event.entity, event.mongoId!, event.data ?? {}, sync))!
           : await writer.insert(event.entity, event.data ?? {}, sync, event.mongoId!);
@@ -154,14 +163,14 @@ export const ingestUseCase = (deps: IngestDeps) => {
         return;
       }
 
-      // INSERT carrying a known mongoId — an idempotent upsert by _id (a push retry).
+      // INSERT portant un mongoId connu — upsert idempotent par _id (un réessai de push).
       if (event.mongoId) {
         const { mongoId, updatedAt } = await writer.insert(event.entity, event.data ?? {}, sync, event.mongoId);
         await ack(event, mongoId, updatedAt, event.entity);
         return;
       }
 
-      // First INSERT: dedup on the business key so two sides don't create twins.
+      // Premier INSERT : dédoublonnage sur la clé métier pour que deux côtés ne créent pas de jumeaux.
       const businessKey = config.businessKey;
       const keyValue = businessKey ? event.data?.[businessKey] : undefined;
       if (businessKey && keyValue !== undefined) {
@@ -176,7 +185,7 @@ export const ingestUseCase = (deps: IngestDeps) => {
         const { mongoId, updatedAt } = await writer.insert(event.entity, event.data ?? {}, sync);
         await ack(event, mongoId, updatedAt, event.entity);
       } catch (err) {
-        // Lost the race on the unique index — funnel to the same duplicate path.
+        // Perdu la course sur l'index unique — on aiguille vers le même chemin de doublon.
         if (!isDuplicateKeyError(err) || !businessKey) throw err;
         const existing = await writer.findByBusinessKey(event.entity, keyValue);
         if (!existing) throw err;
@@ -189,9 +198,10 @@ export const ingestUseCase = (deps: IngestDeps) => {
       await processEvent(event);
       const reports = applied.length + conflicted.length + rejected.length - before;
 
-      // Total accounting: an event reported in none of the three arrays would strand
-      // the client's pending row and be retried every cycle forever, so anything that
-      // fell through every write path is reported as unprocessable instead.
+      // Comptabilité totale : un événement présent dans aucun des trois tableaux
+      // laisserait la ligne en attente du client bloquée et serait réessayé à chaque
+      // cycle indéfiniment ; tout ce qui traverse tous les chemins d'écriture sans en
+      // emprunter aucun est donc reporté comme « unprocessable ».
       if (reports === 0) {
         logger.error(
           { entity: event.entity, operation: event.operation, mongoId: event.mongoId, instanceId },
@@ -199,8 +209,9 @@ export const ingestUseCase = (deps: IngestDeps) => {
         );
         rejected.push({ id: event.id, reason: "unprocessable" });
       } else if (reports > 1) {
-        // Not self-healing (the rows are already pushed) — but a duplicate report is a
-        // server bug that would confuse the client's row lifecycle, so make it loud.
+        // Non auto-réparable (les lignes sont déjà poussées) — mais un double report est
+        // un bug serveur qui perturberait le cycle de vie des lignes du client : on le
+        // rend bruyant.
         logger.error({ eventId: event.id, reports, instanceId }, "sync ingest: event reported more than once");
       }
     }

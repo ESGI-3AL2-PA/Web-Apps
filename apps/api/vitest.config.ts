@@ -1,3 +1,4 @@
+// Config Vitest de l'app api : où sont les tests et comment mesurer la couverture.
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
@@ -7,6 +8,8 @@ export default defineConfig({
       provider: "v8",
       reporter: ["text", "json-summary"],
       include: ["src/**/*.ts"],
+      // Exclus de la couverture : tests, configs, point d'entrée, entités (types purs)
+      // et scripts one-shot — du code sans logique à tester, qui fausserait les ratios.
       exclude: [
         "src/**/*.test.ts",
         "src/**/*.config.ts",
@@ -15,8 +18,8 @@ export default defineConfig({
         "src/scripts/**",
         "**/dist/**",
       ],
-      // Floors sit just below the currently measured coverage so they only ever
-      // ratchet up. Raise them as more tests land; never lower them.
+      // Ces planchers sont posés juste sous la couverture mesurée actuellement : ils ne
+      // peuvent donc que remonter (cliquet). À relever quand des tests s'ajoutent, jamais à baisser.
       thresholds: {
         lines: 3,
         statements: 3,

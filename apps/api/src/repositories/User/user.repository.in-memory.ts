@@ -2,11 +2,18 @@ import { randomUUID } from "crypto";
 import type { User } from "../../entities/user.entity.js";
 import type { IUserRepository } from "./user.repository.js";
 
+/**
+ * Implémentation en mémoire du repository des utilisateurs (couche repository).
+ *
+ * Stocke les utilisateurs dans un simple tableau — destinée aux tests unitaires,
+ * sans persistance ni index. Réplique le comportement de l'implémentation Mongo
+ * (recherche insensible à la casse, pagination par tranche).
+ */
 export class InMemoryUserRepository implements IUserRepository {
   private users: User[] = [];
 
   async ensureIndexes(): Promise<void> {
-    // No-op: the in-memory repository has no indexes.
+    // Sans effet : le repository en mémoire n'a pas d'index.
   }
 
   async getUsers(params: { search?: string; page?: number; limit?: number }): Promise<{
@@ -17,6 +24,7 @@ export class InMemoryUserRepository implements IUserRepository {
   }> {
     const { search, page = 1, limit = 10 } = params;
     let filtered = this.users;
+    // Recherche insensible à la casse sur prénom, nom et email.
     if (search) {
       const q = search.toLowerCase();
       filtered = filtered.filter(

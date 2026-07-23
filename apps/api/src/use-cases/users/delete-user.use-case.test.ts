@@ -1,8 +1,12 @@
+// Suite de tests du cas d'usage de suppression d'utilisateur : se concentre sur la
+// FIABILITÉ de l'effacement (RGPD) — effacement du nœud graphe indépendant du résultat
+// Mongo, et purge des sessions auth avec retry puis remontée d'un échec partiel.
+
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { User } from "../../entities/user.entity.js";
 import { deleteUserUseCase, type DeleteUserDeps } from "./delete-user.use-case.js";
 
-// Keep the erasure fan-out off disk/network: no MinIO, no audio files.
+// Garde le fan-out d'effacement hors disque/réseau : ni MinIO, ni fichiers audio.
 vi.mock("../../services/media-storage.service.js", () => ({ deleteAudio: vi.fn(async () => {}) }));
 vi.mock("../../services/image-storage.service.js", () => ({
   deleteImage: vi.fn(async () => {}),
@@ -11,8 +15,8 @@ vi.mock("../../services/image-storage.service.js", () => ({
 
 const makeUser = (): User => ({ id: "u1", role: "user", districtId: "d1" }) as unknown as User;
 
-// Full deps with empty/no-op repos; the two tests only care about the graph delete and
-// the auth-session purge, so everything else just needs to resolve.
+// Dépendances complètes avec des repos vides / no-op ; les tests ne s'intéressent qu'à la
+// suppression graphe et à la purge des sessions auth, le reste doit juste se résoudre.
 const makeDeps = (overrides: {
   deleteUser: () => Promise<boolean>;
   graphDeleteUser: () => Promise<void>;
@@ -48,17 +52,20 @@ describe("deleteUserUseCase reliable erasure", () => {
   beforeEach(() => vi.clearAllMocks());
   afterEach(() => vi.unstubAllGlobals());
 
+  // gdpr-M1 : le nœud graphe est effacé même quand la suppression Mongo ne rapporte rien.
   it("gdpr-M1: erases the graph node even when the Mongo delete reports nothing", async () => {
     const graphDeleteUser = vi.fn(async () => {});
     const deps = makeDeps({ deleteUser: async () => false, graphDeleteUser });
 
     const result = await deleteUserUseCase(deps)({ id: "u1" });
 
-    // Graph PII (name/email/address) must be gone regardless of the Mongo result.
+    // Les données personnelles du graphe (nom/email/adresse) doivent disparaître quel que
+    // soit le résultat Mongo.
     expect(graphDeleteUser).toHaveBeenCalledWith("u1");
     expect(result).toEqual({ kind: "not-found" });
   });
 
+  // gdpr-M2 : un échec persistant de la purge des sessions remonte un résultat d'échec partiel.
   it("gdpr-M2: returns a partial-failure result when session purge never succeeds", async () => {
     vi.stubGlobal(
       "fetch",
@@ -68,11 +75,12 @@ describe("deleteUserUseCase reliable erasure", () => {
 
     const result = await deleteUserUseCase(deps)({ id: "u1" });
 
-    // Bounded retry, then surface the failure instead of a false success (204).
+    // Retry borné, puis remontée de l'échec plutôt qu'un faux succès (204).
     expect(fetch).toHaveBeenCalledTimes(3);
     expect(result).toEqual({ kind: "sessions-purge-failed" });
   });
 
+  // Succès nominal : dès que la purge des sessions réussit, le résultat est `ok`.
   it("returns ok once the session purge succeeds", async () => {
     vi.stubGlobal(
       "fetch",

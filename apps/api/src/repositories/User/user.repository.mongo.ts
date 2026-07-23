@@ -5,6 +5,13 @@ import type { User } from "../../entities/user.entity.js";
 import { escapeRegex } from "../escape-regex.js";
 import type { IUserRepository } from "./user.repository.js";
 
+/**
+ * Implémentation Mongo du repository des utilisateurs (couche repository).
+ *
+ * Opère sur la collection `users`. Convertit les documents Mongo (`_id`) en
+ * entités du domaine (`id`) via `toEntity`, échappe les recherches texte avant
+ * de les injecter dans un `$regex`.
+ */
 export class MongoUserRepository implements IUserRepository {
   private collection: Collection<WithMongoId<User>>;
 
@@ -13,11 +20,11 @@ export class MongoUserRepository implements IUserRepository {
   }
 
   async ensureIndexes(): Promise<void> {
-    // Backs district-scoped list filtering.
+    // Soutient le filtrage des listes par quartier.
     await this.collection.createIndex({ districtId: 1 });
-    // One account per email — prevents two users sharing an address via create/update.
-    // NOTE: this build throws if the collection already holds duplicate emails; a real
-    // deploy must de-dupe existing data first (or build with a collation/partial filter).
+    // Un seul compte par email — empêche deux utilisateurs de partager une adresse via create/update.
+    // NOTE : ce build lève une erreur si la collection contient déjà des emails en double ; un vrai
+    // déploiement doit d'abord dédupliquer les données existantes (ou construire l'index avec une collation / un filtre partiel).
     await this.collection.createIndex({ email: 1 }, { unique: true });
   }
 
@@ -37,6 +44,7 @@ export class MongoUserRepository implements IUserRepository {
 
     const filter: Filter<WithMongoId<User>> = {};
     if (search) {
+      // Échappe la chaîne avant de l'utiliser dans un $regex (évite l'injection de regex / déni de service).
       const safe = escapeRegex(search);
       filter.$or = [
         { firstName: { $regex: safe, $options: "i" } },
@@ -47,6 +55,7 @@ export class MongoUserRepository implements IUserRepository {
     if (districtId) filter.districtId = districtId;
     if (role) filter.role = role as User["role"];
 
+    // Compte total et page de documents récupérés en parallèle.
     const [total, docs] = await Promise.all([
       this.collection.countDocuments(filter),
       this.collection

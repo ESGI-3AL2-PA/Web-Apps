@@ -1,8 +1,9 @@
-// Join entity between User and District — records that a user has admin privileges on
-// a specific district. Stored in the shared `district_admins` collection (unique
-// compound index on `(districtId, userId)`), read by both backends, so its schema is
-// the single source of truth in @repo/shared. Re-exported under the api's local
-// names so existing imports (`DistrictAdmin`, `DistrictAdminSchema`) stay stable.
+// Entité de jointure entre User et District — enregistre qu'un utilisateur détient les
+// privilèges d'administrateur de quartier sur un quartier précis. Stockée dans la
+// collection partagée `district_admins` (index composé unique sur `(districtId, userId)`),
+// lue par les deux backends : son schéma est donc l'unique source de vérité dans
+// @repo/shared. Ré-exportée sous les noms locaux de l'api pour que les imports existants
+// (`DistrictAdmin`, `DistrictAdminSchema`) restent stables.
 export {
   districtAdminDocumentSchema as DistrictAdminSchema,
   type DistrictAdminDocument as DistrictAdmin,

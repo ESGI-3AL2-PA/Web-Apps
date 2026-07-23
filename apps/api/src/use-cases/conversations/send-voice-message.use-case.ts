@@ -1,10 +1,17 @@
+// Cas d'usage (couche conversations) : envoyer un message vocal (audio en base64).
+// Même écriture en trois temps avec compensation que le message image : créer la ligne,
+// écrire l'audio dans storage/messages/{id}.webm, puis rattacher la mediaUrl. Toute
+// défaillance annule les étapes précédentes pour ne jamais laisser d'orphelin.
 import type { Message } from "../../entities/conversation.entity.js";
 import type { IConversationRepository } from "../../repositories/Conversation/conversation.repository.js";
 import { AppError } from "../../middleware/error-handler.js";
 import { deleteAudio, saveAudioFromBase64 } from "../../services/media-storage.service.js";
 
-// Raised when the audio was written but the message row could not be linked to it.
-// We fully compensate (audio + row deleted) before throwing, so nothing is orphaned.
+/**
+ * Erreur 500 typée : l'audio a bien été écrit mais la ligne de message n'a pas pu y être
+ * reliée. On compense entièrement (audio + ligne supprimés) avant de la lever, donc rien
+ * n'est laissé orphelin.
+ */
 export class VoiceMediaAttachError extends AppError {
   constructor() {
     super(500, "Failed to attach voice media to message");
@@ -12,6 +19,13 @@ export class VoiceMediaAttachError extends AppError {
   }
 }
 
+/**
+ * Factory du cas d'usage « envoyer un message vocal ».
+ * @param conversationRepository repository des conversations
+ * @returns une fonction (conversationId, senderId, audioBase64) qui renvoie le message
+ *   rattaché + les participants, ou `null` si la conversation n'existe pas / l'expéditeur
+ *   n'en est pas membre (→ 404). Lève VoiceMediaAttachError si le rattachement échoue.
+ */
 export const sendVoiceMessageUseCase = (conversationRepository: IConversationRepository) => {
   return async (
     conversationId: string,

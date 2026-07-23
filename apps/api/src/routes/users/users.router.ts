@@ -1,3 +1,12 @@
+/**
+ * Router ts-rest des utilisateurs.
+ *
+ * Couche router : CRUD users, gestion d'appartenance à un quartier (rejoindre,
+ * créer le sien, se faire exclure), modération (ban), export RGPD et suppression
+ * de compte (droit à l'effacement, Art. 17). Chaque réponse passe par `toDto`
+ * pour ne jamais fuiter les secrets. Toute la logique métier vit dans les cas
+ * d'usage ; ce fichier ne fait que router + mapper les résultats en codes HTTP.
+ */
 import { initServer } from "@ts-rest/express";
 import { logger } from "@repo/shared";
 import { usersContract } from "@repo/contracts";
@@ -19,12 +28,17 @@ import type { MembershipDeps } from "../../use-cases/users/district-membership.u
 import { deleteUserUseCase, CannotDeleteSuperAdminError } from "../../use-cases/users/delete-user.use-case.js";
 import { exportUserDataUseCase } from "../../use-cases/users/export-user-data.use-case.js";
 
-// Strip secrets (password hash + TOTP secret) from user responses.
+// Retire les secrets (hash du mot de passe + secret TOTP) des réponses user.
 const toDto = ({ passwordHash: _passwordHash, totpSecret: _totpSecret, ...rest }: User): UserResponseDto => rest;
 
-// Cross-service read for the GDPR export: the api owns no auth data, so it asks
-// auth-service for this user's refresh-token session history (IP/UA/timestamps).
-// Best-effort — the export must still succeed if auth-service is unreachable.
+/**
+ * Lecture cross-service pour l'export RGPD : l'api ne détient aucune donnée d'auth,
+ * elle demande donc à l'auth-service l'historique des sessions (refresh tokens :
+ * IP / user-agent / timestamps) de ce user. Authentifié par `x-internal-token`.
+ *
+ * Best-effort : l'export doit réussir même si l'auth-service est injoignable — en
+ * cas d'échec on log et on renvoie un tableau vide.
+ */
 const fetchUserSessions = async (userId: string): Promise<unknown[]> => {
   try {
     const authServiceUrl = process.env.AUTH_SERVICE_URL ?? "http://localhost:3001";
@@ -50,6 +64,9 @@ const fetchUserSessions = async (userId: string): Promise<unknown[]> => {
 
 const s = initServer();
 
+// Dépendances partagées par les cas d'usage d'appartenance à un quartier
+// (rejoindre / créer / quitter) : un mouvement touche l'user, son ledger de
+// points, le quartier et la projection graphe.
 const membershipDeps = (): MembershipDeps => ({
   userRepository: resolve("user"),
   transactionRepository: resolve("transaction"),
@@ -76,7 +93,8 @@ export const usersRouter = s.router(usersContract, {
   },
 
   exportUserData: async ({ params: { id } }) => {
-    // Route scope (selfParam:"id") already restricts this to the caller's own id.
+    // Le scope de route (selfParam:"id") restreint déjà l'accès au propre id de l'appelant.
+    // Agrège toutes les données personnelles réparties dans les repositories (export RGPD).
     const data = await exportUserDataUseCase({
       userRepository: resolve("user"),
       listingRepository: resolve("listing"),
@@ -172,14 +190,15 @@ export const usersRouter = s.router(usersContract, {
     if (result.kind === "geocode-failed") {
       return { status: 409, body: { message: "We couldn't locate your address — update it and try again." } };
     }
-    // Seed the default tag set on the new district, mirroring createDistrict.
+    // Injecte le jeu de tags par défaut sur le nouveau quartier, comme createDistrict.
     await seedDefaultTagsUseCase(resolve("tag"))(result.district.id);
     return { status: 201, body: result.district };
   },
 
   deleteUser: async ({ params: { id } }) => {
-    // Route scope already restricts this to the caller's own id; the use-case adds the
-    // superAdmin guardrail. Graph projection cleanup (DETACH DELETE) happens in the use-case.
+    // Le scope de route restreint déjà à l'id de l'appelant ; le cas d'usage ajoute
+    // le garde-fou superAdmin (impossible de supprimer un superAdmin). Le nettoyage
+    // de la projection graphe (DETACH DELETE) se fait dans le cas d'usage.
     try {
       const result = await deleteUserUseCase({
         userRepository: resolve("user"),
@@ -198,8 +217,9 @@ export const usersRouter = s.router(usersContract, {
         return { status: 404, body: { message: "User not found" } };
       }
       if (result.kind === "sessions-purge-failed") {
-        // Account data erased locally, but the auth-service session purge did not
-        // complete — partial erasure. Surface a 5xx so the caller retries (GDPR Art. 17).
+        // Données du compte effacées localement, mais la purge des sessions côté
+        // auth-service a échoué → effacement partiel. On remonte un 5xx pour que
+        // l'appelant réessaie (RGPD Art. 17).
         return {
           status: 502,
           body: { message: "Account data erased, but session cleanup did not complete — please retry." },

@@ -8,6 +8,16 @@ import type { IVoteRepository } from "./vote.repository.js";
 type VoteDoc = WithMongoId<Vote>;
 type VoteResponseDoc = WithMongoId<VoteResponseEntity>;
 
+/**
+ * Implémentation Mongo du repository des votes / sondages (couche repository).
+ *
+ * Coordonne deux collections : `votes` (avec un tableau `results[]` de compteurs
+ * mis en cache par option) et `vote_responses` (une ligne par bulletin).
+ * Chaque écriture de réponse maintient les compteurs en cache en cohérence avec
+ * les lignes de réponses. Les lectures peuvent être enrichies de l'état de vote
+ * de l'appelant et masquent le détail des résultats tant que le scrutin est
+ * ouvert et que l'appelant n'a pas voté.
+ */
 export class MongoVoteRepository implements IVoteRepository {
   private votes: Collection<VoteDoc>;
   private responses: Collection<VoteResponseDoc>;
@@ -18,7 +28,7 @@ export class MongoVoteRepository implements IVoteRepository {
   }
 
   async ensureIndexes(): Promise<void> {
-    // Multikey index backing district-scoped list filtering (votes span multiple districts).
+    // Index multikey soutenant le filtrage des listes par quartier (un vote peut couvrir plusieurs quartiers).
     await this.votes.createIndex({ districtIds: 1 });
   }
 
@@ -39,6 +49,7 @@ export class MongoVoteRepository implements IVoteRepository {
     const { search, status, districtId, creatorId, currentUserId, page = 1, limit = 20 } = params;
 
     const filter: Filter<VoteDoc> = {};
+    // Recherche sur la question, échappée avant injection dans le $regex.
     if (search) filter.question = { $regex: escapeRegex(search), $options: "i" };
     if (status) filter.status = status as VoteStatus;
     if (districtId) filter.districtIds = districtId;
@@ -64,8 +75,13 @@ export class MongoVoteRepository implements IVoteRepository {
     return enriched ?? null;
   }
 
+  /**
+   * Enrichit chaque vote de l'état de l'appelant (`userHasVoted`,
+   * `myChosenOptions`) et applique la règle des résultats aveugles. Une seule
+   * requête sur les réponses de l'appelant pour tous les votes de la page.
+   */
   private async enrichWithUserVotes(docs: VoteDoc[], currentUserId?: string): Promise<Vote[]> {
-    // Group the caller's chosen options by voteId (empty map if unauthenticated).
+    // Regroupe les options choisies par l'appelant, par voteId (map vide si non authentifié).
     const byVoteId = new Map<string, string[]>();
     if (currentUserId && docs.length > 0) {
       const voteIds = docs.map((d) => d._id);
@@ -103,6 +119,7 @@ export class MongoVoteRepository implements IVoteRepository {
     const doc: VoteDoc = {
       ...data,
       _id: randomUUID(),
+      // Initialise le tableau de résultats en cache à zéro pour chaque option.
       results: data.options.map((option) => ({ option, count: 0 })),
     };
     await this.votes.insertOne(doc);
@@ -115,6 +132,7 @@ export class MongoVoteRepository implements IVoteRepository {
   }
 
   async deleteVote(id: string): Promise<boolean> {
+    // Supprime le vote et toutes ses réponses en parallèle.
     const [voteResult] = await Promise.all([
       this.votes.deleteOne({ _id: id }),
       this.responses.deleteMany({ voteId: id }),
@@ -130,7 +148,7 @@ export class MongoVoteRepository implements IVoteRepository {
     const doc: VoteResponseDoc = { ...data, _id: randomUUID(), votedAt: now };
     await this.responses.insertOne(doc, { session });
 
-    // Increment the matching option in the vote's cached results
+    // Incrémente l'option correspondante dans les résultats mis en cache du vote.
     await this.votes.updateOne(
       { _id: data.voteId, "results.option": data.chosenOption },
       { $inc: { "results.$.count": 1 } },
@@ -172,6 +190,7 @@ export class MongoVoteRepository implements IVoteRepository {
     }
   }
 
+  // Recompte les résultats à partir des réponses (source de vérité), indépendamment du cache `results[]`.
   async getResults(voteId: string): Promise<{ totalResponses: number; results: { option: string; count: number }[] }> {
     const [totalResponses, agg] = await Promise.all([
       this.responses.countDocuments({ voteId }),
@@ -193,6 +212,7 @@ export class MongoVoteRepository implements IVoteRepository {
     return existing !== null;
   }
 
+  // Convertit un document Mongo (`_id`) en entité Vote (`id`) et dérive le total depuis les compteurs en cache.
   private toVote(doc: VoteDoc): Vote {
     const { _id, ...rest } = doc;
     const totalResponses = rest.results.reduce((sum, r) => sum + r.count, 0);

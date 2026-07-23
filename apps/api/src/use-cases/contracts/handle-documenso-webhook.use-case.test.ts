@@ -4,10 +4,16 @@ import type { IContractRepository } from "../../repositories/Contract/contract.r
 import type { ITransactionRepository } from "../../repositories/Transaction/transaction.repository.js";
 import { handleDocumensoWebhookUseCase } from "./handle-documenso-webhook.use-case.js";
 
+// Suite de tests du webhook Documenso : vérifie le « gel » du règlement pendant une
+// contestation — un contrat contesté n'est pas réglé automatiquement à la complétion,
+// tandis qu'un contrat non contesté l'est bien.
+
+// Exécute la logique argent sans vraie transaction Mongo (chemin de repli séquentiel).
 vi.mock("../../repositories/tx.js", () => ({
   runInTransaction: (fn: (session?: unknown) => unknown) => fn(undefined),
 }));
 
+// Fabrique un contrat de test avec des valeurs par défaut surchargeable.
 const makeContract = (over: Partial<Contract> = {}): Contract => ({
   id: "contract-1",
   listingId: "listing-1",
@@ -28,9 +34,9 @@ const makeContract = (over: Partial<Contract> = {}): Contract => ({
 type ContractRepoMock = { [K in keyof IContractRepository]: ReturnType<typeof vi.fn> };
 type TxRepoMock = { [K in keyof ITransactionRepository]: ReturnType<typeof vi.fn> };
 
-// completeContract faithfully mirrors the Mongo filter guard: it settles only a
-// non-terminal, non-disputed contract, returning null otherwise (freezing settlement
-// while a dispute is open).
+// completeContract reproduit fidèlement la garde du filtre Mongo : il ne règle qu'un
+// contrat non terminal et non contesté, renvoyant null sinon (gel du règlement tant
+// qu'une contestation est ouverte).
 const makeContractRepo = (stored: Contract): ContractRepoMock => ({
   ensureIndexes: vi.fn(),
   getContracts: vi.fn(),
@@ -55,6 +61,7 @@ const makeContractRepo = (stored: Contract): ContractRepoMock => ({
   deleteContract: vi.fn(),
 });
 
+// Fabrique un mock du repository de transactions, toutes méthodes stubées.
 const makeTxRepo = (): TxRepoMock => ({
   ensureIndexes: vi.fn(),
   getTransactions: vi.fn(),
@@ -73,6 +80,7 @@ describe("handleDocumensoWebhookUseCase — dispute settlement freeze", () => {
     txRepo = makeTxRepo();
   });
 
+  // Contrat contesté : le webhook de complétion ne doit PAS régler automatiquement (aucun mouvement d'argent).
   it("does NOT auto-settle a disputed contract when the completion webhook fires", async () => {
     const disputed = makeContract({ disputed: true, disputeReason: "no-show" });
     const contractRepo = makeContractRepo(disputed);
@@ -82,13 +90,14 @@ describe("handleDocumensoWebhookUseCase — dispute settlement freeze", () => {
       txRepo as unknown as ITransactionRepository,
     )({ event: "document.completed", payload: { id: 42, status: "COMPLETED" } });
 
-    // The dispute guard made completeContract a no-op → no escrow released to the provider.
+    // La garde de contestation a rendu completeContract sans effet → aucun séquestre versé au prestataire.
     expect(txRepo.adjustBalance).not.toHaveBeenCalled();
     expect(txRepo.createTransactions).not.toHaveBeenCalled();
-    // The contract is returned untouched (still pending + disputed).
+    // Le contrat est renvoyé intact (toujours pending + contesté).
     expect(result).toMatchObject({ signatureStatus: "pending", disputed: true });
   });
 
+  // Contrat non contesté : le webhook de complétion règle bien le séquestre au prestataire.
   it("still settles a non-disputed contract to the provider on completion", async () => {
     const contractRepo = makeContractRepo(makeContract());
 

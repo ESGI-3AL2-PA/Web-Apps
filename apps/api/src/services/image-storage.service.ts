@@ -1,9 +1,10 @@
 import type { Readable } from "stream";
 import * as Minio from "minio";
 
-// Listing images are stored in self-hosted MinIO (same instance as voice messages,
-// see media-storage.service.ts). Config falls back to the MESSAGES_MINIO_* vars so
-// a single MinIO deployment serves both; override with LISTINGS_MINIO_* if needed.
+// Service (couche services) : stockage des images d'annonces dans MinIO self-hosted
+// (même instance que les messages vocaux, voir media-storage.service.ts). La config
+// retombe sur les variables MESSAGES_MINIO_* pour qu'un unique déploiement MinIO serve
+// les deux ; on peut surcharger via LISTINGS_MINIO_* au besoin.
 const BUCKET = process.env.LISTINGS_MINIO_BUCKET ?? "listings";
 
 const endpointUrl = new URL(
@@ -19,8 +20,8 @@ const minio = new Minio.Client({
   secretKey: process.env.LISTINGS_MINIO_SECRET_KEY ?? process.env.MESSAGES_MINIO_SECRET_KEY ?? "",
 });
 
-// data-URL mime → file extension. The extension is baked into the object key so the
-// GET handler can serve the right Content-Type without a metadata round-trip.
+// mime de data-URL → extension de fichier. L'extension est inscrite dans la clé de l'objet
+// pour que le handler GET serve le bon Content-Type sans aller-retour de métadonnées.
 const MIME_TO_EXT: Record<string, string> = {
   "image/png": "png",
   "image/jpeg": "jpg",
@@ -36,12 +37,14 @@ const EXT_TO_MIME: Record<string, string> = {
   gif: "image/gif",
 };
 
+/** Déduit le Content-Type à servir à partir de l'extension présente dans une clé d'objet. */
 export const contentTypeForKey = (key: string): string => {
   const ext = key.split(".").pop()?.toLowerCase() ?? "";
   return EXT_TO_MIME[ext] ?? "application/octet-stream";
 };
 
-// Auto-create the bucket on first use so we don't depend on compose-time provisioning.
+// Crée le bucket automatiquement à la première utilisation pour ne pas dépendre d'un
+// provisioning au moment du compose.
 let ensured = false;
 const ensureBucket = async (): Promise<void> => {
   if (ensured) return;
@@ -54,10 +57,13 @@ const ensureBucket = async (): Promise<void> => {
 
 type DecodedImage = { bytes: Buffer; ext: string; contentType: string };
 
-// Parse a `data:image/xxx;base64,....` URL into bytes + extension. Requires a proper
-// image data-URL prefix — a prefix-less payload or a non-image mime (text/plain, svg,
-// …) is rejected (null) rather than silently stored as png.
+/**
+ * Parse une URL `data:image/xxx;base64,....` en octets + extension. Exige un vrai
+ * préfixe de data-URL image — un payload sans préfixe ou un mime non-image (text/plain,
+ * svg, …) est rejeté (null) plutôt que stocké silencieusement en png.
+ */
 export const decodeImageBase64 = (input: string): DecodedImage | null => {
+  // Capture le mime image et le corps base64 ; le flag `s` laisse `.` matcher les retours ligne.
   const match = input.match(/^data:(image\/[a-zA-Z+.-]+);base64,(.*)$/s);
   if (!match) return null;
   const mime = match[1]!.toLowerCase();
@@ -68,7 +74,7 @@ export const decodeImageBase64 = (input: string): DecodedImage | null => {
   return { bytes, ext, contentType: EXT_TO_MIME[ext]! };
 };
 
-// Persist an image and return its object key (`<id>.<ext>`).
+/** Persiste une image et renvoie sa clé d'objet (`<id>.<ext>`). */
 export const saveImage = async (id: string, image: DecodedImage): Promise<string> => {
   await ensureBucket();
   const key = `${id}.${image.ext}`;
@@ -76,8 +82,9 @@ export const saveImage = async (id: string, image: DecodedImage): Promise<string
   return key;
 };
 
-// Best-effort delete of an image object. Never throws: media cleanup must not break
-// the caller (listing/account deletion), mirroring deleteAudio in media-storage.
+// Suppression best-effort d'un objet image. Ne lève jamais : le nettoyage des médias ne
+// doit pas casser l'appelant (suppression d'annonce/de compte), à l'image de deleteAudio
+// dans media-storage.
 export const deleteImage = async (key: string): Promise<void> => {
   try {
     await minio.removeObject(BUCKET, key);
@@ -86,11 +93,14 @@ export const deleteImage = async (key: string): Promise<void> => {
   }
 };
 
-// Marker shared with the upload handler's stored URL (`<base>/uploads/images/<key>`).
+// Marqueur partagé avec l'URL stockée par le handler d'upload (`<base>/uploads/images/<key>`).
 const IMAGE_URL_MARKER = "/uploads/images/";
 
-// Derive the MinIO object key from a stored image URL. Returns null for URLs that are
-// not our own-hosted uploads, so we never attempt to remove arbitrary external objects.
+/**
+ * Déduit la clé d'objet MinIO à partir d'une URL d'image stockée. Renvoie null pour les
+ * URL qui ne sont pas nos propres uploads, afin de ne jamais tenter de supprimer des
+ * objets externes arbitraires.
+ */
 export const imageKeyFromUrl = (url: string): string | null => {
   const idx = url.lastIndexOf(IMAGE_URL_MARKER);
   if (idx === -1) return null;
@@ -98,14 +108,14 @@ export const imageKeyFromUrl = (url: string): string | null => {
   return key.length > 0 ? key : null;
 };
 
-// Returns a readable stream of the image for the given key, or null if it is missing.
+/** Renvoie un flux lisible de l'image pour la clé donnée, ou null si elle est absente. */
 export const getImageStream = async (key: string): Promise<Readable | null> => {
   try {
     await ensureBucket();
     return await minio.getObject(BUCKET, key);
   } catch (err) {
-    // Only a genuine not-found maps to null (→ 404). Any other failure (MinIO down,
-    // auth, network) rethrows so the route surfaces a logged 500 instead of a fake 404.
+    // Seul un véritable not-found devient null (→ 404). Tout autre échec (MinIO down,
+    // auth, réseau) est relancé pour que la route remonte un 500 loggé plutôt qu'un faux 404.
     const code = (err as { code?: string } | null)?.code;
     if (code === "NoSuchKey" || code === "NotFound") return null;
     throw err;

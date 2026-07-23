@@ -3,9 +3,10 @@ import { resolve } from "../../repositories/container.js";
 import type { IConversationRepository } from "../../repositories/Conversation/conversation.repository.js";
 import { getMessageImage } from "../../services/media-storage.service.js";
 
-// GET /messages/:id/image — serves a message's image (binary). Auth + participant
-// check, mirroring the audio stream. Private (unlike public listing images) so a
-// photo shared in a conversation is only readable by that conversation's members.
+// GET /messages/:id/image — sert l'image d'un message (binaire). Auth + contrôle de
+// participation, sur le même modèle que le flux audio. Privé (contrairement aux images
+// d'annonces publiques) : une photo partagée dans une conversation n'est lisible que
+// par les membres de cette conversation.
 export const imageMessageStreamHandler = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const user = req.user;
@@ -26,8 +27,8 @@ export const imageMessageStreamHandler = async (req: Request, res: Response, nex
       return;
     }
 
-    // Only participants of the message's conversation may read it (404 otherwise,
-    // so we don't reveal that the message exists).
+    // Seuls les participants de la conversation du message peuvent le lire (sinon 404,
+    // pour ne pas révéler que le message existe).
     const conv = await repo.getConversationById(message.conversationId);
     if (!conv || !conv.participants.includes(user.sub)) {
       res.status(404).json({ message: "Message not found" });

@@ -1,3 +1,8 @@
+/**
+ * Suite de tests du cas d'usage `updateUserUseCase`. Vérifie principalement la logique autour
+ * du champ `emailVerified` (remis à false uniquement quand l'email change réellement) et le
+ * mapping d'une erreur de clé dupliquée Mongo (code 11000) sur un résultat `email-conflict`.
+ */
 import { describe, expect, it, vi } from "vitest";
 import type { IUserRepository } from "../../repositories/User/user.repository.js";
 import type { IGraphRepository } from "../../repositories/Graph/graph.repository.js";
@@ -38,8 +43,9 @@ const makeUserRepo = (existing: User) => ({
 
 const makeGraphRepo = () => ({ upsertUser: vi.fn().mockResolvedValue(undefined) });
 
-// District + transaction stubs for the address-change move branch. The cases here never
-// change address, so these are inert — present only to satisfy the 4-arg signature.
+// Stubs de quartier + transaction pour la branche « déménagement » liée au changement
+// d'adresse. Les cas ici ne changent jamais l'adresse : ces stubs sont donc inertes, présents
+// uniquement pour satisfaire la signature à 4 arguments.
 const districtStub = { findDistrictsContaining: vi.fn() } as unknown as IDistrictRepository;
 const transactionStub = {} as unknown as ITransactionRepository;
 
@@ -52,6 +58,7 @@ const run = (repo: ReturnType<typeof makeUserRepo>, graph: ReturnType<typeof mak
   );
 
 describe("updateUserUseCase", () => {
+  // Un changement d'email remet emailVerified à false (re-vérification imposée).
   it("resets emailVerified to false when the email changes", async () => {
     const repo = makeUserRepo(makeUser({ emailVerified: true }));
     const graph = makeGraphRepo();
@@ -65,6 +72,7 @@ describe("updateUserUseCase", () => {
     );
   });
 
+  // Email identique dans le payload : emailVerified n'est pas touché.
   it("leaves emailVerified untouched when the email is unchanged", async () => {
     const repo = makeUserRepo(makeUser({ email: "same@example.com", emailVerified: true }));
     const graph = makeGraphRepo();
@@ -76,6 +84,7 @@ describe("updateUserUseCase", () => {
     expect(update).not.toHaveProperty("emailVerified");
   });
 
+  // Email absent du payload : emailVerified n'apparaît pas dans la mise à jour.
   it("does not touch emailVerified when email is not in the payload", async () => {
     const repo = makeUserRepo(makeUser({ emailVerified: true }));
     const graph = makeGraphRepo();
@@ -86,6 +95,7 @@ describe("updateUserUseCase", () => {
     expect(update).not.toHaveProperty("emailVerified");
   });
 
+  // Une erreur de clé dupliquée Mongo (code 11000) est mappée sur un résultat email-conflict.
   it("maps a Mongo duplicate-key (11000) error to an email-conflict result", async () => {
     const repo = makeUserRepo(makeUser());
     repo.updateUser.mockRejectedValueOnce(Object.assign(new Error("E11000 duplicate key"), { code: 11000 }));
@@ -96,6 +106,7 @@ describe("updateUserUseCase", () => {
     expect(result).toEqual({ kind: "email-conflict" });
   });
 
+  // Les erreurs de repository autres qu'une clé dupliquée sont propagées telles quelles.
   it("rethrows non-duplicate repository errors", async () => {
     const repo = makeUserRepo(makeUser());
     repo.updateUser.mockRejectedValueOnce(new Error("boom"));

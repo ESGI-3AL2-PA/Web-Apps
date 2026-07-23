@@ -1,29 +1,35 @@
+/**
+ * Contrat du repository du writer de synchronisation + types associés.
+ *
+ * Unique porte d'entrée par laquelle des données d'origine client (H2) atteignent
+ * les collections métier.
+ */
 import type { SyncEntity } from "@repo/contracts";
 import type { SyncProvenance } from "@repo/shared";
 
 export type SyncDoc = Record<string, unknown>;
 
 /**
- * `null` marks a server-origin write: the `_sync` stamp is cleared instead of set.
- * Conflict resolutions use it so the resolved state is NOT echo-skipped by the very
- * instance that raised the conflict — that instance needs the pull to clear its
- * pending row (§6.5).
+ * `null` marque une écriture d'origine serveur : le stamp `_sync` est effacé au lieu
+ * d'être posé. Les résolutions de conflit s'en servent pour que l'état résolu ne soit
+ * PAS écho-ignoré par l'instance même qui avait déclenché le conflit — cette instance
+ * a besoin du pull pour effacer sa ligne « pending » (§6.5).
  */
 export type SyncStamp = SyncProvenance | null;
 
 /**
- * The only path H2-originated data takes into the domain collections. Every method
- * narrows the payload through the entity's allowlist and stamps `_sync`, and the
- * write methods return the **exact persisted** `updatedAt` (not a re-read) so the
- * ingest ack can advance the client's optimistic-concurrency token synchronously.
+ * Chaque méthode restreint le payload via l'allowlist de l'entité et estampille `_sync` ;
+ * les méthodes d'écriture renvoient l'`updatedAt` **exactement persisté** (pas une
+ * relecture) pour que l'ack d'ingestion fasse avancer le token de concurrence optimiste
+ * du client de façon synchrone.
  */
 export interface ISyncWriterRepository {
   findById(entity: SyncEntity, id: string): Promise<SyncDoc | null>;
 
-  /** Business-key lookup used to dedup a first INSERT (§6.1). */
+  /** Recherche par clé métier, utilisée pour dédupliquer un premier INSERT (§6.1). */
   findByBusinessKey(entity: SyncEntity, value: unknown): Promise<SyncDoc | null>;
 
-  /** Insert, or — with an explicit `id` — idempotently upsert an allowlisted document. */
+  /** Insert, ou — avec un `id` explicite — upsert idempotent d'un document allowlisté. */
   insert(
     entity: SyncEntity,
     data: SyncDoc,
@@ -35,10 +41,10 @@ export interface ISyncWriterRepository {
 
   remove(entity: SyncEntity, id: string): Promise<boolean>;
 
-  /** Bump `updatedAt` so a `server`-resolved conflict re-propagates to every instance. */
+  /** Remonte `updatedAt` pour qu'un conflit résolu côté `serveur` se re-propage à chaque instance. */
   touch(entity: SyncEntity, id: string): Promise<{ updatedAt: string } | null>;
 }
 
-/** Mongo's duplicate-key error — a lost race on the `user.email` unique index. */
+/** Erreur de clé dupliquée Mongo (code 11000) — une course perdue sur l'index unique `user.email`. */
 export const isDuplicateKeyError = (err: unknown): boolean =>
   typeof err === "object" && err !== null && (err as { code?: number }).code === 11000;

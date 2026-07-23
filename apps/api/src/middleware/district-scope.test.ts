@@ -1,3 +1,6 @@
+// Suite de tests du scoping par quartier des endpoints de liste : vérifie que résidents et
+// administrateurs de quartier sont confinés à leur propre quartier (la valeur demandée par le
+// client est ignorée), tandis que superAdmin / service peuvent cibler n'importe quel quartier.
 import { describe, expect, it, vi } from "vitest";
 import type { IUserRepository } from "../repositories/User/user.repository.js";
 import { callerCanReadDistrict, resolveCallerListDistrict, resolveListDistrictScope } from "./district-scope.js";
@@ -7,6 +10,7 @@ const userRepo = (districtId: string | null) =>
     getUserById: vi.fn().mockResolvedValue(districtId === null ? null : { id: "u1", districtId }),
   }) as unknown as IUserRepository;
 
+// resolveListDistrictScope : version synchrone (admin / superAdmin ; ne gère pas le rôle user).
 describe("resolveListDistrictScope", () => {
   it("confines an admin to their bound district, ignoring the requested one", () => {
     expect(resolveListDistrictScope({ role: "admin", adminDistrictId: "d1" }, "d2")).toEqual({ districtId: "d1" });
@@ -21,6 +25,7 @@ describe("resolveListDistrictScope", () => {
   });
 });
 
+// resolveCallerListDistrict : variante async qui gère aussi le résident (quartier chargé depuis le repo).
 describe("resolveCallerListDistrict", () => {
   it("confines a resident to their own district, ignoring the requested one", async () => {
     const scope = await resolveCallerListDistrict({ role: "user", sub: "u1" }, "d2", userRepo("d1"));
@@ -40,6 +45,7 @@ describe("resolveCallerListDistrict", () => {
   });
 });
 
+// callerCanReadDistrict : autorisation de lecture d'un enregistrement mono/multi-quartier par l'appelant.
 describe("callerCanReadDistrict", () => {
   it("lets a resident read a record in their own district", async () => {
     expect(await callerCanReadDistrict({ role: "user", sub: "u1" }, ["d1"], userRepo("d1"))).toBe(true);

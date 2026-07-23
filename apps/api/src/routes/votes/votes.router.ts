@@ -25,6 +25,17 @@ const callerDistrictId = async (userId: string): Promise<string | null> => {
   return caller?.districtId ?? null;
 };
 
+/**
+ * Router ts-rest des votes / sondages de quartier.
+ *
+ * Couche router. Règles de visibilité et de création selon le rôle :
+ *  - résident : propose en `draft` uniquement pour son quartier, ne voit les
+ *    résultats qu'après avoir voté (ou une fois le scrutin clos) ;
+ *  - admin : confiné à son adminDistrictId, peut publier/fermer ;
+ *  - superAdmin : n'importe quel quartier.
+ * Les refus de lecture renvoient 404 (et non 403) pour ne pas divulguer l'existence
+ * d'un vote d'un quartier voisin.
+ */
 export const votesRouter = s.router(votesContract, {
   getVotes: async ({ query, req }) => {
     const user = req.user!;
@@ -60,7 +71,7 @@ export const votesRouter = s.router(votesContract, {
     // Résidents : proposent (createVote force status:"draft") uniquement pour LEUR quartier.
     // Admins : confinés à leur adminDistrictId. superAdmin : n'importe quel quartier.
     if (user.role === "superAdmin") {
-      // no district restriction
+      // aucune restriction de quartier
     } else if (user.role === "admin") {
       if (!user.adminDistrictId || districtIds.length === 0 || !districtIds.every((d) => d === user.adminDistrictId)) {
         return { status: 403, body: { message: "Vous ne pouvez créer un vote que pour votre quartier" } };

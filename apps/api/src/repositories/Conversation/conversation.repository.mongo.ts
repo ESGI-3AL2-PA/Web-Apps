@@ -7,6 +7,12 @@ import type { IConversationRepository } from "./conversation.repository.js";
 type ConversationDoc = WithMongoId<Conversation>;
 type MessageDoc = WithMongoId<Message>;
 
+/**
+ * Implémentation Mongo du repository de messagerie.
+ *
+ * Persiste deux collections : `conversations` et `messages`. Chaque création de
+ * message met aussi à jour `lastMessageAt` sur la conversation parente.
+ */
 export class MongoConversationRepository implements IConversationRepository {
   private conversations: Collection<ConversationDoc>;
   private messages: Collection<MessageDoc>;
@@ -17,7 +23,7 @@ export class MongoConversationRepository implements IConversationRepository {
   }
 
   async ensureIndexes(): Promise<void> {
-    // Backs district-scoped (admin) conversation list filtering.
+    // Sous-tend le filtrage de la liste des conversations par quartier (côté admin).
     await this.conversations.createIndex({ districtId: 1 });
   }
 
@@ -57,7 +63,8 @@ export class MongoConversationRepository implements IConversationRepository {
   }
 
   async findDirectConversation(participantIds: string[]): Promise<Conversation | null> {
-    // Order-independent exact match on the pair: same set, same size, direct type.
+    // Match exact de la paire indépendant de l'ordre : même ensemble, même taille,
+    // type direct ($all + $size garantit qu'il n'y a aucun participant en plus).
     const doc = await this.conversations.findOne({
       type: "direct",
       participants: { $all: participantIds, $size: participantIds.length },
@@ -97,6 +104,8 @@ export class MongoConversationRepository implements IConversationRepository {
     const now = new Date().toISOString();
     const doc: MessageDoc = { ...data, _id: randomUUID(), createdAt: now, read: false };
 
+    // Insertion du message + bump de `lastMessageAt` sur la conversation, en
+    // parallèle, pour que le tri des conversations reflète l'activité récente.
     await Promise.all([
       this.messages.insertOne(doc),
       this.conversations.updateOne({ _id: data.conversationId }, { $set: { lastMessageAt: now } }),
@@ -133,8 +142,9 @@ export class MongoConversationRepository implements IConversationRepository {
   }
 
   async deleteUserMessages(userId: string): Promise<{ audioIds: string[]; imageIds: string[] }> {
-    // Collect the media message ids (audio + image) before the rows are gone, so their
-    // stored objects can be removed too. Both are private, keyed by message id.
+    // On collecte les ids des messages média (audio + image) AVANT de supprimer les
+    // lignes, pour pouvoir aussi retirer leurs objets stockés. Les deux sont privés,
+    // indexés par l'id du message.
     const mediaDocs = await this.messages
       .find({ senderId: userId, type: { $in: ["audio", "image"] } }, { projection: { _id: 1, type: 1 } })
       .toArray();

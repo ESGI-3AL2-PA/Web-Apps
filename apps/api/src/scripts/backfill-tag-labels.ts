@@ -1,19 +1,22 @@
 /**
- * Backfill script — migrates tag docs written before per-language labels existed.
- * For every tag missing `label`, sets it from the known default translations (by
- * `name`) or falls back to the raw name in both languages. A legacy string
- * `description` is wrapped into `{ fr, en }`.
+ * Script de backfill — migre les documents tag écrits avant l'existence des labels
+ * par langue. Pour chaque tag sans `label`, on le renseigne depuis les traductions
+ * par défaut connues (indexées par `name`), sinon on retombe sur le nom brut dans
+ * les deux langues. Une `description` héritée sous forme de chaîne est enveloppée
+ * en `{ fr, en }`.
  *
- * Usage:
- *   npm run tags:backfill        # from apps/api
+ * Usage :
+ *   npm run tags:backfill        # depuis apps/api
  *   tsx src/scripts/backfill-tag-labels.ts
  *
- * Idempotent: docs already carrying an object `label` are left untouched.
+ * Idempotent : les documents portant déjà un `label` de type objet sont laissés intacts.
  */
 
 import { connectDB, closeDB } from "../repositories/mongodb.connector.js";
 import { DEFAULT_TAGS } from "../use-cases/tags/default-tags.js";
 
+// Forme d'un document tag « historique » : `label` et `description` peuvent être
+// absents ou (pour description) au format chaîne d'avant la bascule multilingue.
 type LegacyTagDoc = {
   _id: string;
   name: string;
@@ -33,16 +36,19 @@ const main = async (): Promise<void> => {
   for (const doc of docs) {
     const set: Partial<LegacyTagDoc> = {};
 
+    // Label manquant ou non-objet → preset connu, sinon nom brut dans les deux langues.
     if (!doc.label || typeof doc.label !== "object") {
       const preset = defaultsByName.get(doc.name);
       set.label = preset ? preset.label : { fr: doc.name, en: doc.name };
     }
 
+    // Description encore au format chaîne → on l'enveloppe en { fr, en }.
     if (typeof doc.description === "string") {
       const preset = defaultsByName.get(doc.name);
       set.description = preset?.description ?? { fr: doc.description, en: doc.description };
     }
 
+    // On n'écrit que si quelque chose a réellement changé (préserve l'idempotence).
     if (Object.keys(set).length > 0) {
       await collection.updateOne({ _id: doc._id }, { $set: set });
       migrated++;

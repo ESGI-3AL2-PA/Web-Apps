@@ -1,22 +1,24 @@
+/**
+ * Repository (implémentation en mémoire) du writer de synchronisation.
+ *
+ * Applique le vrai allowlist `pickWritable` et reproduit la gestion `$set`/`$unset`
+ * du stamp `_sync` de la version Mongo, pour que les tests exercent le véritable
+ * write-model plutôt qu'une approximation écrite à la main.
+ */
 import { randomUUID } from "crypto";
 import type { SyncEntity } from "@repo/contracts";
 import { pickWritable } from "../../sync/sync-entity-config.js";
 import type { ISyncWriterRepository, SyncDoc, SyncStamp } from "./sync-writer.repository.js";
 
-/**
- * In-memory sync writer. Runs the real `pickWritable` allowlist and mirrors the Mongo
- * writer's `$set`/`$unset` handling of `_sync`, so tests exercise the actual
- * write-model rather than a hand-written approximation of it.
- */
 export class InMemorySyncWriterRepository implements ISyncWriterRepository {
   docs = new Map<string, SyncDoc>();
-  /** Injectable so tests get deterministic, ordered `updatedAt` values. */
+  /** Injectable pour que les tests obtiennent des `updatedAt` déterministes et ordonnés. */
   now: () => string = () => new Date().toISOString();
 
   private key = (entity: SyncEntity, id: string) => `${entity}:${id}`;
 
-  // A null stamp CLEARS `_sync` — that is what makes a server-origin write (a conflict
-  // resolution) visible to the very instance whose push raised the conflict.
+  // Un stamp null EFFACE `_sync` — c'est ce qui rend une écriture d'origine serveur (une
+  // résolution de conflit) visible pour l'instance même dont le push avait déclenché le conflit.
   private stamped(doc: SyncDoc, sync: SyncStamp): SyncDoc {
     if (sync) return { ...doc, _sync: sync };
     const { _sync: _dropped, ...rest } = doc;
@@ -27,6 +29,7 @@ export class InMemorySyncWriterRepository implements ISyncWriterRepository {
     return this.docs.get(this.key(entity, id)) ?? null;
   }
 
+  // Approximation de la recherche par clé métier : ne compare que sur `email` (seule clé métier en usage).
   async findByBusinessKey(entity: SyncEntity, value: unknown): Promise<SyncDoc | null> {
     for (const [key, doc] of this.docs) {
       if (key.startsWith(`${entity}:`) && doc.email === value) return doc;

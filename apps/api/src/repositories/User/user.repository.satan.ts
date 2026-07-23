@@ -4,10 +4,13 @@ import type { IUserRepository } from "./user.repository.js";
 import { containsAny, eq, paginate, where } from "../satan.helpers.js";
 
 /**
- * SATAN-QL-backed user repository. Key lookups, the paginated `getUsers` list
- * (COUNT + CONTAINS search), the scalar `setBanned` transition and the id delete
- * all go through SATAN QL (`satan.query`); only the server-generated
- * create/update delegate to the wrapped Mongo repository.
+ * Implémentation SATAN QL du repository des utilisateurs (couche repository).
+ *
+ * Enveloppe l'implémentation Mongo : les lookups par clé, la liste paginée
+ * `getUsers` (COUNT + recherche CONTAINS), la transition scalaire `setBanned` et
+ * la suppression par id passent tous par SATAN QL (`satan.query`) ; seuls les
+ * create/update (qui génèrent des champs côté serveur) sont délégués au
+ * repository Mongo enveloppé.
  */
 export class SatanUserRepository implements IUserRepository {
   constructor(
@@ -31,6 +34,7 @@ export class SatanUserRepository implements IUserRepository {
 
   async setBanned(id: string, banned: boolean): Promise<User | null> {
     const now = new Date().toISOString();
+    // SATAN QL n'a pas de « update and return » : on écrit puis on relit l'utilisateur.
     await this.satan.query(
       `UPDATE users SET banned = ${quote(banned)}, updatedAt = ${quote(now)} WHERE _id = ${quote(id)}`,
     );
@@ -43,6 +47,7 @@ export class SatanUserRepository implements IUserRepository {
     return res.deletedCount > 0;
   }
 
+  // Construit la clause WHERE (recherche CONTAINS multi-champs + égalités) puis délègue au helper de pagination.
   getUsers(params: { search?: string; districtId?: string; role?: string; page?: number; limit?: number }) {
     const { search, districtId, role, page = 1, limit = 10 } = params;
     const clause = where([
@@ -53,7 +58,7 @@ export class SatanUserRepository implements IUserRepository {
     return paginate<User>(this.satan, "users", clause, { page, limit });
   }
 
-  // --- delegated to Mongo (server-generated fields) ---
+  // --- délégué à Mongo (champs générés côté serveur) ---
   ensureIndexes(): Promise<void> {
     return this.mongo.ensureIndexes();
   }

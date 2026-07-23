@@ -1,3 +1,9 @@
+// Suite de tests (couche use-cases) du cas d'usage de création de contrat. Vérifie l'ordre
+// des opérations sensibles (mise sous séquestre du prix AVANT l'appel Documenso), les
+// invariants de réservation (annonce active, prestataire = auteur, parties distinctes,
+// solde suffisant, pas de doublon), et les chemins de compensation (remboursement du
+// séquestre en cas d'échec Documenso ou de doublon en base, non-rollback quand seul le
+// grand livre échoue).
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { logger } from "@repo/shared";
 import type { User } from "../../entities/user.entity.js";
@@ -27,8 +33,8 @@ const makeUserRepo = (users: Record<string, User | null>): IUserRepository =>
     getUserById: vi.fn(async (id: string) => users[id] ?? null),
   }) as unknown as IUserRepository;
 
-// The listing the contract is booked against — districtId + price are derived from it
-// (never from the client), and its status/authorId gate the booking invariants.
+// L'annonce contre laquelle le contrat est réservé — districtId + prix en sont dérivés
+// (jamais du client), et son status/authorId conditionnent les invariants de réservation.
 const makeListing = (overrides: Partial<Listing> = {}): Listing =>
   ({
     id: "listing-1",
@@ -75,7 +81,7 @@ const makeDocumenso = (overrides: Partial<IDocumensoService> = {}): IDocumensoSe
     ...overrides,
   }) as unknown as IDocumensoService;
 
-// Client-supplied fields only; districtId + price now come from the listing.
+// Champs fournis par le client uniquement ; districtId + prix viennent désormais de l'annonce.
 const baseData = {
   listingId: "listing-1",
   providerId: "provider-1",
@@ -90,6 +96,7 @@ const defaultUsers = () => ({
 describe("createContractUseCase", () => {
   beforeEach(() => vi.clearAllMocks());
 
+  // Le prix est mis sous séquestre (tryDebit) AVANT de générer le document Documenso.
   it("escrows the price BEFORE generating the Documenso document", async () => {
     const calls: string[] = [];
     const txRepo = makeTxRepo({
@@ -117,7 +124,7 @@ describe("createContractUseCase", () => {
     expect(calls).toEqual(["tryDebit", "generateContractDocument"]);
     expect(txRepo.tryDebit).toHaveBeenCalledWith("beneficiary-1", 500);
     expect(contract.id).toBe("contract-1");
-    // Ledger hold recorded after the contract exists, as a negative transfer_out.
+    // La retenue au grand livre est enregistrée après l'existence du contrat, comme un transfer_out négatif.
     expect(txRepo.createTransactions).toHaveBeenCalledWith([
       expect.objectContaining({
         userId: "beneficiary-1",
@@ -129,6 +136,7 @@ describe("createContractUseCase", () => {
     ]);
   });
 
+  // Annonce introuvable → ListingNotFoundError, sans toucher à l'argent.
   it("throws ListingNotFoundError when the listing is missing (no money touched)", async () => {
     const txRepo = makeTxRepo();
     await expect(
@@ -143,6 +151,7 @@ describe("createContractUseCase", () => {
     expect(txRepo.tryDebit).not.toHaveBeenCalled();
   });
 
+  // Annonce fermée → ListingNotActiveError, sans débit.
   it("throws ListingNotActiveError when the listing is closed", async () => {
     const txRepo = makeTxRepo();
     await expect(
@@ -157,6 +166,7 @@ describe("createContractUseCase", () => {
     expect(txRepo.tryDebit).not.toHaveBeenCalled();
   });
 
+  // Bénéficiaire === prestataire → SamePartyError, sans débit.
   it("throws SamePartyError when beneficiary === provider", async () => {
     const txRepo = makeTxRepo();
     await expect(
@@ -174,6 +184,7 @@ describe("createContractUseCase", () => {
     expect(txRepo.tryDebit).not.toHaveBeenCalled();
   });
 
+  // providerId différent de l'auteur de l'annonce → NotListingProviderError, sans débit.
   it("throws NotListingProviderError when providerId isn't the listing author", async () => {
     const txRepo = makeTxRepo();
     await expect(
@@ -188,6 +199,7 @@ describe("createContractUseCase", () => {
     expect(txRepo.tryDebit).not.toHaveBeenCalled();
   });
 
+  // Si generateContractDocument échoue, la retenue de séquestre est remboursée (adjustBalance).
   it("refunds the escrow hold when generateContractDocument throws", async () => {
     const txRepo = makeTxRepo();
     const documenso = makeDocumenso({
@@ -202,12 +214,13 @@ describe("createContractUseCase", () => {
     ).rejects.toThrow("documenso boom");
 
     expect(txRepo.tryDebit).toHaveBeenCalledWith("beneficiary-1", 500);
-    // Hold rolled back — no contract was persisted, no ledger entry written.
+    // Retenue annulée — aucun contrat persisté, aucune écriture au grand livre.
     expect(txRepo.adjustBalance).toHaveBeenCalledWith("beneficiary-1", 500);
     expect(contractRepo.createContract).not.toHaveBeenCalled();
     expect(txRepo.createTransactions).not.toHaveBeenCalled();
   });
 
+  // Une clé dupliquée Mongo (code 11000) à la persistance devient DuplicateContractError, avec remboursement.
   it("maps a Mongo duplicate-key (11000) on persist to DuplicateContractError and refunds", async () => {
     const txRepo = makeTxRepo();
     const contractRepo = makeContractRepo({
@@ -230,6 +243,7 @@ describe("createContractUseCase", () => {
     expect(txRepo.createTransactions).not.toHaveBeenCalled();
   });
 
+  // Un contrat déjà persisté n'est PAS annulé si l'écriture au grand livre échoue.
   it("does NOT roll back a persisted contract when the ledger write fails", async () => {
     const loggerError = vi.spyOn(logger, "error").mockImplementation(() => {});
     const txRepo = makeTxRepo({
@@ -239,7 +253,7 @@ describe("createContractUseCase", () => {
     });
     const contractRepo = makeContractRepo();
 
-    // Ledger failure is swallowed — the contract is still returned successfully.
+    // L'échec du grand livre est avalé — le contrat est tout de même renvoyé avec succès.
     const contract = await createContractUseCase(
       contractRepo,
       makeListingRepo(),
@@ -249,12 +263,13 @@ describe("createContractUseCase", () => {
     )(baseData);
 
     expect(contract.id).toBe("contract-1");
-    // No refund: the money is correctly held against a live contract.
+    // Pas de remboursement : l'argent est correctement retenu face à un contrat actif.
     expect(txRepo.adjustBalance).not.toHaveBeenCalled();
     expect(loggerError).toHaveBeenCalled();
     loggerError.mockRestore();
   });
 
+  // Débit refusé → InsufficientFundsError, sans aucun travail externe (ni Documenso, ni persistance).
   it("throws InsufficientFundsError (no external work) when the debit fails", async () => {
     const txRepo = makeTxRepo({ tryDebit: vi.fn(async () => false) });
     const documenso = makeDocumenso();
@@ -269,6 +284,7 @@ describe("createContractUseCase", () => {
     expect(txRepo.adjustBalance).not.toHaveBeenCalled();
   });
 
+  // Un contrat actif en double est rejeté avant tout mouvement d'argent.
   it("rejects a duplicate active contract before touching money", async () => {
     const txRepo = makeTxRepo();
     const documenso = makeDocumenso();
@@ -284,6 +300,7 @@ describe("createContractUseCase", () => {
     expect(documenso.generateContractDocument).not.toHaveBeenCalled();
   });
 
+  // Une partie manquante → ContractPartyNotFoundError, sans débit.
   it("throws ContractPartyNotFoundError when a party is missing (no debit)", async () => {
     const txRepo = makeTxRepo();
     const users = { "provider-1": makeUser("provider-1"), "beneficiary-1": null };
@@ -301,6 +318,7 @@ describe("createContractUseCase", () => {
     expect(txRepo.tryDebit).not.toHaveBeenCalled();
   });
 
+  // Un contrat gratuit (prix 0) court-circuite tous les chemins liés à l'argent.
   it("skips all money paths for a free (price 0) contract", async () => {
     const txRepo = makeTxRepo();
     const contract = await createContractUseCase(

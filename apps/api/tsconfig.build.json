@@ -1,4 +1,6 @@
 {
+  // Config TypeScript de build : hérite de tsconfig.json mais exclut les tests
+  // (`*.test.ts`) du compilat `dist`. C'est elle qu'utilise `tsc` pour produire le prod.
   "extends": "./tsconfig.json",
   "exclude": ["node_modules", "src/**/*.test.ts"]
 }

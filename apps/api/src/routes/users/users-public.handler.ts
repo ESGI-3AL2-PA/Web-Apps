@@ -2,9 +2,13 @@ import type { Request, Response, NextFunction } from "express";
 import { resolve } from "../../repositories/container.js";
 import { getUserByIdUseCase } from "../../use-cases/users/get-user-by-id.use-case.js";
 
-// GET /users/:id/public — renvoie uniquement les infos publiques (id, firstName, lastName)
-// pour permettre à n'importe quel user authentifié d'afficher les noms des autres
-// (sidebar messagerie, bulles d'expéditeur, etc.) sans exposer email/téléphone/solde.
+/**
+ * Handler Express brut (hors ts-rest) : `GET /users/:id/public`.
+ *
+ * Renvoie uniquement les infos publiques (id, firstName, lastName) pour permettre
+ * à n'importe quel user authentifié d'afficher les noms des autres (sidebar
+ * messagerie, bulles d'expéditeur, etc.) sans exposer email / téléphone / solde.
+ */
 export const userPublicHandler = async (req: Request, res: Response, next: NextFunction) => {
   try {
     if (!req.user) {

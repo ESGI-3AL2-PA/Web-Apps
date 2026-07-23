@@ -1,13 +1,13 @@
-// District scoping for list endpoints.
+// Helper — scoping par quartier des endpoints de liste.
 //
-// The per-record authorize middleware only guards single-record routes (it no-ops when there
-// is no `:id`), so collection/list endpoints are otherwise unscoped. This resolves the district
-// a list request may read: a resident (`user`) and a regular `admin` are both confined to their
-// own district and the client-supplied value is ignored; `superAdmin` / `service` may target any
-// district they ask for.
+// Le middleware authorize par enregistrement ne garde que les routes mono-enregistrement (no-op
+// en l'absence de `:id`), donc les endpoints de collection/liste sont sinon sans scope. Ce module
+// résout le quartier qu'une requête de liste peut lire : un résident (`user`) et un `admin` standard
+// sont tous deux confinés à leur propre quartier et la valeur fournie par le client est ignorée ;
+// `superAdmin` / `service` peuvent cibler n'importe quel quartier demandé.
 //
-// Returns either the districtId to filter by, or `{ empty: true }` — a signal that the caller
-// (a resident or admin bound to no district) must see nothing rather than everything.
+// Renvoie soit le districtId à filtrer, soit `{ empty: true }` — signal que l'appelant (résident ou
+// admin rattaché à aucun quartier) doit ne rien voir plutôt que tout voir.
 
 import type { IUserRepository } from "../repositories/User/user.repository.js";
 
@@ -18,18 +18,19 @@ interface DistrictScopeUser {
 
 export type DistrictScopeResult = { districtId?: string } | { empty: true };
 
+/** Résout le quartier de liste pour un admin / superAdmin / service (ne gère pas le rôle `user`). */
 export function resolveListDistrictScope(user: DistrictScopeUser, requested?: string): DistrictScopeResult {
   if (user.role === "admin") {
-    if (!user.adminDistrictId) return { empty: true }; // admin bound to no district → sees nothing
-    return { districtId: user.adminDistrictId }; // ignore the client-supplied value
+    if (!user.adminDistrictId) return { empty: true }; // admin rattaché à aucun quartier → ne voit rien
+    return { districtId: user.adminDistrictId }; // ignore la valeur fournie par le client
   }
-  return { districtId: requested }; // superAdmin / service: honor the request as-is
+  return { districtId: requested }; // superAdmin / service : respecte la demande telle quelle
 }
 
-// Same, but also handles role `user`. A resident's district of residence is not in the JWT (only
-// `adminDistrictId` is), so it has to be loaded — hence the async variant. Prefer this over
-// `resolveListDistrictScope` on any route residents can reach: the sync version falls through to
-// "honor the request as-is" for them, which lets a resident enumerate other districts.
+// Idem, mais gère aussi le rôle `user`. Le quartier de résidence d'un résident n'est pas dans le JWT
+// (seul `adminDistrictId` l'est), il faut donc le charger — d'où la variante async. À préférer à
+// `resolveListDistrictScope` sur toute route accessible aux résidents : la version synchrone retombe
+// pour eux sur « respecte la demande telle quelle », ce qui laisserait un résident énumérer les autres quartiers.
 export async function resolveCallerListDistrict(
   user: DistrictScopeUser & { sub: string },
   requested: string | undefined,
@@ -38,17 +39,17 @@ export async function resolveCallerListDistrict(
   if (user.role === "user") {
     const resident = await userRepo.getUserById(user.sub);
     if (!resident?.districtId) return { empty: true };
-    return { districtId: resident.districtId }; // ignore the client-supplied value
+    return { districtId: resident.districtId }; // ignore la valeur fournie par le client
   }
   return resolveListDistrictScope(user, requested);
 }
 
-// Single-record counterpart, for district-public resources (listings, events, votes) where the
-// declarative `scope` metadata does not fit: an ownerField there would wrongly narrow a resident
-// to their OWN records. Callers should answer a denial with 404, not 403, so the existence of a
-// neighbouring district's record is not disclosed.
+// Équivalent mono-enregistrement, pour les ressources publiques au quartier (annonces, événements,
+// votes) où les métadonnées `scope` déclaratives ne conviennent pas : un ownerField y restreindrait à
+// tort un résident à ses PROPRES enregistrements. Les appelants doivent répondre un refus par 404, pas
+// 403, pour ne pas révéler l'existence d'un enregistrement d'un quartier voisin.
 //
-// `recordDistrictIds` takes an array so votes (which span several districts) share this path.
+// `recordDistrictIds` prend un tableau pour que les votes (qui couvrent plusieurs quartiers) partagent ce chemin.
 export async function callerCanReadDistrict(
   user: DistrictScopeUser & { sub: string },
   recordDistrictIds: string[],

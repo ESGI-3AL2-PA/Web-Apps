@@ -3,9 +3,15 @@ import type { ClientSession } from "mongodb";
 import type { Vote, VoteResponseEntity } from "../../entities/vote.entity.js";
 import type { IVoteRepository } from "./vote.repository.js";
 
-/** SATAN QL for the (voteId, userId) has-voted existence check. Reads enrich
- *  with per-user state, writes maintain cached `results[]` counts across two
- *  collections — all beyond a scalar QL, so they stay on Mongo. */
+/**
+ * Implémentation SATAN QL du repository des votes / sondages (couche repository).
+ *
+ * Enveloppe l'implémentation Mongo : seul le test d'existence « a voté »
+ * (voteId, userId) passe par SATAN QL. Les lectures enrichissent chaque vote de
+ * l'état par utilisateur et les écritures entretiennent les compteurs
+ * `results[]` en cache à travers deux collections — tout cela dépasse une
+ * requête scalaire, donc reste délégué à Mongo.
+ */
 export class SatanVoteRepository implements IVoteRepository {
   constructor(
     private readonly mongo: IVoteRepository,
@@ -19,7 +25,7 @@ export class SatanVoteRepository implements IVoteRepository {
     return rows.length > 0;
   }
 
-  // --- delegated to Mongo ---
+  // --- délégué à Mongo ---
   ensureIndexes(): Promise<void> {
     return this.mongo.ensureIndexes();
   }

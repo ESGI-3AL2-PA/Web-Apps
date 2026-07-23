@@ -1,10 +1,14 @@
+/**
+ * Contrat du repository de l'état du watcher de synchronisation.
+ *
+ * Suivi du watcher : le resume token des Change Streams + le drapeau one-shot de seed.
+ */
 import type { ResumeToken } from "mongodb";
 
-/** Watcher bookkeeping: the Change-Streams resume token + the one-shot seed flag. */
 export interface ISyncStateRepository {
   getResumeToken(): Promise<ResumeToken | null>;
   saveResumeToken(token: ResumeToken): Promise<void>;
-  /** Drop the token after the oplog rolled past it, so the next open starts from now. */
+  /** Efface le token après que l'oplog l'a dépassé, pour que la prochaine ouverture reparte de maintenant. */
   clearResumeToken(): Promise<void>;
   isSeeded(): Promise<boolean>;
   markSeeded(): Promise<void>;

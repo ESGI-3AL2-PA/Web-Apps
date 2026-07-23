@@ -3,13 +3,17 @@ import type { Event } from "../../entities/event.entity.js";
 import type { IEventRepository } from "./event.repository.js";
 import { containsAny, eq, paginate, where } from "../satan.helpers.js";
 
-/** Window for the date-derived "ongoing" status — mirrors the Mongo repo. */
+/** Fenêtre du statut "ongoing" dérivé de la date — reflète le repo Mongo. */
 const FOUR_HOURS_MS = 4 * 60 * 60 * 1000;
 
-/** SATAN QL for id / `IN`-batch lookups, the plain deletes (incl. the
- *  `event_interactions` sub-collection) and the paginated list (COUNT + FIND
- *  with the date-derived status filter); Mongo for guarded seat updates,
- *  upserts, `$pull` and the interaction scan. */
+/**
+ * Repository des événements en implémentation hybride.
+ *
+ * SATAN QL pour les recherches par id / par lot `IN`, les suppressions simples (y
+ * compris la sous-collection `event_interactions`) et la liste paginée (COUNT +
+ * FIND avec le filtre de statut dérivé de la date) ; Mongo pour les mises à jour
+ * de sièges gardées, les upserts, le `$pull` et le scan des interactions.
+ */
 export class SatanEventRepository implements IEventRepository {
   constructor(
     private readonly mongo: IEventRepository,
@@ -43,13 +47,15 @@ export class SatanEventRepository implements IEventRepository {
   getEvents(params: Parameters<IEventRepository["getEvents"]>[0]) {
     const { search, status, districtId, creatorId, registrantId, page = 1, limit = 20 } = params;
     const conditions: Array<string | false | null | undefined> = [
-      // Title-only search — matching description/location caused false positives.
+      // Recherche sur le titre uniquement — matcher description/lieu produisait des
+      // faux positifs.
       search && containsAny(["title"], search),
       districtId && eq("districtId", districtId),
       creatorId && eq("creatorId", creatorId),
       registrantId && eq("registrants", registrantId),
     ];
-    // Date-derived status (see computeStatus in the use-case); "cancelled" stays explicit.
+    // Statut dérivé de la date (cf. computeStatus dans le cas d'usage) ; "cancelled"
+    // reste un statut explicite stocké.
     if (status === "cancelled") {
       conditions.push(eq("status", "cancelled"));
     } else if (status) {
@@ -67,7 +73,7 @@ export class SatanEventRepository implements IEventRepository {
     return paginate<Event>(this.satan, "events", where(conditions), { page, limit });
   }
 
-  // --- delegated to Mongo (guarded/upsert/$pull writes and the interaction scan) ---
+  // --- délégué à Mongo (écritures gardées/upsert/$pull et scan des interactions) ---
   ensureIndexes(): Promise<void> {
     return this.mongo.ensureIndexes();
   }

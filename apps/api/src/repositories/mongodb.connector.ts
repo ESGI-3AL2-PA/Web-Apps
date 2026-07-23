@@ -1,11 +1,12 @@
 import { createMongoConnector } from "@repo/shared";
 
-// One shared client for the whole app. The connector logic lives in @repo/shared;
-// this binds it to the api's env and re-exports the functions the app imports.
+// Connecteur Mongo de l'api (couche infrastructure). Un seul client partagé pour
+// toute l'application. La logique de connexion vit dans @repo/shared ; ce fichier
+// la lie à l'environnement de l'api et réexporte les fonctions que l'app importe.
 const connector = createMongoConnector();
 
 export const connectDB = connector.connectDB;
-// Exposed so the transaction helper can start sessions for multi-document writes.
+// Exposé pour que le helper de transactions puisse ouvrir des sessions (écritures multi-documents).
 export const getMongoClient = connector.getMongoClient;
 export const pingDB = connector.pingDB;
 export const closeDB = connector.closeDB;

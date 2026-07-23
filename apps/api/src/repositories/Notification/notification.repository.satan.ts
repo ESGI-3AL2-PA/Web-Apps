@@ -3,8 +3,11 @@ import type { Notification } from "../../entities/notification.entity.js";
 import type { INotificationRepository } from "./notification.repository.js";
 import { eq, paginate, where } from "../satan.helpers.js";
 
-/** SATAN QL for id lookup, the two deletes and the paginated list (COUNT + FIND,
- *  newest first). */
+/**
+ * Implémentation SATAN QL du repository des notifications. SATAN pour la lecture
+ * par id, les deux suppressions et la liste paginée (COUNT + FIND, du plus
+ * récent au plus ancien) ; Mongo pour le reste.
+ */
 export class SatanNotificationRepository implements INotificationRepository {
   constructor(
     private readonly mongo: INotificationRepository,
@@ -38,7 +41,7 @@ export class SatanNotificationRepository implements INotificationRepository {
     return paginate<Notification>(this.satan, "notifications", clause, { page, limit, sort: "createdAt DESC" });
   }
 
-  // --- delegated to Mongo (server-generated fields) ---
+  // --- délégué à Mongo (champs générés côté serveur) ---
   ensureIndexes(): Promise<void> {
     return this.mongo.ensureIndexes();
   }

@@ -13,16 +13,18 @@ import type {
 } from "./graph.repository.js";
 
 /**
- * Neo4j-backed implementation of the graph projection.
+ * Implémentation Neo4j de la projection graphe (repository).
  *
- * All write queries use MERGE (idempotent upsert) so seed/sync can re-run
- * without duplicating nodes or edges. Each method opens its own session and
- * closes it; for hot-path queries the caller can batch calls inside their own
- * session if needed.
+ * Toutes les requêtes d'écriture utilisent MERGE (upsert idempotent) pour que
+ * le seed / la synchro puissent se rejouer sans dupliquer nodes ni relations.
+ * Chaque méthode ouvre sa propre session et la referme ; pour les requêtes du
+ * hot-path l'appelant peut regrouper ses appels dans sa propre session.
  */
 export class Neo4jGraphRepository implements IGraphRepository {
   constructor(private driver: Driver) {}
 
+  // Exécute une requête Cypher fire-and-forget dans une session éphémère
+  // (ouverte puis fermée dans le `finally`).
   private async run(cypher: string, params: object = {}): Promise<void> {
     const session = this.driver.session();
     try {
@@ -32,14 +34,19 @@ export class Neo4jGraphRepository implements IGraphRepository {
     }
   }
 
-  // ─── Projection maintenance ───────────────────────────────────────────────
+  // ─── Maintenance de la projection ─────────────────────────────────────────
 
+  // Vide tout le graphe (utilisé par le job de réconciliation avant de rejouer
+  // depuis Mongo).
   async reset(): Promise<void> {
     await this.run(`MATCH (n) DETACH DELETE n`);
   }
 
-  // ─── GDPR export ──────────────────────────────────────────────────────────
+  // ─── Export RGPD ──────────────────────────────────────────────────────────
 
+  // Récupère le node User et toutes ses relations, à plat, pour l'export de
+  // données. Le OPTIONAL MATCH ramène aussi un user sans aucune relation ; le
+  // CASE remplace les relations nulles par NULL (filtrées côté JS ensuite).
   async exportUserGraph(userId: string): Promise<UserGraphExport> {
     const session = this.driver.session();
     try {
@@ -73,7 +80,7 @@ export class Neo4jGraphRepository implements IGraphRepository {
     }
   }
 
-  // ─── Nodes ──────────────────────────────────────────────────────────────
+  // ─── Nodes (upsert + suppression) ─────────────────────────────────────────
 
   async upsertUser(node: UserNode): Promise<void> {
     await this.run(
@@ -100,8 +107,9 @@ export class Neo4jGraphRepository implements IGraphRepository {
   }
 
   async upsertEvent(node: EventNode): Promise<void> {
-    // Neo4j requires every $param referenced in the Cypher to be present in the
-    // params object, so optional fields must be explicitly nulled.
+    // Neo4j exige que tout $param référencé dans le Cypher soit présent dans
+    // l'objet params : les champs optionnels doivent donc être mis à null
+    // explicitement.
     await this.run(
       `MERGE (e:Event {eventId: $id})
        SET e.title = $title, e.category = $category, e.date = $date`,
@@ -161,8 +169,10 @@ export class Neo4jGraphRepository implements IGraphRepository {
     await this.run(`MATCH (t:Tag {name: $name}) DETACH DELETE t`, { name });
   }
 
-  // ─── Residence ──────────────────────────────────────────────────────────
+  // ─── Résidence ────────────────────────────────────────────────────────────
 
+  // Relation LIVES_IN (habite dans un quartier). COALESCE conserve la valeur
+  // existante quand `since`/`address` sont absents (mise à jour partielle).
   async linkUserLivesIn(userId: string, districtId: string, since?: string, address?: string): Promise<void> {
     await this.run(
       `MATCH (u:User {userId: $userId})
@@ -173,7 +183,7 @@ export class Neo4jGraphRepository implements IGraphRepository {
     );
   }
 
-  // ─── Events ─────────────────────────────────────────────────────────────
+  // ─── Événements ───────────────────────────────────────────────────────────
 
   async linkUserCreatedEvent(userId: string, eventId: string): Promise<void> {
     await this.run(
@@ -292,7 +302,7 @@ export class Neo4jGraphRepository implements IGraphRepository {
     }
   }
 
-  // ─── Listings ───────────────────────────────────────────────────────────
+  // ─── Annonces ─────────────────────────────────────────────────────────────
 
   async linkUserPublishedListing(userId: string, listingId: string): Promise<void> {
     await this.run(
@@ -322,7 +332,7 @@ export class Neo4jGraphRepository implements IGraphRepository {
     );
   }
 
-  // ─── Services ───────────────────────────────────────────────────────────
+  // ─── Services (générés par une annonce payante → contrat) ─────────────────
 
   async linkListingGeneratesService(
     listingId: string,
@@ -364,7 +374,7 @@ export class Neo4jGraphRepository implements IGraphRepository {
     );
   }
 
-  // ─── Votes ──────────────────────────────────────────────────────────────
+  // ─── Votes / sondages ─────────────────────────────────────────────────────
 
   async linkUserVoted(userId: string, voteId: string, option: string, voteDate: string): Promise<void> {
     await this.run(
@@ -385,7 +395,7 @@ export class Neo4jGraphRepository implements IGraphRepository {
     );
   }
 
-  // ─── Incidents ──────────────────────────────────────────────────────────
+  // ─── Signalements ─────────────────────────────────────────────────────────
 
   async linkUserReportedIncident(userId: string, incidentId: string): Promise<void> {
     await this.run(
@@ -405,8 +415,9 @@ export class Neo4jGraphRepository implements IGraphRepository {
     );
   }
 
-  // ─── Social ─────────────────────────────────────────────────────────────
+  // ─── Réseau social ────────────────────────────────────────────────────────
 
+  // Relation KNOWS dirigée (a connaît b).
   async linkUserKnows(userIdA: string, userIdB: string): Promise<void> {
     await this.run(
       `MATCH (a:User {userId: $a})
