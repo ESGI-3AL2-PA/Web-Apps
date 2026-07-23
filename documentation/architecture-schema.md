@@ -205,6 +205,9 @@ sequenceDiagram
 - **Register** runs in the auth-service but creates the user through
   `POST API_URL/users`, authenticated with a short-lived self-signed
   `role: "service"` JWT.
+- **Logged-out pages** — the auth-service also serves the standalone HTML
+  screens for the credential flows: `/login`, `/register`, `/forgot-password`
+  (enumeration-safe reset request) and the emailed `/reset-password` link.
 
 ---
 
@@ -212,12 +215,13 @@ sequenceDiagram
 
 Both compose files describe the same services; they differ in intent.
 
-| Concern       | `docker-compose.yml` (dev)                   | `docker-compose.deploy.yml` (prod)                       |
-| ------------- | -------------------------------------------- | -------------------------------------------------------- |
-| App images    | built from source, `dev` target, bind mounts | `ghcr.io/esgi-3al2-pa/web-apps/<app>` (nginx-served)     |
-| TLS / routing | direct host ports                            | Caddy reverse proxy, Let's Encrypt                       |
-| Secrets       | zero-config local credentials                | SOPS-decrypted env at deploy                             |
-| Hot reload    | yes (`turbo run dev`)                        | no                                                       |
+| Concern       | `docker-compose.yml` (dev)                   | `docker-compose.deploy.yml` (prod)                     |
+| ------------- | -------------------------------------------- | ------------------------------------------------------ |
+| App images    | built from source, `dev` target, bind mounts | `ghcr.io/esgi-3al2-pa/web-apps/<app>` (nginx-served)   |
+| TLS / routing | direct host ports                            | Caddy reverse proxy, Let's Encrypt                     |
+| Secrets       | zero-config local credentials                | SOPS-decrypted env at deploy                           |
+| Static hosts  | Vite dev server                              | `nginx-unprivileged` sending hardened security headers |
+| Hot reload    | yes (`turbo run dev`)                        | no                                                     |
 
 ```mermaid
 flowchart LR
@@ -255,6 +259,11 @@ flowchart LR
 
 > MongoDB runs as a **replica set** — the Change-Streams watcher powering
 > offline sync (`db.watch()`) requires one; it throws on a standalone mongod.
+
+> The fronts bake their public `VITE_*` URLs into the bundle at build time
+> (`VITE_API_URL`, `VITE_AUTH_SERVICE_URL`, `VITE_APP_URL`, `VITE_ADMIN_URL`,
+> `VITE_LANDING_URL`). CD extracts them from `prod.enc.env` and passes them as
+> Docker build args, so a URL change means a rebuild, not just a restart.
 
 ---
 
