@@ -74,8 +74,8 @@ describe("initKeys", () => {
     expect(getJWKS().keys[0]!.kid).toBe(getKeyId());
   });
 
-  // La régression qui compte : c'est ce qui rend impossible le « j'ai changé le PEM mais
-  // oublié d'incrémenter le kid », qui sinon renverrait 401 à tout consommateur ayant mis en cache par kid.
+  // L'invariant qui compte : rend impossible le « PEM changé mais kid oublié », qui
+  // renverrait sinon 401 à tout consommateur ayant mis en cache par kid.
   it("gives two distinct keypairs two distinct default kids", async () => {
     const a = await genPem();
     process.env.AUTH_PRIVATE_KEY = a.priv;

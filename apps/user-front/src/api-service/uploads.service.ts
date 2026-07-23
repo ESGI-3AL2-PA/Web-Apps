@@ -29,8 +29,8 @@ export async function uploadImages(files: File[]): Promise<string[]> {
 
 /**
  * GET /uploads/images/:key — récupère les octets d'une image (Bearer auto-attaché
- * par l'intercepteur axios). L'endpoint de service exige désormais un token valide :
- * les images sont donc téléchargées en blob (cf. AuthedImage) et non embarquées par URL.
+ * par l'intercepteur axios). L'endpoint de service exige un token valide : les images
+ * sont donc téléchargées en blob (cf. AuthedImage) et non embarquées par URL.
  */
 export async function fetchImageBlob(url: string): Promise<Blob> {
   const res = await api.get(url, { responseType: "blob" });

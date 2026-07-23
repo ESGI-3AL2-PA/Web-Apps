@@ -22,8 +22,7 @@ export const CALLBACK_PATH = "/callback";
 
 /**
  * `URL.hostname` renvoie les littéraux IPv6 *avec* crochets ; le loopback v6 doit donc
- * être comparé à "[::1]" — une comparaison à "::1" nu ne matcherait jamais silencieusement,
- * ce qui était le bug de l'ancien `isLoopback` de la page de login.
+ * être comparé à "[::1]" — une comparaison à "::1" nu échouerait silencieusement à matcher.
  *
  * `localhost` est délibérément absent. RFC 8252 §8.3 préfère les IP littérales car
  * `localhost` passe par la résolution de nom et peut être redirigé par altération du

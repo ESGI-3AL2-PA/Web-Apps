@@ -10,10 +10,8 @@ export type UserRole = z.infer<typeof UserRoleSchema>;
 /**
  * Schéma canonique d'un document de la collection partagée `users` — source unique
  * de vérité dont les deux backends dérivent (api via `entities/user.entity.ts`,
- * auth-service via `UserRecord`). Auparavant chaque app déclarait à la main sa
- * propre vue de ce document et elles avaient divergé (auth avait ajouté
- * `totpSecret`/`lang`/`lastTotpStep` ; api omettait `lastTotpStep`). Tout nouveau
- * champ se déclare ici, une seule fois.
+ * auth-service via `UserRecord`). Tout nouveau champ se déclare ici, une seule fois,
+ * pour que les deux vues restent alignées.
  */
 export const userDocumentSchema = z.object({
   id: z.string(),

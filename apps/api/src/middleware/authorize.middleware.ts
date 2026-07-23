@@ -184,9 +184,9 @@ export const authorize: RequestHandler = async (req, res, next) => {
       return;
     }
 
-    // security-M2 : audite les lectures par un admin non-participant de conversations privées. Depuis
-    // le correctif read-only, les écritures de conversation ne portent plus districtField, donc un accès
-    // par quartier sur une ressource conversation ne peut être qu'une lecture de modération d'un DM où l'admin n'est pas.
+    // Audite les lectures, par un admin non-participant, de conversations privées. Les écritures de
+    // conversation ne portent pas districtField, donc un accès par quartier sur une ressource
+    // conversation ne peut être qu'une lecture de modération d'un DM où l'admin n'est pas participant.
     if (districtGrant && isRead && scope.resource === "conversation") {
       req.log.info(
         {

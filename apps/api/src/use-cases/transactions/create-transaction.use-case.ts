@@ -125,10 +125,9 @@ export const createTransactionUseCase = (
         };
       });
 
-      // Piste d'audit : tout mouvement de solde initié par un admin est tracé. Aucune
-      // collection d'audit dédiée n'existe encore (cf. note de PR), on émet donc une ligne
-      // de log structurée identifiant l'acteur — information que les écritures du ledger
-      // seules ne capturent pas.
+      // Piste d'audit : tout mouvement de solde initié par un admin est tracé. Faute de
+      // collection d'audit dédiée, on émet une ligne de log structurée identifiant l'acteur
+      // — information que les écritures du ledger seules ne capturent pas.
       if (isSuperAdmin || isDistrictAdmin) {
         logger.info(
           {

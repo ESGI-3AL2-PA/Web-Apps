@@ -250,8 +250,8 @@ export class Neo4jGraphRepository implements IGraphRepository {
     // encore été synchronisé vers Neo4j (user créé via auth UI sans dual-write,
     // par ex.), on crée un node stub avec juste l'id. Les autres propriétés
     // (name, email, title…) seront enrichies au prochain upsert.
-    // Sans ça, le MATCH échouait silencieusement et le MERGE de la relation
-    // n'avait aucun effet.
+    // Sans ça, le MATCH échouerait silencieusement et le MERGE de la relation
+    // n'aurait aucun effet.
     await this.run(
       `MERGE (u:User {userId: $userId})
        MERGE (e:Event {eventId: $eventId})

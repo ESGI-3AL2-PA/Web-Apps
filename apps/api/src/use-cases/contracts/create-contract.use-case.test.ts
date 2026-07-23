@@ -81,7 +81,7 @@ const makeDocumenso = (overrides: Partial<IDocumensoService> = {}): IDocumensoSe
     ...overrides,
   }) as unknown as IDocumensoService;
 
-// Champs fournis par le client uniquement ; districtId + prix viennent désormais de l'annonce.
+// Champs fournis par le client uniquement ; districtId + prix viennent de l'annonce.
 const baseData = {
   listingId: "listing-1",
   providerId: "provider-1",

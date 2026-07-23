@@ -217,13 +217,12 @@ export default function Profile() {
   const save = async () => {
     if (!uid || !fullUser) return;
 
-    // On n'envoie que les champs réellement modifiés. PATCH /users/:id exige une
-    // ré-authentification TOTP fraîche (step-up) dès que le corps touche `address`
-    // (whenBodyTouches) ; renvoyer aveuglément l'adresse inchangée faisait donc réclamer
-    // un code step-up à *chaque* sauvegarde de profil — même une simple modif de
-    // téléphone. Le diff contre le profil chargé cantonne le step-up aux vrais
-    // changements d'adresse/email/mot de passe. Les chaînes vides sont conservées (pas
-    // supprimées) pour qu'effacer un champ optionnel comme le téléphone persiste.
+    // On n'envoie que les champs réellement modifiés (diff contre le profil chargé). PATCH
+    // /users/:id exige une ré-authentification TOTP fraîche (step-up) dès que le corps touche
+    // `address`/`email`/`newPassword` (whenBodyTouches) : n'envoyer que ce qui change cantonne
+    // le step-up à un vrai changement d'adresse/email/mot de passe, sans le déclencher sur une
+    // simple modif de téléphone. Les chaînes vides sont conservées (pas supprimées) pour
+    // qu'effacer un champ optionnel comme le téléphone persiste.
     const changed: UpdateUserDto = {};
     if (form.firstName !== fullUser.firstName) changed.firstName = form.firstName;
     if (form.lastName !== fullUser.lastName) changed.lastName = form.lastName;

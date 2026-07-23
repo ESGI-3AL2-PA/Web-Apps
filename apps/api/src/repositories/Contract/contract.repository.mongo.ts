@@ -174,7 +174,7 @@ export class MongoContractRepository implements IContractRepository {
     return result ? toEntity<Contract>(result) : null;
   }
 
-  /** Applique un statut non terminal (ex. draft→pending), ignoré si le contrat est déjà terminal (garde anti-régression). */
+  /** Applique un statut non terminal (ex. draft→pending), ignoré si le contrat est déjà terminal (garde d'idempotence). */
   async applyNonTerminalStatus(id: string, status: ContractSignatureStatus): Promise<Contract | null> {
     // Même garde terminal {$nin} que complete/reject — un événement pending/draft qui arrive après
     // le règlement ne trouve aucune correspondance et est ignoré, donc il ne peut pas faire régresser l'état.

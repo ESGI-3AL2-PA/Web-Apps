@@ -46,7 +46,7 @@ export const setupGracefulShutdown = (
 
     const force = setTimeout(() => {
       // Drainage bloqué — on ferme quand même les connexions DB avant de sortir,
-      // pour ne pas les couper salement (auparavant on forçait la sortie sans cleanup).
+      // pour ne pas les couper salement.
       logger.error("Shutdown timed out — running cleanup then forcing exit");
       void runCleanup(1);
     }, FORCE_EXIT_MS);
