@@ -1,50 +1,56 @@
 # playwright_testbook
 
-E2E harness for the API. **This is currently a stub — there are no runnable specs yet.**
+Harness E2E pour l'API. **C'est actuellement un stub — aucun spec exécutable pour
+l'instant.**
 
-## Why it's empty
+## Pourquoi c'est vide
 
-The previous `tests/users.spec.ts` was written against an earlier, unauthenticated
-version of the `/users` API and had become a non-runnable relic:
+L'ancien `tests/users.spec.ts` était écrit contre une version antérieure et non
+authentifiée de l'API `/users` et était devenu une relique non exécutable :
 
-- It hit `GET /users` and `POST/PATCH/DELETE /users/:id` with **no `Authorization`
-  header**, expecting `200/201/204`.
-- Under the current policy (see `packages/contracts/src/users.contract.ts`) every one
-  of those requests now returns `401/403`:
-  - `getUsers` — requires `admin` / `superAdmin`
-  - `createUser` — requires an internal service token (`audience: "api:internal"`, `role: "service"`)
-  - `getUserById` / `updateUser` / `deleteUser` — self-or-`superAdmin` scoped
-- Its `playwright.config.ts` had no `webServer`, so it silently assumed something was
-  already listening on `:3000`.
+- Il tapait `GET /users` et `POST/PATCH/DELETE /users/:id` **sans header
+  `Authorization`**, en attendant des `200/201/204`.
+- Sous la politique actuelle (voir `packages/contracts/src/users.contract.ts`), chacune
+  de ces requêtes renvoie désormais `401/403` :
+  - `getUsers` — requiert `admin` / `superAdmin`
+  - `createUser` — requiert un service token interne (`audience: "api:internal"`,
+    `role: "service"`)
+  - `getUserById` / `updateUser` / `deleteUser` — scopés self-ou-`superAdmin`
+- Son `playwright.config.ts` n'avait pas de `webServer` : il supposait donc
+  silencieusement que quelque chose écoutait déjà sur `:3000`.
 
-Rather than keep a test that always fails (a lie about coverage), the stale spec was
-removed. This README documents what a real harness needs.
+Plutôt que de garder un test qui échoue toujours (un mensonge sur la couverture), le spec
+périmé a été supprimé. Ce README documente ce qu'un vrai harness nécessite.
 
-## What real E2E requires
+## Ce qu'exige un vrai E2E
 
-1. **The Compose stack up.** From the repo root:
+1. **La stack Compose démarrée.** Depuis la racine du dépôt :
 
    ```bash
    docker compose up
    ```
 
-   This brings up `api` (:3000), `auth-service` (:3001), the fronts, Mongo and Neo4j.
+   Ceci démarre `api` (:3000), `auth-service` (:3001), les fronts, Mongo et Neo4j.
 
-2. **A `webServer` (or documented external stack) + `baseURL`** in
-   `playwright.config.ts`. Today the config only sets `baseURL: http://localhost:3000`
-   and assumes the stack is already running — add a `webServer` block (or keep relying
-   on the Compose stack, but document it) before adding specs.
+2. **Un `webServer` (ou une stack externe documentée) + un `baseURL`** dans
+   `playwright.config.ts`. Aujourd'hui la config ne fixe que
+   `baseURL: http://localhost:3000` et suppose la stack déjà lancée — ajoutez un bloc
+   `webServer` (ou continuez de vous appuyer sur la stack Compose, mais documentez-le)
+   avant d'ajouter des specs.
 
-3. **Real auth tokens.** There is no unauthenticated path into the user endpoints. A
-   correct spec must obtain an access token from the **auth-service** (register/login
-   against `:3001`) and send it as `Authorization: Bearer <token>`. Admin-only and
-   service-token flows need seeded privileged users or a signed service JWT.
+3. **De vrais tokens d'auth.** Il n'existe aucun chemin non authentifié vers les
+   endpoints user. Un spec correct doit obtenir un access token auprès de
+   l'**auth-service** (register/login contre `:3001`) et l'envoyer en
+   `Authorization: Bearer <token>`. Les flux admin-only et service-token requièrent des
+   users privilégiés seedés ou un service JWT signé.
 
-4. **Unique, isolated fixtures.** The old spec hardcoded a single non-unique email
-   (`test-email@example.com`); real specs must generate unique data per run and clean up.
+4. **Des fixtures uniques et isolées.** L'ancien spec codait en dur un unique email non
+   unique (`test-email@example.com`) ; de vrais specs doivent générer des données
+   uniques par run et nettoyer derrière eux.
 
-## Status
+## État
 
-Stub, pending the planned E2E / CI work (see `documentation/ROADMAP.md` — testing &
-CI/CD expansion, P0-1). `package.json`, `playwright.config.ts` and `tsconfig.json` are
-kept so specs can be dropped into `tests/` once the above is in place.
+Stub, en attente du travail E2E / CI planifié (voir `documentation/ROADMAP.md` —
+expansion testing & CI/CD, P0-1). `package.json`, `playwright.config.ts` et
+`tsconfig.json` sont conservés pour qu'on puisse déposer des specs dans `tests/` une
+fois ce qui précède en place.

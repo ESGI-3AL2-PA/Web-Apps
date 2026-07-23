@@ -1,78 +1,103 @@
-# TODO — env vars before deploy
+# TODO — variables d'env avant déploiement
 
-Dev defaults are fine for `npm run dev` / `docker compose up`. Set these before any non-local environment.
+Les défauts de dev conviennent pour `npm run dev` / `docker compose up`. Positionnez ces
+variables avant tout environnement non local.
 
 ## auth-service (`apps/auth-service`)
 
-| Var                | Required            | Default                                | Notes                                                                                 |
-| ------------------ | ------------------- | -------------------------------------- | ------------------------------------------------------------------------------------- |
-| `PORT`             | no                  | `3001`                                 | Listen port.                                                                          |
-| `MONGODB_URL`      | yes (non-local)     | `mongodb://root:root@localhost:27017`  | Shared with the api.                                                                  |
-| `MONGODB_DB`       | yes (non-local)     | `db`                                   |                                                                                       |
-| `API_URL`          | yes (in docker)     | `http://localhost:3000`                | Where register POSTs the new user. In docker compose set to `http://api:3000`.        |
-| `AUTH_PRIVATE_KEY` | **yes (prod)**      | ephemeral generated at boot            | RS256 PEM. Without these, every restart invalidates outstanding tokens.               |
-| `AUTH_PUBLIC_KEY`  | **yes (prod)**      | ephemeral generated at boot            | Must match the private key.                                                           |
-| `AUTH_PUBLIC_URL`  | **yes (prod)**      | `http://localhost:3001`                | Public URL the auth-service serves on. Used to build verification + reset links.      |
-| `CORS_ORIGINS`     | **yes (non-local)** | `http://localhost:3000,4000,5000`      | Comma-separated. Also serves as the `redirect_uri` allowlist on login/register pages. |
-| `RESEND_API_KEY`   | **yes (prod)**      | _(none — falls back to `console.log`)_ | Without it, verification and reset emails are only printed to stdout.                 |
-| `FROM_EMAIL`       | **yes (prod)**      | `no-reply@example.com`                 | Must be on a domain you've verified in Resend.                                        |
-| `APP_NAME`         | no                  | `Web-Apps`                             | Used in email subject/body.                                                           |
-| `TOTP_ISSUER`      | no                  | `Web-Apps`                             | What users see as the account name in their authenticator app.                        |
-| `NODE_ENV`         | yes (prod)          | _(none)_                               | Setting to `production` flips refresh + csrf cookies to `secure: true`.               |
+| Var                      | Requise             | Défaut                                | Notes                                                                                                                            |
+| ------------------------ | ------------------- | ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `PORT`                   | non                 | `3001`                                | Port d'écoute.                                                                                                                   |
+| `MONGODB_URL`            | oui (non local)     | `mongodb://root:root@localhost:27017` | Partagée avec l'api.                                                                                                             |
+| `MONGODB_DB`             | oui (non local)     | `db`                                  |                                                                                                                                  |
+| `API_URL`                | oui (en docker)     | `http://localhost:3000`               | Où le register POST le nouvel user. En docker compose : `http://api:3000`.                                                       |
+| `INTERNAL_SERVICE_TOKEN` | **oui (prod)**      | `dev-internal-service-token`          | Secret partagé des appels internes api↔auth-service (`X-Internal-Token`). Doit être identique des deux côtés.                    |
+| `AUTH_PRIVATE_KEY`       | **oui (prod)**      | générée éphémère au boot              | PEM RS256. Sans elle, chaque redémarrage invalide les tokens en cours. Alternative : `AUTH_PRIVATE_KEY_FILE`.                    |
+| `AUTH_PUBLIC_KEY`        | **oui (prod)**      | générée éphémère au boot              | Doit correspondre à la clé privée. Alternative : `AUTH_PUBLIC_KEY_FILE`.                                                         |
+| `AUTH_PUBLIC_URL`        | **oui (prod)**      | `http://localhost:3001`               | URL publique servie par l'auth-service. Sert à construire les liens de vérification + reset.                                     |
+| `CORS_ORIGINS`           | **oui (non local)** | `http://localhost:3000,4000,5000`     | Séparées par des virgules. Sert aussi d'allowlist des `redirect_uri` sur login/register.                                         |
+| `RESEND_API_KEY`         | **oui (prod)**      | _(aucune)_                            | Transport email : SMTP (dev) → Resend (prod) → fallback console. Sans SMTP ni Resend, les emails ne sont qu'affichés sur stdout. |
+| `FROM_EMAIL`             | **oui (prod)**      | `no-reply@example.com`                | Doit être sur un domaine vérifié dans Resend.                                                                                    |
+| `APP_NAME`               | non                 | `Connected-Neighboors`                | Utilisé dans le sujet/corps des emails.                                                                                          |
+| `TOTP_ISSUER`            | non                 | `Connected-Neighboors`                | Nom de compte affiché dans l'app d'authentification de l'utilisateur.                                                            |
+| `NODE_ENV`               | oui (prod)          | _(aucune)_                            | `production` passe les cookies refresh + csrf en `secure: true`.                                                                 |
 
 ## api (`apps/api`)
 
-| Var             | Required            | Default                                       | Notes                                                                             |
-| --------------- | ------------------- | --------------------------------------------- | --------------------------------------------------------------------------------- |
-| `MONGODB_URL`   | yes (non-local)     | `mongodb://root:root@localhost:27017`         |                                                                                   |
-| `MONGODB_DB`    | yes (non-local)     | `db`                                          |                                                                                   |
-| `AUTH_JWKS_URL` | **yes (non-local)** | `http://localhost:3001/.well-known/jwks.json` | Must point at the auth-service's JWKS. In docker: `http://auth-service:3001/...`. |
-| `CORS_ORIGINS`  | **yes (non-local)** | `http://localhost:4000,5000`                  | Comma-separated frontend origins.                                                 |
+| Var                                                                          | Requise             | Défaut                                        | Notes                                                                                                         |
+| ---------------------------------------------------------------------------- | ------------------- | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `MONGODB_URL`                                                                | oui (non local)     | `mongodb://root:root@localhost:27017`         |                                                                                                               |
+| `MONGODB_DB`                                                                 | oui (non local)     | `db`                                          |                                                                                                               |
+| `AUTH_JWKS_URL`                                                              | **oui (non local)** | `http://localhost:3001/.well-known/jwks.json` | Doit pointer sur le JWKS de l'auth-service. En docker : `http://auth-service:3001/...`.                       |
+| `AUTH_SERVICE_URL`                                                           | **oui (prod)**      | `http://localhost:3001`                       | Base que l'api appelle pour purger les sessions auth-service à la suppression de compte (effacement RGPD).    |
+| `INTERNAL_SERVICE_TOKEN`                                                     | **oui (prod)**      | `dev-internal-service-token`                  | Même secret que côté auth-service (voir ci-dessus).                                                           |
+| `CORS_ORIGINS`                                                               | **oui (non local)** | `http://localhost:4000,5000`                  | Origines frontend, séparées par des virgules.                                                                 |
+| `MESSAGES_MINIO_ACCESS_KEY` / `MESSAGES_MINIO_SECRET_KEY`                    | **oui (prod)**      | _(vides)_                                     | Identifiants MinIO pour les messages vocaux + images d'annonces (fallback des buckets `listings`).            |
+| `DOCUMENSO_API_TOKEN` / `DOCUMENSO_TEMPLATE_ID` / `DOCUMENSO_WEBHOOK_SECRET` | **oui (prod)**      | _(vides)_                                     | Signature électronique des contrats (voir `.env.dist`).                                                       |
+| `TRUST_PROXY`                                                                | selon infra         | _(non défini)_                                | Derrière un reverse proxy/LB, nombre de hops de confiance (ex. `1`) pour que `req.ip` reflète le vrai client. |
 
 ## user-front (`apps/user-front`)
 
-Vite env vars — must be prefixed `VITE_` to be exposed to the browser.
+Variables Vite — doivent être préfixées `VITE_` pour être exposées au navigateur.
 
-| Var                     | Required        | Default                 | Notes                       |
-| ----------------------- | --------------- | ----------------------- | --------------------------- |
-| `VITE_AUTH_SERVICE_URL` | yes (non-local) | `http://localhost:3001` | Public URL of auth-service. |
-| `VITE_API_URL`          | yes (non-local) | `http://localhost:3000` | Public URL of api.          |
+| Var                     | Requise         | Défaut                  | Notes                                                                                               |
+| ----------------------- | --------------- | ----------------------- | --------------------------------------------------------------------------------------------------- |
+| `VITE_AUTH_SERVICE_URL` | oui (non local) | `http://localhost:3001` | URL publique de l'auth-service.                                                                     |
+| `VITE_API_URL`          | oui (non local) | `http://localhost:3000` | URL publique de l'api.                                                                              |
+| `VITE_APP_URL`          | oui (non local) | `http://localhost:5000` | URL publique du user-front (l'auth-service la lit aussi pour rediriger après vérification / reset). |
+| `VITE_ADMIN_URL`        | oui (non local) | `http://localhost:4000` | URL publique de la console admin (les superAdmins y sont redirigés depuis le user-front).           |
 
 ## admin-front (`apps/admin-front`)
 
-| Var                     | Required        | Default                 | Notes |
+| Var                     | Requise         | Défaut                  | Notes |
 | ----------------------- | --------------- | ----------------------- | ----- |
-| `VITE_AUTH_SERVICE_URL` | yes (non-local) | `http://localhost:3001` |       |
+| `VITE_AUTH_SERVICE_URL` | oui (non local) | `http://localhost:3001` |       |
 
-## Generating RS256 keys for prod
+## Génération des clés RS256 pour la prod
+
+Le plus simple est le script dédié, qui écrit `private.pem` (600) et `public.pem` (644)
+dans `docker/auth` (monté en lecture seule par la stack compose de prod via
+`AUTH_*_KEY_FILE`) :
+
+```sh
+scripts/gen-auth-keys.sh          # défaut : docker/auth
+```
+
+Alternative manuelle si vous injectez les PEM inline dans un secret store
+(`AUTH_PRIVATE_KEY` / `AUTH_PUBLIC_KEY` reçoivent la chaîne PEM complète, sauts de ligne
+compris) :
 
 ```sh
 openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out auth-private.pem
 openssl rsa -in auth-private.pem -pubout -out auth-public.pem
-# Then pipe the PEMs into your secret store; set AUTH_PRIVATE_KEY / AUTH_PUBLIC_KEY to the full PEM string (newlines and all).
 ```
 
-## Security hardening (backlog)
+## Durcissement sécurité (backlog)
 
-### H5 — Per-account MFA brute-force limiting
+### H5 — Limitation du brute-force MFA par compte
 
-`POST /auth/login/mfa` is only rate-limited per IP (5/min, `apps/auth-service/src/index.ts`). A 6-digit
-TOTP is 1M combinations and the `mfa_token` lives 5 min, so an attacker rotating IPs has no per-account
-ceiling, and failed attempts never invalidate the `mfa_token` or secret. Replay is already handled (H4:
-`lastTotpStep` / `consumeTotpStep`), but throttling is not.
+`POST /auth/login/mfa` n'est rate-limité que par IP (5/min, `apps/auth-service/src/index.ts`).
+Un TOTP à 6 chiffres, c'est 1M de combinaisons, et le `mfa_token` vit 5 min : un
+attaquant qui alterne les IP n'a aucun plafond par compte, et les échecs n'invalident ni
+le `mfa_token` ni le secret. Le rejeu est déjà géré (H4 : `lastTotpStep` /
+`consumeTotpStep`), mais pas le throttling.
 
-Approach is still undecided — Mongo-backed per-user counter was rejected. Candidates:
+L'approche reste indécise — un compteur par user en Mongo a été écarté. Pistes :
 
-- `express-rate-limit` keyed on the `mfa_token`'s `sub` instead of IP (no new infra, resets on restart,
-  not multi-instance-safe without a shared store).
-- Invalidate the `mfa_token` after N failures (track attempts against the short-lived token itself).
-- Shared store (Redis) keyed by user — durable + multi-instance, but adds infra not currently run.
+- `express-rate-limit` clé sur le `sub` du `mfa_token` plutôt que sur l'IP (aucune infra
+  nouvelle, remis à zéro au redémarrage, non multi-instance sans store partagé).
+- Invalider le `mfa_token` après N échecs (compte les tentatives contre le token
+  court-vécu lui-même).
+- Store partagé (Redis) clé par user — durable + multi-instance, mais ajoute une infra
+  non exploitée actuellement.
 
-Also consider requiring a current TOTP code (not just password) to `disable-totp`.
+Envisager aussi d'exiger un code TOTP courant (pas seulement le mot de passe) pour
+`disable-totp`.
 
-## One-shot data migration
+## Migration de données ponctuelle
 
-Existing user docs predate `emailVerified` / `totpSecret` / `totpEnabled`. Without this, every existing account will be locked out on next login.
+Les documents user existants sont antérieurs à `emailVerified` / `totpSecret` /
+`totpEnabled`. Sans ceci, chaque compte existant serait verrouillé au prochain login.
 
 ```js
 db.users.updateMany(

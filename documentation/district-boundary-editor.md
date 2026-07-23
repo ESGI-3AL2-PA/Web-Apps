@@ -1,70 +1,184 @@
-# District Boundary Editor
+# Éditeur de frontière de quartier
 
-> **v2 (feature change).** Districts **may overlap**, district **names are not unique**, and **two actors create districts**: a `superAdmin` or district `admin` via the admin app, and a `user` with no eligible district who draws one during onboarding (and is promoted to admin of it). The editor is a **shared component in `packages/ui`** used by both admin-front and user-front. See `ROADMAP.md` §2A.
+Un acteur autorisé dessine, modifie et enregistre la frontière d'un quartier (district) sur une carte
+interactive. Les frontières sont stockées en GeoJSON (Polygon ou MultiPolygon) dans la collection
+`districts` et servent, à l'échelle de la plateforme, à cloisonner annonces, événements, votes et
+signalements par quartier.
 
-Authorized actors draw, edit, and save district boundaries on an interactive map. Boundaries are stored as GeoJSON Polygons in the `DISTRICTS` collection and used across the platform to scope listings, events, votes, and incidents to each user's **active** district.
-
----
-
-## User Flow
-
-The actor navigates to the districts map, which is pre-loaded with all existing district boundaries. To create a new district they enter draw mode, trace a polygon by clicking to place vertices, and close the shape. After naming the district and confirming, the boundary is saved and immediately visible on the map.
-
-Existing districts can be selected from a sidebar list. Clicking a district flies the map to its bounds and opens an inline form to rename it, reshape the polygon by dragging its vertices, or delete it.
-
-**Who can do what.**
-
-- **`superAdmin`** (company employee) — sees and edits **all** districts.
-- **`admin`** — edits only the **one** district they govern (`adminDistrictId`).
-- **`user`** with an **empty eligible set** — gets a **draw-only** flow in user-front: trace a polygon, name it, save. On save they are **promoted to admin** of the new district, and the client **forces a token refresh** to pick up the `adminDistrictId` claim. New polygons **may overlap** existing ones — that is expected, not an error.
+L'éditeur cartographique lui-même vit **uniquement dans l'app admin** (`apps/admin-front`). L'app
+résident (`apps/user-front`) ne dessine aucun polygone : elle ne propose qu'une auto-création de
+quartier « en un clic » à partir de l'adresse de l'utilisateur, décrite plus bas.
 
 ---
 
-## Architecture
+## Deux acteurs, deux parcours
 
-The feature follows the same layered pattern as the rest of the API: contracts define the shape, use-cases hold the logic, and repositories handle persistence.
+### superAdmin et admin de quartier — via l'app admin
 
-### Data Model
+La page Quartiers (`DistrictPage.tsx`) affiche le quartier **en scope** : son nom, ses points de
+départ (`startingPoints`) et sa frontière, éditables sur place et enregistrés d'un seul bouton.
 
-Each district holds a name and a geographic boundary in GeoJSON Polygon format — a closed ring of longitude/latitude coordinates. Admin assignment lives in a separate `district_admins` relationship (one district per admin, many admins per district — see `MCD/mongo.md`).
+- **`superAdmin`** — bascule d'un quartier à l'autre via le sélecteur de la barre supérieure
+  (`DistrictScopeProvider`) et peut en **créer** un nouveau via une modale (`NewDistrictModal`) qui
+  exige nom + tracé obligatoire.
+- **`admin`** de quartier — limité à **son** quartier (`adminDistrictId`) ; il en modifie le nom, le
+  tracé et les points de départ, mais ne peut ni créer ni supprimer de quartier.
 
-The boundary field carries a MongoDB **2dsphere** geospatial index, used at onboarding to find **all districts a given GPS coordinate falls inside**. Because districts may overlap, this returns a **set** — the user's _eligible_ districts — not a single match; the user then chooses one **active** district. `updatedAt` is tracked alongside `createdAt` for auditing.
+L'enregistrement envoie `name`, `geoJson` et `startingPoints` en un seul `PATCH`.
 
-### API
+### Utilisateur sans quartier — auto-création, sans dessin
 
-Five endpoints cover the full lifecycle:
+Un utilisateur ordinaire dont l'adresse ne tombe dans aucun quartier atterrit sur l'écran
+`NoDistrict.tsx` (posé par `DistrictGuard`). Trois issues :
 
-| Method   | Path             | Description                                |
-| -------- | ---------------- | ------------------------------------------ |
-| `GET`    | `/districts`     | Return all districts with their boundaries |
-| `GET`    | `/districts/:id` | Return a single district                   |
-| `POST`   | `/districts`     | Create a district (creator becomes admin)  |
-| `PATCH`  | `/districts/:id` | Update name and/or boundary                |
-| `DELETE` | `/districts/:id` | Delete a district                          |
+1. **Re-résoudre** son quartier (« vérifier à nouveau ») — re-géocode l'adresse enregistrée et
+   rejoint le quartier qui la contient.
+2. **Choisir** — si plusieurs quartiers recouvrent l'adresse, l'écran présente les candidats et
+   l'utilisateur en sélectionne un.
+3. **Créer son propre quartier** — un seul clic (`POST /users/me/district`). Le serveur géocode
+   l'adresse, crée un quartier **actif** initialisé avec une **boîte englobante provisoire** autour
+   du point (petit carré fermé, demi-côté ≈ 0,001° soit ~110 m) et un **nom temporaire**
+   (`«  prénom  »'s district`), puis **promeut** l'appelant administrateur de ce quartier. Il n'y a
+   donc **aucun tracé côté résident** : le client redirige ensuite vers l'app admin (`/districts`),
+   où le nouvel admin **affine** la frontière avec le véritable éditeur. La redirection vers l'app
+   admin y déclenche un rafraîchissement du token, qui fait apparaître le rôle `admin` et le claim
+   `adminDistrictId`.
 
-`GET /districts` returns the full list without pagination — district count is bounded (tens, not thousands) and the map needs all polygons on initial load. Mutations are authorized per §2A: `superAdmin` anywhere, `admin` only on their district; `POST` is additionally available to a `user` with no eligible district.
-
-The contracts for these endpoints are defined in `@repo/contracts` following the ts-rest pattern and consumed by the API router and both frontend clients.
-
-### Validation
-
-The API enforces the following before persisting any boundary:
-
-- The GeoJSON shape must be a `Polygon` (not a point, line, or multi-polygon).
-- The boundary ring must be closed — first and last coordinate identical.
-- The ring must contain at least three distinct points.
-- **Overlap with existing districts is allowed** (v2) — no overlap check is performed.
-- **District names are not required to be unique** (v2) — duplicates are permitted; districts are identified by `_id`.
+L'auto-création crédite aussi le fondateur des points de départ du quartier (`startingPoints`, 100 par
+défaut pour un quartier auto-créé) et l'y fait adhérer, via `createDistrictAdminUseCase`.
 
 ---
 
-## Frontend (shared editor)
+## Modèle de données
 
-The editor lives in `packages/ui` and is consumed by:
+Un quartier (`DistrictSchema` / `DistrictResponseDto`) porte :
 
-- **admin-front** — full draw/edit/delete, scoped to the actor's district authority.
-- **user-front** — draw-only creation, shown only when the user has no eligible district.
+- `id` — identifiant unique.
+- `name` — 1 à 200 caractères. **Pas de contrainte d'unicité** : deux quartiers peuvent porter le
+  même nom, ils sont identifiés par leur `id`.
+- `geoJson` — la frontière, en géométrie GeoJSON `Polygon` ou `MultiPolygon`, **facultative** (un
+  quartier peut exister sans frontière tracée).
+- `startingPoints` — capital de points (`token`) crédité à tout nouveau membre à son adhésion.
 
-### Libraries
+Le rattachement d'un administrateur à un quartier ne vit **pas** sur l'entité quartier mais dans la
+relation `district_admins` (voir `create-district-admin.use-case.ts`).
 
-The map is powered by **Leaflet** with **react-leaflet** for React integration, and **leaflet-geoman** for the draw and edit tools. OpenStreetMap provides the base tile layer — no API key required.
+Le champ `geoJson` porte un index géospatial MongoDB **2dsphere** (créé par le repository Mongo). Il
+sous-tend `findDistrictsContaining(point)`, une requête `$geoIntersects` qui, à partir d'un point
+géocodé, renvoie **tous les quartiers dont le polygone contient ce point**. Les frontières pouvant se
+chevaucher, ce résultat est un **ensemble** (les quartiers _éligibles_ de l'utilisateur), pas un
+unique match ; l'utilisateur choisit alors le quartier qu'il rejoint.
+
+---
+
+## API
+
+Le cycle de vie du quartier passe par cinq endpoints du contrat `districtsContract`, plus l'endpoint
+d'auto-création côté `usersContract` :
+
+| Méthode  | Chemin               | Rôles                           | Description                                                     |
+| -------- | -------------------- | ------------------------------- | --------------------------------------------------------------- |
+| `GET`    | `/districts`         | authentifié                     | Liste **paginée** des quartiers (`page`, `limit`, `search`)     |
+| `GET`    | `/districts/:id`     | authentifié                     | Un quartier par son id                                          |
+| `POST`   | `/districts`         | `superAdmin`                    | Crée un quartier                                                |
+| `PATCH`  | `/districts/:id`     | `admin` (le sien), `superAdmin` | Met à jour nom, frontière et/ou `startingPoints`                |
+| `DELETE` | `/districts/:id`     | `superAdmin`                    | Supprime un quartier                                            |
+| `POST`   | `/users/me/district` | authentifié (soi-même)          | Auto-crée son quartier depuis son adresse et en devient l'admin |
+
+Notes de comportement :
+
+- `GET /districts` est **paginé** (`page` ≥ 1, `limit` 20 par défaut plafonné à 100, `search` par nom
+  facultative) — la réponse est enveloppée dans `PaginatedResponseDto`, pas une liste brute.
+- `POST /districts` est réservé au **`superAdmin`** ; le créateur ne devient **pas** automatiquement
+  admin. La création qui promeut l'appelant admin est l'endpoint séparé `POST /users/me/district`.
+- `PATCH /districts/:id` est ouvert à l'`admin` de quartier **restreint au sien**
+  (`scope.districtField: "id"`, l'id de l'enregistrement devant égaler l'`adminDistrictId` de
+  l'appelant) et au `superAdmin` (bypass sur n'importe quel quartier).
+- `DELETE /districts/:id` est réservé au `superAdmin`.
+
+Les contrats sont définis dans `@repo/contracts` (ts-rest) et consommés par le router de l'API comme
+par les clients des deux fronts.
+
+---
+
+## Validation
+
+### Forme du GeoJSON (400 en amont)
+
+Les corps de création/mise à jour valident la frontière contre `GeoJsonInputSchema` (schéma strict),
+**avant** persistance :
+
+- La géométrie doit être un `Polygon` **ou** un `MultiPolygon` (union discriminée sur `type`) — un
+  point, une ligne ou tout autre type est rejeté.
+- Chaque anneau linéaire doit compter **au moins 4 positions** et être **fermé** (première position
+  identique à la dernière), conformément à la spec GeoJSON.
+- Chaque position doit être dans les bornes valides : longitude ∈ [-180, 180], latitude ∈ [-90, 90].
+
+Cette validation stricte en entrée existe pour renvoyer un **400** sur une frontière malformée plutôt
+que de laisser l'index 2dsphere de Mongo échouer en **500**. La forme de **réponse** (`GeoJsonSchema`)
+reste volontairement lâche (`type` + `coordinates` non typées) — la donnée stockée est de confiance.
+
+> Le chevauchement entre quartiers est **autorisé** : aucun contrôle d'overlap n'est effectué, et
+> c'est ce qui permet à un point de tomber dans plusieurs quartiers éligibles.
+
+### Garde-fou de containment des membres (409)
+
+Contrainte spécifique et distincte de l'overlap : **une frontière ne peut pas laisser un membre actuel
+du quartier au-dehors**. À chaque création (si un `geoJson` est fourni) et à chaque mise à jour de
+frontière, `checkMembersWithinPolygon` :
+
+1. liste les membres du quartier (`findUsersByDistrict`) ;
+2. géocode l'adresse de chacun ;
+3. teste l'appartenance du point au polygone candidat.
+
+Si un ou plusieurs membres tombent hors du polygone, la mutation est **rejetée en 409** avec un message
+du type _« N member(s) fall outside this boundary — kick or reassign them first. »_. À la création,
+l'insertion déjà écrite est annulée (rollback). Un membre dont l'adresse ne peut **pas** être géocodée
+est **ignoré** (et loggé), plutôt que compté hors zone, pour qu'une panne transitoire du géocodeur ne
+bloque pas à tort une modification légitime.
+
+Ce test d'appartenance est fait **en mémoire** (`point-in-polygon.ts`, algorithme de lancer de rayon
+sur les anneaux, trous compris), sans aller-retour à l'index géo de Mongo — le polygone candidat
+n'étant pas encore persisté au moment de la validation.
+
+Sur `PATCH`, `geoJson: null` **efface** explicitement la frontière (plus rien à valider) ; `geoJson`
+omis la laisse inchangée.
+
+---
+
+## Frontend — l'éditeur (app admin uniquement)
+
+Le composant `DistrictMapEditor` (`apps/admin-front/src/pages/districts/DistrictMapEditor.tsx`) est un
+éditeur cartographique non contrôlé : sa prop `value` sert de **géométrie initiale** seulement, puis il
+gère son état en interne et **émet** la géométrie GeoJSON (`onChange`) à chaque modification.
+
+### Bibliothèques
+
+- **Leaflet** piloté impérativement (`L.map(...)`, pas de `react-leaflet`).
+- **Leaflet-Geoman** (`@geoman-io/leaflet-geoman-free`) pour les outils de dessin/édition.
+- Fond de carte **OpenStreetMap** (tuiles publiques, aucune clé API).
+
+### Comportement
+
+- Seul le **polygone** est proposé au dessin (marqueur, ligne, rectangle, cercle, texte désactivés) —
+  un quartier est une zone. Sont activés : dessin, édition de sommets, déplacement (drag), suppression
+  et découpe (cut).
+- **Un seul polygone à la fois** : dessiner un nouveau polygone efface le précédent.
+- À l'hydratation depuis `value` : un `Polygon` devient éditable et la carte se cadre dessus ; un
+  `MultiPolygon` est affiché **en lecture seule** avec un avertissement (non éditable ici) ; tout autre
+  type, ou un GeoJSON invalide, affiche un avertissement.
+- Supprimer le polygone émet `null` (frontière effacée).
+
+Côté page, `isValidPolygon` sert de garde de type avant envoi : géométrie `Polygon` dont chaque anneau
+compte au moins 4 positions. L'éditeur ne produisant que des `Polygon` simples, la création et
+l'édition « fines » d'un `MultiPolygon` ne se font pas depuis cet éditeur.
+
+---
+
+## Géocodage
+
+Le géocodage d'adresse (`address.service.ts`, `getCoordinatesFromAddress`) s'appuie sur l'API publique
+de la **Géoplateforme** (IGN, `data.geopf.fr/geocodage/search`), avec un timeout de 5 s. Il convertit
+une adresse textuelle en géométrie GeoJSON, exploitée à la fois par l'auto-création de quartier, la
+résolution du quartier d'un utilisateur (`resolveMyDistrictUseCase`) et le garde-fou de containment des
+membres.
