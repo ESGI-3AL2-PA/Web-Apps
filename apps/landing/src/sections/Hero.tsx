@@ -1,7 +1,20 @@
+/**
+ * Section « hero » (haut de page) de la landing.
+ *
+ * Colonne de gauche : accroche, titre (dont un mot mis en emphase souligné),
+ * sous-titre et boutons d'authentification. Colonne de droite : le graphe
+ * animé du quartier ({@link NeighbourhoodGraph}) dans un encadré légendé.
+ */
 import type { Dict } from "../i18n";
 import AuthButtons from "./AuthButtons";
 import NeighbourhoodGraph from "./NeighbourhoodGraph";
 
+/**
+ * Rend la section hero.
+ *
+ * @param t - dictionnaire i18n de la langue active (accroche, titre en trois
+ *   fragments lead/emph/tail, sous-titre, libellés des CTA, légende du graphe).
+ */
 const Hero = ({ t }: { t: Dict }) => {
   return (
     <section className="mx-auto grid max-w-6xl items-center gap-14 px-6 pt-16 pb-20 lg:grid-cols-[1.05fr_0.95fr] lg:pt-24 lg:pb-28">
@@ -14,6 +27,7 @@ const Hero = ({ t }: { t: Dict }) => {
           {t.hero.titleLead}{" "}
           <span className="relative whitespace-nowrap text-primary">
             {t.hero.titleEmph}
+            {/* Trait de surlignage décoratif posé derrière le mot en emphase. */}
             <span className="absolute inset-x-0 bottom-1 -z-10 h-3 rounded-sm bg-secondary/35" aria-hidden="true" />
           </span>{" "}
           {t.hero.titleTail}

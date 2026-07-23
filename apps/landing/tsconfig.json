@@ -1,7 +1,10 @@
 {
+  // Config TypeScript de la landing : hérite du preset Vite partagé du repo,
+  // en n'ajoutant que le transform JSX propre à React.
   "extends": "@repo/typescript-config/vite.json",
   "include": ["src"],
   "compilerOptions": {
+    // Nouvelle transformation JSX (pas d'import explicite de React requis).
     "jsx": "react-jsx"
   }
 }

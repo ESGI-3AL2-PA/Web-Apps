@@ -1,6 +1,17 @@
+/**
+ * Section « fonctionnalités » de la landing page.
+ *
+ * Compose la grille de cartes présentant chaque fonctionnalité du produit
+ * (annonces, points, contrats, messagerie, événements, engagement civique).
+ * Les libellés proviennent du dictionnaire i18n `t`, tandis que les icônes SVG
+ * sont définies localement et associées par `FeatureId`.
+ */
 import type { ReactNode } from "react";
 import type { Dict, FeatureId } from "../i18n";
 
+// Contenu SVG (tracés `<path>`) de chaque icône, indexé par identifiant de
+// fonctionnalité. Ces fragments sont injectés dans un `<svg>` commun plus bas,
+// qui porte le viewBox et les attributs de trait partagés.
 const icons: Record<FeatureId, ReactNode> = {
   annonces: <path d="M3 11l16-6-3 15-4-5-5-1z M11 13l5-6" strokeLinecap="round" strokeLinejoin="round" />,
   points: (
@@ -38,6 +49,12 @@ const icons: Record<FeatureId, ReactNode> = {
   ),
 };
 
+/**
+ * Rend la section « fonctionnalités ».
+ *
+ * @param t - dictionnaire i18n de la langue active (fournit l'accroche, le titre
+ *   et la liste des fonctionnalités avec leur id, titre et description).
+ */
 const Features = ({ t }: { t: Dict }) => {
   return (
     <section id="features" className="mx-auto max-w-6xl px-6 py-20 lg:py-28">
@@ -48,6 +65,8 @@ const Features = ({ t }: { t: Dict }) => {
 
       <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
         {t.features.items.map((f, i) => (
+          // Décalage progressif de l'animation d'apparition (`reveal`) pour un
+          // effet de cascade : chaque carte apparaît 50 ms après la précédente.
           <article
             key={f.id}
             className="reveal group rounded-2xl border border-ink/10 bg-white p-6 transition hover:-translate-y-1 hover:border-primary/40 hover:shadow-[0_16px_40px_-24px_rgba(99,102,241,0.6)]"

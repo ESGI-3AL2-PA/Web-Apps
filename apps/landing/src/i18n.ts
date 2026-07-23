@@ -1,24 +1,34 @@
+/**
+ * Internationalisation de la landing : type des langues, dictionnaires fr/en, et
+ * hook useLang qui persiste le choix et synchronise l'attribut lang du <html>.
+ * Contenu purement statique (aucune bibliothèque i18n externe).
+ */
 import { useCallback, useEffect, useState } from "react";
 
 export type Lang = "fr" | "en";
 
+// Clé localStorage où l'on mémorise la langue choisie par le visiteur.
 const STORAGE_KEY = "cn-lang";
 
-// Feature ids map 1:1 onto the real API domains in packages/contracts, so the
-// copy never promises something the product can't do.
+// Les ids de features correspondent 1:1 aux vrais domaines API de
+// packages/contracts, pour que le discours ne promette rien que le produit ne
+// sache faire.
 export type FeatureId = "annonces" | "points" | "contrats" | "messagerie" | "events" | "civic";
 
+/** Une carte de fonctionnalité affichée dans la section Features. */
 interface Feature {
   id: FeatureId;
   title: string;
   desc: string;
 }
 
+/** Une étape de la section « Comment ça marche ». */
 interface Step {
   title: string;
   desc: string;
 }
 
+/** Forme complète d'un dictionnaire de traduction (une entrée par langue). */
 export interface Dict {
   htmlLang: string;
   nav: { login: string; signup: string };
@@ -40,6 +50,7 @@ export interface Dict {
   footer: { tagline: string; product: string; scoped: string; rights: string };
 }
 
+/** Dictionnaires de traduction indexés par langue (source de tout le texte). */
 export const translations: Record<Lang, Dict> = {
   fr: {
     htmlLang: "fr",
@@ -211,6 +222,11 @@ export const translations: Record<Lang, Dict> = {
   },
 };
 
+/**
+ * Détermine la langue initiale : valeur mémorisée en localStorage si valide,
+ * sinon la langue du navigateur (en si elle commence par « en », fr par défaut).
+ * Retombe sur fr en rendu serveur (window indisponible).
+ */
 function readInitialLang(): Lang {
   if (typeof window === "undefined") return "fr";
   const stored = window.localStorage.getItem(STORAGE_KEY);
@@ -218,6 +234,11 @@ function readInitialLang(): Lang {
   return window.navigator.language.toLowerCase().startsWith("en") ? "en" : "fr";
 }
 
+/**
+ * Hook d'état de langue. Expose la langue courante, un setter, et le dictionnaire
+ * `t` associé. À chaque changement, persiste le choix et met à jour l'attribut
+ * lang du document (accessibilité / SEO).
+ */
 export function useLang() {
   const [lang, setLang] = useState<Lang>(readInitialLang);
 

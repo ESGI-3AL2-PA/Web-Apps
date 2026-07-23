@@ -1,15 +1,20 @@
+/**
+ * Configuration Vite de la landing page (React + Tailwind).
+ * Le port d'écoute (dev et preview) est piloté par variable d'environnement,
+ * avec repli sur 6060.
+ */
 import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { fileURLToPath } from "node:url";
 
-// Ports are env-driven with a sane default. process.env wins (compose sets a
-// fixed internal port in Docker); otherwise fall back to the repo-root .env,
-// then the default.
+// Racine du monorepo, d'où sont chargées les variables d'environnement.
 const repoRoot = fileURLToPath(new URL("../../", import.meta.url));
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, repoRoot, "");
+  // Priorité au port : process.env (compose fixe le port interne en Docker),
+  // puis le .env à la racine du repo, puis la valeur par défaut 6060.
   const port = Number(process.env.LANDING_PORT ?? env.LANDING_PORT) || 6060;
 
   return {

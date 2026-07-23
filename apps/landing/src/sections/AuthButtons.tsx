@@ -1,5 +1,12 @@
+// Paire de boutons d'appel à l'action (inscription + connexion) de la landing.
 import { loginUrl, registerUrl } from "../auth-links";
 
+/**
+ * Props d'AuthButtons.
+ * - primaryLabel / secondaryLabel : libellés des boutons inscription / connexion.
+ * - size : taille du padding (« md » compact, « lg » proéminent, ex. bloc CTA).
+ * - tone : adapte le style du bouton secondaire selon le fond (clair / sombre).
+ */
 interface AuthButtonsProps {
   primaryLabel: string;
   secondaryLabel: string;
@@ -7,9 +14,11 @@ interface AuthButtonsProps {
   tone?: "light" | "dark";
 }
 
-// Full-navigation links (not SPA) into the auth-service login/register pages.
+// Liens en navigation complète (pas SPA) vers les pages login/register de l'auth-service.
 const AuthButtons = ({ primaryLabel, secondaryLabel, size = "md", tone = "light" }: AuthButtonsProps) => {
+  // Padding selon la taille demandée.
   const pad = size === "lg" ? "px-7 py-3.5 text-base" : "px-5 py-2.5 text-sm";
+  // Bordure/texte du bouton secondaire adaptés au fond (sombre vs clair).
   const secondary =
     tone === "dark"
       ? "border-blc/25 text-blc hover:border-blc/60 focus-visible:outline-blc"

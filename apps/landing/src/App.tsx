@@ -1,3 +1,9 @@
+/**
+ * Composant racine de la landing page marketing (site vitrine mono-page).
+ * Assemble les sections (Hero, Features, HowItWorks, CTA, Footer), gère la langue
+ * via le hook useLang et pointe les CTA vers les pages login/register de
+ * l'auth-service. Aucune donnée dynamique : contenu 100 % statique traduit.
+ */
 import { useLang } from "./i18n";
 import { loginUrl } from "./auth-links";
 import AuthButtons from "./sections/AuthButtons";
@@ -10,6 +16,7 @@ import LangToggle from "./sections/LangToggle";
 const logo = "/Logo-connectedNeighbours.png";
 
 const App = () => {
+  // `t` est le dictionnaire de la langue courante ; `setLang` le bascule (fr/en).
   const { lang, setLang, t } = useLang();
 
   return (
