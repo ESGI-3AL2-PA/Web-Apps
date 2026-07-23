@@ -1,9 +1,19 @@
+/**
+ * Service client du step-up TOTP. Le step-up vit sur l'auth-service (qui détient le secret
+ * TOTP) : on le frappe directement avec un token Bearer, à l'image de totp.service. Échange un
+ * code à 6 chiffres frais contre un token de step-up éphémère autorisant une seule opération
+ * sensible (voir l'intercepteur de réponse dans api.ts).
+ */
 import { config } from "@repo/config";
 import type { StepUpResponseDto } from "@repo/contracts";
 
-// Step-up lives on the auth-service (it holds the TOTP secret) — hit it directly with a
-// Bearer token, mirroring totp.service. Exchanges a fresh 6-digit code for a short-lived
-// step-up token to authorize one sensitive operation.
+/**
+ * POST /auth/step-up — échange un code TOTP contre un token de step-up.
+ * @param accessToken access token courant, posé en Bearer.
+ * @param code code TOTP à 6 chiffres saisi par l'utilisateur.
+ * @returns le `step_up_token` à placer dans l'en-tête X-Step-Up-Token du retry.
+ * @throws Error avec le message serveur (ou le statut HTTP) si l'échange échoue.
+ */
 export async function fetchStepUpToken(accessToken: string, code: string): Promise<string> {
   const res = await fetch(`${config.authServiceUrl}/auth/step-up`, {
     method: "POST",

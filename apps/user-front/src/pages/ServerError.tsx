@@ -1,7 +1,12 @@
 import { useTranslation } from "react-i18next";
 
-// Full-screen 500 page shown when the api is unreachable. Self-contained (no router
-// or api dependencies) so it renders even when everything else is down.
+// Page d'erreur 500 plein écran, affichée quand l'api est injoignable. Autonome
+// (aucune dépendance au router ni à l'api) afin de s'afficher même si tout le reste
+// est hors service.
+/**
+ * @param onRetry callback optionnel de nouvelle tentative ; le bouton n'apparaît que s'il est fourni.
+ * @param retrying passe le bouton en état chargement (spinner + libellé « réessai en cours »).
+ */
 export default function ServerError({ onRetry, retrying }: { onRetry?: () => void; retrying?: boolean }) {
   const { t } = useTranslation();
   return (

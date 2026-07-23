@@ -12,6 +12,12 @@ import ListingCard from "../components/ListingCard";
 import ErrorBanner from "../components/ErrorBanner";
 import { formatDateTime, formatPrice } from "../lib/format";
 
+/**
+ * Page d'accueil : bandeau de solde (si connecté), filtres par catégorie (tags),
+ * aperçus des événements à venir et sondages ouverts du quartier, et grille des
+ * annonces récentes actives. Charge tout en parallèle ; événements et sondages
+ * sont facultatifs (échec silencieux).
+ */
 export default function Home() {
   const navigate = useNavigate();
   const { t, i18n } = useTranslation();
@@ -30,6 +36,7 @@ export default function Home() {
     Promise.all([
       getListings({ status: "active", limit: 24 }),
       getTags(),
+      // Événements et sondages sont accessoires : leur échec ne casse pas la page.
       getEvents({ status: "upcoming", limit: 3 }).catch(() => []),
       getVotes({ status: "open", limit: 3 }).catch(() => []),
     ])

@@ -9,6 +9,11 @@ import ApiHealthGuard from "../components/ApiHealthGuard";
 
 const AUTH_SERVICE_URL = config.authServiceUrl;
 
+/**
+ * Branche les intercepteurs axios sur les fonctions d'auth vivantes. Doit être placé
+ * SOUS AuthProvider pour disposer de `getAccessToken`/`refresh` : les intercepteurs
+ * attachent le Bearer aux requêtes et déclenchent le refresh sur 401.
+ */
 function InterceptorSetup({ children }: { children: ReactNode }) {
   const { getAccessToken, refresh } = useAuth();
 
@@ -19,6 +24,11 @@ function InterceptorSetup({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
+/**
+ * Empile tous les providers transverses de l'app, dans l'ordre où ils dépendent
+ * les uns des autres : auth → intercepteurs → garde de santé de l'api → socket temps
+ * réel → step-up (ré-auth) → dialogues. L'imbrication reflète ces dépendances.
+ */
 export default function Providers({ children }: { children: ReactNode }) {
   return (
     <AuthProvider authServiceUrl={AUTH_SERVICE_URL}>

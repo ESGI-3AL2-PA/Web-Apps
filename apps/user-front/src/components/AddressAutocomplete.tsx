@@ -1,10 +1,20 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-// Controlled address input with typeahead from the French Base Adresse Nationale
-// (BAN, api-adresse.data.gouv.fr). Free text stays allowed; picking a suggestion
-// writes back the canonical full label. Presentation-only — hits BAN directly, not
-// our backend, so it lives outside api-service/.
+/**
+ * Champ d'adresse contrôlé avec autocomplétion depuis la Base Adresse Nationale
+ * française (BAN, api-adresse.data.gouv.fr). La saisie libre reste autorisée ;
+ * choisir une suggestion réécrit le libellé complet canonique.
+ *
+ * Purement présentationnel : tape directement la BAN et non notre backend, d'où sa
+ * place hors de api-service/.
+ *
+ * @param value        Valeur contrôlée du champ.
+ * @param onChange     Rappelé à chaque frappe et à la sélection d'une suggestion.
+ * @param dropUp       Ouvre la liste de suggestions AU-DESSUS du champ. À utiliser
+ *                     quand le champ surplombe des boutons d'action (ex. formulaire
+ *                     d'édition de profil) pour que la liste flottante ne les masque pas.
+ */
 export default function AddressAutocomplete({
   value,
   onChange,
@@ -16,8 +26,6 @@ export default function AddressAutocomplete({
   onChange: (v: string) => void;
   id?: string;
   placeholder?: string;
-  // Open the suggestion list above the input. Use when the field sits directly on top of
-  // action buttons (e.g. the profile edit form) so the floating list can't cover them.
   dropUp?: boolean;
 }) {
   const { t } = useTranslation();
@@ -25,8 +33,12 @@ export default function AddressAutocomplete({
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const boxRef = useRef<HTMLDivElement>(null);
-  const skipNext = useRef(false); // suppress the fetch triggered by a pick
+  const skipNext = useRef(false); // supprime le fetch déclenché par une sélection
 
+  // Recherche BAN débouncée à chaque changement de `value`. Ignore le cycle
+  // consécutif à une sélection (skipNext), n'interroge qu'à partir de 3 caractères,
+  // et annule proprement (drapeau `cancelled` + clearTimeout) si la valeur change
+  // avant la fin du délai.
   useEffect(() => {
     if (skipNext.current) {
       skipNext.current = false;
@@ -40,6 +52,7 @@ export default function AddressAutocomplete({
     }
     let cancelled = false;
     setLoading(true);
+    // Débounce de 300 ms avant de taper l'API BAN.
     const tid = setTimeout(() => {
       const url = `https://api-adresse.data.gouv.fr/search/?limit=5&autocomplete=1&q=${encodeURIComponent(q)}`;
       fetch(url)
@@ -61,6 +74,7 @@ export default function AddressAutocomplete({
     };
   }, [value]);
 
+  // Ferme la liste sur un clic en dehors du composant (détection via boxRef).
   useEffect(() => {
     const onDoc = (e: MouseEvent) => {
       if (boxRef.current && !boxRef.current.contains(e.target as Node)) setOpen(false);
@@ -69,6 +83,8 @@ export default function AddressAutocomplete({
     return () => document.removeEventListener("mousedown", onDoc);
   }, []);
 
+  // Sélection d'une suggestion : arme skipNext pour ne pas relancer un fetch sur le
+  // libellé qu'on vient d'écrire, remonte la valeur canonique et referme la liste.
   const pick = (label: string) => {
     skipNext.current = true;
     onChange(label);

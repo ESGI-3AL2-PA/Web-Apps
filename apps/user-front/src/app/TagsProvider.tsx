@@ -5,12 +5,18 @@ import { getTags } from "../api-service/tags.service";
 import { tagLabel } from "../lib/tag-label";
 import { TagsContext, type TagsContextValue } from "./tags-context";
 
-// Loads the district's tags once for the whole authed app so name-string render
-// sites (listing cards/detail) can resolve a display label without refetching.
+/**
+ * Provider chargeant une seule fois les tags du quartier pour toute l'app authentifiée.
+ * Les sites de rendu qui ne connaissent qu'un nom de tag (cartes/détail d'annonce)
+ * peuvent ainsi résoudre un libellé d'affichage sans refetch.
+ */
 export function TagsProvider({ children }: { children: ReactNode }) {
   const { i18n } = useTranslation();
   const [tags, setTags] = useState<TagResponseDto[]>([]);
 
+  // Chargement unique au montage. Le drapeau `alive` évite un setState après démontage
+  // (l'effet peut se dénouer avant la résolution de la promesse) ; en cas d'échec on
+  // retombe sur une liste vide.
   useEffect(() => {
     let alive = true;
     getTags()
@@ -21,6 +27,8 @@ export function TagsProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  // Valeur du contexte mémoïsée. `byName` indexe les tags par nom pour un lookup O(1)
+  // dans `labelFor` ; on recalcule seulement quand les tags ou la langue changent.
   const value = useMemo<TagsContextValue>(() => {
     const byName = new Map(tags.map((t) => [t.name, t]));
     return {

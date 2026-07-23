@@ -1,5 +1,11 @@
 import { useTranslation } from "react-i18next";
 
+/**
+ * Bandeau d'erreur inline avec un bouton « réessayer ».
+ *
+ * @param message - message à afficher ; à défaut, le message de chargement générique.
+ * @param onRetry - appelé au clic sur le bouton réessayer.
+ */
 export default function ErrorBanner({ message, onRetry }: { message?: string; onRetry: () => void }) {
   const { t } = useTranslation();
   return (

@@ -19,8 +19,17 @@ import { formatDateTime, formatPrice } from "../lib/format";
 import { useDialog } from "../components/dialog-context";
 import AddressAutocomplete from "../components/AddressAutocomplete";
 
+// Page : profil de l'utilisateur — infos éditables, statistiques d'activité,
+// solde de points et historique paginé des transactions.
+
+// Taille de page de l'historique des transactions.
 const HISTORY_PAGE_SIZE = 10;
 
+/**
+ * Historique paginé des transactions de points d'un utilisateur. Charge par
+ * pages de HISTORY_PAGE_SIZE et accumule les lignes (bouton « charger plus »).
+ * @param userId utilisateur dont on affiche l'historique.
+ */
 function PointsHistory({ userId }: { userId: string }) {
   const { t } = useTranslation();
   const [items, setItems] = useState<TransactionResponseDto[]>([]);
@@ -36,6 +45,7 @@ function PointsHistory({ userId }: { userId: string }) {
     getUserTransactions(userId, { page, limit: HISTORY_PAGE_SIZE })
       .then((res) => {
         if (cancelled) return;
+        // Page 1 : remplace ; pages suivantes : ajoute à la suite (accumulation).
         setItems((prev) => (page === 1 ? res.data : [...prev, ...res.data]));
         setTotal(res.total);
       })
@@ -107,6 +117,7 @@ function PointsHistory({ userId }: { userId: string }) {
   );
 }
 
+/** Section en carte avec un titre et un contenu arbitraire. */
 function Card({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="card border border-base-content/10 bg-base-100 p-5">
@@ -118,6 +129,7 @@ function Card({ title, children }: { title: string; children: React.ReactNode })
   );
 }
 
+/** Paire libellé/valeur en lecture seule pour la fiche d'informations. */
 function Info({ label, value }: { label: string; value: string }) {
   return (
     <div>
@@ -129,6 +141,11 @@ function Info({ label, value }: { label: string; value: string }) {
 
 const inputClass = "input mt-1 w-full";
 
+/**
+ * Page de profil : charge le détail complet de l'utilisateur, le nom de son
+ * quartier, son solde et ses statistiques d'activité ; permet d'éditer nom,
+ * prénom, téléphone et adresse.
+ */
 export default function Profile() {
   const { t } = useTranslation();
   const { user } = useAuth();
@@ -182,12 +199,13 @@ export default function Profile() {
         if (cancelled) return;
         setStats({
           listings: listings.total,
+          // Total des contrats = ceux où l'utilisateur est fournisseur + bénéficiaire.
           contracts: cProvider.total + cBenef.total,
           events: events.length,
           votes: votes.length,
         });
       } catch {
-        // stats are best-effort
+        // Les stats sont « best-effort » : un échec est ignoré silencieusement.
       }
     })();
     return () => {
@@ -202,8 +220,9 @@ export default function Profile() {
       const updated = await updateUser(uid, {
         firstName: form.firstName,
         lastName: form.lastName,
-        // Send the trimmed value (even ""), so clearing an existing phone actually persists —
-        // `|| undefined` would drop the empty string and the old number would stick.
+        // On envoie la valeur nettoyée (même ""), pour qu'effacer un téléphone
+        // existant persiste réellement — `|| undefined` supprimerait la chaîne
+        // vide et l'ancien numéro resterait.
         phone: form.phone.trim(),
         address: form.address || undefined,
       });
@@ -236,7 +255,7 @@ export default function Profile() {
     <div className="mx-auto max-w-2xl space-y-6">
       <h1 className="text-2xl font-extrabold text-base-content">{t("profile.title")}</h1>
 
-      {/* Info */}
+      {/* Informations personnelles */}
       <section className="card border border-base-content/10 bg-base-100 p-5">
         <div className="flex items-center justify-between gap-3">
           <h2 className="text-lg font-bold text-base-content">{t("profile.info.title")}</h2>
@@ -309,7 +328,7 @@ export default function Profile() {
         )}
       </section>
 
-      {/* Stats */}
+      {/* Statistiques d'activité */}
       <Card title={t("profile.stats.title")}>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {(
@@ -328,13 +347,13 @@ export default function Profile() {
         </div>
       </Card>
 
-      {/* Points */}
+      {/* Solde de points */}
       <Card title={t("profile.points.title")}>
         <p className="text-3xl font-extrabold text-primary">{formatPrice(balance ?? user.balance)}</p>
         <p className="mt-1 text-sm text-base-content/60">{t("profile.points.desc")}</p>
       </Card>
 
-      {/* Points history */}
+      {/* Historique des points */}
       <Card title={t("profile.history.title")}>
         {uid ? (
           <PointsHistory userId={uid} />

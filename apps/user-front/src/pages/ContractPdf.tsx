@@ -5,12 +5,16 @@ import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
 import { fetchContractPdf } from "../api-service/contracts.service";
 
-// react-pdf needs its worker; resolve the bundled one through Vite. This whole
-// module (react-pdf + the ~1 MB pdfjs worker) is lazy-loaded so it only ships
-// when a user actually opens a contract PDF preview.
+// Page/composant : aperçu inline du PDF signé d'un contrat.
+// react-pdf a besoin de son worker ; on résout celui empaqueté via Vite. Tout ce
+// module (react-pdf + le worker pdfjs ~1 Mo) est chargé en lazy pour n'être livré
+// que lorsqu'un utilisateur ouvre réellement l'aperçu PDF d'un contrat.
 pdfjs.GlobalWorkerOptions.workerSrc = new URL("pdfjs-dist/build/pdf.worker.min.mjs", import.meta.url).toString();
 
-// Fetches the signed PDF as a Blob (via the api proxy) and renders it inline.
+/**
+ * Récupère le PDF signé sous forme de Blob (via le proxy de l'api) et l'affiche inline.
+ * @param id identifiant du contrat dont on veut l'aperçu.
+ */
 export default function ContractPdf({ id }: { id: string }) {
   const { t } = useTranslation();
   const [file, setFile] = useState<Blob | null>(null);
@@ -18,6 +22,7 @@ export default function ContractPdf({ id }: { id: string }) {
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
+    // Le garde `revoked` évite un setState après démontage (ou changement d'id).
     let revoked = false;
     fetchContractPdf(id)
       .then((blob) => {

@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
+/** Page 404 : affichée pour toute route inconnue, avec un lien de retour à l'accueil. */
 export default function NotFound() {
   const { t } = useTranslation();
   return (

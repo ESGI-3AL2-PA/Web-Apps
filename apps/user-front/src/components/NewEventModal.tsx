@@ -5,12 +5,21 @@ import type { CreateEventDto, EventResponseDto } from "@repo/contracts";
 import { createEvent } from "../api-service/events.service";
 import { useFocusTrap } from "../lib/useFocusTrap";
 
-// datetime-local speaks local "YYYY-MM-DDTHH:mm"; the API speaks ISO.
+// L'input datetime-local parle en heure locale "YYYY-MM-DDTHH:mm" ; l'API parle en ISO.
+// Renvoie l'instant courant (+ plusDays jours) au format attendu par datetime-local :
+// on décale de l'offset de fuseau avant de tronquer à la minute.
 const nowLocal = (plusDays = 0): string => {
   const d = new Date(Date.now() + plusDays * 86_400_000);
   return new Date(d.getTime() - d.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
 };
 
+/**
+ * Modale de création d'un événement dans le quartier de l'utilisateur courant.
+ * Champs : titre, lieu, date/heure, nombre de places, description.
+ *
+ * @param onClose - ferme la modale.
+ * @param onCreated - reçoit l'événement créé.
+ */
 export default function NewEventModal({
   onClose,
   onCreated,
@@ -25,10 +34,12 @@ export default function NewEventModal({
   const [description, setDescription] = useState("");
   const [location, setLocation] = useState("");
   const [totalSeats, setTotalSeats] = useState("20");
-  const [eventDate, setEventDate] = useState(nowLocal(7));
+  const [eventDate, setEventDate] = useState(nowLocal(7)); // par défaut : dans 7 jours
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Construit le DTO (date reconvertie en ISO) et envoie la création ; le quartier de
+  // l'utilisateur est requis, on abandonne sinon.
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     if (!user?.districtId) return;

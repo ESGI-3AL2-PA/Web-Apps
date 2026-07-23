@@ -6,8 +6,18 @@ import { getNotifications, markAllNotificationsRead, markNotificationRead } from
 import { useSocket } from "../sockets/socket-context";
 import { formatRelative } from "../lib/format";
 
-// Maps a notification's ref to an in-app route. Id-less types point at their list page;
-// `message` refIds are message ids (not conversation ids), so they land on the list too.
+/**
+ * Composant React : cloche de notifications dans le header.
+ *
+ * Affiche un badge de non-lus, un menu déroulant listant les 15 dernières
+ * notifications et se rafraîchit en direct via l'événement socket
+ * `notification:new`. Marque les notifications comme lues et route vers la
+ * ressource concernée au clic.
+ */
+
+// Traduit la ref d'une notification en route interne. Les types sans identifiant
+// pointent vers leur page de liste ; les refId de `message` sont des identifiants
+// de message (pas de conversation), donc ils renvoient aussi vers la liste.
 function routeForNotification(refType: NotificationRefType, refId?: string): string | null {
   switch (refType) {
     case "listing":
@@ -38,6 +48,8 @@ export default function NotificationBell() {
   const ref = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
 
+  // Charge les 15 dernières notifications ; le drapeau `ignore` évite un setState
+  // après démontage si la requête revient trop tard.
   const load = useCallback(() => {
     let ignore = false;
     getNotifications({ limit: 15 })
@@ -54,7 +66,7 @@ export default function NotificationBell() {
 
   useEffect(load, [load]);
 
-  // Live refresh: reload when the server pushes a new notification.
+  // Rafraîchissement en direct : recharge quand le serveur pousse une notification.
   useEffect(() => {
     if (!socket) return;
     const onNew = () => load();
@@ -64,6 +76,7 @@ export default function NotificationBell() {
     };
   }, [socket, load]);
 
+  // Ferme le menu au clic en dehors du composant.
   useEffect(() => {
     const onDoc = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
@@ -81,6 +94,8 @@ export default function NotificationBell() {
     });
   };
 
+  // Marque une notification comme lue de façon optimiste ; recharge si l'appel échoue
+  // pour resynchroniser l'état affiché avec le serveur.
   const markOne = async (n: NotificationResponseDto) => {
     if (n.read) return;
     setItems((prev) => prev.map((x) => (x.id === n.id ? { ...x, read: true } : x)));

@@ -9,6 +9,11 @@ import { useDialog } from "../components/dialog-context";
 import AuthedImage from "../components/AuthedImage";
 import EditListingModal from "../components/EditListingModal";
 
+/**
+ * Page : annonces de l'utilisateur courant, avec édition (modale) et suppression.
+ * Une annonce liée à un contrat actif affiche un badge et demande une
+ * confirmation renforcée avant suppression.
+ */
 export default function MyListings() {
   const { t } = useTranslation();
   const { user } = useAuth();
@@ -43,6 +48,7 @@ export default function MyListings() {
   const onDelete = async (listing: ListingResponseDto) => {
     const ok = await confirm({
       title: t("myListings.title"),
+      // Message renforcé si l'annonce est liée à un contrat actif.
       message: listing.userHasContract ? t("myListings.confirmDeleteActive") : t("myListings.confirmDelete"),
       confirmLabel: t("myListings.delete"),
       tone: "danger",

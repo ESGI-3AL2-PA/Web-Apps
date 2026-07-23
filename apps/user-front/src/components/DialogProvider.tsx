@@ -3,18 +3,27 @@ import { useTranslation } from "react-i18next";
 import { useFocusTrap } from "../lib/useFocusTrap";
 import { DialogContext, type AlertOptions, type ConfirmOptions } from "./dialog-context";
 
+// État du dialogue affiché : les options passées + le mode (confirmation ou simple alerte).
 interface DialogState extends ConfirmOptions {
   mode: "confirm" | "alert";
 }
 
-// App-themed replacement for window.confirm / window.alert. Exposes an imperative,
-// promise-based API so call sites read like the native ones they replace:
-//   if (!(await confirm({ message }))) return;
+/**
+ * Provider React remplaçant window.confirm / window.alert par des dialogues thémés.
+ *
+ * Expose via le contexte une API impérative basée sur des Promises pour que les appels
+ * se lisent comme leurs équivalents natifs :
+ *   if (!(await confirm({ message }))) return;
+ *
+ * `confirm` résout un booléen (true = confirmé) ; `alert` résout void à la fermeture.
+ */
 export function DialogProvider({ children }: { children: ReactNode }) {
   const { t } = useTranslation();
   const [state, setState] = useState<DialogState | null>(null);
+  // Résolveur de la Promise en cours, mémorisé dans un ref pour être appelé à la fermeture.
   const resolverRef = useRef<((v: boolean) => void) | null>(null);
 
+  // Ferme le dialogue et résout la Promise en attente avec le résultat donné.
   const settle = useCallback((result: boolean) => {
     setState(null);
     resolverRef.current?.(result);
@@ -39,7 +48,7 @@ export function DialogProvider({ children }: { children: ReactNode }) {
     [],
   );
 
-  // Escape cancels (treated as a "no" / dismiss).
+  // Échap annule (interprété comme un « non » / rejet).
   useEffect(() => {
     if (!state) return;
     const onKey = (e: KeyboardEvent) => {
@@ -52,8 +61,8 @@ export function DialogProvider({ children }: { children: ReactNode }) {
   const panelRef = useFocusTrap<HTMLDivElement>(!!state);
   const danger = state?.tone === "danger";
   const isConfirm = state?.mode === "confirm";
-  // For a destructive confirm, focus the safe (cancel) action instead of the
-  // destructive one so a stray Enter doesn't trigger it.
+  // Pour une confirmation destructive, on met le focus sur l'action sûre (annuler) plutôt
+  // que sur l'action destructive, afin qu'un appui accidentel sur Entrée ne la déclenche pas.
   const focusDestructive = !(isConfirm && danger);
 
   const value = useMemo(() => ({ confirm, alert }), [confirm, alert]);

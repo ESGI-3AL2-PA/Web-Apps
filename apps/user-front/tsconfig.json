@@ -1,7 +1,9 @@
 {
+  // Hérite de la config TypeScript partagée pour cibles Vite (bundler + DOM).
   "extends": "@repo/typescript-config/vite.json",
   "include": ["src"],
   "compilerOptions": {
+    // Transform JSX moderne de React 17+ (pas d'import React explicite requis).
     "jsx": "react-jsx"
   }
 }

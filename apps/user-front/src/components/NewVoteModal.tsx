@@ -5,14 +5,24 @@ import type { CreateVoteDto, VoteResponseDto, VoteType } from "@repo/contracts";
 import { createVote } from "../api-service/votes.service";
 import { useFocusTrap } from "../lib/useFocusTrap";
 
-// datetime-local speaks local "YYYY-MM-DDTHH:mm"; the API speaks ISO.
+// L'input datetime-local parle en heure locale "YYYY-MM-DDTHH:mm" ; l'API parle en ISO.
+// Renvoie l'instant courant (+ plusDays jours) au format datetime-local (décalage de fuseau
+// appliqué avant troncature à la minute).
 const nowLocal = (plusDays = 0): string => {
   const d = new Date(Date.now() + plusDays * 86_400_000);
   return new Date(d.getTime() - d.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
 };
 
+// Types de scrutin proposés : choix unique ou choix multiple.
 const VOTE_TYPES: VoteType[] = ["single_choice", "multiple_choice"];
 
+/**
+ * Modale de création d'un vote / sondage dans le quartier de l'utilisateur courant.
+ * Question, liste d'options (au moins deux non vides), type de scrutin, dates de début/fin.
+ *
+ * @param onClose - ferme la modale.
+ * @param onCreated - reçoit le vote créé.
+ */
 export default function NewVoteModal({
   onClose,
   onCreated,
@@ -31,13 +41,16 @@ export default function NewVoteModal({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Helpers d'édition de la liste d'options (mise à jour, ajout, suppression par index).
   const setOption = (i: number, value: string) => setOptions((prev) => prev.map((o, idx) => (idx === i ? value : o)));
   const addOption = () => setOptions((prev) => [...prev, ""]);
   const removeOption = (i: number) => setOptions((prev) => prev.filter((_, idx) => idx !== i));
 
+  // Valide (au moins deux options non vides), construit le DTO et envoie la création.
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     if (!user?.districtId) return;
+    // Nettoie les options : trim + retrait des entrées vides avant la vérification.
     const cleanOptions = options.map((o) => o.trim()).filter(Boolean);
     if (cleanOptions.length < 2) {
       setError(t("votes.needTwoOptions"));

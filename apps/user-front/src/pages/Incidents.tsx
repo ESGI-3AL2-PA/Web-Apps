@@ -8,8 +8,13 @@ import { formatRelative } from "../lib/format";
 import { useDialog } from "../components/dialog-context";
 import ErrorBanner from "../components/ErrorBanner";
 
+// Page : signalements (incidents) du quartier. Formulaire de dépôt + liste des
+// signalements de l'utilisateur (bornée côté serveur au demandeur).
+
+// Catégories de signalement proposées dans le formulaire.
 const CATEGORIES = ["cleanliness", "safety", "vandalism", "noise", "other"] as const;
 
+// Classes de badge par statut de signalement.
 const STATUS_CLASS: Record<IncidentStatus, string> = {
   open: "badge badge-warning badge-soft",
   in_progress: "badge badge-info badge-soft",
@@ -17,6 +22,10 @@ const STATUS_CLASS: Record<IncidentStatus, string> = {
   closed: "badge badge-neutral badge-soft",
 };
 
+/**
+ * Page des signalements : formulaire de dépôt (catégorie + description, rattaché
+ * au quartier de l'utilisateur) et liste de ses propres signalements avec statut.
+ */
 export default function Incidents() {
   const { t } = useTranslation();
   const { user } = useAuth();
@@ -52,7 +61,8 @@ export default function Incidents() {
 
   useEffect(load, [load]);
 
-  // District is required to report; resolve it from the profile if the token lacks it.
+  // Le quartier est requis pour signaler ; on le résout depuis le profil si le
+  // token ne le porte pas.
   useEffect(() => {
     if (districtId || !user?.id) return;
     let ignore = false;
@@ -89,7 +99,7 @@ export default function Incidents() {
         <p className="text-base-content/60">{t("incidents.subtitle")}</p>
       </div>
 
-      {/* Report form */}
+      {/* Formulaire de dépôt d'un signalement */}
       <form onSubmit={submit} className="space-y-3 rounded-box border border-base-content/10 bg-base-100 p-5">
         <h2 className="text-lg font-bold text-base-content">{t("incidents.report")}</h2>
         <label className="block">
@@ -121,7 +131,7 @@ export default function Incidents() {
         </button>
       </form>
 
-      {/* My incidents */}
+      {/* Mes signalements */}
       <section>
         <h2 className="mb-3 text-lg font-bold text-base-content">{t("incidents.mine")}</h2>
         {loading ? (

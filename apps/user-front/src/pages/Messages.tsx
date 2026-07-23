@@ -20,7 +20,14 @@ import { useDialog } from "../components/dialog-context";
 import NewConversationModal from "../components/NewConversationModal";
 import AudioRecorder from "../components/AudioRecorder";
 
-// Renders a voice-note message: fetches the audio blob (Bearer-authed) and plays it.
+// Page : messagerie (liste des conversations + fil actif). Gère texte, notes
+// vocales, images, accusés de lecture, présence en ligne et mises à jour live
+// via socket. La conversation active vient de l'URL (:conversationId).
+
+/**
+ * Affiche un message de type note vocale : récupère le blob audio (authentifié
+ * par Bearer) et le lit via un object URL révoqué au démontage.
+ */
 function MessageAudio({ id }: { id: string }) {
   const { t } = useTranslation();
   const [url, setUrl] = useState<string | null>(null);
@@ -45,8 +52,11 @@ function MessageAudio({ id }: { id: string }) {
   );
 }
 
-// Renders an image message: fetches the bytes (Bearer-authed, participant-checked) and
-// shows them via an object URL. Not a plain <img src> since the endpoint requires auth.
+/**
+ * Affiche un message de type image : récupère les octets (authentifié par Bearer,
+ * accès vérifié côté participant) et les montre via un object URL. Pas un simple
+ * <img src> car l'endpoint exige une authentification.
+ */
 function MessageImage({ id }: { id: string }) {
   const { t } = useTranslation();
   const [url, setUrl] = useState<string | null>(null);
@@ -91,7 +101,8 @@ export default function Messages() {
   const imageInputRef = useRef<HTMLInputElement>(null);
   const markedRef = useRef<Set<string>>(new Set());
 
-  // Load the conversation list + resolve every participant's name (needed for groups too).
+  // Charge la liste des conversations + résout le nom de chaque participant
+  // (nécessaire aussi pour les groupes).
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
@@ -117,7 +128,7 @@ export default function Messages() {
     };
   }, [user]);
 
-  // A conversation's display title: its name for groups, otherwise the other participant.
+  // Titre affiché d'une conversation : son nom pour un groupe, sinon l'autre participant.
   const titleOf = (c: ConversationResponseDto): string => {
     if (c.type === "group") return c.name?.trim() || t("messages.group");
     const otherId = c.participants.find((p) => p !== user?.id);
@@ -128,14 +139,15 @@ export default function Messages() {
     c.type === "group" ? undefined : c.participants.find((p) => p !== user?.id);
   const active = conversations.find((c) => c.id === conversationId);
 
-  // Load messages of the selected conversation.
+  // Charge les messages de la conversation sélectionnée.
   useEffect(() => {
     if (!conversationId) {
       setMessages([]);
       return;
     }
-    // Guard against a slow response for a previous conversation resolving after the user
-    // has switched — without this, thread A's messages can render under thread B.
+    // Se prémunit contre une réponse lente d'une conversation précédente qui
+    // arriverait après un changement de fil — sans ça, les messages du fil A
+    // pourraient s'afficher sous le fil B.
     let ignore = false;
     getMessages(conversationId, { limit: 100 })
       .then((m) => {
@@ -149,7 +161,8 @@ export default function Messages() {
     };
   }, [conversationId]);
 
-  // Read receipts: mark messages from others as read once, when they're in view.
+  // Accusés de lecture : marque une seule fois comme lus les messages des autres,
+  // dès qu'ils sont affichés (markedRef évite les appels en double).
   useEffect(() => {
     if (!user) return;
     for (const m of messages) {
@@ -160,7 +173,8 @@ export default function Messages() {
     }
   }, [messages, user]);
 
-  // Live updates via socket.
+  // Mises à jour live via socket : n'ajoute le message que s'il concerne le fil
+  // actif et n'est pas déjà présent (déduplication par id).
   const onNewMessage = useCallback(
     (msg: MessageResponseDto) => {
       if (msg.conversationId === conversationId) {
@@ -206,11 +220,11 @@ export default function Messages() {
     }
   };
 
-  // Picture message: send the file in-band to the participant-checked image route
-  // (bytes stored privately, keyed by message id — like a voice note).
+  // Message image : envoie le fichier vers la route image (accès vérifié côté
+  // participant ; octets stockés en privé, indexés par id de message — comme une note vocale).
   const onPickImage = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    e.target.value = ""; // let the user re-pick the same file
+    e.target.value = ""; // permet de re-sélectionner le même fichier
     if (!file || !conversationId) return;
     setSendingImage(true);
     try {
@@ -225,7 +239,7 @@ export default function Messages() {
 
   return (
     <div className="grid h-[calc(100dvh-13rem)] grid-cols-1 gap-4 md:h-[70vh] md:grid-cols-[280px_1fr]">
-      {/* Conversation list */}
+      {/* Liste des conversations */}
       <aside
         className={`overflow-y-auto rounded-xl border border-base-content/10 bg-base-100 ${
           conversationId ? "hidden md:block" : ""
@@ -269,7 +283,7 @@ export default function Messages() {
         )}
       </aside>
 
-      {/* Thread */}
+      {/* Fil de discussion */}
       <section
         className={`flex-col overflow-hidden rounded-xl border border-base-content/10 bg-base-100 ${
           conversationId ? "flex" : "hidden md:flex"
